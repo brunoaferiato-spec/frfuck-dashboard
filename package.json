@@ -7,9 +7,15 @@
     "start": "node dist/index.js",
     "dev": "vite"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@tanstack/react-query": "^5.59.0",
+    "@trpc/client": "^10.45.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "superjson": "^2.2.1"
+  },
   "devDependencies": {
-    "vite": "^5.0.0",
-    "esbuild": "^0.19.0"
+    "esbuild": "^0.19.12",
+    "vite": "^5.4.21"
   }
 }
