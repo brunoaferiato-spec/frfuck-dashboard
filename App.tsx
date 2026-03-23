@@ -1,20 +1,16 @@
 import React from "react";
-import { Route, Switch } from "wouter";
-
-import AnaliseFuncionario from "./AnaliseFuncionario";
-import FolhaPagamento from "./FolhaPagamento";
-import GestaoFuncionarios from "./GestaoFuncionarios";
-import GestaoMetas from "./GestaoMetas";
 
 function App() {
   return (
-    <Switch>
-      <Route path="/" component={GestaoFuncionarios} />
-      <Route path="/funcionarios" component={GestaoFuncionarios} />
-      <Route path="/folha" component={FolhaPagamento} />
-      <Route path="/metas" component={GestaoMetas} />
-      <Route path="/analise" component={AnaliseFuncionario} />
-    </Switch>
+    <div style={{
+      background: "#0f172a",
+      color: "#fff",
+      minHeight: "100vh",
+      padding: "40px"
+    }}>
+      <h1>FRFUCK Dashboard</h1>
+      <p>Se você está vendo isso, o sistema está funcionando.</p>
+    </div>
   );
 }
 
