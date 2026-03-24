@@ -1,18 +1,12 @@
 import React from "react";
-import ReactDOM from "react-dom/client";
-import App from "./App";
-import "./index.css";
 
-const rootElement = document.getElementById("root");
-
-if (!rootElement) {
-  throw new Error('Elemento #root não encontrado');
+function App() {
+  return (
+    <div style={{ background: "#0f172a", color: "#ffffff", minHeight: "100vh", padding: "40px" }}>
+      <h1>FRFUCK Dashboard</h1>
+      <p>Aplicação carregada com sucesso.</p>
+    </div>
+  );
 }
 
-ReactDOM.createRoot(rootElement).render(
-  React.createElement(
-    React.StrictMode,
-    null,
-    React.createElement(App)
-  )
-);
+export default App;
