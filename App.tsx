@@ -5,22 +5,26 @@ import GestaoFuncionarios from "./GestaoFuncionarios";
 import GestaoMetas from "./GestaoMetas";
 import AnaliseFuncionario from "./AnaliseFuncionario";
 
-function App() {
-  const [page, setPage] = useState("folha");
+export default function App() {
+  const [page, setPage] = useState("home");
 
   return (
-    <div style={{ padding: 20, background: "#0f172a", minHeight: "100vh", color: "#fff" }}>
-      <h1>FRFUCK Dashboard</h1>
+    <div style={{ minHeight: "100vh", background: "#000", color: "#fff", padding: "20px" }}>
+      {page === "home" && (
+        <div>
+          <h1 style={{ fontSize: "32px", color: "#fbbf24", marginBottom: "20px" }}>
+            FRFUCK Dashboard
+          </h1>
 
-      {/* Menu simples */}
-      <div style={{ marginBottom: 20 }}>
-        <button onClick={() => setPage("folha")}>Folha</button>
-        <button onClick={() => setPage("funcionarios")}>Funcionários</button>
-        <button onClick={() => setPage("metas")}>Metas</button>
-        <button onClick={() => setPage("analise")}>Análise</button>
-      </div>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button onClick={() => setPage("folha")}>Folha de Pagamento</button>
+            <button onClick={() => setPage("funcionarios")}>Funcionários</button>
+            <button onClick={() => setPage("metas")}>Metas</button>
+            <button onClick={() => setPage("analise")}>Análise</button>
+          </div>
+        </div>
+      )}
 
-      {/* Renderização das telas reais */}
       {page === "folha" && <FolhaPagamento />}
       {page === "funcionarios" && <GestaoFuncionarios />}
       {page === "metas" && <GestaoMetas />}
@@ -28,5 +32,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
