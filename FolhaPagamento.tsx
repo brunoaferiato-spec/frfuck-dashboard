@@ -253,21 +253,26 @@ export default function FolhaPagamento() {
   }, [funcionarios, unidade]);
 
   const gerentes = funcionariosDaUnidade.filter((f) => f.funcao === "Gerente");
+
   const comissaoSemanal = funcionariosDaUnidade.filter(
     (f) => f.funcao === "Vendedor" || f.funcao === "Mecânico"
   );
+
   const metaMensal = funcionariosDaUnidade.filter(
     (f) =>
       f.funcao === "Alinhador" ||
       f.funcao === "Auxiliar de Alinhador" ||
       f.funcao === "Vendedor de Alinhamento"
   );
+
   const consultores = funcionariosDaUnidade.filter(
     (f) => f.funcao === "Consultor de Vendas"
   );
+
   const recepcao = funcionariosDaUnidade.filter(
     (f) => f.funcao === "Recepção"
   );
+
   const salarioFixo = funcionariosDaUnidade.filter(
     (f) =>
       f.funcao === "Caixa" ||
@@ -1117,7 +1122,7 @@ export default function FolhaPagamento() {
               headers={["Nome", "Função", "Modelo"]}
               rows={salarioFixo.map((f) => [f.nome, f.funcao, "Fixo"])}
             />
-          </SimpleTable>
+          </QuadranteCard>
         )}
       </div>
     </div>
