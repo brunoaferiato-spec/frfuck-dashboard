@@ -2,9 +2,55 @@ import { useMemo, useState } from "react";
 
 type Unidade = "Joinville" | "Blumenau";
 type Funcao = "Vendedor" | "Mecânico";
+type CampoFinanceiro =
+  | "premiacao"
+  | "aluguel"
+  | "inss"
+  | "adiantamento"
+  | "holerite";
+
+interface Funcionario {
+  id: number;
+  nome: string;
+  funcao: Funcao;
+  unidade: Unidade;
+}
+
+interface SemanaRegistro {
+  funcionarioId: number;
+  unidade: Unidade;
+  ano: number;
+  mes: number;
+  sem1: number;
+  sem2: number;
+  sem3: number;
+  sem4: number;
+}
+
+interface FinanceiroRegistro {
+  funcionarioId: number;
+  unidade: Unidade;
+  ano: number;
+  mes: number;
+  premiacao: number;
+  aluguel: number;
+  inss: number;
+  adiantamento: number;
+  holerite: number;
+}
+
+interface ObservacaoRegistro {
+  id: number;
+  funcionarioId: number;
+  unidade: Unidade;
+  ano: number;
+  mes: number;
+  texto: string;
+}
 
 interface ValeParcela {
   id: number;
+  grupoId: string;
   funcionarioId: number;
   unidade: Unidade;
   descricao: string;
@@ -13,23 +59,6 @@ interface ValeParcela {
   totalParcelas: number;
   ano: number;
   mes: number;
-}
-
-interface FuncionarioFolha {
-  id: number;
-  nome: string;
-  funcao: Funcao;
-  unidade: Unidade;
-  sem1: number;
-  sem2: number;
-  sem3: number;
-  sem4: number;
-  premiacao: number;
-  aluguel: number;
-  inss: number;
-  adiantamento: number;
-  holerite: number;
-  observacoes: string[];
 }
 
 const ANOS = [2026, 2027, 2028, 2029, 2030];
@@ -48,71 +77,11 @@ const MESES = [
   "Dezembro",
 ];
 
-const dadosIniciais: FuncionarioFolha[] = [
-  {
-    id: 1,
-    nome: "João",
-    funcao: "Vendedor",
-    unidade: "Joinville",
-    sem1: 0,
-    sem2: 0,
-    sem3: 0,
-    sem4: 0,
-    premiacao: 0,
-    aluguel: 0,
-    inss: 0,
-    adiantamento: 0,
-    holerite: 0,
-    observacoes: [],
-  },
-  {
-    id: 2,
-    nome: "Carlos",
-    funcao: "Mecânico",
-    unidade: "Joinville",
-    sem1: 0,
-    sem2: 0,
-    sem3: 0,
-    sem4: 0,
-    premiacao: 0,
-    aluguel: 0,
-    inss: 0,
-    adiantamento: 0,
-    holerite: 0,
-    observacoes: [],
-  },
-  {
-    id: 3,
-    nome: "Marcos",
-    funcao: "Vendedor",
-    unidade: "Blumenau",
-    sem1: 0,
-    sem2: 0,
-    sem3: 0,
-    sem4: 0,
-    premiacao: 0,
-    aluguel: 0,
-    inss: 0,
-    adiantamento: 0,
-    holerite: 0,
-    observacoes: [],
-  },
-  {
-    id: 4,
-    nome: "Pedro",
-    funcao: "Mecânico",
-    unidade: "Blumenau",
-    sem1: 0,
-    sem2: 0,
-    sem3: 0,
-    sem4: 0,
-    premiacao: 0,
-    aluguel: 0,
-    inss: 0,
-    adiantamento: 0,
-    holerite: 0,
-    observacoes: [],
-  },
+const funcionariosIniciais: Funcionario[] = [
+  { id: 1, nome: "João", funcao: "Vendedor", unidade: "Joinville" },
+  { id: 2, nome: "Carlos", funcao: "Mecânico", unidade: "Joinville" },
+  { id: 3, nome: "Marcos", funcao: "Vendedor", unidade: "Blumenau" },
+  { id: 4, nome: "Pedro", funcao: "Mecânico", unidade: "Blumenau" },
 ];
 
 function getPercentual(funcao: Funcao, liquidez: number): number {
@@ -157,136 +126,78 @@ function avancarMes(ano: number, mes: number, quantidade: number) {
   };
 }
 
+function ordenarCompetencia(aAno: number, aMes: number, bAno: number, bMes: number) {
+  if (aAno !== bAno) return aAno - bAno;
+  return aMes - bMes;
+}
+
 export default function FolhaPagamento() {
   const [unidade, setUnidade] = useState<Unidade>("Joinville");
   const [ano, setAno] = useState<number>(2026);
   const [mes, setMes] = useState<string>("Março");
-  const [registros, setRegistros] = useState<FuncionarioFolha[]>(dadosIniciais);
+
+  const [funcionarios] = useState<Funcionario[]>(funcionariosIniciais);
+  const [semanas, setSemanas] = useState<SemanaRegistro[]>([]);
+  const [financeiro, setFinanceiro] = useState<FinanceiroRegistro[]>([]);
+  const [observacoes, setObservacoes] = useState<ObservacaoRegistro[]>([]);
   const [vales, setVales] = useState<ValeParcela[]>([]);
 
   const mesNumero = getMesNumero(mes);
 
   const filtrados = useMemo(() => {
-    return registros.filter((item) => item.unidade === unidade);
-  }, [registros, unidade]);
+    return funcionarios.filter((item) => item.unidade === unidade);
+  }, [funcionarios, unidade]);
 
-  const atualizarSemana = (
-    id: number,
-    campo: "sem1" | "sem2" | "sem3" | "sem4",
-    label: string
-  ) => {
-    const atual = registros.find((item) => item.id === id);
-    if (!atual) return;
-
-    const valor = window.prompt(`Digite o valor de ${label}:`, String(atual[campo] || 0));
-    if (valor === null) return;
-
-    const numero = Number(valor.replace(",", ".")) || 0;
-
-    setRegistros((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [campo]: numero } : item))
-    );
-  };
-
-  const atualizarCampoValor = (
-    id: number,
-    campo: "premiacao" | "aluguel" | "inss" | "adiantamento" | "holerite",
-    label: string
-  ) => {
-    const atual = registros.find((item) => item.id === id);
-    if (!atual) return;
-
-    const valor = window.prompt(`Digite o valor de ${label}:`, String(atual[campo] || 0));
-    if (valor === null) return;
-
-    const numero = Number(valor.replace(",", ".")) || 0;
-
-    setRegistros((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [campo]: numero } : item))
-    );
-  };
-
-  const gerenciarObservacoes = (id: number) => {
-    const atual = registros.find((item) => item.id === id);
-    if (!atual) return;
-
-    const listaAtual =
-      atual.observacoes.length > 0
-        ? atual.observacoes.map((obs, i) => `${i + 1}. ${obs}`).join("\n")
-        : "Nenhuma observação.";
-
-    const acao = window.prompt(
-      `Observações atuais:\n\n${listaAtual}\n\nDigite:\n1 para adicionar\n2 para excluir`,
-      "1"
-    );
-
-    if (acao === null) return;
-
-    if (acao === "1") {
-      const novaObs = window.prompt("Digite a nova observação:");
-      if (!novaObs) return;
-
-      setRegistros((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? { ...item, observacoes: [...item.observacoes, novaObs] }
-            : item
-        )
-      );
-    }
-
-    if (acao === "2") {
-      if (atual.observacoes.length === 0) {
-        window.alert("Não há observações para excluir.");
-        return;
+  const getSemanaRegistro = (funcionarioId: number): SemanaRegistro => {
+    return (
+      semanas.find(
+        (item) =>
+          item.funcionarioId === funcionarioId &&
+          item.unidade === unidade &&
+          item.ano === ano &&
+          item.mes === mesNumero
+      ) || {
+        funcionarioId,
+        unidade,
+        ano,
+        mes: mesNumero,
+        sem1: 0,
+        sem2: 0,
+        sem3: 0,
+        sem4: 0,
       }
-
-      const indice = window.prompt(
-        `Digite o número da observação que deseja excluir:\n\n${listaAtual}`
-      );
-      if (!indice) return;
-
-      const indiceNumero = Number(indice) - 1;
-      if (Number.isNaN(indiceNumero) || indiceNumero < 0 || indiceNumero >= atual.observacoes.length) {
-        window.alert("Índice inválido.");
-        return;
-      }
-
-      setRegistros((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                observacoes: item.observacoes.filter((_, i) => i !== indiceNumero),
-              }
-            : item
-        )
-      );
-    }
+    );
   };
 
-  const verDetalhePercentual = (
-    funcao: Funcao,
-    semana: string,
-    liquidez: number,
-    percentual: number
-  ) => {
-    const valorComissao = liquidez * (percentual / 100);
+  const getFinanceiroRegistro = (funcionarioId: number): FinanceiroRegistro => {
+    return (
+      financeiro.find(
+        (item) =>
+          item.funcionarioId === funcionarioId &&
+          item.unidade === unidade &&
+          item.ano === ano &&
+          item.mes === mesNumero
+      ) || {
+        funcionarioId,
+        unidade,
+        ano,
+        mes: mesNumero,
+        premiacao: 0,
+        aluguel: 0,
+        inss: 0,
+        adiantamento: 0,
+        holerite: 0,
+      }
+    );
+  };
 
-    let metaTexto = "";
-
-    if (funcao === "Vendedor") {
-      metaTexto =
-        "Meta Vendedor:\nAté 32.999 = 5%\n33.000 = 6%\n40.000 = 7%\n47.000 = 8%";
-    } else {
-      metaTexto =
-        "Meta Mecânico:\nAté 7.999 = 10%\n8.000 = 12%\n10.000 = 15%\n20.000 = 17%";
-    }
-
-    window.alert(
-      `${semana}\n\nFunção: ${funcao}\nLiquidez: ${formatCurrency(
-        liquidez
-      )}\nPercentual: ${percentual}%\nComissão: ${formatCurrency(valorComissao)}\n\n${metaTexto}`
+  const getObservacoesDoMes = (funcionarioId: number) => {
+    return observacoes.filter(
+      (obs) =>
+        obs.funcionarioId === funcionarioId &&
+        obs.unidade === unidade &&
+        obs.ano === ano &&
+        obs.mes === mesNumero
     );
   };
 
@@ -302,6 +213,157 @@ export default function FolhaPagamento() {
 
   const getTotalValeDoMes = (funcionarioId: number) => {
     return getValesDoMes(funcionarioId).reduce((acc, vale) => acc + vale.valor, 0);
+  };
+
+  const atualizarSemana = (
+    funcionarioId: number,
+    campo: "sem1" | "sem2" | "sem3" | "sem4",
+    label: string
+  ) => {
+    const atual = getSemanaRegistro(funcionarioId);
+    const valor = window.prompt(`Digite o valor de ${label}:`, String(atual[campo] || 0));
+    if (valor === null) return;
+
+    const numero = Number(valor.replace(",", ".")) || 0;
+
+    setSemanas((prev) => {
+      const existe = prev.find(
+        (item) =>
+          item.funcionarioId === funcionarioId &&
+          item.unidade === unidade &&
+          item.ano === ano &&
+          item.mes === mesNumero
+      );
+
+      if (existe) {
+        return prev.map((item) =>
+          item.funcionarioId === funcionarioId &&
+          item.unidade === unidade &&
+          item.ano === ano &&
+          item.mes === mesNumero
+            ? { ...item, [campo]: numero }
+            : item
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          funcionarioId,
+          unidade,
+          ano,
+          mes: mesNumero,
+          sem1: 0,
+          sem2: 0,
+          sem3: 0,
+          sem4: 0,
+          [campo]: numero,
+        } as SemanaRegistro,
+      ];
+    });
+  };
+
+  const atualizarCampoValor = (
+    funcionarioId: number,
+    campo: CampoFinanceiro,
+    label: string
+  ) => {
+    const atual = getFinanceiroRegistro(funcionarioId);
+    const valor = window.prompt(`Digite o valor de ${label}:`, String(atual[campo] || 0));
+    if (valor === null) return;
+
+    const numero = Number(valor.replace(",", ".")) || 0;
+
+    setFinanceiro((prev) => {
+      const existe = prev.find(
+        (item) =>
+          item.funcionarioId === funcionarioId &&
+          item.unidade === unidade &&
+          item.ano === ano &&
+          item.mes === mesNumero
+      );
+
+      if (existe) {
+        return prev.map((item) =>
+          item.funcionarioId === funcionarioId &&
+          item.unidade === unidade &&
+          item.ano === ano &&
+          item.mes === mesNumero
+            ? { ...item, [campo]: numero }
+            : item
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          funcionarioId,
+          unidade,
+          ano,
+          mes: mesNumero,
+          premiacao: 0,
+          aluguel: 0,
+          inss: 0,
+          adiantamento: 0,
+          holerite: 0,
+          [campo]: numero,
+        } as FinanceiroRegistro,
+      ];
+    });
+  };
+
+  const gerenciarObservacoes = (funcionarioId: number) => {
+    const lista = getObservacoesDoMes(funcionarioId);
+
+    const listaTexto =
+      lista.length > 0
+        ? lista.map((obs, i) => `${i + 1}. ${obs.texto}`).join("\n")
+        : "Nenhuma observação.";
+
+    const acao = window.prompt(
+      `Observações de ${mes}/${ano}:\n\n${listaTexto}\n\nDigite:\n1 para adicionar\n2 para excluir`,
+      "1"
+    );
+
+    if (acao === null) return;
+
+    if (acao === "1") {
+      const texto = window.prompt("Digite a nova observação:");
+      if (!texto) return;
+
+      setObservacoes((prev) => [
+        ...prev,
+        {
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          funcionarioId,
+          unidade,
+          ano,
+          mes: mesNumero,
+          texto,
+        },
+      ]);
+    }
+
+    if (acao === "2") {
+      if (lista.length === 0) {
+        window.alert("Não há observações para excluir.");
+        return;
+      }
+
+      const indice = window.prompt(
+        `Digite o número da observação que deseja excluir:\n\n${listaTexto}`
+      );
+      if (!indice) return;
+
+      const indiceNumero = Number(indice) - 1;
+      if (Number.isNaN(indiceNumero) || indiceNumero < 0 || indiceNumero >= lista.length) {
+        window.alert("Índice inválido.");
+        return;
+      }
+
+      const alvo = lista[indiceNumero];
+      setObservacoes((prev) => prev.filter((item) => item.id !== alvo.id));
+    }
   };
 
   const gerenciarVales = (funcionarioId: number, nomeFuncionario: string) => {
@@ -328,7 +390,7 @@ export default function FolhaPagamento() {
       const descricao = window.prompt("Descrição do vale:");
       if (!descricao) return;
 
-      const valorTexto = window.prompt("Valor do vale:");
+      const valorTexto = window.prompt("Valor total do vale:");
       if (!valorTexto) return;
 
       const valor = Number(valorTexto.replace(",", ".")) || 0;
@@ -346,6 +408,7 @@ export default function FolhaPagamento() {
         return;
       }
 
+      const grupoId = `vale_${funcionarioId}_${Date.now()}`;
       const novosVales: ValeParcela[] = [];
 
       for (let i = 0; i < totalParcelas; i++) {
@@ -353,6 +416,7 @@ export default function FolhaPagamento() {
 
         novosVales.push({
           id: Date.now() + i + Math.floor(Math.random() * 1000),
+          grupoId,
           funcionarioId,
           unidade,
           descricao,
@@ -386,7 +450,20 @@ export default function FolhaPagamento() {
 
       const valeSelecionado = lista[indiceNumero];
 
-      setVales((prev) => prev.filter((vale) => vale.id !== valeSelecionado.id));
+      setVales((prev) =>
+        prev.filter((vale) => {
+          if (vale.grupoId !== valeSelecionado.grupoId) return true;
+
+          const comparacao = ordenarCompetencia(
+            vale.ano,
+            vale.mes,
+            valeSelecionado.ano,
+            valeSelecionado.mes
+          );
+
+          return comparacao < 0;
+        })
+      );
     }
   };
 
@@ -412,6 +489,7 @@ export default function FolhaPagamento() {
 
     const novoVale: ValeParcela = {
       id: Date.now() + Math.floor(Math.random() * 1000),
+      grupoId: `negativo_${funcionarioId}_${Date.now()}`,
       funcionarioId,
       unidade,
       descricao: `Negativo do mês ${mes}/${ano}`,
@@ -428,6 +506,31 @@ export default function FolhaPagamento() {
       `Vale criado para ${getMesNome(proximoMes.mes)}/${proximoMes.ano} no valor de ${formatCurrency(
         novoVale.valor
       )}.`
+    );
+  };
+
+  const verDetalhePercentual = (
+    funcao: Funcao,
+    semana: string,
+    liquidez: number,
+    percentual: number
+  ) => {
+    const valorComissao = liquidez * (percentual / 100);
+
+    let metaTexto = "";
+
+    if (funcao === "Vendedor") {
+      metaTexto =
+        "Meta Vendedor:\nAté 32.999 = 5%\n33.000 = 6%\n40.000 = 7%\n47.000 = 8%";
+    } else {
+      metaTexto =
+        "Meta Mecânico:\nAté 7.999 = 10%\n8.000 = 12%\n10.000 = 15%\n20.000 = 17%";
+    }
+
+    window.alert(
+      `${semana}\n\nFunção: ${funcao}\nLiquidez: ${formatCurrency(
+        liquidez
+      )}\nPercentual: ${percentual}%\nComissão: ${formatCurrency(valorComissao)}\n\n${metaTexto}`
     );
   };
 
@@ -559,50 +662,60 @@ export default function FolhaPagamento() {
                 </tr>
               </thead>
               <tbody>
-                {filtrados.map((item) => {
-                  const perc1 = getPercentual(item.funcao, item.sem1);
-                  const perc2 = getPercentual(item.funcao, item.sem2);
-                  const perc3 = getPercentual(item.funcao, item.sem3);
-                  const perc4 = getPercentual(item.funcao, item.sem4);
+                {filtrados.map((funcionario) => {
+                  const semana = getSemanaRegistro(funcionario.id);
+                  const financeiroAtual = getFinanceiroRegistro(funcionario.id);
 
-                  const com1 = item.sem1 * (perc1 / 100);
-                  const com2 = item.sem2 * (perc2 / 100);
-                  const com3 = item.sem3 * (perc3 / 100);
-                  const com4 = item.sem4 * (perc4 / 100);
+                  const perc1 = getPercentual(funcionario.funcao, semana.sem1);
+                  const perc2 = getPercentual(funcionario.funcao, semana.sem2);
+                  const perc3 = getPercentual(funcionario.funcao, semana.sem3);
+                  const perc4 = getPercentual(funcionario.funcao, semana.sem4);
 
-                  const totalLiquidez = item.sem1 + item.sem2 + item.sem3 + item.sem4;
+                  const com1 = semana.sem1 * (perc1 / 100);
+                  const com2 = semana.sem2 * (perc2 / 100);
+                  const com3 = semana.sem3 * (perc3 / 100);
+                  const com4 = semana.sem4 * (perc4 / 100);
+
+                  const totalLiquidez =
+                    semana.sem1 + semana.sem2 + semana.sem3 + semana.sem4;
                   const totalComissao = com1 + com2 + com3 + com4;
-                  const totalVale = getTotalValeDoMes(item.id);
+                  const totalVale = getTotalValeDoMes(funcionario.id);
+                  const totalObs = getObservacoesDoMes(funcionario.id).length;
 
                   const boleto =
                     totalComissao +
-                    item.premiacao -
+                    financeiroAtual.premiacao -
                     totalVale -
-                    item.aluguel -
-                    item.inss -
-                    item.adiantamento -
-                    item.holerite;
+                    financeiroAtual.aluguel -
+                    financeiroAtual.inss -
+                    financeiroAtual.adiantamento -
+                    financeiroAtual.holerite;
 
                   return (
                     <tr
-                      key={item.id}
+                      key={funcionario.id}
                       style={{ borderBottom: "1px solid rgba(251, 191, 36, 0.1)" }}
                     >
-                      <td style={tdStyle}>{item.nome}</td>
-                      <td style={tdStyle}>{item.funcao}</td>
+                      <td style={tdStyle}>{funcionario.nome}</td>
+                      <td style={tdStyle}>{funcionario.funcao}</td>
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => atualizarSemana(item.id, "sem1", "Semana 1")}
+                          onClick={() => atualizarSemana(funcionario.id, "sem1", "Semana 1")}
                           style={moneyActionStyle}
                         >
-                          {formatCurrency(item.sem1)}
+                          {formatCurrency(semana.sem1)}
                         </button>
                       </td>
                       <td style={tdStyle}>
                         <button
                           onClick={() =>
-                            verDetalhePercentual(item.funcao, "Semana 1", item.sem1, perc1)
+                            verDetalhePercentual(
+                              funcionario.funcao,
+                              "Semana 1",
+                              semana.sem1,
+                              perc1
+                            )
                           }
                           style={valueButtonStyle}
                         >
@@ -612,16 +725,21 @@ export default function FolhaPagamento() {
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => atualizarSemana(item.id, "sem2", "Semana 2")}
+                          onClick={() => atualizarSemana(funcionario.id, "sem2", "Semana 2")}
                           style={moneyActionStyle}
                         >
-                          {formatCurrency(item.sem2)}
+                          {formatCurrency(semana.sem2)}
                         </button>
                       </td>
                       <td style={tdStyle}>
                         <button
                           onClick={() =>
-                            verDetalhePercentual(item.funcao, "Semana 2", item.sem2, perc2)
+                            verDetalhePercentual(
+                              funcionario.funcao,
+                              "Semana 2",
+                              semana.sem2,
+                              perc2
+                            )
                           }
                           style={valueButtonStyle}
                         >
@@ -631,16 +749,21 @@ export default function FolhaPagamento() {
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => atualizarSemana(item.id, "sem3", "Semana 3")}
+                          onClick={() => atualizarSemana(funcionario.id, "sem3", "Semana 3")}
                           style={moneyActionStyle}
                         >
-                          {formatCurrency(item.sem3)}
+                          {formatCurrency(semana.sem3)}
                         </button>
                       </td>
                       <td style={tdStyle}>
                         <button
                           onClick={() =>
-                            verDetalhePercentual(item.funcao, "Semana 3", item.sem3, perc3)
+                            verDetalhePercentual(
+                              funcionario.funcao,
+                              "Semana 3",
+                              semana.sem3,
+                              perc3
+                            )
                           }
                           style={valueButtonStyle}
                         >
@@ -650,16 +773,21 @@ export default function FolhaPagamento() {
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => atualizarSemana(item.id, "sem4", "Semana 4")}
+                          onClick={() => atualizarSemana(funcionario.id, "sem4", "Semana 4")}
                           style={moneyActionStyle}
                         >
-                          {formatCurrency(item.sem4)}
+                          {formatCurrency(semana.sem4)}
                         </button>
                       </td>
                       <td style={tdStyle}>
                         <button
                           onClick={() =>
-                            verDetalhePercentual(item.funcao, "Semana 4", item.sem4, perc4)
+                            verDetalhePercentual(
+                              funcionario.funcao,
+                              "Semana 4",
+                              semana.sem4,
+                              perc4
+                            )
                           }
                           style={valueButtonStyle}
                         >
@@ -672,16 +800,18 @@ export default function FolhaPagamento() {
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => atualizarCampoValor(item.id, "premiacao", "Premiação")}
+                          onClick={() =>
+                            atualizarCampoValor(funcionario.id, "premiacao", "Premiação")
+                          }
                           style={moneyActionStyle}
                         >
-                          {formatCurrency(item.premiacao)}
+                          {formatCurrency(financeiroAtual.premiacao)}
                         </button>
                       </td>
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => gerenciarVales(item.id, item.nome)}
+                          onClick={() => gerenciarVales(funcionario.id, funcionario.nome)}
                           style={moneyActionStyle}
                         >
                           {formatCurrency(totalVale)}
@@ -690,45 +820,55 @@ export default function FolhaPagamento() {
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => atualizarCampoValor(item.id, "aluguel", "Aluguel")}
+                          onClick={() =>
+                            atualizarCampoValor(funcionario.id, "aluguel", "Aluguel")
+                          }
                           style={moneyActionStyle}
                         >
-                          {formatCurrency(item.aluguel)}
+                          {formatCurrency(financeiroAtual.aluguel)}
                         </button>
                       </td>
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => atualizarCampoValor(item.id, "inss", "INSS")}
+                          onClick={() => atualizarCampoValor(funcionario.id, "inss", "INSS")}
                           style={moneyActionStyle}
                         >
-                          {formatCurrency(item.inss)}
+                          {formatCurrency(financeiroAtual.inss)}
                         </button>
                       </td>
 
                       <td style={tdStyle}>
                         <button
                           onClick={() =>
-                            atualizarCampoValor(item.id, "adiantamento", "Adiantamento")
+                            atualizarCampoValor(
+                              funcionario.id,
+                              "adiantamento",
+                              "Adiantamento"
+                            )
                           }
                           style={moneyActionStyle}
                         >
-                          {formatCurrency(item.adiantamento)}
+                          {formatCurrency(financeiroAtual.adiantamento)}
                         </button>
                       </td>
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => atualizarCampoValor(item.id, "holerite", "Holerite")}
+                          onClick={() =>
+                            atualizarCampoValor(funcionario.id, "holerite", "Holerite")
+                          }
                           style={moneyActionStyle}
                         >
-                          {formatCurrency(item.holerite)}
+                          {formatCurrency(financeiroAtual.holerite)}
                         </button>
                       </td>
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => handleBoletoNegativo(item.id, item.nome, boleto)}
+                          onClick={() =>
+                            handleBoletoNegativo(funcionario.id, funcionario.nome, boleto)
+                          }
                           style={{
                             ...moneyActionStyle,
                             color: boleto < 0 ? "#f87171" : "#d1d5db",
@@ -748,16 +888,17 @@ export default function FolhaPagamento() {
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => gerenciarObservacoes(item.id)}
+                          onClick={() => gerenciarObservacoes(funcionario.id)}
                           style={{
                             ...moneyActionStyle,
-                            background: item.observacoes.length > 0
-                              ? "rgba(239, 68, 68, 0.18)"
-                              : "rgba(251, 191, 36, 0.08)",
-                            color: item.observacoes.length > 0 ? "#f87171" : "#fbbf24",
+                            background:
+                              totalObs > 0
+                                ? "rgba(239, 68, 68, 0.18)"
+                                : "rgba(251, 191, 36, 0.08)",
+                            color: totalObs > 0 ? "#f87171" : "#fbbf24",
                           }}
                         >
-                          {item.observacoes.length > 0 ? "OBS" : "Adicionar"}
+                          {totalObs > 0 ? "OBS" : "Adicionar"}
                         </button>
                       </td>
                     </tr>
