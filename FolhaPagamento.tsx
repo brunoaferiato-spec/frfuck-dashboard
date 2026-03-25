@@ -61,6 +61,20 @@ interface ValeParcela {
   mes: number;
 }
 
+interface MetaRegra {
+  minimo: number;
+  percentual: number;
+}
+
+interface Meta {
+  id: number;
+  unidade: Unidade;
+  funcao: Funcao;
+  funcionarioId?: number;
+  tipo: "semanal";
+  regras: MetaRegra[];
+}
+
 const ANOS = [2026, 2027, 2028, 2029, 2030];
 const MESES = [
   "Janeiro",
@@ -84,23 +98,71 @@ const funcionariosIniciais: Funcionario[] = [
   { id: 4, nome: "Pedro", funcao: "Mecânico", unidade: "Blumenau" },
 ];
 
-function getPercentual(funcao: Funcao, liquidez: number): number {
-  if (funcao === "Vendedor") {
-    if (liquidez >= 47000) return 8;
-    if (liquidez >= 40000) return 7;
-    if (liquidez >= 33000) return 6;
-    return 5;
-  }
+const metasIniciais: Meta[] = [
+  {
+    id: 1,
+    unidade: "Joinville",
+    funcao: "Vendedor",
+    tipo: "semanal",
+    regras: [
+      { minimo: 0, percentual: 5 },
+      { minimo: 33000, percentual: 6 },
+      { minimo: 40000, percentual: 7 },
+      { minimo: 47000, percentual: 8 },
+    ],
+  },
+  {
+    id: 2,
+    unidade: "Joinville",
+    funcao: "Mecânico",
+    tipo: "semanal",
+    regras: [
+      { minimo: 0, percentual: 10 },
+      { minimo: 8000, percentual: 12 },
+      { minimo: 10000, percentual: 15 },
+      { minimo: 20000, percentual: 17 },
+    ],
+  },
+  {
+    id: 3,
+    unidade: "Blumenau",
+    funcao: "Vendedor",
+    tipo: "semanal",
+    regras: [
+      { minimo: 0, percentual: 5 },
+      { minimo: 33000, percentual: 6 },
+      { minimo: 40000, percentual: 7 },
+      { minimo: 47000, percentual: 8 },
+    ],
+  },
+  {
+    id: 4,
+    unidade: "Blumenau",
+    funcao: "Mecânico",
+    tipo: "semanal",
+    regras: [
+      { minimo: 0, percentual: 10 },
+      { minimo: 8000, percentual: 12 },
+      { minimo: 10000, percentual: 15 },
+      { minimo: 20000, percentual: 17 },
+    ],
+  },
 
-  if (funcao === "Mecânico") {
-    if (liquidez >= 20000) return 17;
-    if (liquidez >= 10000) return 15;
-    if (liquidez >= 8000) return 12;
-    return 10;
-  }
-
-  return 0;
-}
+  // exemplo de meta específica por funcionário
+  {
+    id: 5,
+    unidade: "Joinville",
+    funcao: "Vendedor",
+    funcionarioId: 1,
+    tipo: "semanal",
+    regras: [
+      { minimo: 0, percentual: 6 },
+      { minimo: 30000, percentual: 7 },
+      { minimo: 38000, percentual: 8 },
+      { minimo: 45000, percentual: 9 },
+    ],
+  },
+];
 
 function formatCurrency(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -131,12 +193,29 @@ function ordenarCompetencia(aAno: number, aMes: number, bAno: number, bMes: numb
   return aMes - bMes;
 }
 
+function formatarResumoMeta(meta: Meta | undefined) {
+  if (!meta) return "Sem meta cadastrada";
+
+  return meta.regras
+    .map((regra, idx) => {
+      const proxima = meta.regras[idx + 1];
+      if (proxima) {
+        return `${formatCurrency(regra.minimo)} até ${formatCurrency(
+          proxima.minimo - 0.01
+        )} = ${regra.percentual}%`;
+      }
+      return `A partir de ${formatCurrency(regra.minimo)} = ${regra.percentual}%`;
+    })
+    .join("\n");
+}
+
 export default function FolhaPagamento() {
   const [unidade, setUnidade] = useState<Unidade>("Joinville");
   const [ano, setAno] = useState<number>(2026);
   const [mes, setMes] = useState<string>("Março");
 
   const [funcionarios] = useState<Funcionario[]>(funcionariosIniciais);
+  const [metas] = useState<Meta[]>(metasIniciais);
   const [semanas, setSemanas] = useState<SemanaRegistro[]>([]);
   const [financeiro, setFinanceiro] = useState<FinanceiroRegistro[]>([]);
   const [observacoes, setObservacoes] = useState<ObservacaoRegistro[]>([]);
@@ -213,6 +292,40 @@ export default function FolhaPagamento() {
 
   const getTotalValeDoMes = (funcionarioId: number) => {
     return getValesDoMes(funcionarioId).reduce((acc, vale) => acc + vale.valor, 0);
+  };
+
+  const buscarMeta = (
+    funcionarioId: number,
+    funcao: Funcao,
+    unidadeAtual: Unidade
+  ): Meta | undefined => {
+    const metaEspecifica = metas.find(
+      (m) =>
+        m.unidade === unidadeAtual &&
+        m.funcao === funcao &&
+        m.funcionarioId === funcionarioId
+    );
+
+    if (metaEspecifica) return metaEspecifica;
+
+    return metas.find(
+      (m) =>
+        m.unidade === unidadeAtual &&
+        m.funcao === funcao &&
+        typeof m.funcionarioId === "undefined"
+    );
+  };
+
+  const calcularPercentual = (meta: Meta | undefined, valor: number) => {
+    if (!meta) return 0;
+
+    let percentual = 0;
+    for (const regra of meta.regras) {
+      if (valor >= regra.minimo) {
+        percentual = regra.percentual;
+      }
+    }
+    return percentual;
   };
 
   const atualizarSemana = (
@@ -510,27 +623,24 @@ export default function FolhaPagamento() {
   };
 
   const verDetalhePercentual = (
-    funcao: Funcao,
-    semana: string,
+    funcionario: Funcionario,
+    semanaLabel: string,
     liquidez: number,
     percentual: number
   ) => {
+    const meta = buscarMeta(funcionario.id, funcionario.funcao, funcionario.unidade);
     const valorComissao = liquidez * (percentual / 100);
 
-    let metaTexto = "";
-
-    if (funcao === "Vendedor") {
-      metaTexto =
-        "Meta Vendedor:\nAté 32.999 = 5%\n33.000 = 6%\n40.000 = 7%\n47.000 = 8%";
-    } else {
-      metaTexto =
-        "Meta Mecânico:\nAté 7.999 = 10%\n8.000 = 12%\n10.000 = 15%\n20.000 = 17%";
-    }
+    const origemMeta = meta?.funcionarioId
+      ? "Meta específica do funcionário"
+      : "Meta geral da função";
 
     window.alert(
-      `${semana}\n\nFunção: ${funcao}\nLiquidez: ${formatCurrency(
+      `${semanaLabel}\n\nFuncionário: ${funcionario.nome}\nFunção: ${funcionario.funcao}\nLiquidez: ${formatCurrency(
         liquidez
-      )}\nPercentual: ${percentual}%\nComissão: ${formatCurrency(valorComissao)}\n\n${metaTexto}`
+      )}\nPercentual: ${percentual}%\nComissão: ${formatCurrency(
+        valorComissao
+      )}\n\nOrigem da meta: ${origemMeta}\n\n${formatarResumoMeta(meta)}`
     );
   };
 
@@ -665,11 +775,12 @@ export default function FolhaPagamento() {
                 {filtrados.map((funcionario) => {
                   const semana = getSemanaRegistro(funcionario.id);
                   const financeiroAtual = getFinanceiroRegistro(funcionario.id);
+                  const meta = buscarMeta(funcionario.id, funcionario.funcao, funcionario.unidade);
 
-                  const perc1 = getPercentual(funcionario.funcao, semana.sem1);
-                  const perc2 = getPercentual(funcionario.funcao, semana.sem2);
-                  const perc3 = getPercentual(funcionario.funcao, semana.sem3);
-                  const perc4 = getPercentual(funcionario.funcao, semana.sem4);
+                  const perc1 = calcularPercentual(meta, semana.sem1);
+                  const perc2 = calcularPercentual(meta, semana.sem2);
+                  const perc3 = calcularPercentual(meta, semana.sem3);
+                  const perc4 = calcularPercentual(meta, semana.sem4);
 
                   const com1 = semana.sem1 * (perc1 / 100);
                   const com2 = semana.sem2 * (perc2 / 100);
@@ -710,12 +821,7 @@ export default function FolhaPagamento() {
                       <td style={tdStyle}>
                         <button
                           onClick={() =>
-                            verDetalhePercentual(
-                              funcionario.funcao,
-                              "Semana 1",
-                              semana.sem1,
-                              perc1
-                            )
+                            verDetalhePercentual(funcionario, "Semana 1", semana.sem1, perc1)
                           }
                           style={valueButtonStyle}
                         >
@@ -734,12 +840,7 @@ export default function FolhaPagamento() {
                       <td style={tdStyle}>
                         <button
                           onClick={() =>
-                            verDetalhePercentual(
-                              funcionario.funcao,
-                              "Semana 2",
-                              semana.sem2,
-                              perc2
-                            )
+                            verDetalhePercentual(funcionario, "Semana 2", semana.sem2, perc2)
                           }
                           style={valueButtonStyle}
                         >
@@ -758,12 +859,7 @@ export default function FolhaPagamento() {
                       <td style={tdStyle}>
                         <button
                           onClick={() =>
-                            verDetalhePercentual(
-                              funcionario.funcao,
-                              "Semana 3",
-                              semana.sem3,
-                              perc3
-                            )
+                            verDetalhePercentual(funcionario, "Semana 3", semana.sem3, perc3)
                           }
                           style={valueButtonStyle}
                         >
@@ -782,12 +878,7 @@ export default function FolhaPagamento() {
                       <td style={tdStyle}>
                         <button
                           onClick={() =>
-                            verDetalhePercentual(
-                              funcionario.funcao,
-                              "Semana 4",
-                              semana.sem4,
-                              perc4
-                            )
+                            verDetalhePercentual(funcionario, "Semana 4", semana.sem4, perc4)
                           }
                           style={valueButtonStyle}
                         >
