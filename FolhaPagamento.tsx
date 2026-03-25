@@ -18,10 +18,10 @@ interface FuncionarioFolha {
   inss: number;
   adiantamento: number;
   holerite: number;
-  observacao: string;
+  observacoes: string[];
 }
 
-const ANOS = [2025, 2026, 2027];
+const ANOS = [2026, 2027, 2028, 2029, 2030];
 const MESES = [
   "Janeiro",
   "Fevereiro",
@@ -53,7 +53,7 @@ const dadosIniciais: FuncionarioFolha[] = [
     inss: 0,
     adiantamento: 0,
     holerite: 0,
-    observacao: "",
+    observacoes: [],
   },
   {
     id: 2,
@@ -70,7 +70,7 @@ const dadosIniciais: FuncionarioFolha[] = [
     inss: 0,
     adiantamento: 0,
     holerite: 0,
-    observacao: "",
+    observacoes: [],
   },
   {
     id: 3,
@@ -87,7 +87,7 @@ const dadosIniciais: FuncionarioFolha[] = [
     inss: 0,
     adiantamento: 0,
     holerite: 0,
-    observacao: "",
+    observacoes: [],
   },
   {
     id: 4,
@@ -104,7 +104,7 @@ const dadosIniciais: FuncionarioFolha[] = [
     inss: 0,
     adiantamento: 0,
     holerite: 0,
-    observacao: "",
+    observacoes: [],
   },
 ];
 
@@ -146,9 +146,15 @@ export default function FolhaPagamento() {
   const atualizarSemana = (
     id: number,
     campo: "sem1" | "sem2" | "sem3" | "sem4",
-    valor: string
+    label: string
   ) => {
-    const numero = Number(valor) || 0;
+    const atual = registros.find((item) => item.id === id);
+    if (!atual) return;
+
+    const valor = window.prompt(`Digite o valor de ${label}:`, String(atual[campo] || 0));
+    if (valor === null) return;
+
+    const numero = Number(valor.replace(",", ".")) || 0;
 
     setRegistros((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [campo]: numero } : item))
@@ -173,16 +179,63 @@ export default function FolhaPagamento() {
     );
   };
 
-  const atualizarObservacao = (id: number) => {
+  const gerenciarObservacoes = (id: number) => {
     const atual = registros.find((item) => item.id === id);
     if (!atual) return;
 
-    const nova = window.prompt("Digite a observação:", atual.observacao || "");
-    if (nova === null) return;
+    const listaAtual =
+      atual.observacoes.length > 0
+        ? atual.observacoes.map((obs, i) => `${i + 1}. ${obs}`).join("\n")
+        : "Nenhuma observação.";
 
-    setRegistros((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, observacao: nova } : item))
+    const acao = window.prompt(
+      `Observações atuais:\n\n${listaAtual}\n\nDigite:\n1 para adicionar\n2 para excluir`,
+      "1"
     );
+
+    if (acao === null) return;
+
+    if (acao === "1") {
+      const novaObs = window.prompt("Digite a nova observação:");
+      if (!novaObs) return;
+
+      setRegistros((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, observacoes: [...item.observacoes, novaObs] }
+            : item
+        )
+      );
+    }
+
+    if (acao === "2") {
+      if (atual.observacoes.length === 0) {
+        window.alert("Não há observações para excluir.");
+        return;
+      }
+
+      const indice = window.prompt(
+        `Digite o número da observação que deseja excluir:\n\n${listaAtual}`
+      );
+      if (!indice) return;
+
+      const indiceNumero = Number(indice) - 1;
+      if (Number.isNaN(indiceNumero) || indiceNumero < 0 || indiceNumero >= atual.observacoes.length) {
+        window.alert("Índice inválido.");
+        return;
+      }
+
+      setRegistros((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                observacoes: item.observacoes.filter((_, i) => i !== indiceNumero),
+              }
+            : item
+        )
+      );
+    }
   };
 
   const verDetalhePercentual = (
@@ -208,41 +261,6 @@ export default function FolhaPagamento() {
         liquidez
       )}\nPercentual: ${percentual}%\nComissão: ${formatCurrency(valorComissao)}\n\n${metaTexto}`
     );
-  };
-
-  const adicionarFuncionario = () => {
-    const nome = window.prompt("Nome do funcionário:");
-    if (!nome) return;
-
-    const funcaoTexto = window.prompt('Função: digite "Vendedor" ou "Mecânico"');
-    if (!funcaoTexto) return;
-
-    const funcao = funcaoTexto.trim() as Funcao;
-    if (funcao !== "Vendedor" && funcao !== "Mecânico") {
-      window.alert("Função inválida.");
-      return;
-    }
-
-    setRegistros((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        nome,
-        funcao,
-        unidade,
-        sem1: 0,
-        sem2: 0,
-        sem3: 0,
-        sem4: 0,
-        premiacao: 0,
-        vale: 0,
-        aluguel: 0,
-        inss: 0,
-        adiantamento: 0,
-        holerite: 0,
-        observacao: "",
-      },
-    ]);
   };
 
   return (
@@ -338,10 +356,6 @@ export default function FolhaPagamento() {
                 ))}
               </select>
             </div>
-
-            <button onClick={adicionarFuncionario} style={primaryButtonStyle}>
-              + Novo funcionário
-            </button>
           </div>
         </div>
 
@@ -409,12 +423,12 @@ export default function FolhaPagamento() {
                       <td style={tdStyle}>{item.funcao}</td>
 
                       <td style={tdStyle}>
-                        <input
-                          type="number"
-                          value={item.sem1}
-                          onChange={(e) => atualizarSemana(item.id, "sem1", e.target.value)}
-                          style={smallInputStyle}
-                        />
+                        <button
+                          onClick={() => atualizarSemana(item.id, "sem1", "Semana 1")}
+                          style={moneyActionStyle}
+                        >
+                          {formatCurrency(item.sem1)}
+                        </button>
                       </td>
                       <td style={tdStyle}>
                         <button
@@ -428,12 +442,12 @@ export default function FolhaPagamento() {
                       </td>
 
                       <td style={tdStyle}>
-                        <input
-                          type="number"
-                          value={item.sem2}
-                          onChange={(e) => atualizarSemana(item.id, "sem2", e.target.value)}
-                          style={smallInputStyle}
-                        />
+                        <button
+                          onClick={() => atualizarSemana(item.id, "sem2", "Semana 2")}
+                          style={moneyActionStyle}
+                        >
+                          {formatCurrency(item.sem2)}
+                        </button>
                       </td>
                       <td style={tdStyle}>
                         <button
@@ -447,12 +461,12 @@ export default function FolhaPagamento() {
                       </td>
 
                       <td style={tdStyle}>
-                        <input
-                          type="number"
-                          value={item.sem3}
-                          onChange={(e) => atualizarSemana(item.id, "sem3", e.target.value)}
-                          style={smallInputStyle}
-                        />
+                        <button
+                          onClick={() => atualizarSemana(item.id, "sem3", "Semana 3")}
+                          style={moneyActionStyle}
+                        >
+                          {formatCurrency(item.sem3)}
+                        </button>
                       </td>
                       <td style={tdStyle}>
                         <button
@@ -466,12 +480,12 @@ export default function FolhaPagamento() {
                       </td>
 
                       <td style={tdStyle}>
-                        <input
-                          type="number"
-                          value={item.sem4}
-                          onChange={(e) => atualizarSemana(item.id, "sem4", e.target.value)}
-                          style={smallInputStyle}
-                        />
+                        <button
+                          onClick={() => atualizarSemana(item.id, "sem4", "Semana 4")}
+                          style={moneyActionStyle}
+                        >
+                          {formatCurrency(item.sem4)}
+                        </button>
                       </td>
                       <td style={tdStyle}>
                         <button
@@ -555,16 +569,16 @@ export default function FolhaPagamento() {
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => atualizarObservacao(item.id)}
+                          onClick={() => gerenciarObservacoes(item.id)}
                           style={{
                             ...moneyActionStyle,
-                            background: item.observacao
+                            background: item.observacoes.length > 0
                               ? "rgba(239, 68, 68, 0.18)"
                               : "rgba(251, 191, 36, 0.08)",
-                            color: item.observacao ? "#f87171" : "#fbbf24",
+                            color: item.observacoes.length > 0 ? "#f87171" : "#fbbf24",
                           }}
                         >
-                          {item.observacao ? "OBS" : "Adicionar"}
+                          {item.observacoes.length > 0 ? "OBS" : "Adicionar"}
                         </button>
                       </td>
                     </tr>
@@ -618,16 +632,6 @@ const inputStyle: React.CSSProperties = {
   borderRadius: "4px",
   fontSize: "14px",
   boxSizing: "border-box",
-};
-
-const smallInputStyle: React.CSSProperties = {
-  width: "110px",
-  background: "#1f2937",
-  border: "1px solid rgba(251, 191, 36, 0.3)",
-  color: "white",
-  padding: "8px",
-  borderRadius: "4px",
-  fontSize: "14px",
 };
 
 const primaryButtonStyle: React.CSSProperties = {
