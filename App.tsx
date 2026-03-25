@@ -31,4 +31,4 @@ export default function App() {
       {page === "analise" && <AnaliseFuncionario />}
     </div>
   );
-}
+} 
