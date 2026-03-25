@@ -1,92 +1,262 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-const LOJAS = [
-  { id: 1, nome: "Joinville" },
-  { id: 2, nome: "Blumenau" },
-  { id: 3, nome: "São José" },
-  { id: 4, nome: "Florianópolis" },
+type Unidade = "Joinville" | "Blumenau";
+type Funcao = "Vendedor" | "Mecânico";
+
+interface FuncionarioFolha {
+  id: number;
+  nome: string;
+  funcao: Funcao;
+  unidade: Unidade;
+  sem1: number;
+  sem2: number;
+  sem3: number;
+  sem4: number;
+  premiacao: number;
+  vale: number;
+  aluguel: number;
+  inss: number;
+  adiantamento: number;
+  holerite: number;
+  observacao: string;
+}
+
+const ANOS = [2025, 2026, 2027];
+const MESES = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
 ];
 
-export default function FolhaPagamento() {
-  const [selectedLoja, setSelectedLoja] = useState("1");
-  const [selectedAno, setSelectedAno] = useState("2026");
-  const [selectedMes, setSelectedMes] = useState("3");
-  const [folhas, setFolhas] = useState<any[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    funcionarioId: "",
-    salarioBase: "",
-    comissao: "",
-    vale: "",
-    desconto: "",
-    premiacao: "",
+const dadosIniciais: FuncionarioFolha[] = [
+  {
+    id: 1,
+    nome: "João",
+    funcao: "Vendedor",
+    unidade: "Joinville",
+    sem1: 0,
+    sem2: 0,
+    sem3: 0,
+    sem4: 0,
+    premiacao: 0,
+    vale: 0,
+    aluguel: 0,
+    inss: 0,
+    adiantamento: 0,
+    holerite: 0,
     observacao: "",
+  },
+  {
+    id: 2,
+    nome: "Carlos",
+    funcao: "Mecânico",
+    unidade: "Joinville",
+    sem1: 0,
+    sem2: 0,
+    sem3: 0,
+    sem4: 0,
+    premiacao: 0,
+    vale: 0,
+    aluguel: 0,
+    inss: 0,
+    adiantamento: 0,
+    holerite: 0,
+    observacao: "",
+  },
+  {
+    id: 3,
+    nome: "Marcos",
+    funcao: "Vendedor",
+    unidade: "Blumenau",
+    sem1: 0,
+    sem2: 0,
+    sem3: 0,
+    sem4: 0,
+    premiacao: 0,
+    vale: 0,
+    aluguel: 0,
+    inss: 0,
+    adiantamento: 0,
+    holerite: 0,
+    observacao: "",
+  },
+  {
+    id: 4,
+    nome: "Pedro",
+    funcao: "Mecânico",
+    unidade: "Blumenau",
+    sem1: 0,
+    sem2: 0,
+    sem3: 0,
+    sem4: 0,
+    premiacao: 0,
+    vale: 0,
+    aluguel: 0,
+    inss: 0,
+    adiantamento: 0,
+    holerite: 0,
+    observacao: "",
+  },
+];
+
+function getPercentual(funcao: Funcao, liquidez: number): number {
+  if (funcao === "Vendedor") {
+    if (liquidez >= 47000) return 8;
+    if (liquidez >= 40000) return 7;
+    if (liquidez >= 33000) return 6;
+    return 5;
+  }
+
+  if (funcao === "Mecânico") {
+    if (liquidez >= 20000) return 17;
+    if (liquidez >= 10000) return 15;
+    if (liquidez >= 8000) return 12;
+    return 10;
+  }
+
+  return 0;
+}
+
+function formatCurrency(value: number) {
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
   });
+}
 
-  const meses = [
-    { id: "1", nome: "Janeiro" },
-    { id: "2", nome: "Fevereiro" },
-    { id: "3", nome: "Março" },
-    { id: "4", nome: "Abril" },
-    { id: "5", nome: "Maio" },
-    { id: "6", nome: "Junho" },
-    { id: "7", nome: "Julho" },
-    { id: "8", nome: "Agosto" },
-    { id: "9", nome: "Setembro" },
-    { id: "10", nome: "Outubro" },
-    { id: "11", nome: "Novembro" },
-    { id: "12", nome: "Dezembro" },
-  ];
+export default function FolhaPagamento() {
+  const [unidade, setUnidade] = useState<Unidade>("Joinville");
+  const [ano, setAno] = useState<number>(2026);
+  const [mes, setMes] = useState<string>("Março");
+  const [registros, setRegistros] = useState<FuncionarioFolha[]>(dadosIniciais);
 
-  const anos = ["2024", "2025", "2026", "2027"];
+  const filtrados = useMemo(() => {
+    return registros.filter((item) => item.unidade === unidade);
+  }, [registros, unidade]);
 
-  const handleAddFolha = () => {
-    if (!formData.funcionarioId || !formData.salarioBase) {
-      alert("Preencha os campos obrigatórios");
+  const atualizarSemana = (
+    id: number,
+    campo: "sem1" | "sem2" | "sem3" | "sem4",
+    valor: string
+  ) => {
+    const numero = Number(valor) || 0;
+
+    setRegistros((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [campo]: numero } : item))
+    );
+  };
+
+  const atualizarCampoValor = (
+    id: number,
+    campo: "premiacao" | "vale" | "aluguel" | "inss" | "adiantamento" | "holerite",
+    label: string
+  ) => {
+    const atual = registros.find((item) => item.id === id);
+    if (!atual) return;
+
+    const valor = window.prompt(`Digite o valor de ${label}:`, String(atual[campo] || 0));
+    if (valor === null) return;
+
+    const numero = Number(valor.replace(",", ".")) || 0;
+
+    setRegistros((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [campo]: numero } : item))
+    );
+  };
+
+  const atualizarObservacao = (id: number) => {
+    const atual = registros.find((item) => item.id === id);
+    if (!atual) return;
+
+    const nova = window.prompt("Digite a observação:", atual.observacao || "");
+    if (nova === null) return;
+
+    setRegistros((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, observacao: nova } : item))
+    );
+  };
+
+  const verDetalhePercentual = (
+    funcao: Funcao,
+    semana: string,
+    liquidez: number,
+    percentual: number
+  ) => {
+    const valorComissao = liquidez * (percentual / 100);
+
+    let metaTexto = "";
+
+    if (funcao === "Vendedor") {
+      metaTexto =
+        "Meta Vendedor:\nAté 32.999 = 5%\n33.000 = 6%\n40.000 = 7%\n47.000 = 8%";
+    } else {
+      metaTexto =
+        "Meta Mecânico:\nAté 7.999 = 10%\n8.000 = 12%\n10.000 = 15%\n20.000 = 17%";
+    }
+
+    window.alert(
+      `${semana}\n\nFunção: ${funcao}\nLiquidez: ${formatCurrency(
+        liquidez
+      )}\nPercentual: ${percentual}%\nComissão: ${formatCurrency(valorComissao)}\n\n${metaTexto}`
+    );
+  };
+
+  const adicionarFuncionario = () => {
+    const nome = window.prompt("Nome do funcionário:");
+    if (!nome) return;
+
+    const funcaoTexto = window.prompt('Função: digite "Vendedor" ou "Mecânico"');
+    if (!funcaoTexto) return;
+
+    const funcao = funcaoTexto.trim() as Funcao;
+    if (funcao !== "Vendedor" && funcao !== "Mecânico") {
+      window.alert("Função inválida.");
       return;
     }
 
-    const newFolha = {
-      id: Date.now(),
-      lojaId: parseInt(selectedLoja),
-      funcionarioId: formData.funcionarioId,
-      ano: parseInt(selectedAno),
-      mes: parseInt(selectedMes),
-      salarioBase: parseFloat(formData.salarioBase),
-      comissao: parseFloat(formData.comissao) || 0,
-      vale: parseFloat(formData.vale) || 0,
-      desconto: parseFloat(formData.desconto) || 0,
-      premiacao: parseFloat(formData.premiacao) || 0,
-      observacao: formData.observacao,
-      createdAt: new Date().toISOString(),
-    };
-
-    setFolhas([...folhas, newFolha]);
-    setFormData({
-      funcionarioId: "",
-      salarioBase: "",
-      comissao: "",
-      vale: "",
-      desconto: "",
-      premiacao: "",
-      observacao: "",
-    });
-    setIsOpen(false);
-  };
-
-  const lojaFolhas = folhas.filter(f => f.lojaId === parseInt(selectedLoja) && f.ano === parseInt(selectedAno) && f.mes === parseInt(selectedMes));
-
-  const calcularLiquido = (folha: any) => {
-    return folha.salarioBase + folha.comissao + folha.premiacao - folha.vale - folha.desconto;
+    setRegistros((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        nome,
+        funcao,
+        unidade,
+        sem1: 0,
+        sem2: 0,
+        sem3: 0,
+        sem4: 0,
+        premiacao: 0,
+        vale: 0,
+        aluguel: 0,
+        inss: 0,
+        adiantamento: 0,
+        holerite: 0,
+        observacao: "",
+      },
+    ]);
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(to bottom right, #000, #111, #000)", padding: "24px" }}>
-      <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
-        {/* Header */}
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(to bottom right, #000, #111, #000)",
+        padding: "24px",
+      }}
+    >
+      <div style={{ maxWidth: "1600px", margin: "0 auto" }}>
         <div style={{ marginBottom: "32px", display: "flex", alignItems: "center", gap: "16px" }}>
           <button
-            onClick={() => window.location.href = "/"}
+            onClick={() => (window.location.href = "/")}
             style={{
               background: "transparent",
               border: "none",
@@ -98,389 +268,315 @@ export default function FolhaPagamento() {
           >
             ← Voltar
           </button>
+
           <div>
-            <h1 style={{ fontSize: "32px", fontWeight: "bold", color: "#fbbf24", marginBottom: "8px" }}>
+            <h1
+              style={{
+                fontSize: "32px",
+                fontWeight: "bold",
+                color: "#fbbf24",
+                marginBottom: "8px",
+              }}
+            >
               Folha de Pagamento
             </h1>
-            <p style={{ color: "#9ca3af" }}>Gestão de salários, comissões e descontos</p>
+            <p style={{ color: "#9ca3af" }}>
+              Joinville e Blumenau • Mecânico e Vendedor • Comissão semanal
+            </p>
           </div>
         </div>
 
-        {/* Filtros */}
-        <div style={{ background: "#111", border: "1px solid rgba(251, 191, 36, 0.3)", borderRadius: "8px", padding: "24px", marginBottom: "24px" }}>
-          <h2 style={{ color: "#fbbf24", marginBottom: "16px", fontSize: "18px", fontWeight: "600" }}>
-            Seleção de Período
-          </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "16px", alignItems: "flex-end" }}>
+        <div style={cardStyle}>
+          <h2 style={sectionTitleStyle}>Filtros</h2>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: "16px",
+              alignItems: "end",
+            }}
+          >
             <div>
-              <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
-                Loja
-              </label>
+              <label style={labelStyle}>Unidade</label>
               <select
-                value={selectedLoja}
-                onChange={(e) => setSelectedLoja(e.target.value)}
-                style={{
-                  width: "100%",
-                  background: "#1f2937",
-                  border: "1px solid rgba(251, 191, 36, 0.3)",
-                  color: "white",
-                  padding: "8px 12px",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
+                value={unidade}
+                onChange={(e) => setUnidade(e.target.value as Unidade)}
+                style={inputStyle}
               >
-                {LOJAS.map((loja) => (
-                  <option key={loja.id} value={loja.id}>
-                    {loja.nome}
+                <option value="Joinville">Joinville</option>
+                <option value="Blumenau">Blumenau</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Ano</label>
+              <select
+                value={ano}
+                onChange={(e) => setAno(Number(e.target.value))}
+                style={inputStyle}
+              >
+                {ANOS.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
-                Ano
-              </label>
+              <label style={labelStyle}>Mês</label>
               <select
-                value={selectedAno}
-                onChange={(e) => setSelectedAno(e.target.value)}
-                style={{
-                  width: "100%",
-                  background: "#1f2937",
-                  border: "1px solid rgba(251, 191, 36, 0.3)",
-                  color: "white",
-                  padding: "8px 12px",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
+                value={mes}
+                onChange={(e) => setMes(e.target.value)}
+                style={inputStyle}
               >
-                {anos.map((ano) => (
-                  <option key={ano} value={ano}>
-                    {ano}
+                {MESES.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div>
-              <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
-                Mês
-              </label>
-              <select
-                value={selectedMes}
-                onChange={(e) => setSelectedMes(e.target.value)}
-                style={{
-                  width: "100%",
-                  background: "#1f2937",
-                  border: "1px solid rgba(251, 191, 36, 0.3)",
-                  color: "white",
-                  padding: "8px 12px",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                {meses.map((mes) => (
-                  <option key={mes.id} value={mes.id}>
-                    {mes.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              onClick={() => setIsOpen(true)}
-              style={{
-                background: "#fbbf24",
-                color: "black",
-                border: "none",
-                padding: "8px 16px",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "14px",
-              }}
-            >
-              + Novo Lançamento
+            <button onClick={adicionarFuncionario} style={primaryButtonStyle}>
+              + Novo funcionário
             </button>
           </div>
         </div>
 
-        {/* Dialog para adicionar lançamento */}
-        {isOpen && (
-          <div style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.7)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            overflowY: "auto",
-          }}>
-            <div style={{
-              background: "#111",
-              border: "1px solid rgba(251, 191, 36, 0.3)",
-              borderRadius: "8px",
-              padding: "24px",
-              maxWidth: "600px",
-              width: "90%",
-              margin: "20px auto",
-            }}>
-              <h3 style={{ color: "#fbbf24", marginBottom: "16px", fontSize: "18px", fontWeight: "600" }}>
-                Novo Lançamento de Folha
-              </h3>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-                <div>
-                  <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
-                    ID Funcionário
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: 123"
-                    value={formData.funcionarioId}
-                    onChange={(e) => setFormData({ ...formData, funcionarioId: e.target.value })}
-                    style={{
-                      width: "100%",
-                      background: "#1f2937",
-                      border: "1px solid rgba(251, 191, 36, 0.3)",
-                      color: "white",
-                      padding: "8px 12px",
-                      borderRadius: "4px",
-                      fontSize: "14px",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
-                    Salário Base (R$)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={formData.salarioBase}
-                    onChange={(e) => setFormData({ ...formData, salarioBase: e.target.value })}
-                    style={{
-                      width: "100%",
-                      background: "#1f2937",
-                      border: "1px solid rgba(251, 191, 36, 0.3)",
-                      color: "white",
-                      padding: "8px 12px",
-                      borderRadius: "4px",
-                      fontSize: "14px",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
-                    Comissão (R$)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={formData.comissao}
-                    onChange={(e) => setFormData({ ...formData, comissao: e.target.value })}
-                    style={{
-                      width: "100%",
-                      background: "#1f2937",
-                      border: "1px solid rgba(251, 191, 36, 0.3)",
-                      color: "white",
-                      padding: "8px 12px",
-                      borderRadius: "4px",
-                      fontSize: "14px",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
-                    Vale (R$)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={formData.vale}
-                    onChange={(e) => setFormData({ ...formData, vale: e.target.value })}
-                    style={{
-                      width: "100%",
-                      background: "#1f2937",
-                      border: "1px solid rgba(251, 191, 36, 0.3)",
-                      color: "white",
-                      padding: "8px 12px",
-                      borderRadius: "4px",
-                      fontSize: "14px",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
-                    Desconto (R$)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={formData.desconto}
-                    onChange={(e) => setFormData({ ...formData, desconto: e.target.value })}
-                    style={{
-                      width: "100%",
-                      background: "#1f2937",
-                      border: "1px solid rgba(251, 191, 36, 0.3)",
-                      color: "white",
-                      padding: "8px 12px",
-                      borderRadius: "4px",
-                      fontSize: "14px",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
-                    Premiação (R$)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="0.00"
-                    value={formData.premiacao}
-                    onChange={(e) => setFormData({ ...formData, premiacao: e.target.value })}
-                    style={{
-                      width: "100%",
-                      background: "#1f2937",
-                      border: "1px solid rgba(251, 191, 36, 0.3)",
-                      color: "white",
-                      padding: "8px 12px",
-                      borderRadius: "4px",
-                      fontSize: "14px",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: "16px" }}>
-                <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
-                  Observação
-                </label>
-                <textarea
-                  placeholder="Observações adicionais..."
-                  value={formData.observacao}
-                  onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
-                  style={{
-                    width: "100%",
-                    background: "#1f2937",
-                    border: "1px solid rgba(251, 191, 36, 0.3)",
-                    color: "white",
-                    padding: "8px 12px",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                    boxSizing: "border-box",
-                    minHeight: "80px",
-                    fontFamily: "inherit",
-                  }}
-                />
-              </div>
-
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  onClick={handleAddFolha}
-                  style={{
-                    flex: 1,
-                    background: "#fbbf24",
-                    color: "black",
-                    border: "none",
-                    padding: "8px 16px",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                  }}
-                >
-                  Salvar Lançamento
-                </button>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  style={{
-                    flex: 1,
-                    background: "transparent",
-                    border: "1px solid rgba(251, 191, 36, 0.3)",
-                    color: "#fbbf24",
-                    padding: "8px 16px",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                  }}
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tabela de Folhas */}
-        <div style={{ background: "#111", border: "1px solid rgba(251, 191, 36, 0.3)", borderRadius: "8px", padding: "24px" }}>
-          <h2 style={{ color: "#fbbf24", marginBottom: "8px", fontSize: "18px", fontWeight: "600" }}>
-            Folhas de Pagamento
+        <div style={cardStyle}>
+          <h2 style={sectionTitleStyle}>
+            Comissão Semanal • {unidade} • {mes}/{ano}
           </h2>
-          <p style={{ color: "#9ca3af", marginBottom: "16px", fontSize: "14px" }}>
-            {selectedMes}/{selectedAno} - Total: {lojaFolhas.length} lançamento(s)
-          </p>
 
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "1700px" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid rgba(251, 191, 36, 0.3)" }}>
-                  <th style={{ color: "#fbbf24", textAlign: "left", padding: "12px", fontWeight: "600" }}>Func ID</th>
-                  <th style={{ color: "#fbbf24", textAlign: "right", padding: "12px", fontWeight: "600" }}>Salário</th>
-                  <th style={{ color: "#fbbf24", textAlign: "right", padding: "12px", fontWeight: "600" }}>Comissão</th>
-                  <th style={{ color: "#fbbf24", textAlign: "right", padding: "12px", fontWeight: "600" }}>Vale</th>
-                  <th style={{ color: "#fbbf24", textAlign: "right", padding: "12px", fontWeight: "600" }}>Desconto</th>
-                  <th style={{ color: "#fbbf24", textAlign: "right", padding: "12px", fontWeight: "600" }}>Premiação</th>
-                  <th style={{ color: "#fbbf24", textAlign: "right", padding: "12px", fontWeight: "600" }}>Líquido</th>
+                  <th style={thStyle}>Nome</th>
+                  <th style={thStyle}>Função</th>
+                  <th style={thStyle}>Sem 1</th>
+                  <th style={thStyle}>%</th>
+                  <th style={thStyle}>Sem 2</th>
+                  <th style={thStyle}>%</th>
+                  <th style={thStyle}>Sem 3</th>
+                  <th style={thStyle}>%</th>
+                  <th style={thStyle}>Sem 4</th>
+                  <th style={thStyle}>%</th>
+                  <th style={thStyle}>Total Liquidez</th>
+                  <th style={thStyle}>Total Comissão</th>
+                  <th style={thStyle}>Premiação</th>
+                  <th style={thStyle}>Vale</th>
+                  <th style={thStyle}>Aluguel</th>
+                  <th style={thStyle}>INSS</th>
+                  <th style={thStyle}>Adiant.</th>
+                  <th style={thStyle}>Holerite</th>
+                  <th style={thStyle}>Boleto</th>
+                  <th style={thStyle}>Observação</th>
                 </tr>
               </thead>
               <tbody>
-                {lojaFolhas.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} style={{ textAlign: "center", color: "#9ca3af", padding: "32px 12px" }}>
-                      Nenhum lançamento registrado
-                    </td>
-                  </tr>
-                ) : (
-                  lojaFolhas.map((folha) => (
-                    <tr key={folha.id} style={{ borderBottom: "1px solid rgba(251, 191, 36, 0.2)" }}>
-                      <td style={{ color: "white", padding: "12px" }}>{folha.funcionarioId}</td>
-                      <td style={{ color: "#d1d5db", padding: "12px", textAlign: "right" }}>
-                        R$ {folha.salarioBase.toFixed(2)}
+                {filtrados.map((item) => {
+                  const perc1 = getPercentual(item.funcao, item.sem1);
+                  const perc2 = getPercentual(item.funcao, item.sem2);
+                  const perc3 = getPercentual(item.funcao, item.sem3);
+                  const perc4 = getPercentual(item.funcao, item.sem4);
+
+                  const com1 = item.sem1 * (perc1 / 100);
+                  const com2 = item.sem2 * (perc2 / 100);
+                  const com3 = item.sem3 * (perc3 / 100);
+                  const com4 = item.sem4 * (perc4 / 100);
+
+                  const totalLiquidez = item.sem1 + item.sem2 + item.sem3 + item.sem4;
+                  const totalComissao = com1 + com2 + com3 + com4;
+
+                  const boleto =
+                    totalComissao +
+                    item.premiacao -
+                    item.vale -
+                    item.aluguel -
+                    item.inss -
+                    item.adiantamento -
+                    item.holerite;
+
+                  return (
+                    <tr
+                      key={item.id}
+                      style={{ borderBottom: "1px solid rgba(251, 191, 36, 0.1)" }}
+                    >
+                      <td style={tdStyle}>{item.nome}</td>
+                      <td style={tdStyle}>{item.funcao}</td>
+
+                      <td style={tdStyle}>
+                        <input
+                          type="number"
+                          value={item.sem1}
+                          onChange={(e) => atualizarSemana(item.id, "sem1", e.target.value)}
+                          style={smallInputStyle}
+                        />
                       </td>
-                      <td style={{ color: "#d1d5db", padding: "12px", textAlign: "right" }}>
-                        R$ {folha.comissao.toFixed(2)}
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() =>
+                            verDetalhePercentual(item.funcao, "Semana 1", item.sem1, perc1)
+                          }
+                          style={valueButtonStyle}
+                        >
+                          {perc1}%
+                        </button>
                       </td>
-                      <td style={{ color: "#d1d5db", padding: "12px", textAlign: "right" }}>
-                        R$ {folha.vale.toFixed(2)}
+
+                      <td style={tdStyle}>
+                        <input
+                          type="number"
+                          value={item.sem2}
+                          onChange={(e) => atualizarSemana(item.id, "sem2", e.target.value)}
+                          style={smallInputStyle}
+                        />
                       </td>
-                      <td style={{ color: "#d1d5db", padding: "12px", textAlign: "right" }}>
-                        R$ {folha.desconto.toFixed(2)}
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() =>
+                            verDetalhePercentual(item.funcao, "Semana 2", item.sem2, perc2)
+                          }
+                          style={valueButtonStyle}
+                        >
+                          {perc2}%
+                        </button>
                       </td>
-                      <td style={{ color: "#d1d5db", padding: "12px", textAlign: "right" }}>
-                        R$ {folha.premiacao.toFixed(2)}
+
+                      <td style={tdStyle}>
+                        <input
+                          type="number"
+                          value={item.sem3}
+                          onChange={(e) => atualizarSemana(item.id, "sem3", e.target.value)}
+                          style={smallInputStyle}
+                        />
                       </td>
-                      <td style={{ color: "#fbbf24", padding: "12px", textAlign: "right", fontWeight: "600" }}>
-                        R$ {calcularLiquido(folha).toFixed(2)}
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() =>
+                            verDetalhePercentual(item.funcao, "Semana 3", item.sem3, perc3)
+                          }
+                          style={valueButtonStyle}
+                        >
+                          {perc3}%
+                        </button>
+                      </td>
+
+                      <td style={tdStyle}>
+                        <input
+                          type="number"
+                          value={item.sem4}
+                          onChange={(e) => atualizarSemana(item.id, "sem4", e.target.value)}
+                          style={smallInputStyle}
+                        />
+                      </td>
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() =>
+                            verDetalhePercentual(item.funcao, "Semana 4", item.sem4, perc4)
+                          }
+                          style={valueButtonStyle}
+                        >
+                          {perc4}%
+                        </button>
+                      </td>
+
+                      <td style={tdStyle}>{formatCurrency(totalLiquidez)}</td>
+                      <td style={tdStyle}>{formatCurrency(totalComissao)}</td>
+
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() => atualizarCampoValor(item.id, "premiacao", "Premiação")}
+                          style={moneyActionStyle}
+                        >
+                          {formatCurrency(item.premiacao)}
+                        </button>
+                      </td>
+
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() => atualizarCampoValor(item.id, "vale", "Vale")}
+                          style={moneyActionStyle}
+                        >
+                          {formatCurrency(item.vale)}
+                        </button>
+                      </td>
+
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() => atualizarCampoValor(item.id, "aluguel", "Aluguel")}
+                          style={moneyActionStyle}
+                        >
+                          {formatCurrency(item.aluguel)}
+                        </button>
+                      </td>
+
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() => atualizarCampoValor(item.id, "inss", "INSS")}
+                          style={moneyActionStyle}
+                        >
+                          {formatCurrency(item.inss)}
+                        </button>
+                      </td>
+
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() =>
+                            atualizarCampoValor(item.id, "adiantamento", "Adiantamento")
+                          }
+                          style={moneyActionStyle}
+                        >
+                          {formatCurrency(item.adiantamento)}
+                        </button>
+                      </td>
+
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() => atualizarCampoValor(item.id, "holerite", "Holerite")}
+                          style={moneyActionStyle}
+                        >
+                          {formatCurrency(item.holerite)}
+                        </button>
+                      </td>
+
+                      <td
+                        style={{
+                          ...tdStyle,
+                          color: boleto < 0 ? "#f87171" : "#d1d5db",
+                          fontWeight: 700,
+                        }}
+                      >
+                        {formatCurrency(boleto)}
+                      </td>
+
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() => atualizarObservacao(item.id)}
+                          style={{
+                            ...moneyActionStyle,
+                            background: item.observacao
+                              ? "rgba(239, 68, 68, 0.18)"
+                              : "rgba(251, 191, 36, 0.08)",
+                            color: item.observacao ? "#f87171" : "#fbbf24",
+                          }}
+                        >
+                          {item.observacao ? "OBS" : "Adicionar"}
+                        </button>
                       </td>
                     </tr>
-                  ))
+                  );
+                })}
+
+                {filtrados.length === 0 && (
+                  <tr>
+                    <td colSpan={20} style={emptyTdStyle}>
+                      Nenhum funcionário cadastrado para esta unidade
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -490,3 +586,98 @@ export default function FolhaPagamento() {
     </div>
   );
 }
+
+const cardStyle: React.CSSProperties = {
+  background: "#111",
+  border: "1px solid rgba(251, 191, 36, 0.3)",
+  borderRadius: "8px",
+  padding: "24px",
+  marginBottom: "24px",
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  color: "#fbbf24",
+  marginBottom: "12px",
+  fontSize: "22px",
+  fontWeight: 700,
+};
+
+const labelStyle: React.CSSProperties = {
+  color: "#d1d5db",
+  display: "block",
+  marginBottom: "8px",
+  fontSize: "14px",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  background: "#1f2937",
+  border: "1px solid rgba(251, 191, 36, 0.3)",
+  color: "white",
+  padding: "8px 12px",
+  borderRadius: "4px",
+  fontSize: "14px",
+  boxSizing: "border-box",
+};
+
+const smallInputStyle: React.CSSProperties = {
+  width: "110px",
+  background: "#1f2937",
+  border: "1px solid rgba(251, 191, 36, 0.3)",
+  color: "white",
+  padding: "8px",
+  borderRadius: "4px",
+  fontSize: "14px",
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  background: "#fbbf24",
+  color: "black",
+  border: "none",
+  padding: "10px 16px",
+  borderRadius: "4px",
+  cursor: "pointer",
+  fontWeight: 700,
+  fontSize: "14px",
+};
+
+const moneyActionStyle: React.CSSProperties = {
+  background: "rgba(251, 191, 36, 0.08)",
+  border: "1px solid rgba(251, 191, 36, 0.25)",
+  color: "#fbbf24",
+  padding: "8px 10px",
+  borderRadius: "4px",
+  cursor: "pointer",
+  fontWeight: 600,
+  minWidth: "110px",
+};
+
+const valueButtonStyle: React.CSSProperties = {
+  background: "transparent",
+  border: "1px solid rgba(251, 191, 36, 0.25)",
+  color: "#fbbf24",
+  padding: "8px 10px",
+  borderRadius: "4px",
+  cursor: "pointer",
+  fontWeight: 700,
+  minWidth: "70px",
+};
+
+const thStyle: React.CSSProperties = {
+  color: "#fbbf24",
+  textAlign: "left",
+  padding: "12px",
+  fontWeight: 700,
+};
+
+const tdStyle: React.CSSProperties = {
+  color: "#d1d5db",
+  padding: "12px",
+  verticalAlign: "middle",
+};
+
+const emptyTdStyle: React.CSSProperties = {
+  textAlign: "center",
+  color: "#9ca3af",
+  padding: "32px 12px",
+};
