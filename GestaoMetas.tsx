@@ -1,17 +1,4 @@
-import React from "react";
 import { useState, useMemo } from "react";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, Plus, ArrowLeft } from "lucide-react";
-import { useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
 
 const LOJAS = [
   { id: 1, nome: "Joinville" },
@@ -34,12 +21,8 @@ interface MetaFaixa {
 }
 
 export default function GestaoMetas() {
-  const [, navigate] = useLocation();
-  const { user } = useAuth();
   const [selectedLoja, setSelectedLoja] = useState("1");
   const [selectedFuncao, setSelectedFuncao] = useState("mecanico");
-  const [ano] = useState(2026);
-  const [mes] = useState(3);
   const [isOpen, setIsOpen] = useState(false);
   const [novasFaixas, setNovasFaixas] = useState<MetaFaixa[]>([
     { liquidezMinima: 0, percentualComissao: 10 },
@@ -47,155 +30,171 @@ export default function GestaoMetas() {
     { liquidezMinima: 10000, percentualComissao: 15 },
     { liquidezMinima: 20000, percentualComissao: 17 },
   ]);
+  const [metas, setMetas] = useState<any[]>([]);
 
-  // Query para obter metas
-  const { data: metas = [], isLoading, refetch } = trpc.metas.listByLojaAnoMes.useQuery(
-    { lojaId: parseInt(selectedLoja), ano, mes },
-    { enabled: !!user }
-  );
-
-  // Mutation para criar/atualizar meta
-  const createMutation = trpc.metas.create.useMutation({
-    onSuccess: () => {
-      toast.success("Meta salva com sucesso!");
-      setNovasFaixas([
-        { liquidezMinima: 0, percentualComissao: 10 },
-        { liquidezMinima: 8000, percentualComissao: 12 },
-        { liquidezMinima: 10000, percentualComissao: 15 },
-        { liquidezMinima: 20000, percentualComissao: 17 },
-      ]);
-      setIsOpen(false);
-      refetch();
-    },
-    onError: (error) => {
-      toast.error(`Erro ao salvar meta: ${error.message}`);
-    },
-  });
-
-  const metaSelecionada = useMemo(() => {
-    return metas.find(
-      (m: any) => m.funcao === selectedFuncao && m.lojaId === parseInt(selectedLoja)
-    );
-  }, [metas, selectedFuncao, selectedLoja]);
-
-  const handleAddFaixa = async () => {
-    if (novasFaixas.some(f => f.liquidezMinima === undefined || f.percentualComissao === undefined)) {
-      toast.error("Preencha todos os campos das faixas");
-      return;
-    }
-
-    try {
-      await createMutation.mutateAsync({
-        lojaId: parseInt(selectedLoja),
-        funcao: selectedFuncao,
-        ano,
-        mes,
-        faixas: novasFaixas,
-        aplicacaoEm: "imediata",
-      });
-    } catch (error) {
-      console.error("Erro ao adicionar meta:", error);
-    }
+  const handleAddFaixa = () => {
+    const newMeta = {
+      id: Date.now(),
+      lojaId: parseInt(selectedLoja),
+      funcao: selectedFuncao,
+      faixas: novasFaixas,
+      updatedAt: new Date().toISOString(),
+    };
+    setMetas([...metas, newMeta]);
+    setNovasFaixas([
+      { liquidezMinima: 0, percentualComissao: 10 },
+      { liquidezMinima: 8000, percentualComissao: 12 },
+      { liquidezMinima: 10000, percentualComissao: 15 },
+      { liquidezMinima: 20000, percentualComissao: 17 },
+    ]);
+    setIsOpen(false);
   };
 
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-black p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div style={{ minHeight: "100vh", background: "linear-gradient(to bottom right, #000, #111, #000)", padding: "24px" }}>
+      <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
         {/* Header */}
-        <div className="mb-8 flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/')}
-            className="hover:bg-primary/20 text-primary"
+        <div style={{ marginBottom: "32px", display: "flex", alignItems: "center", gap: "16px" }}>
+          <button
+            onClick={() => window.location.href = "/"}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#fbbf24",
+              cursor: "pointer",
+              fontSize: "20px",
+              padding: "8px",
+            }}
           >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
+            ← Voltar
+          </button>
           <div>
-            <h1 className="text-3xl font-bold text-primary mb-2">Gestão de Metas</h1>
-            <p className="text-gray-400">Configuração de comissões e metas por função</p>
+            <h1 style={{ fontSize: "32px", fontWeight: "bold", color: "#fbbf24", marginBottom: "8px" }}>
+              Gestão de Metas
+            </h1>
+            <p style={{ color: "#9ca3af" }}>Configuração de comissões e metas por função</p>
           </div>
         </div>
 
         {/* Filtros */}
-        <Card className="bg-gray-900 border-primary/30">
-          <CardHeader>
-            <CardTitle className="text-primary">Seleção de Loja e Função</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label className="text-gray-300 mb-2 block">Loja</Label>
-                <Select value={selectedLoja} onValueChange={setSelectedLoja}>
-                  <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-primary/30">
-                    {LOJAS.map(loja => (
-                      <SelectItem key={loja.id} value={loja.id.toString()} className="text-white">
-                        {loja.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-gray-300 mb-2 block">Função</Label>
-                <Select value={selectedFuncao} onValueChange={setSelectedFuncao}>
-                  <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-primary/30">
-                    {FUNCOES.map(funcao => (
-                      <SelectItem key={funcao.id} value={funcao.id} className="text-white">
-                        {funcao.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-end">
-                <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                  <Button
-                    onClick={() => setIsOpen(true)}
-                    className="w-full bg-primary text-black hover:bg-yellow-300 font-semibold"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar Faixa
-                  </Button>
-                </Dialog>
-              </div>
+        <div style={{ background: "#111", border: "1px solid rgba(251, 191, 36, 0.3)", borderRadius: "8px", padding: "24px", marginBottom: "24px" }}>
+          <h2 style={{ color: "#fbbf24", marginBottom: "16px", fontSize: "18px", fontWeight: "600" }}>
+            Seleção de Loja e Função
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+            <div>
+              <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
+                Loja
+              </label>
+              <select
+                value={selectedLoja}
+                onChange={(e) => setSelectedLoja(e.target.value)}
+                style={{
+                  width: "100%",
+                  background: "#1f2937",
+                  border: "1px solid rgba(251, 191, 36, 0.3)",
+                  color: "white",
+                  padding: "8px 12px",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                {LOJAS.map((loja) => (
+                  <option key={loja.id} value={loja.id}>
+                    {loja.nome}
+                  </option>
+                ))}
+              </select>
             </div>
-          </CardContent>
-        </Card>
+
+            <div>
+              <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px" }}>
+                Função
+              </label>
+              <select
+                value={selectedFuncao}
+                onChange={(e) => setSelectedFuncao(e.target.value)}
+                style={{
+                  width: "100%",
+                  background: "#1f2937",
+                  border: "1px solid rgba(251, 191, 36, 0.3)",
+                  color: "white",
+                  padding: "8px 12px",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                {FUNCOES.map((funcao) => (
+                  <option key={funcao.id} value={funcao.id}>
+                    {funcao.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "flex-end" }}>
+              <button
+                onClick={() => setIsOpen(true)}
+                style={{
+                  width: "100%",
+                  background: "#fbbf24",
+                  color: "black",
+                  border: "none",
+                  padding: "8px 16px",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                }}
+              >
+                + Adicionar Faixa
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Dialog para adicionar faixa */}
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogContent className="bg-gray-900 border-primary/30 max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-primary">Adicionar Faixa de Comissão</DialogTitle>
-              <DialogDescription className="text-gray-400">
+        {isOpen && (
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}>
+            <div style={{
+              background: "#111",
+              border: "1px solid rgba(251, 191, 36, 0.3)",
+              borderRadius: "8px",
+              padding: "24px",
+              maxWidth: "500px",
+              width: "90%",
+              maxHeight: "80vh",
+              overflowY: "auto",
+            }}>
+              <h3 style={{ color: "#fbbf24", marginBottom: "8px", fontSize: "18px", fontWeight: "600" }}>
+                Adicionar Faixa de Comissão
+              </h3>
+              <p style={{ color: "#9ca3af", marginBottom: "16px", fontSize: "14px" }}>
                 Adicione uma nova faixa de comissão para {FUNCOES.find(f => f.id === selectedFuncao)?.nome}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <Label className="text-gray-300 font-semibold block">Faixas de Comissão</Label>
+              </p>
+
+              <div style={{ marginBottom: "16px" }}>
+                <label style={{ color: "#d1d5db", display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600" }}>
+                  Faixas de Comissão
+                </label>
                 {novasFaixas.map((faixa, index) => (
-                  <div key={index} className="grid grid-cols-2 gap-2 p-3 bg-gray-800 rounded border border-primary/20">
+                  <div key={index} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", padding: "12px", background: "#1f2937", borderRadius: "4px", border: "1px solid rgba(251, 191, 36, 0.2)", marginBottom: "8px" }}>
                     <div>
-                      <Label className="text-gray-400 text-xs mb-1 block">Liquidez Mínima (R$)</Label>
-                      <Input
+                      <label style={{ color: "#9ca3af", fontSize: "12px", display: "block", marginBottom: "4px" }}>
+                        Liquidez Mínima (R$)
+                      </label>
+                      <input
                         type="number"
                         placeholder="0"
                         value={faixa.liquidezMinima}
@@ -204,12 +203,22 @@ export default function GestaoMetas() {
                           newFaixas[index].liquidezMinima = parseFloat(e.target.value) || 0;
                           setNovasFaixas(newFaixas);
                         }}
-                        className="bg-gray-700 border-primary/30 text-white text-sm"
+                        style={{
+                          width: "100%",
+                          background: "#374151",
+                          border: "1px solid rgba(251, 191, 36, 0.3)",
+                          color: "white",
+                          padding: "6px 8px",
+                          borderRadius: "4px",
+                          fontSize: "14px",
+                        }}
                       />
                     </div>
                     <div>
-                      <Label className="text-gray-400 text-xs mb-1 block">Comissão (%)</Label>
-                      <Input
+                      <label style={{ color: "#9ca3af", fontSize: "12px", display: "block", marginBottom: "4px" }}>
+                        Comissão (%)
+                      </label>
+                      <input
                         type="number"
                         placeholder="0"
                         step="0.1"
@@ -219,102 +228,126 @@ export default function GestaoMetas() {
                           newFaixas[index].percentualComissao = parseFloat(e.target.value) || 0;
                           setNovasFaixas(newFaixas);
                         }}
-                        className="bg-gray-700 border-primary/30 text-white text-sm"
+                        style={{
+                          width: "100%",
+                          background: "#374151",
+                          border: "1px solid rgba(251, 191, 36, 0.3)",
+                          color: "white",
+                          padding: "6px 8px",
+                          borderRadius: "4px",
+                          fontSize: "14px",
+                        }}
                       />
                     </div>
                   </div>
                 ))}
               </div>
 
-              <Button
-                onClick={() => {
-                  setNovasFaixas([...novasFaixas, { liquidezMinima: 0, percentualComissao: 0 }]);
-                }}
-                variant="outline"
-                className="w-full border-primary/30 text-primary hover:bg-primary/10"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Faixa
-              </Button>
-
-              <Button
-                onClick={handleAddFaixa}
-                disabled={createMutation.isPending}
-                className="w-full bg-primary text-black hover:bg-yellow-300 font-semibold"
-              >
-                {createMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  "Salvar Meta"
-                )}
-              </Button>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  onClick={() => setNovasFaixas([...novasFaixas, { liquidezMinima: 0, percentualComissao: 0 }])}
+                  style={{
+                    flex: 1,
+                    background: "transparent",
+                    border: "1px solid rgba(251, 191, 36, 0.3)",
+                    color: "#fbbf24",
+                    padding: "8px 16px",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  + Adicionar Faixa
+                </button>
+                <button
+                  onClick={handleAddFaixa}
+                  style={{
+                    flex: 1,
+                    background: "#fbbf24",
+                    color: "black",
+                    border: "none",
+                    padding: "8px 16px",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Salvar Meta
+                </button>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  style={{
+                    flex: 1,
+                    background: "transparent",
+                    border: "1px solid rgba(251, 191, 36, 0.3)",
+                    color: "#fbbf24",
+                    padding: "8px 16px",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
+        )}
 
         {/* Tabela de Metas */}
-        <Card className="bg-gray-900 border-primary/30">
-          <CardHeader>
-            <CardTitle className="text-primary">
-              Metas - {LOJAS.find(l => l.id === parseInt(selectedLoja))?.nome}
-            </CardTitle>
-            <CardDescription className="text-gray-400">
-              {ano}/{String(mes).padStart(2, '0')} - Total: {metas.length} meta(s)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-primary/30 hover:bg-gray-800">
-                      <TableHead className="text-primary">Função</TableHead>
-                      <TableHead className="text-primary">Faixas de Comissão</TableHead>
-                      <TableHead className="text-primary">Data Atualização</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {metas.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center text-gray-400 py-8">
-                          Nenhuma meta registrada
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      metas.map((meta: any) => {
-                        const faixas = typeof meta.faixas === 'string' ? JSON.parse(meta.faixas) : meta.faixas;
-                        return (
-                          <TableRow key={meta.id} className="border-primary/20 hover:bg-gray-800">
-                            <TableCell className="text-white font-semibold">
-                              {FUNCOES.find(f => f.id === meta.funcao)?.nome || meta.funcao}
-                            </TableCell>
-                            <TableCell className="text-gray-300">
-                              {Array.isArray(faixas) && faixas.map((f: any, i: number) => (
-                                <div key={i} className="text-sm">
-                                  R$ {Number(f.liquidezMinima).toLocaleString('pt-BR')} → {Number(f.percentualComissao).toFixed(2)}%
-                                </div>
-                              ))}
-                            </TableCell>
-                            <TableCell className="text-gray-300">
-                              {meta.updatedAt ? new Date(meta.updatedAt).toLocaleDateString('pt-BR') : '-'}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <div style={{ background: "#111", border: "1px solid rgba(251, 191, 36, 0.3)", borderRadius: "8px", padding: "24px" }}>
+          <h2 style={{ color: "#fbbf24", marginBottom: "8px", fontSize: "18px", fontWeight: "600" }}>
+            Metas - {LOJAS.find(l => l.id === parseInt(selectedLoja))?.nome}
+          </h2>
+          <p style={{ color: "#9ca3af", marginBottom: "16px", fontSize: "14px" }}>
+            2026/03 - Total: {metas.length} meta(s)
+          </p>
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid rgba(251, 191, 36, 0.3)" }}>
+                  <th style={{ color: "#fbbf24", textAlign: "left", padding: "12px", fontWeight: "600" }}>Função</th>
+                  <th style={{ color: "#fbbf24", textAlign: "left", padding: "12px", fontWeight: "600" }}>Faixas de Comissão</th>
+                  <th style={{ color: "#fbbf24", textAlign: "left", padding: "12px", fontWeight: "600" }}>Data Atualização</th>
+                </tr>
+              </thead>
+              <tbody>
+                {metas.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: "center", color: "#9ca3af", padding: "32px 12px" }}>
+                      Nenhuma meta registrada
+                    </td>
+                  </tr>
+                ) : (
+                  metas.map((meta) => {
+                    const faixas = Array.isArray(meta.faixas) ? meta.faixas : [];
+                    return (
+                      <tr key={meta.id} style={{ borderBottom: "1px solid rgba(251, 191, 36, 0.2)", hover: { background: "#1f2937" } }}>
+                        <td style={{ color: "white", padding: "12px", fontWeight: "600" }}>
+                          {FUNCOES.find(f => f.id === meta.funcao)?.nome || meta.funcao}
+                        </td>
+                        <td style={{ color: "#d1d5db", padding: "12px" }}>
+                          {faixas.map((f: any, i: number) => (
+                            <div key={i} style={{ fontSize: "14px" }}>
+                              R$ {Number(f.liquidezMinima).toLocaleString('pt-BR')} → {Number(f.percentualComissao).toFixed(2)}%
+                            </div>
+                          ))}
+                        </td>
+                        <td style={{ color: "#d1d5db", padding: "12px" }}>
+                          {meta.updatedAt ? new Date(meta.updatedAt).toLocaleDateString('pt-BR') : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );
