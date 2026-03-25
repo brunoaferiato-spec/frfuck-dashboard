@@ -3,6 +3,18 @@ import { useMemo, useState } from "react";
 type Unidade = "Joinville" | "Blumenau";
 type Funcao = "Vendedor" | "Mecânico";
 
+interface ValeParcela {
+  id: number;
+  funcionarioId: number;
+  unidade: Unidade;
+  descricao: string;
+  valor: number;
+  parcelaAtual: number;
+  totalParcelas: number;
+  ano: number;
+  mes: number;
+}
+
 interface FuncionarioFolha {
   id: number;
   nome: string;
@@ -13,7 +25,6 @@ interface FuncionarioFolha {
   sem3: number;
   sem4: number;
   premiacao: number;
-  vale: number;
   aluguel: number;
   inss: number;
   adiantamento: number;
@@ -48,7 +59,6 @@ const dadosIniciais: FuncionarioFolha[] = [
     sem3: 0,
     sem4: 0,
     premiacao: 0,
-    vale: 0,
     aluguel: 0,
     inss: 0,
     adiantamento: 0,
@@ -65,7 +75,6 @@ const dadosIniciais: FuncionarioFolha[] = [
     sem3: 0,
     sem4: 0,
     premiacao: 0,
-    vale: 0,
     aluguel: 0,
     inss: 0,
     adiantamento: 0,
@@ -82,7 +91,6 @@ const dadosIniciais: FuncionarioFolha[] = [
     sem3: 0,
     sem4: 0,
     premiacao: 0,
-    vale: 0,
     aluguel: 0,
     inss: 0,
     adiantamento: 0,
@@ -99,7 +107,6 @@ const dadosIniciais: FuncionarioFolha[] = [
     sem3: 0,
     sem4: 0,
     premiacao: 0,
-    vale: 0,
     aluguel: 0,
     inss: 0,
     adiantamento: 0,
@@ -133,11 +140,31 @@ function formatCurrency(value: number) {
   });
 }
 
+function getMesNumero(nomeMes: string) {
+  return MESES.indexOf(nomeMes) + 1;
+}
+
+function getMesNome(numeroMes: number) {
+  return MESES[numeroMes - 1] || "";
+}
+
+function avancarMes(ano: number, mes: number, quantidade: number) {
+  const data = new Date(ano, mes - 1, 1);
+  data.setMonth(data.getMonth() + quantidade);
+  return {
+    ano: data.getFullYear(),
+    mes: data.getMonth() + 1,
+  };
+}
+
 export default function FolhaPagamento() {
   const [unidade, setUnidade] = useState<Unidade>("Joinville");
   const [ano, setAno] = useState<number>(2026);
   const [mes, setMes] = useState<string>("Março");
   const [registros, setRegistros] = useState<FuncionarioFolha[]>(dadosIniciais);
+  const [vales, setVales] = useState<ValeParcela[]>([]);
+
+  const mesNumero = getMesNumero(mes);
 
   const filtrados = useMemo(() => {
     return registros.filter((item) => item.unidade === unidade);
@@ -163,7 +190,7 @@ export default function FolhaPagamento() {
 
   const atualizarCampoValor = (
     id: number,
-    campo: "premiacao" | "vale" | "aluguel" | "inss" | "adiantamento" | "holerite",
+    campo: "premiacao" | "aluguel" | "inss" | "adiantamento" | "holerite",
     label: string
   ) => {
     const atual = registros.find((item) => item.id === id);
@@ -260,6 +287,147 @@ export default function FolhaPagamento() {
       `${semana}\n\nFunção: ${funcao}\nLiquidez: ${formatCurrency(
         liquidez
       )}\nPercentual: ${percentual}%\nComissão: ${formatCurrency(valorComissao)}\n\n${metaTexto}`
+    );
+  };
+
+  const getValesDoMes = (funcionarioId: number) => {
+    return vales.filter(
+      (vale) =>
+        vale.funcionarioId === funcionarioId &&
+        vale.unidade === unidade &&
+        vale.ano === ano &&
+        vale.mes === mesNumero
+    );
+  };
+
+  const getTotalValeDoMes = (funcionarioId: number) => {
+    return getValesDoMes(funcionarioId).reduce((acc, vale) => acc + vale.valor, 0);
+  };
+
+  const gerenciarVales = (funcionarioId: number, nomeFuncionario: string) => {
+    const lista = getValesDoMes(funcionarioId);
+
+    const textoLista =
+      lista.length > 0
+        ? lista
+            .map(
+              (vale, i) =>
+                `${i + 1}. ${vale.descricao} - ${formatCurrency(vale.valor)} (Parcela ${vale.parcelaAtual}/${vale.totalParcelas})`
+            )
+            .join("\n")
+        : "Nenhum vale neste mês.";
+
+    const acao = window.prompt(
+      `Vales de ${nomeFuncionario} em ${mes}/${ano}:\n\n${textoLista}\n\nDigite:\n1 para adicionar vale\n2 para excluir vale`,
+      "1"
+    );
+
+    if (acao === null) return;
+
+    if (acao === "1") {
+      const descricao = window.prompt("Descrição do vale:");
+      if (!descricao) return;
+
+      const valorTexto = window.prompt("Valor do vale:");
+      if (!valorTexto) return;
+
+      const valor = Number(valorTexto.replace(",", ".")) || 0;
+      if (valor <= 0) {
+        window.alert("Valor inválido.");
+        return;
+      }
+
+      const parcelasTexto = window.prompt("Quantidade de parcelas:", "1");
+      if (!parcelasTexto) return;
+
+      const totalParcelas = Number(parcelasTexto) || 1;
+      if (totalParcelas <= 0) {
+        window.alert("Quantidade de parcelas inválida.");
+        return;
+      }
+
+      const novosVales: ValeParcela[] = [];
+
+      for (let i = 0; i < totalParcelas; i++) {
+        const destino = avancarMes(ano, mesNumero, i);
+
+        novosVales.push({
+          id: Date.now() + i + Math.floor(Math.random() * 1000),
+          funcionarioId,
+          unidade,
+          descricao,
+          valor: Number((valor / totalParcelas).toFixed(2)),
+          parcelaAtual: i + 1,
+          totalParcelas,
+          ano: destino.ano,
+          mes: destino.mes,
+        });
+      }
+
+      setVales((prev) => [...prev, ...novosVales]);
+    }
+
+    if (acao === "2") {
+      if (lista.length === 0) {
+        window.alert("Não há vales para excluir.");
+        return;
+      }
+
+      const indice = window.prompt(
+        `Digite o número do vale que deseja excluir:\n\n${textoLista}`
+      );
+      if (!indice) return;
+
+      const indiceNumero = Number(indice) - 1;
+      if (Number.isNaN(indiceNumero) || indiceNumero < 0 || indiceNumero >= lista.length) {
+        window.alert("Índice inválido.");
+        return;
+      }
+
+      const valeSelecionado = lista[indiceNumero];
+
+      setVales((prev) => prev.filter((vale) => vale.id !== valeSelecionado.id));
+    }
+  };
+
+  const handleBoletoNegativo = (
+    funcionarioId: number,
+    nomeFuncionario: string,
+    boleto: number
+  ) => {
+    if (boleto >= 0) {
+      window.alert(`Boleto atual: ${formatCurrency(boleto)}`);
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `O boleto de ${nomeFuncionario} está negativo em ${formatCurrency(
+        boleto
+      )}.\n\nDeseja adicionar isso como vale no mês seguinte?`
+    );
+
+    if (!confirmar) return;
+
+    const proximoMes = avancarMes(ano, mesNumero, 1);
+
+    const novoVale: ValeParcela = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      funcionarioId,
+      unidade,
+      descricao: `Negativo do mês ${mes}/${ano}`,
+      valor: Math.abs(Number(boleto.toFixed(2))),
+      parcelaAtual: 1,
+      totalParcelas: 1,
+      ano: proximoMes.ano,
+      mes: proximoMes.mes,
+    };
+
+    setVales((prev) => [...prev, novoVale]);
+
+    window.alert(
+      `Vale criado para ${getMesNome(proximoMes.mes)}/${proximoMes.ano} no valor de ${formatCurrency(
+        novoVale.valor
+      )}.`
     );
   };
 
@@ -404,11 +572,12 @@ export default function FolhaPagamento() {
 
                   const totalLiquidez = item.sem1 + item.sem2 + item.sem3 + item.sem4;
                   const totalComissao = com1 + com2 + com3 + com4;
+                  const totalVale = getTotalValeDoMes(item.id);
 
                   const boleto =
                     totalComissao +
                     item.premiacao -
-                    item.vale -
+                    totalVale -
                     item.aluguel -
                     item.inss -
                     item.adiantamento -
@@ -512,10 +681,10 @@ export default function FolhaPagamento() {
 
                       <td style={tdStyle}>
                         <button
-                          onClick={() => atualizarCampoValor(item.id, "vale", "Vale")}
+                          onClick={() => gerenciarVales(item.id, item.nome)}
                           style={moneyActionStyle}
                         >
-                          {formatCurrency(item.vale)}
+                          {formatCurrency(totalVale)}
                         </button>
                       </td>
 
@@ -557,14 +726,24 @@ export default function FolhaPagamento() {
                         </button>
                       </td>
 
-                      <td
-                        style={{
-                          ...tdStyle,
-                          color: boleto < 0 ? "#f87171" : "#d1d5db",
-                          fontWeight: 700,
-                        }}
-                      >
-                        {formatCurrency(boleto)}
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() => handleBoletoNegativo(item.id, item.nome, boleto)}
+                          style={{
+                            ...moneyActionStyle,
+                            color: boleto < 0 ? "#f87171" : "#d1d5db",
+                            borderColor:
+                              boleto < 0
+                                ? "rgba(248, 113, 113, 0.35)"
+                                : "rgba(251, 191, 36, 0.25)",
+                            background:
+                              boleto < 0
+                                ? "rgba(248, 113, 113, 0.12)"
+                                : "rgba(251, 191, 36, 0.08)",
+                          }}
+                        >
+                          {formatCurrency(boleto)}
+                        </button>
                       </td>
 
                       <td style={tdStyle}>
@@ -632,17 +811,6 @@ const inputStyle: React.CSSProperties = {
   borderRadius: "4px",
   fontSize: "14px",
   boxSizing: "border-box",
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  background: "#fbbf24",
-  color: "black",
-  border: "none",
-  padding: "10px 16px",
-  borderRadius: "4px",
-  cursor: "pointer",
-  fontWeight: 700,
-  fontSize: "14px",
 };
 
 const moneyActionStyle: React.CSSProperties = {
