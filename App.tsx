@@ -4,6 +4,7 @@ import FolhaPagamento from "./FolhaPagamento";
 import GestaoFuncionarios from "./GestaoFuncionarios";
 import GestaoMetas from "./GestaoMetas";
 import AnaliseFuncionario from "./AnaliseFuncionario";
+import ConsultorVendas from "./ConsultorVendas"; // 👈 NOVO
 
 export default function App() {
   const [page, setPage] = useState("home");
@@ -21,6 +22,7 @@ export default function App() {
             <button onClick={() => setPage("funcionarios")}>Funcionários</button>
             <button onClick={() => setPage("metas")}>Metas</button>
             <button onClick={() => setPage("analise")}>Análise</button>
+            <button onClick={() => setPage("consultor")}>Consultor</button> {/* 👈 NOVO */}
           </div>
         </div>
       )}
@@ -29,6 +31,7 @@ export default function App() {
       {page === "funcionarios" && <GestaoFuncionarios />}
       {page === "metas" && <GestaoMetas />}
       {page === "analise" && <AnaliseFuncionario />}
+      {page === "consultor" && <ConsultorVendas />} {/* 👈 NOVO */}
     </div>
   );
-} 
+}
