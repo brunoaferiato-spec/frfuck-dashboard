@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useLocation } from "wouter";
 
 type Unidade =
   | "Joinville"
@@ -235,6 +236,8 @@ function formatarResumoMeta(meta: Meta | undefined) {
 }
 
 export default function FolhaPagamento() {
+  const [, setLocation] = useLocation();
+
   const [unidade, setUnidade] = useState<Unidade>("Joinville");
   const [ano, setAno] = useState<number>(2026);
   const [mes, setMes] = useState<string>("Março");
@@ -710,7 +713,7 @@ export default function FolhaPagamento() {
       <div style={{ maxWidth: "1700px", margin: "0 auto" }}>
         <div style={{ marginBottom: "32px", display: "flex", alignItems: "center", gap: "16px" }}>
           <button
-            onClick={() => (window.location.href = "/")}
+            onClick={() => setLocation("/")}
             style={{
               background: "transparent",
               border: "none",
