@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `auditoria` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`lojaId` int NOT NULL,\n\t`funcionarioId` int NOT NULL,\n\t`ano` int NOT NULL,\n\t`mes` int NOT NULL,\n\t`campo` varchar(100) NOT NULL,\n\t`valorAnterior` text,\n\t`valorNovo` text,\n\t`usuarioId` int NOT NULL,\n\t`usuarioNome` varchar(255),\n\t`dataAlteracao` timestamp NOT NULL DEFAULT (now()),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `auditoria_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3iD7kBANDEUx9PQ.b3eebfd14ca7 --database kpwoMd7wiTukTcSXXvoqVP --execute CREATE TABLE `auditoria` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`lojaId` int NOT NULL,\n\t`funcionarioId` int NOT NULL,\n\t`ano` int NOT NULL,\n\t`mes` int NOT NULL,\n\t`campo` varchar(100) NOT NULL,\n\t`valorAnterior` text,\n\t`valorNovo` text,\n\t`usuarioId` int NOT NULL,\n\t`usuarioNome` varchar(255),\n\t`dataAlteracao` timestamp NOT NULL DEFAULT (now()),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `auditoria_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 694
+}
