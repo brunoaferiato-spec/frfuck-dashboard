@@ -4,6 +4,7 @@ import mysql from "mysql2/promise";
 import * as schema from "../drizzle/schema";
 import {
   InsertUser,
+  InsertFuncionario,
   users,
   lojas,
   funcionarios,
@@ -125,12 +126,12 @@ export async function getUserByEmail(email: string) {
   }
 
   const result = await db
-  .select()
-  .from(users)
-  .where(eq(users.email, email))
-  .limit(1);
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
 
-return result[0] ?? undefined;
+  return result[0] ?? undefined;
 }
 
 // ===== Lojas =====
@@ -147,7 +148,7 @@ export async function getLojaById(id: number) {
   return result.length > 0 ? result[0] : null;
 }
 
-// ===== Funcionarios =====
+// ===== Funcionários =====
 export async function getFuncionariosByLoja(lojaId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -167,9 +168,76 @@ export async function getFuncionarioAtivo(lojaId: number, id: number) {
   const result = await db
     .select()
     .from(funcionarios)
-    .where(and(eq(funcionarios.lojaId, lojaId), eq(funcionarios.id, id), eq(funcionarios.status, "ativo")))
+    .where(
+      and(
+        eq(funcionarios.lojaId, lojaId),
+        eq(funcionarios.id, id),
+        eq(funcionarios.status, "ativo")
+      )
+    )
     .limit(1);
   return result.length > 0 ? result[0] : null;
+}
+
+export async function createFuncionario(data: {
+  lojaId: number;
+  nome: string;
+  cpf?: string | null;
+  pix?: string | null;
+  funcao:
+    | "mecanico"
+    | "vendedor"
+    | "consultor_vendas"
+    | "alinhador"
+    | "aux_alinhador"
+    | "recepcionista"
+    | "auxiliar_estoque"
+    | "lider_estoque"
+    | "auxiliar_caixa"
+    | "administrativo"
+    | "gerente"
+    | "supervisor";
+  tipoMeta?: "meta1" | "meta2" | null;
+  dataAdmissao: Date;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Banco não conectado");
+  }
+
+  const values: InsertFuncionario = {
+    lojaId: data.lojaId,
+    nome: data.nome,
+    cpf: data.cpf ?? null,
+    pix: data.pix ?? null,
+    funcao: data.funcao,
+    tipoMeta: data.tipoMeta ?? null,
+    dataAdmissao: data.dataAdmissao,
+    status: "ativo",
+  };
+
+  const result = await db.insert(funcionarios).values(values as any);
+
+  const insertId = result?.[0]?.insertId ?? result?.insertId;
+
+  if (!insertId) {
+    const criado = await db
+      .select()
+      .from(funcionarios)
+      .where(eq(funcionarios.nome, data.nome))
+      .orderBy(desc(funcionarios.id))
+      .limit(1);
+
+    return criado[0] ?? null;
+  }
+
+  const criado = await db
+    .select()
+    .from(funcionarios)
+    .where(eq(funcionarios.id, insertId))
+    .limit(1);
+
+  return criado[0] ?? null;
 }
 
 // ===== Metas =====
@@ -179,7 +247,14 @@ export async function getMetaByFuncaoLojaAnoMes(lojaId: number, funcao: string, 
   const result = await db
     .select()
     .from(metas)
-    .where(and(eq(metas.lojaId, lojaId), eq(metas.funcao, funcao), eq(metas.ano, ano), eq(metas.mes, mes)))
+    .where(
+      and(
+        eq(metas.lojaId, lojaId),
+        eq(metas.funcao, funcao),
+        eq(metas.ano, ano),
+        eq(metas.mes, mes)
+      )
+    )
     .limit(1);
   return result.length > 0 ? result[0] : null;
 }
@@ -220,7 +295,11 @@ export async function getFolhaByFuncionarioAnoMes(funcionarioId: number, ano: nu
     .select()
     .from(folhaPagamento)
     .where(
-      and(eq(folhaPagamento.funcionarioId, funcionarioId), eq(folhaPagamento.ano, ano), eq(folhaPagamento.mes, mes))
+      and(
+        eq(folhaPagamento.funcionarioId, funcionarioId),
+        eq(folhaPagamento.ano, ano),
+        eq(folhaPagamento.mes, mes)
+      )
     );
 }
 
@@ -230,7 +309,13 @@ export async function getFolhaByLojaAnoMes(lojaId: number, ano: number, mes: num
   return await db
     .select()
     .from(folhaPagamento)
-    .where(and(eq(folhaPagamento.lojaId, lojaId), eq(folhaPagamento.ano, ano), eq(folhaPagamento.mes, mes)));
+    .where(
+      and(
+        eq(folhaPagamento.lojaId, lojaId),
+        eq(folhaPagamento.ano, ano),
+        eq(folhaPagamento.mes, mes)
+      )
+    );
 }
 
 // ===== Premiações =====
@@ -241,7 +326,11 @@ export async function getPremiacoesByFuncionarioAnoMes(funcionarioId: number, an
     .select()
     .from(premiacoes)
     .where(
-      and(eq(premiacoes.funcionarioId, funcionarioId), eq(premiacoes.ano, ano), eq(premiacoes.mes, mes))
+      and(
+        eq(premiacoes.funcionarioId, funcionarioId),
+        eq(premiacoes.ano, ano),
+        eq(premiacoes.mes, mes)
+      )
     );
 }
 
@@ -252,7 +341,14 @@ export async function getValesByFuncionarioAnoMes(funcionarioId: number, ano: nu
   return await db
     .select()
     .from(vales)
-    .where(and(eq(vales.funcionarioId, funcionarioId), eq(vales.ano, ano), eq(vales.mes, mes), eq(vales.status, "ativo")));
+    .where(
+      and(
+        eq(vales.funcionarioId, funcionarioId),
+        eq(vales.ano, ano),
+        eq(vales.mes, mes),
+        eq(vales.status, "ativo")
+      )
+    );
 }
 
 export async function getValesByFuncionarioMesOrigem(funcionarioId: number, mesOrigem: number) {
@@ -261,7 +357,13 @@ export async function getValesByFuncionarioMesOrigem(funcionarioId: number, mesO
   return await db
     .select()
     .from(vales)
-    .where(and(eq(vales.funcionarioId, funcionarioId), eq(vales.mesOrigem, mesOrigem), eq(vales.status, "ativo")));
+    .where(
+      and(
+        eq(vales.funcionarioId, funcionarioId),
+        eq(vales.mesOrigem, mesOrigem),
+        eq(vales.status, "ativo")
+      )
+    );
 }
 
 // ===== Descontos =====
@@ -271,7 +373,13 @@ export async function getDescontosByFuncionarioAnoMes(funcionarioId: number, ano
   return await db
     .select()
     .from(descontos)
-    .where(and(eq(descontos.funcionarioId, funcionarioId), eq(descontos.ano, ano), eq(descontos.mes, mes)));
+    .where(
+      and(
+        eq(descontos.funcionarioId, funcionarioId),
+        eq(descontos.ano, ano),
+        eq(descontos.mes, mes)
+      )
+    );
 }
 
 // ===== Observações =====
@@ -281,17 +389,30 @@ export async function getObservacoesByFuncionarioAnoMes(funcionarioId: number, a
   return await db
     .select()
     .from(observacoes)
-    .where(and(eq(observacoes.funcionarioId, funcionarioId), eq(observacoes.ano, ano), eq(observacoes.mes, mes)));
+    .where(
+      and(
+        eq(observacoes.funcionarioId, funcionarioId),
+        eq(observacoes.ano, ano),
+        eq(observacoes.mes, mes)
+      )
+    );
 }
 
 // ===== Tarefas =====
 export async function getTarefasByUsuario(usuarioId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(tarefas).where(eq(tarefas.usuarioId, usuarioId)).orderBy(desc(tarefas.dataVencimento));
+  return await db
+    .select()
+    .from(tarefas)
+    .where(eq(tarefas.usuarioId, usuarioId))
+    .orderBy(desc(tarefas.dataVencimento));
 }
 
-export async function getTarefasByUsuarioStatus(usuarioId: number, status: "pendente" | "concluida" | "cancelada") {
+export async function getTarefasByUsuarioStatus(
+  usuarioId: number,
+  status: "pendente" | "concluida" | "cancelada"
+) {
   const db = await getDb();
   if (!db) return [];
   return await db
@@ -340,28 +461,44 @@ export async function getConciliacaoByContaAnoMes(contaBancariaId: number, ano: 
 export async function getLogsByUsuario(usuarioId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(logsAtividade).where(eq(logsAtividade.usuarioId, usuarioId)).orderBy(desc(logsAtividade.createdAt));
+  return await db
+    .select()
+    .from(logsAtividade)
+    .where(eq(logsAtividade.usuarioId, usuarioId))
+    .orderBy(desc(logsAtividade.createdAt));
 }
 
 // ===== Feedbacks =====
 export async function getFeedbacksByFuncionario(funcionarioId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(feedbacks).where(eq(feedbacks.funcionarioId, funcionarioId)).orderBy(desc(feedbacks.dataFeedback));
+  return await db
+    .select()
+    .from(feedbacks)
+    .where(eq(feedbacks.funcionarioId, funcionarioId))
+    .orderBy(desc(feedbacks.dataFeedback));
 }
 
 // ===== Férias =====
 export async function getFeriasByFuncionario(funcionarioId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(ferias).where(eq(ferias.funcionarioId, funcionarioId)).orderBy(desc(ferias.dataInicio));
+  return await db
+    .select()
+    .from(ferias)
+    .where(eq(ferias.funcionarioId, funcionarioId))
+    .orderBy(desc(ferias.dataInicio));
 }
 
 // ===== Rescisões =====
 export async function getRescisoesByFuncionario(funcionarioId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(rescisoes).where(eq(rescisoes.funcionarioId, funcionarioId)).orderBy(desc(rescisoes.dataRescisao));
+  return await db
+    .select()
+    .from(rescisoes)
+    .where(eq(rescisoes.funcionarioId, funcionarioId))
+    .orderBy(desc(rescisoes.dataRescisao));
 }
 
 // ===== Compras =====
@@ -375,10 +512,16 @@ export async function getComprasByLojaAnoMes(lojaId: number, ano: number, mes: n
     .orderBy(desc(compras.data));
 }
 
-export async function getComprasByLojaCategoria(lojaId: number, categoria: "pneus" | "insumos_estoque" | "outros") {
+export async function getComprasByLojaCategoria(
+  lojaId: number,
+  categoria: "pneus" | "insumos_estoque" | "outros"
+) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(compras).where(and(eq(compras.lojaId, lojaId), eq(compras.categoria, categoria)));
+  return await db
+    .select()
+    .from(compras)
+    .where(and(eq(compras.lojaId, lojaId), eq(compras.categoria, categoria)));
 }
 
 // ===== Usuários =====

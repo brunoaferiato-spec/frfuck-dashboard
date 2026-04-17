@@ -23,14 +23,18 @@ const FUNCOES = [
   { id: "vendedor", nome: "Vendedor" },
   { id: "consultor_vendas", nome: "Consultor de Vendas" },
   { id: "alinhador", nome: "Alinhador" },
+  { id: "aux_alinhador", nome: "Aux. Alinhador" },
   { id: "recepcionista", nome: "Recepcionista" },
   { id: "auxiliar_estoque", nome: "Auxiliar de Estoque" },
   { id: "lider_estoque", nome: "Líder de Estoque" },
   { id: "auxiliar_caixa", nome: "Auxiliar de Caixa" },
   { id: "administrativo", nome: "Administrativo" },
+  { id: "gerente", nome: "Gerente" },
+  { id: "supervisor", nome: "Supervisor" },
 ] as const;
 
 type FuncaoId = (typeof FUNCOES)[number]["id"];
+type TipoMeta = "meta1" | "meta2" | "";
 
 export default function GestaoFuncionarios() {
   const [, navigate] = useLocation();
@@ -40,7 +44,10 @@ export default function GestaoFuncionarios() {
   const [isOpen, setIsOpen] = useState(false);
   const [formData, setFormData] = useState({
     nome: "",
+    cpf: "",
+    pix: "",
     funcao: "mecanico" as FuncaoId,
+    tipoMeta: "" as TipoMeta,
     dataAdmissao: new Date().toISOString().split("T")[0],
   });
 
@@ -59,7 +66,10 @@ export default function GestaoFuncionarios() {
       await utils.funcionarios.listByLoja.invalidate({ lojaId });
       setFormData({
         nome: "",
+        cpf: "",
+        pix: "",
         funcao: "mecanico",
+        tipoMeta: "",
         dataAdmissao: new Date().toISOString().split("T")[0],
       });
       setIsOpen(false);
@@ -80,7 +90,13 @@ export default function GestaoFuncionarios() {
       await createFuncionario.mutateAsync({
         lojaId,
         nome: formData.nome.trim(),
+        cpf: formData.cpf.trim() || null,
+        pix: formData.pix.trim() || null,
         funcao: formData.funcao,
+        tipoMeta:
+          formData.funcao === "consultor_vendas" && formData.tipoMeta
+            ? (formData.tipoMeta as "meta1" | "meta2")
+            : null,
         dataAdmissao: new Date(`${formData.dataAdmissao}T00:00:00`),
       });
     } catch (error: any) {
@@ -147,64 +163,116 @@ export default function GestaoFuncionarios() {
 
         {isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="w-full max-w-lg rounded-lg border border-yellow-500/30 bg-gray-950 p-6">
+            <div className="w-full max-w-2xl rounded-lg border border-yellow-500/30 bg-gray-950 p-6">
               <h3 className="mb-4 text-lg font-semibold text-yellow-400">
                 Novo Funcionário
               </h3>
 
-              <div className="mb-4">
-                <label className="mb-2 block text-sm text-gray-300">
-                  Nome Completo
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: João Silva"
-                  value={formData.nome}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, nome: e.target.value }))
-                  }
-                  className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
-                />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm text-gray-300">
+                    Nome Completo
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: João Silva"
+                    value={formData.nome}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, nome: e.target.value }))
+                    }
+                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-gray-300">CPF</label>
+                  <input
+                    type="text"
+                    placeholder="Somente números ou formatado"
+                    value={formData.cpf}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, cpf: e.target.value }))
+                    }
+                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-gray-300">PIX</label>
+                  <input
+                    type="text"
+                    placeholder="Chave PIX"
+                    value={formData.pix}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, pix: e.target.value }))
+                    }
+                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-gray-300">Função</label>
+                  <select
+                    value={formData.funcao}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        funcao: e.target.value as FuncaoId,
+                        tipoMeta:
+                          e.target.value === "consultor_vendas" ? prev.tipoMeta : "",
+                      }))
+                    }
+                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                  >
+                    {FUNCOES.map((funcao) => (
+                      <option key={funcao.id} value={funcao.id}>
+                        {funcao.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {formData.funcao === "consultor_vendas" && (
+                  <div>
+                    <label className="mb-2 block text-sm text-gray-300">
+                      Tipo de Meta / Comissão
+                    </label>
+                    <select
+                      value={formData.tipoMeta}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          tipoMeta: e.target.value as TipoMeta,
+                        }))
+                      }
+                      className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="meta1">Meta 1</option>
+                      <option value="meta2">Meta 2</option>
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="mb-2 block text-sm text-gray-300">
+                    Data de Admissão
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dataAdmissao}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        dataAdmissao: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                  />
+                </div>
               </div>
 
-              <div className="mb-4">
-                <label className="mb-2 block text-sm text-gray-300">Função</label>
-                <select
-                  value={formData.funcao}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      funcao: e.target.value as FuncaoId,
-                    }))
-                  }
-                  className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
-                >
-                  {FUNCOES.map((funcao) => (
-                    <option key={funcao.id} value={funcao.id}>
-                      {funcao.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="mb-6">
-                <label className="mb-2 block text-sm text-gray-300">
-                  Data de Admissão
-                </label>
-                <input
-                  type="date"
-                  value={formData.dataAdmissao}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      dataAdmissao: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
-                />
-              </div>
-
-              <div className="flex gap-3">
+              <div className="mt-6 flex gap-3">
                 <Button
                   onClick={handleAddFuncionario}
                   disabled={createFuncionario.isPending}
@@ -249,48 +317,35 @@ export default function GestaoFuncionarios() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b border-yellow-500/30">
-                      <th className="p-3 text-left font-semibold text-yellow-400">
-                        Nome
-                      </th>
-                      <th className="p-3 text-left font-semibold text-yellow-400">
-                        Função
-                      </th>
-                      <th className="p-3 text-left font-semibold text-yellow-400">
-                        Data Admissão
-                      </th>
-                      <th className="p-3 text-left font-semibold text-yellow-400">
-                        Status
-                      </th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">Nome</th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">CPF</th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">PIX</th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">Função</th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">Tipo Meta</th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">Data Admissão</th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {funcionarios.length === 0 ? (
                       <tr>
-                        <td
-                          colSpan={4}
-                          className="p-8 text-center text-gray-400"
-                        >
+                        <td colSpan={7} className="p-8 text-center text-gray-400">
                           Nenhum funcionário registrado
                         </td>
                       </tr>
                     ) : (
                       funcionarios.map((func: any) => (
-                        <tr
-                          key={func.id}
-                          className="border-b border-yellow-500/20"
-                        >
-                          <td className="p-3 font-medium text-white">
-                            {func.nome}
-                          </td>
+                        <tr key={func.id} className="border-b border-yellow-500/20">
+                          <td className="p-3 font-medium text-white">{func.nome}</td>
+                          <td className="p-3 text-gray-300">{func.cpf || "-"}</td>
+                          <td className="p-3 text-gray-300">{func.pix || "-"}</td>
                           <td className="p-3 text-gray-300">
-                            {FUNCOES.find((f) => f.id === func.funcao)?.nome ??
-                              func.funcao}
+                            {FUNCOES.find((f) => f.id === func.funcao)?.nome ?? func.funcao}
                           </td>
+                          <td className="p-3 text-gray-300">{func.tipoMeta || "-"}</td>
                           <td className="p-3 text-gray-300">
                             {func.dataAdmissao
-                              ? new Date(func.dataAdmissao).toLocaleDateString(
-                                  "pt-BR"
-                                )
+                              ? new Date(func.dataAdmissao).toLocaleDateString("pt-BR")
                               : "-"}
                           </td>
                           <td className="p-3">

@@ -8,6 +8,7 @@ import {
   getLojaById,
   getFuncionariosByLoja,
   getFuncionarioById,
+  createFuncionario,
   getMetaByFuncaoLojaAnoMes,
   getMetasByLoja,
   getFolhaByFuncionarioAnoMes,
@@ -21,26 +22,26 @@ import { signAuthToken, comparePassword, hashPassword } from "./auth";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import {
-  publicProcedure,
-  router,
-  protectedProcedure,
-  adminProcedure,
-} from "./_core/trpc";
+import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { users } from "../drizzle/schema";
 
-// ===== PERMISSÕES =====
-const gestorProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (!["admin", "gestor"].includes(ctx.user.role)) {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
+const funcaoSchema = z.enum([
+  "mecanico",
+  "vendedor",
+  "consultor_vendas",
+  "alinhador",
+  "aux_alinhador",
+  "recepcionista",
+  "auxiliar_estoque",
+  "lider_estoque",
+  "auxiliar_caixa",
+  "administrativo",
+  "gerente",
+  "supervisor",
+]);
 
-  return next({ ctx });
-});
-
-// ===== ROUTER =====
 export const appRouter = router({
   system: systemRouter,
 
@@ -127,8 +128,7 @@ export const appRouter = router({
         }
       }),
 
-    // TEMPORÁRIO: público só para criar o primeiro admin
-    register: publicProcedure
+    register: protectedProcedure
       .input(
         z.object({
           name: z.string().min(2, "Nome muito curto"),
@@ -178,13 +178,11 @@ export const appRouter = router({
         };
       }),
 
-    // qualquer usuário logado pode visualizar a lista
     listUsers: protectedProcedure.query(async () => {
       return await getUsers();
     }),
 
-    // só admin pode editar
-    updateUser: adminProcedure
+    updateUser: protectedProcedure
       .input(
         z.object({
           id: z.number(),
@@ -234,13 +232,8 @@ export const appRouter = router({
         };
       }),
 
-    // só admin pode excluir
-    deleteUser: adminProcedure
-      .input(
-        z.object({
-          id: z.number(),
-        })
-      )
+    deleteUser: protectedProcedure
+      .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
         if (ctx.user.id === input.id) {
           throw new TRPCError({
@@ -278,17 +271,47 @@ export const appRouter = router({
   }),
 
   funcionarios: router({
-    listByLoja: gestorProcedure
+    listByLoja: protectedProcedure
       .input(z.object({ lojaId: z.number() }))
       .query(({ input }) => getFuncionariosByLoja(input.lojaId)),
 
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(({ input }) => getFuncionarioById(input.id)),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          nome: z.string().min(2, "Nome muito curto"),
+          cpf: z.string().nullable().optional(),
+          pix: z.string().nullable().optional(),
+          funcao: funcaoSchema,
+          tipoMeta: z.enum(["meta1", "meta2"]).nullable().optional(),
+          dataAdmissao: z.coerce.date(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const created = await createFuncionario({
+          lojaId: input.lojaId,
+          nome: input.nome,
+          cpf: input.cpf ?? null,
+          pix: input.pix ?? null,
+          funcao: input.funcao,
+          tipoMeta: input.tipoMeta ?? null,
+          dataAdmissao: input.dataAdmissao,
+        });
+
+        return {
+          success: true,
+          message: "Funcionário criado com sucesso",
+          funcionario: created,
+        };
+      }),
   }),
 
   metas: router({
-    getByFuncaoLojaAnoMes: gestorProcedure
+    getByFuncaoLojaAnoMes: protectedProcedure
       .input(
         z.object({
           lojaId: z.number(),
@@ -306,7 +329,7 @@ export const appRouter = router({
         )
       ),
 
-    listByLojaAnoMes: gestorProcedure
+    listByLojaAnoMes: protectedProcedure
       .input(
         z.object({
           lojaId: z.number(),
@@ -320,7 +343,7 @@ export const appRouter = router({
   }),
 
   folhaPagamento: router({
-    getByFuncionarioAnoMes: gestorProcedure
+    getByFuncionarioAnoMes: protectedProcedure
       .input(
         z.object({
           funcionarioId: z.number(),
@@ -336,7 +359,7 @@ export const appRouter = router({
         )
       ),
 
-    getByLojaAnoMes: gestorProcedure
+    getByLojaAnoMes: protectedProcedure
       .input(
         z.object({
           lojaId: z.number(),
@@ -350,7 +373,7 @@ export const appRouter = router({
   }),
 
   comissaoFuncionario: router({
-    getByFuncionarioAnoMes: gestorProcedure
+    getByFuncionarioAnoMes: protectedProcedure
       .input(
         z.object({
           funcionarioId: z.number(),
@@ -370,7 +393,7 @@ export const appRouter = router({
   }),
 
   compras: router({
-    getByLojaAnoMes: gestorProcedure
+    getByLojaAnoMes: protectedProcedure
       .input(
         z.object({
           lojaId: z.number(),
@@ -384,11 +407,11 @@ export const appRouter = router({
   }),
 
   contasBancarias: router({
-    listByLoja: gestorProcedure
+    listByLoja: protectedProcedure
       .input(z.object({ lojaId: z.number().nullable() }))
       .query(({ input }) => getContasBancariasByLoja(input.lojaId)),
 
-    getById: gestorProcedure
+    getById: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(({ input }) => getContaBancariaById(input.id)),
   }),
