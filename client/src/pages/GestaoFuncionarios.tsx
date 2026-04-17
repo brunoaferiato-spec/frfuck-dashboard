@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Trash2, UserPlus } from "lucide-react";
-
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,467 +10,307 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  getFuncionarios,
-  saveFuncionarios,
-  type Funcionario,
-  type TipoMeta,
-} from "@/lib/payrollStore";
 
 const LOJAS = [
   { id: 1, nome: "Joinville" },
   { id: 2, nome: "Blumenau" },
   { id: 3, nome: "São José" },
   { id: 4, nome: "Florianópolis" },
-  { id: 5, nome: "ACI Promoções" },
-  { id: 6, nome: "Contrato PJ" },
 ];
 
 const FUNCOES = [
-  { value: "gerente", label: "Gerente" },
-  { value: "vendedor", label: "Vendedor" },
-  { value: "mecanico", label: "Mecânico" },
-  { value: "aux_mecanico", label: "Auxiliar de Mecânico" },
-  { value: "consultor_vendas", label: "Consultor de Vendas" },
-  { value: "alinhador", label: "Alinhador" },
-  { value: "aux_alinhador", label: "Auxiliar de Alinhador" },
-  { value: "recepcionista", label: "Recepcionista" },
-  { value: "caixa_lider", label: "Caixa Líder" },
-  { value: "caixa", label: "Caixa" },
-  { value: "estoquista_lider", label: "Estoquista Líder" },
-  { value: "estoquista", label: "Estoquista" },
-  { value: "aux_limpeza", label: "Auxiliar de Limpeza" },
-  { value: "administrativo", label: "Administrativo" },
-  { value: "supervisor", label: "Supervisor" },
-];
+  { id: "mecanico", nome: "Mecânico" },
+  { id: "vendedor", nome: "Vendedor" },
+  { id: "consultor_vendas", nome: "Consultor de Vendas" },
+  { id: "alinhador", nome: "Alinhador" },
+  { id: "recepcionista", nome: "Recepcionista" },
+  { id: "auxiliar_estoque", nome: "Auxiliar de Estoque" },
+  { id: "lider_estoque", nome: "Líder de Estoque" },
+  { id: "auxiliar_caixa", nome: "Auxiliar de Caixa" },
+  { id: "administrativo", nome: "Administrativo" },
+] as const;
 
-function generateId() {
-  return Date.now() + Math.floor(Math.random() * 1000);
-}
+type FuncaoId = (typeof FUNCOES)[number]["id"];
 
 export default function GestaoFuncionarios() {
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
+  const utils = trpc.useUtils();
 
-  const [funcionarios, setFuncionarios] = useState<Funcionario[]>(
-    getFuncionarios()
-  );
   const [selectedLoja, setSelectedLoja] = useState("1");
-  const [modalOpen, setModalOpen] = useState(false);
-
-  const [novoFuncionario, setNovoFuncionario] = useState({
-    cidade: "1",
-    funcao: "",
+  const [isOpen, setIsOpen] = useState(false);
+  const [formData, setFormData] = useState({
     nome: "",
-    cpf: "",
-    pix: "",
-    dataNascimento: "",
-    dataAdmissao: "",
-    tipoMeta: "" as TipoMeta | "",
+    funcao: "mecanico" as FuncaoId,
+    dataAdmissao: new Date().toISOString().split("T")[0],
   });
 
   const lojaId = Number(selectedLoja);
 
-  const funcionariosFiltrados = useMemo(() => {
-    return funcionarios.filter(
-      (f) => f.loja_id === lojaId && f.status !== "inativo"
-    );
-  }, [funcionarios, lojaId]);
+  const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
+    { lojaId },
+    {
+      enabled: !!lojaId,
+      retry: false,
+    }
+  );
 
-  function handleAddFuncionario() {
-    if (
-      !novoFuncionario.cidade ||
-      !novoFuncionario.funcao ||
-      !novoFuncionario.nome.trim() ||
-      !novoFuncionario.cpf.trim() ||
-      !novoFuncionario.dataNascimento ||
-      !novoFuncionario.dataAdmissao
-    ) {
+  const createFuncionario = trpc.funcionarios.create.useMutation({
+    onSuccess: async () => {
+      await utils.funcionarios.listByLoja.invalidate({ lojaId });
+      setFormData({
+        nome: "",
+        funcao: "mecanico",
+        dataAdmissao: new Date().toISOString().split("T")[0],
+      });
+      setIsOpen(false);
+    },
+  });
+
+  const lojaNome = useMemo(() => {
+    return LOJAS.find((l) => l.id === lojaId)?.nome ?? "Loja";
+  }, [lojaId]);
+
+  const handleAddFuncionario = async () => {
+    if (!formData.nome.trim()) {
+      alert("Preencha o nome do funcionário");
       return;
     }
 
-    const funcionario: Funcionario = {
-      id: generateId(),
-      nome: novoFuncionario.nome.trim(),
-      cpf: novoFuncionario.cpf.trim(),
-      pix: novoFuncionario.pix.trim(),
-      dataNascimento: novoFuncionario.dataNascimento,
-      funcao: novoFuncionario.funcao,
-      loja_id: Number(novoFuncionario.cidade),
-      dataAdmissao: novoFuncionario.dataAdmissao,
-      status: "ativo",
-      tipoMeta:
-        novoFuncionario.funcao === "consultor_vendas"
-          ? (novoFuncionario.tipoMeta || "meta1")
-          : "",
-      dataExperiencia45: "",
-      dataExperiencia90: "",
-      dataDemissao: "",
-      debitoPendente: 0,
-      dataFeedbackProxima: "",
-      dataFeriasInicio: "",
-      dataFeriasFim: "",
-      dataFerias2Inicio: "",
-      dataFerias2Fim: "",
-    };
+    try {
+      await createFuncionario.mutateAsync({
+        lojaId,
+        nome: formData.nome.trim(),
+        funcao: formData.funcao,
+        dataAdmissao: new Date(`${formData.dataAdmissao}T00:00:00`),
+      });
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message ?? "Erro ao salvar funcionário");
+    }
+  };
 
-    const next = [...funcionarios, funcionario];
-    setFuncionarios(next);
-    saveFuncionarios(next);
-
-    setNovoFuncionario({
-      cidade: selectedLoja,
-      funcao: "",
-      nome: "",
-      cpf: "",
-      pix: "",
-      dataNascimento: "",
-      dataAdmissao: "",
-      tipoMeta: "",
-    });
-
-    setModalOpen(false);
-  }
-
-  function handleDeleteFuncionario(id: number) {
-    const next = funcionarios.map((f) =>
-      f.id === id ? { ...f, status: "inativo" as const } : f
-    );
-    setFuncionarios(next);
-    saveFuncionarios(next);
-  }
+  const funcionarios = funcionariosQuery.data ?? [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-black p-6 text-white">
-      <div className="max-w-[1600px] mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="mb-8 flex items-center gap-4">
+          <Button
+            onClick={() => navigate("/")}
+            variant="ghost"
+            className="text-yellow-400 hover:bg-yellow-500/10 hover:text-yellow-300"
+          >
+            <ArrowLeft className="mr-2 h-5 w-5" />
+            Voltar
+          </Button>
+
           <div>
-            <div className="flex items-center gap-4 mb-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation("/")}
-                className="text-primary hover:bg-primary/20"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <h1 className="text-3xl font-bold text-primary">
-                Gestão de Funcionários
-              </h1>
-            </div>
+            <h1 className="mb-2 text-3xl font-bold text-yellow-400">
+              Gestão de Funcionários
+            </h1>
             <p className="text-gray-400">
-              Cadastre e gerencie os funcionários por cidade
+              Admissão, demissão e histórico de funcionários
             </p>
           </div>
-
-          <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary text-black hover:bg-yellow-300 font-semibold">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Adicionar Funcionário
-              </Button>
-            </DialogTrigger>
-
-            <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-2xl">
-              <DialogHeader>
-                <DialogTitle className="text-primary">
-                  Adicionar Funcionário
-                </DialogTitle>
-                <DialogDescription className="text-gray-400">
-                  Preencha os dados do funcionário
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Cidade</Label>
-                  <Select
-                    value={novoFuncionario.cidade}
-                    onValueChange={(value) =>
-                      setNovoFuncionario((prev) => ({
-                        ...prev,
-                        cidade: value,
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-900 border-primary/30">
-                      {LOJAS.map((loja) => (
-                        <SelectItem
-                          key={loja.id}
-                          value={String(loja.id)}
-                          className="text-white"
-                        >
-                          {loja.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Função</Label>
-                  <Select
-                    value={novoFuncionario.funcao}
-                    onValueChange={(value) =>
-                      setNovoFuncionario((prev) => ({
-                        ...prev,
-                        funcao: value,
-                        tipoMeta: value === "consultor_vendas" ? "meta1" : "",
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
-                      <SelectValue placeholder="Selecionar função" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-900 border-primary/30">
-                      {FUNCOES.map((funcao) => (
-                        <SelectItem
-                          key={funcao.value}
-                          value={funcao.value}
-                          className="text-white"
-                        >
-                          {funcao.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label className="text-gray-300">Nome</Label>
-                  <Input
-                    value={novoFuncionario.nome}
-                    onChange={(e) =>
-                      setNovoFuncionario((prev) => ({
-                        ...prev,
-                        nome: e.target.value,
-                      }))
-                    }
-                    className="bg-gray-800 border-primary/30 text-white"
-                    placeholder="Nome completo"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-gray-300">CPF</Label>
-                  <Input
-                    value={novoFuncionario.cpf}
-                    onChange={(e) =>
-                      setNovoFuncionario((prev) => ({
-                        ...prev,
-                        cpf: e.target.value,
-                      }))
-                    }
-                    className="bg-gray-800 border-primary/30 text-white"
-                    placeholder="000.000.000-00"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-gray-300">PIX</Label>
-                  <Input
-                    value={novoFuncionario.pix}
-                    onChange={(e) =>
-                      setNovoFuncionario((prev) => ({
-                        ...prev,
-                        pix: e.target.value,
-                      }))
-                    }
-                    className="bg-gray-800 border-primary/30 text-white"
-                    placeholder="CPF, e-mail, telefone ou chave aleatória"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Data de Nascimento</Label>
-                  <Input
-                    type="date"
-                    value={novoFuncionario.dataNascimento}
-                    onChange={(e) =>
-                      setNovoFuncionario((prev) => ({
-                        ...prev,
-                        dataNascimento: e.target.value,
-                      }))
-                    }
-                    className="bg-gray-800 border-primary/30 text-white"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-gray-300">Data de Admissão</Label>
-                  <Input
-                    type="date"
-                    value={novoFuncionario.dataAdmissao}
-                    onChange={(e) =>
-                      setNovoFuncionario((prev) => ({
-                        ...prev,
-                        dataAdmissao: e.target.value,
-                      }))
-                    }
-                    className="bg-gray-800 border-primary/30 text-white"
-                  />
-                </div>
-
-                {novoFuncionario.funcao === "consultor_vendas" && (
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="text-gray-300">Tipo de Meta</Label>
-                    <Select
-                      value={novoFuncionario.tipoMeta || "meta1"}
-                      onValueChange={(value: TipoMeta) =>
-                        setNovoFuncionario((prev) => ({
-                          ...prev,
-                          tipoMeta: value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-900 border-primary/30">
-                        <SelectItem value="meta1" className="text-white">
-                          Meta 1 (antiga)
-                        </SelectItem>
-                        <SelectItem value="meta2" className="text-white">
-                          Meta 2 (nova)
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter>
-                <Button
-                  className="bg-primary text-black hover:bg-yellow-300 w-full font-semibold"
-                  onClick={handleAddFuncionario}
-                >
-                  Adicionar
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
 
-        <Card className="bg-gray-900 border-primary/30">
+        <Card className="border-yellow-500/30 bg-gray-900 text-white">
           <CardHeader>
-            <CardTitle className="text-primary">Funcionários</CardTitle>
+            <CardTitle className="text-yellow-400">Seleção de Loja</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto] md:items-end">
+              <div>
+                <label className="mb-2 block text-sm text-gray-300">Loja</label>
+                <select
+                  value={selectedLoja}
+                  onChange={(e) => setSelectedLoja(e.target.value)}
+                  className="w-full rounded-md border border-yellow-500/30 bg-gray-800 px-3 py-2 text-white outline-none"
+                >
+                  {LOJAS.map((loja) => (
+                    <option key={loja.id} value={loja.id}>
+                      {loja.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <Button
+                onClick={() => setIsOpen(true)}
+                className="bg-yellow-400 text-black hover:bg-yellow-300"
+              >
+                + Novo Funcionário
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+            <div className="w-full max-w-lg rounded-lg border border-yellow-500/30 bg-gray-950 p-6">
+              <h3 className="mb-4 text-lg font-semibold text-yellow-400">
+                Novo Funcionário
+              </h3>
+
+              <div className="mb-4">
+                <label className="mb-2 block text-sm text-gray-300">
+                  Nome Completo
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: João Silva"
+                  value={formData.nome}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, nome: e.target.value }))
+                  }
+                  className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="mb-2 block text-sm text-gray-300">Função</label>
+                <select
+                  value={formData.funcao}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      funcao: e.target.value as FuncaoId,
+                    }))
+                  }
+                  className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                >
+                  {FUNCOES.map((funcao) => (
+                    <option key={funcao.id} value={funcao.id}>
+                      {funcao.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-6">
+                <label className="mb-2 block text-sm text-gray-300">
+                  Data de Admissão
+                </label>
+                <input
+                  type="date"
+                  value={formData.dataAdmissao}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      dataAdmissao: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleAddFuncionario}
+                  disabled={createFuncionario.isPending}
+                  className="flex-1 bg-yellow-400 text-black hover:bg-yellow-300"
+                >
+                  {createFuncionario.isPending ? "Salvando..." : "Salvar"}
+                </Button>
+
+                <Button
+                  onClick={() => setIsOpen(false)}
+                  variant="outline"
+                  className="flex-1 border-yellow-500/30 bg-transparent text-yellow-400 hover:bg-yellow-500/10"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <Card className="border-yellow-500/30 bg-gray-900 text-white">
+          <CardHeader>
+            <CardTitle className="text-yellow-400">
+              Funcionários - {lojaNome}
+            </CardTitle>
             <CardDescription className="text-gray-400">
-              Filtre por cidade e visualize os funcionários cadastrados
+              Total: {funcionarios.length} funcionário(s)
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4">
-            <div className="max-w-xs">
-              <Label className="text-gray-300 mb-2 block">Cidade</Label>
-              <Select value={selectedLoja} onValueChange={setSelectedLoja}>
-                <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-primary/30">
-                  {LOJAS.map((loja) => (
-                    <SelectItem
-                      key={loja.id}
-                      value={String(loja.id)}
-                      className="text-white"
-                    >
-                      {loja.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1200px] text-sm">
-                <thead>
-                  <tr className="border-b border-primary/30 text-primary">
-                    <th className="text-left p-3">Nome</th>
-                    <th className="text-left p-3">CPF</th>
-                    <th className="text-left p-3">PIX</th>
-                    <th className="text-left p-3">Função</th>
-                    <th className="text-left p-3">Nascimento</th>
-                    <th className="text-left p-3">Admissão</th>
-                    <th className="text-left p-3">Meta</th>
-                    <th className="text-right p-3">Ações</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {funcionariosFiltrados.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={8}
-                        className="p-6 text-center text-gray-400"
-                      >
-                        Nenhum funcionário cadastrado para esta cidade.
-                      </td>
+          <CardContent>
+            {funcionariosQuery.isLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-6 w-6 animate-spin text-yellow-400" />
+              </div>
+            ) : funcionariosQuery.error ? (
+              <div className="py-8 text-center text-red-400">
+                {funcionariosQuery.error.message}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-yellow-500/30">
+                      <th className="p-3 text-left font-semibold text-yellow-400">
+                        Nome
+                      </th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">
+                        Função
+                      </th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">
+                        Data Admissão
+                      </th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">
+                        Status
+                      </th>
                     </tr>
-                  ) : (
-                    funcionariosFiltrados.map((funcionario) => (
-                      <tr
-                        key={funcionario.id}
-                        className="border-b border-primary/10 hover:bg-gray-800"
-                      >
-                        <td className="p-3 text-white font-medium">
-                          {funcionario.nome}
-                        </td>
-                        <td className="p-3 text-gray-300">{funcionario.cpf}</td>
-                        <td className="p-3 text-gray-300">
-                          {funcionario.pix || "-"}
-                        </td>
-                        <td className="p-3 text-gray-300">
-                          {FUNCOES.find((f) => f.value === funcionario.funcao)
-                            ?.label || funcionario.funcao}
-                        </td>
-                        <td className="p-3 text-gray-300">
-                          {funcionario.dataNascimento || "-"}
-                        </td>
-                        <td className="p-3 text-gray-300">
-                          {funcionario.dataAdmissao || "-"}
-                        </td>
-                        <td className="p-3 text-gray-300">
-                          {funcionario.funcao === "consultor_vendas"
-                            ? funcionario.tipoMeta === "meta2"
-                              ? "Meta 2"
-                              : "Meta 1"
-                            : "-"}
-                        </td>
-                        <td className="p-3 text-right">
-                          <Button
-                            className="bg-red-600 hover:bg-red-500 text-white"
-                            size="sm"
-                            onClick={() => handleDeleteFuncionario(funcionario.id)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Excluir
-                          </Button>
+                  </thead>
+                  <tbody>
+                    {funcionarios.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="p-8 text-center text-gray-400"
+                        >
+                          Nenhum funcionário registrado
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ) : (
+                      funcionarios.map((func: any) => (
+                        <tr
+                          key={func.id}
+                          className="border-b border-yellow-500/20"
+                        >
+                          <td className="p-3 font-medium text-white">
+                            {func.nome}
+                          </td>
+                          <td className="p-3 text-gray-300">
+                            {FUNCOES.find((f) => f.id === func.funcao)?.nome ??
+                              func.funcao}
+                          </td>
+                          <td className="p-3 text-gray-300">
+                            {func.dataAdmissao
+                              ? new Date(func.dataAdmissao).toLocaleDateString(
+                                  "pt-BR"
+                                )
+                              : "-"}
+                          </td>
+                          <td className="p-3">
+                            <span
+                              className={
+                                func.status === "ativo"
+                                  ? "rounded px-2 py-1 text-xs text-green-400 bg-green-500/10"
+                                  : "rounded px-2 py-1 text-xs text-red-400 bg-red-500/10"
+                              }
+                            >
+                              {func.status === "ativo" ? "Ativo" : "Inativo"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

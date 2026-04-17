@@ -1,5 +1,6 @@
-import { eq, and, gte, lte, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import * as schema from "../drizzle/schema";
 import {
   InsertUser,
@@ -32,9 +33,11 @@ let _db: any | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL, { schema, mode: "default" });
+      const connection = await mysql.createConnection(process.env.DATABASE_URL);
+      _db = drizzle(connection, { schema, mode: "default" });
+      console.log("✅ Banco conectado");
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.error("❌ Erro ao conectar no banco:", error);
       _db = null;
     }
   }
@@ -75,12 +78,13 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.lastSignedIn = user.lastSignedIn;
       updateSet.lastSignedIn = user.lastSignedIn;
     }
+
     if (user.role !== undefined) {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+      values.role = "admin";
+      updateSet.role = "admin";
     }
 
     if (!values.lastSignedIn) {
@@ -108,8 +112,25 @@ export async function getUserByOpenId(openId: string) {
   }
 
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByEmail(email: string) {
+  console.log("USANDO getUserByEmail NOVO");
+
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get user by email: database not available");
+    return undefined;
+  }
+
+  const result = await db
+  .select()
+  .from(users)
+  .where(eq(users.email, email))
+  .limit(1);
+
+return result[0] ?? undefined;
 }
 
 // ===== Lojas =====
@@ -358,4 +379,71 @@ export async function getComprasByLojaCategoria(lojaId: number, categoria: "pneu
   const db = await getDb();
   if (!db) return [];
   return await db.select().from(compras).where(and(eq(compras.lojaId, lojaId), eq(compras.categoria, categoria)));
+}
+
+// ===== Usuários =====
+export async function getUsers() {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+      lojaId: users.lojaId,
+      isActive: users.isActive,
+      lastSignedIn: users.lastSignedIn,
+    })
+    .from(users)
+    .orderBy(desc(users.id));
+}
+
+export async function updateUserById(
+  id: number,
+  data: {
+    name: string;
+    email: string;
+    role: string;
+    lojaId: number | null;
+    isActive: boolean;
+    passwordHash?: string | null;
+  }
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Banco não conectado");
+  }
+
+  const updateData: Record<string, unknown> = {
+    name: data.name,
+    email: data.email,
+    role: data.role,
+    lojaId: data.lojaId,
+    isActive: data.isActive,
+  };
+
+  if (data.passwordHash) {
+    updateData.passwordHash = data.passwordHash;
+  }
+
+  await db.update(users).set(updateData as any).where(eq(users.id, id));
+
+  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function deleteUserById(id: number) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Banco não conectado");
+  }
+
+  await db.delete(users).where(eq(users.id, id));
+
+  return {
+    success: true,
+  };
 }

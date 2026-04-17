@@ -4,28 +4,32 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+
 import Home from "./pages/Home";
 import FolhaPagamento from "./pages/FolhaPagamento";
 import GestaoFuncionarios from "./pages/GestaoFuncionarios";
 import GestaoMetas from "./pages/GestaoMetas";
 import AnaliseFuncionario from "./pages/AnaliseFuncionario";
+import Usuarios from "./pages/Usuarios"; // ✅ IMPORTANTE
 
 function Router() {
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/folha-pagamento"} component={FolhaPagamento} />
-      <Route path={"/funcionarios"} component={GestaoFuncionarios} />
-      <Route path={"/metas"} component={GestaoMetas} />
-      <Route path={"/analise-funcionario"} component={AnaliseFuncionario} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
+      <Route path="/" component={Home} />
+      <Route path="/folha-pagamento" component={FolhaPagamento} />
+      <Route path="/funcionarios" component={GestaoFuncionarios} />
+      <Route path="/metas" component={GestaoMetas} />
+      <Route path="/analise-funcionario" component={AnaliseFuncionario} />
+
+      {/* ✅ ESSA LINHA QUE RESOLVE TUDO */}
+      <Route path="/usuarios" component={Usuarios} />
+
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-function App() {
+export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
@@ -37,5 +41,3 @@ function App() {
     </ErrorBoundary>
   );
 }
-
-export default App;
