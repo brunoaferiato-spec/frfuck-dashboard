@@ -328,6 +328,22 @@ export default function Home() {
               </Card>
             </div>
 
+            <div onClick={() => setLocation("/folha-multi")} style={{ cursor: "pointer" }}>
+             <Card className="bg-gradient-to-br from-gray-900 to-gray-800 border-yellow-500/30 hover:border-yellow-400 transition-all h-full text-white">
+              <CardHeader>
+               <CardTitle className="text-yellow-400">Folha Multi</CardTitle>
+               <CardDescription className="text-gray-400">
+                 Teste da folha com banco de dados
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+             <Button className="w-full bg-yellow-400 text-black hover:bg-yellow-300">
+               Acessar
+             </Button>
+            </CardContent>
+           </Card>
+        </div>
+        
             <div onClick={() => setLocation("/metas")} style={{ cursor: "pointer" }}>
               <Card className="bg-gradient-to-br from-gray-900 to-gray-800 border-yellow-500/30 hover:border-yellow-400 transition-all h-full text-white">
                 <CardHeader>

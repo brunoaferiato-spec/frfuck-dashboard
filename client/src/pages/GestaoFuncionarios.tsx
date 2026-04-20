@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Pencil } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,20 +36,38 @@ const FUNCOES = [
 type FuncaoId = (typeof FUNCOES)[number]["id"];
 type TipoMeta = "meta1" | "meta2" | "";
 
+type FuncionarioItem = {
+  id: number;
+  lojaId: number;
+  nome: string;
+  cpf?: string | null;
+  pix?: string | null;
+  dataNascimento?: string | Date | null;
+  funcao: FuncaoId;
+  tipoMeta?: TipoMeta | null;
+  dataAdmissao?: string | Date | null;
+  status?: string | null;
+};
+
 export default function GestaoFuncionarios() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
 
   const [selectedLoja, setSelectedLoja] = useState("1");
   const [isOpen, setIsOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  const emptyForm = {
     nome: "",
     cpf: "",
     pix: "",
+    dataNascimento: "",
     funcao: "mecanico" as FuncaoId,
     tipoMeta: "" as TipoMeta,
     dataAdmissao: new Date().toISOString().split("T")[0],
-  });
+  };
+
+  const [formData, setFormData] = useState(emptyForm);
 
   const lojaId = Number(selectedLoja);
 
@@ -64,14 +82,17 @@ export default function GestaoFuncionarios() {
   const createFuncionario = trpc.funcionarios.create.useMutation({
     onSuccess: async () => {
       await utils.funcionarios.listByLoja.invalidate({ lojaId });
-      setFormData({
-        nome: "",
-        cpf: "",
-        pix: "",
-        funcao: "mecanico",
-        tipoMeta: "",
-        dataAdmissao: new Date().toISOString().split("T")[0],
-      });
+      setFormData(emptyForm);
+      setEditingId(null);
+      setIsOpen(false);
+    },
+  });
+
+  const updateFuncionario = trpc.funcionarios.update.useMutation({
+    onSuccess: async () => {
+      await utils.funcionarios.listByLoja.invalidate({ lojaId });
+      setFormData(emptyForm);
+      setEditingId(null);
       setIsOpen(false);
     },
   });
@@ -80,32 +101,71 @@ export default function GestaoFuncionarios() {
     return LOJAS.find((l) => l.id === lojaId)?.nome ?? "Loja";
   }, [lojaId]);
 
-  const handleAddFuncionario = async () => {
+  const handleOpenCreate = () => {
+    setEditingId(null);
+    setFormData(emptyForm);
+    setIsOpen(true);
+  };
+
+  const formatDateInput = (value: string | Date | null | undefined) => {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toISOString().split("T")[0];
+  };
+
+  const handleEditFuncionario = (func: FuncionarioItem) => {
+    setEditingId(func.id);
+    setFormData({
+      nome: func.nome || "",
+      cpf: func.cpf || "",
+      pix: func.pix || "",
+      dataNascimento: formatDateInput(func.dataNascimento),
+      funcao: func.funcao,
+      tipoMeta: (func.tipoMeta as TipoMeta) || "",
+      dataAdmissao: formatDateInput(func.dataAdmissao) || new Date().toISOString().split("T")[0],
+    });
+    setIsOpen(true);
+  };
+
+  const handleSaveFuncionario = async () => {
     if (!formData.nome.trim()) {
       alert("Preencha o nome do funcionário");
       return;
     }
 
     try {
-      await createFuncionario.mutateAsync({
+      const payload = {
         lojaId,
         nome: formData.nome.trim(),
         cpf: formData.cpf.trim() || null,
         pix: formData.pix.trim() || null,
+        dataNascimento: formData.dataNascimento
+          ? new Date(`${formData.dataNascimento}T00:00:00`)
+          : null,
         funcao: formData.funcao,
         tipoMeta:
           formData.funcao === "consultor_vendas" && formData.tipoMeta
             ? (formData.tipoMeta as "meta1" | "meta2")
             : null,
         dataAdmissao: new Date(`${formData.dataAdmissao}T00:00:00`),
-      });
+      };
+
+      if (editingId) {
+        await updateFuncionario.mutateAsync({
+          id: editingId,
+          ...payload,
+        });
+      } else {
+        await createFuncionario.mutateAsync(payload);
+      }
     } catch (error: any) {
       console.error(error);
       alert(error?.message ?? "Erro ao salvar funcionário");
     }
   };
 
-  const funcionarios = funcionariosQuery.data ?? [];
+  const funcionarios = (funcionariosQuery.data ?? []) as FuncionarioItem[];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-black p-6 text-white">
@@ -125,7 +185,7 @@ export default function GestaoFuncionarios() {
               Gestão de Funcionários
             </h1>
             <p className="text-gray-400">
-              Admissão, demissão e histórico de funcionários
+              Admissão, edição e histórico de funcionários
             </p>
           </div>
         </div>
@@ -152,7 +212,7 @@ export default function GestaoFuncionarios() {
               </div>
 
               <Button
-                onClick={() => setIsOpen(true)}
+                onClick={handleOpenCreate}
                 className="bg-yellow-400 text-black hover:bg-yellow-300"
               >
                 + Novo Funcionário
@@ -165,7 +225,7 @@ export default function GestaoFuncionarios() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
             <div className="w-full max-w-2xl rounded-lg border border-yellow-500/30 bg-gray-950 p-6">
               <h3 className="mb-4 text-lg font-semibold text-yellow-400">
-                Novo Funcionário
+                {editingId ? "Editar Funcionário" : "Novo Funcionário"}
               </h3>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -205,6 +265,23 @@ export default function GestaoFuncionarios() {
                     value={formData.pix}
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, pix: e.target.value }))
+                    }
+                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-gray-300">
+                    Data de Aniversário
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.dataNascimento}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        dataNascimento: e.target.value,
+                      }))
                     }
                     className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
                   />
@@ -274,15 +351,23 @@ export default function GestaoFuncionarios() {
 
               <div className="mt-6 flex gap-3">
                 <Button
-                  onClick={handleAddFuncionario}
-                  disabled={createFuncionario.isPending}
+                  onClick={handleSaveFuncionario}
+                  disabled={createFuncionario.isPending || updateFuncionario.isPending}
                   className="flex-1 bg-yellow-400 text-black hover:bg-yellow-300"
                 >
-                  {createFuncionario.isPending ? "Salvando..." : "Salvar"}
+                  {createFuncionario.isPending || updateFuncionario.isPending
+                    ? "Salvando..."
+                    : editingId
+                    ? "Atualizar"
+                    : "Salvar"}
                 </Button>
 
                 <Button
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => {
+                    setIsOpen(false);
+                    setEditingId(null);
+                    setFormData(emptyForm);
+                  }}
                   variant="outline"
                   className="flex-1 border-yellow-500/30 bg-transparent text-yellow-400 hover:bg-yellow-500/10"
                 >
@@ -320,25 +405,32 @@ export default function GestaoFuncionarios() {
                       <th className="p-3 text-left font-semibold text-yellow-400">Nome</th>
                       <th className="p-3 text-left font-semibold text-yellow-400">CPF</th>
                       <th className="p-3 text-left font-semibold text-yellow-400">PIX</th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">Nascimento</th>
                       <th className="p-3 text-left font-semibold text-yellow-400">Função</th>
                       <th className="p-3 text-left font-semibold text-yellow-400">Tipo Meta</th>
                       <th className="p-3 text-left font-semibold text-yellow-400">Data Admissão</th>
                       <th className="p-3 text-left font-semibold text-yellow-400">Status</th>
+                      <th className="p-3 text-left font-semibold text-yellow-400">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {funcionarios.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-8 text-center text-gray-400">
+                        <td colSpan={9} className="p-8 text-center text-gray-400">
                           Nenhum funcionário registrado
                         </td>
                       </tr>
                     ) : (
-                      funcionarios.map((func: any) => (
+                      funcionarios.map((func) => (
                         <tr key={func.id} className="border-b border-yellow-500/20">
                           <td className="p-3 font-medium text-white">{func.nome}</td>
                           <td className="p-3 text-gray-300">{func.cpf || "-"}</td>
                           <td className="p-3 text-gray-300">{func.pix || "-"}</td>
+                          <td className="p-3 text-gray-300">
+                            {func.dataNascimento
+                              ? new Date(func.dataNascimento).toLocaleDateString("pt-BR")
+                              : "-"}
+                          </td>
                           <td className="p-3 text-gray-300">
                             {FUNCOES.find((f) => f.id === func.funcao)?.nome ?? func.funcao}
                           </td>
@@ -358,6 +450,17 @@ export default function GestaoFuncionarios() {
                             >
                               {func.status === "ativo" ? "Ativo" : "Inativo"}
                             </span>
+                          </td>
+                          <td className="p-3">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditFuncionario(func)}
+                              className="border-yellow-500/30 bg-transparent text-yellow-400 hover:bg-yellow-500/10"
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar
+                            </Button>
                           </td>
                         </tr>
                       ))

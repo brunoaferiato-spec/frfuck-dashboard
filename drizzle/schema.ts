@@ -52,29 +52,35 @@ export const funcionarios = mysqlTable("funcionarios", {
   id: int("id").autoincrement().primaryKey(),
   lojaId: int("lojaId").notNull(),
   nome: varchar("nome", { length: 150 }).notNull(),
+  cpf: varchar("cpf", { length: 20 }),
+  pix: varchar("pix", { length: 200 }),
+  dataNascimento: timestamp("dataNascimento"),
   funcao: mysqlEnum("funcao", [
     "mecanico",
     "vendedor",
     "consultor_vendas",
     "alinhador",
+    "aux_alinhador",
     "recepcionista",
     "auxiliar_estoque",
     "lider_estoque",
     "auxiliar_caixa",
     "administrativo",
+    "gerente",
+    "supervisor",
   ]).notNull(),
+  tipoMeta: mysqlEnum("tipoMeta", ["meta1", "meta2"]),
   dataAdmissao: timestamp("dataAdmissao").notNull(),
   dataDesligamento: timestamp("dataDesligamento"),
   motivoDesligamento: varchar("motivoDesligamento", { length: 100 }),
   deveEmpresa: decimal("deveEmpresa", { precision: 12, scale: 2 }).default("0"),
-  status: mysqlEnum("status", ["ativo", "inativo"]).default("ativo").notNull(),
+  status: mysqlEnum("status", ["ativo", "inativo", "experiencia"]).default("ativo").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type Funcionario = typeof funcionarios.$inferSelect;
 export type InsertFuncionario = typeof funcionarios.$inferInsert;
-
 /**
  * Metas (commission tiers by function and location)
  */

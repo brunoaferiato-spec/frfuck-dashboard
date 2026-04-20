@@ -9,6 +9,7 @@ import {
   getFuncionariosByLoja,
   getFuncionarioById,
   createFuncionario,
+  updateFuncionario,
   getMetaByFuncaoLojaAnoMes,
   getMetasByLoja,
   getFolhaByFuncionarioAnoMes,
@@ -286,6 +287,7 @@ export const appRouter = router({
           nome: z.string().min(2, "Nome muito curto"),
           cpf: z.string().nullable().optional(),
           pix: z.string().nullable().optional(),
+          dataNascimento: z.coerce.date().nullable().optional(),
           funcao: funcaoSchema,
           tipoMeta: z.enum(["meta1", "meta2"]).nullable().optional(),
           dataAdmissao: z.coerce.date(),
@@ -297,6 +299,7 @@ export const appRouter = router({
           nome: input.nome,
           cpf: input.cpf ?? null,
           pix: input.pix ?? null,
+          dataNascimento: input.dataNascimento ?? null,
           funcao: input.funcao,
           tipoMeta: input.tipoMeta ?? null,
           dataAdmissao: input.dataAdmissao,
@@ -306,6 +309,40 @@ export const appRouter = router({
           success: true,
           message: "Funcionário criado com sucesso",
           funcionario: created,
+        };
+      }),
+
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          lojaId: z.number(),
+          nome: z.string().min(2, "Nome muito curto"),
+          cpf: z.string().nullable().optional(),
+          pix: z.string().nullable().optional(),
+          dataNascimento: z.coerce.date().nullable().optional(),
+          funcao: funcaoSchema,
+          tipoMeta: z.enum(["meta1", "meta2"]).nullable().optional(),
+          dataAdmissao: z.coerce.date(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const updated = await updateFuncionario({
+          id: input.id,
+          lojaId: input.lojaId,
+          nome: input.nome,
+          cpf: input.cpf ?? null,
+          pix: input.pix ?? null,
+          dataNascimento: input.dataNascimento ?? null,
+          funcao: input.funcao,
+          tipoMeta: input.tipoMeta ?? null,
+          dataAdmissao: input.dataAdmissao,
+        });
+
+        return {
+          success: true,
+          message: "Funcionário atualizado com sucesso",
+          funcionario: updated,
         };
       }),
   }),

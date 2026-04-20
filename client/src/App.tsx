@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 
 import Home from "./pages/Home";
 import FolhaPagamento from "./pages/FolhaPagamento";
+import FolhaPagamentoMulti from "./pages/FolhaPagamentoMulti";
 import GestaoFuncionarios from "./pages/GestaoFuncionarios";
 import GestaoMetas from "./pages/GestaoMetas";
 import AnaliseFuncionario from "./pages/AnaliseFuncionario";
@@ -17,6 +18,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/folha-pagamento" component={FolhaPagamento} />
+      <Route path="/folha-multi" component={FolhaPagamentoMulti} />
       <Route path="/funcionarios" component={GestaoFuncionarios} />
       <Route path="/metas" component={GestaoMetas} />
       <Route path="/analise-funcionario" component={AnaliseFuncionario} />

@@ -117,8 +117,6 @@ export async function getUserByOpenId(openId: string) {
 }
 
 export async function getUserByEmail(email: string) {
-  console.log("USANDO getUserByEmail NOVO");
-
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get user by email: database not available");
@@ -184,6 +182,7 @@ export async function createFuncionario(data: {
   nome: string;
   cpf?: string | null;
   pix?: string | null;
+  dataNascimento?: Date | null;
   funcao:
     | "mecanico"
     | "vendedor"
@@ -210,6 +209,7 @@ export async function createFuncionario(data: {
     nome: data.nome,
     cpf: data.cpf ?? null,
     pix: data.pix ?? null,
+    dataNascimento: data.dataNascimento ?? null,
     funcao: data.funcao,
     tipoMeta: data.tipoMeta ?? null,
     dataAdmissao: data.dataAdmissao,
@@ -217,7 +217,6 @@ export async function createFuncionario(data: {
   };
 
   const result = await db.insert(funcionarios).values(values as any);
-
   const insertId = result?.[0]?.insertId ?? result?.insertId;
 
   if (!insertId) {
@@ -238,6 +237,57 @@ export async function createFuncionario(data: {
     .limit(1);
 
   return criado[0] ?? null;
+}
+
+export async function updateFuncionario(data: {
+  id: number;
+  lojaId: number;
+  nome: string;
+  cpf?: string | null;
+  pix?: string | null;
+  dataNascimento?: Date | null;
+  funcao:
+    | "mecanico"
+    | "vendedor"
+    | "consultor_vendas"
+    | "alinhador"
+    | "aux_alinhador"
+    | "recepcionista"
+    | "auxiliar_estoque"
+    | "lider_estoque"
+    | "auxiliar_caixa"
+    | "administrativo"
+    | "gerente"
+    | "supervisor";
+  tipoMeta?: "meta1" | "meta2" | null;
+  dataAdmissao: Date;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Banco não conectado");
+  }
+
+  await db
+    .update(funcionarios)
+    .set({
+      lojaId: data.lojaId,
+      nome: data.nome,
+      cpf: data.cpf ?? null,
+      pix: data.pix ?? null,
+      dataNascimento: data.dataNascimento ?? null,
+      funcao: data.funcao,
+      tipoMeta: data.tipoMeta ?? null,
+      dataAdmissao: data.dataAdmissao,
+    } as any)
+    .where(eq(funcionarios.id, data.id));
+
+  const result = await db
+    .select()
+    .from(funcionarios)
+    .where(eq(funcionarios.id, data.id))
+    .limit(1);
+
+  return result[0] ?? null;
 }
 
 // ===== Metas =====

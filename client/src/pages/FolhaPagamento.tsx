@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +35,6 @@ import {
   findMetaForFuncionario,
   getConsultorRegraTexto,
   getFolhasMensais,
-  getFuncionarios,
   getPremiacaoAutomaticaDetalhes,
   getRecepcaoConfig,
   saveFolhasMensais,
@@ -724,6 +724,11 @@ function TabelaQuadrante({
 
 export default function FolhaPagamento() {
   const [, setLocation] = useLocation();
+
+  const meQuery = trpc.auth.me.useQuery(undefined, {
+    retry: false,
+  });
+
   const [selectedLoja, setSelectedLoja] = useState("1");
   const [ano, setAno] = useState(2026);
   const [mes, setMes] = useState(new Date().getMonth() + 1);
@@ -771,21 +776,55 @@ export default function FolhaPagamento() {
   });
 
   const lojaId = parseInt(selectedLoja, 10);
-  const todosFuncionarios = useMemo(() => getFuncionarios(), []);
-  const funcionariosDaCidade = useMemo(() => {
-    return todosFuncionarios.filter(
-      (f) => f.loja_id === lojaId && f.status !== "inativo"
-    );
-  }, [lojaId, todosFuncionarios]);
 
-  function updateFolhas(next: FolhaMensal[]) {
-    setFolhas(next);
-    saveFolhasMensais(next);
+const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
+  { lojaId },
+  {
+    enabled: !!lojaId,
+    retry: false,
   }
+);
 
-  function getFuncionarioById(funcionarioId: number) {
-    return todosFuncionarios.find((f) => f.id === funcionarioId) || null;
-  }
+const todosFuncionarios = useMemo(() => {
+  const rows = (funcionariosQuery.data ?? []) as any[];
+
+  return rows.map((f) => ({
+    id: f.id,
+    nome: f.nome,
+    cpf: f.cpf || "",
+    pix: f.pix || "",
+    dataNascimento: "",
+    funcao: f.funcao,
+    loja_id: f.lojaId,
+    dataAdmissao: f.dataAdmissao || "",
+    dataExperiencia45: "",
+    dataExperiencia90: "",
+    status: (f.status || "ativo") as "ativo" | "inativo" | "experiencia",
+    tipoMeta: (f.tipoMeta || "") as "meta1" | "meta2" | "",
+    dataDemissao: "",
+    debitoPendente: 0,
+    dataFeedbackProxima: "",
+    dataFeriasInicio: "",
+    dataFeriasFim: "",
+    dataFerias2Inicio: "",
+    dataFerias2Fim: "",
+  }));
+}, [funcionariosQuery.data]);
+
+const funcionariosDaCidade = useMemo(() => {
+  return todosFuncionarios.filter(
+    (f) => f.loja_id === lojaId && f.status !== "inativo"
+  );
+}, [lojaId, todosFuncionarios]);
+
+function updateFolhas(next: FolhaMensal[]) {
+  setFolhas(next);
+  saveFolhasMensais(next);
+}
+
+function getFuncionarioById(funcionarioId: number) {
+  return todosFuncionarios.find((f) => f.id === funcionarioId) || null;
+}
 
   const linhas = useMemo<LinhaComQuadrante[]>(() => {
     return funcionariosDaCidade.map((func) => {
@@ -843,8 +882,9 @@ export default function FolhaPagamento() {
       };
     });
   }, [funcionariosDaCidade, folhas, lojaId, ano, mes, selectedLoja]);
-
+ 
   function replaceCurrentMonthLines(modified: FolhaMensal[]) {
+  
     const remaining = folhas.filter(
       (f) => !(f.loja_id === lojaId && f.ano === ano && f.mes === mes)
     );
@@ -1377,7 +1417,31 @@ export default function FolhaPagamento() {
       linhas: linhas.filter((l) => l.quadrante === key),
     }));
   }, [linhas]);
+  useEffect(() => {
+  if (!meQuery.isLoading && !meQuery.data) {
+    setLocation("/");
+  }
+}, [meQuery.isLoading, meQuery.data, setLocation]);
 
+if (meQuery.isLoading || funcionariosQuery.isLoading) {
+  return (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <p className="text-gray-400">Carregando...</p>
+    </div>
+  );
+}
+
+if (!meQuery.data) {
+  return null;
+}
+
+if (funcionariosQuery.error) {
+  return (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <p className="text-red-400">{funcionariosQuery.error.message}</p>
+    </div>
+  );
+}
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-black p-6 text-white">
       <div className="max-w-[1900px] mx-auto space-y-6">
