@@ -34,15 +34,11 @@ import {
   createParcelasVale,
   findMetaForFuncionario,
   getConsultorRegraTexto,
-  getFolhasMensais,
   getPremiacaoAutomaticaDetalhes,
   getRecepcaoConfig,
-  saveFolhasMensais,
-  shouldRemoveValeFromHereForward,
   SUPERVISOR_RECORDE_GRUPO,
   SUPERVISOR_SALARIO_FIXO,
   type FolhaMensal,
-  type PremioManual,
   type ValeItem,
 } from "@/lib/payrollStore";
 
@@ -732,7 +728,7 @@ export default function FolhaPagamento() {
   const [selectedLoja, setSelectedLoja] = useState("1");
   const [ano, setAno] = useState(2026);
   const [mes, setMes] = useState(new Date().getMonth() + 1);
-  const [folhas, setFolhas] = useState<FolhaMensal[]>(getFolhasMensais());
+  const [folhas, setFolhas] = useState<FolhaMensal[]>([]);
 
   const [cellEditor, setCellEditor] = useState<CellEditorState>({
     open: false,
@@ -784,7 +780,71 @@ const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
     retry: false,
   }
 );
+const folhaBaseQuery = trpc.folhaPagamento.getBaseByLojaAnoMes.useQuery(
+  { lojaId, ano, mes },
+  {
+    enabled: !!lojaId,
+    retry: false,
+  }
+);
 
+const upsertFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation({
+  onSuccess: async () => {
+    await folhaBaseQuery.refetch();
+  },
+});
+
+const folhaExtrasQuery = trpc.folhaExtras.getByLojaAnoMes.useQuery(
+  { lojaId, ano, mes },
+  {
+    enabled: !!lojaId,
+    retry: false,
+  }
+);
+
+const addPremiacaoMutation = trpc.folhaExtras.addPremiacao.useMutation({
+  onSuccess: async () => {
+    await folhaExtrasQuery.refetch();
+  },
+});
+
+const removePremiacaoMutation = trpc.folhaExtras.removePremiacao.useMutation({
+  onSuccess: async () => {
+    await folhaExtrasQuery.refetch();
+  },
+});
+
+const addObservacaoMutation = trpc.folhaExtras.addObservacao.useMutation({
+  onSuccess: async () => {
+    await folhaExtrasQuery.refetch();
+  },
+});
+
+const removeObservacaoMutation = trpc.folhaExtras.removeObservacao.useMutation({
+  onSuccess: async () => {
+    await folhaExtrasQuery.refetch();
+  },
+});
+
+const saveDescontoMutation = trpc.folhaExtras.saveDesconto.useMutation({
+  onSuccess: async () => {
+    await folhaExtrasQuery.refetch();
+  },
+});
+
+const addValesMutation = trpc.folhaExtras.addVales.useMutation({
+  onSuccess: async () => {
+    await folhaExtrasQuery.refetch();
+  },
+});
+
+const removeValesMutation =
+  trpc.folhaExtras.removeValesFromCurrentForward.useMutation({
+    onSuccess: async () => {
+      await folhaExtrasQuery.refetch();
+    },
+  });
+  
 const todosFuncionarios = useMemo(() => {
   const rows = (funcionariosQuery.data ?? []) as any[];
 
@@ -819,12 +879,96 @@ const funcionariosDaCidade = useMemo(() => {
 
 function updateFolhas(next: FolhaMensal[]) {
   setFolhas(next);
-  saveFolhasMensais(next);
 }
 
 function getFuncionarioById(funcionarioId: number) {
   return todosFuncionarios.find((f) => f.id === funcionarioId) || null;
 }
+
+useEffect(() => {
+  const rows = (folhaBaseQuery.data ?? []) as any[];
+
+  const agrupado = new Map<string, FolhaMensal>();
+
+  for (const row of rows) {
+    const key = `${row.funcionarioId}-${row.lojaId}-${row.ano}-${row.mes}`;
+
+    if (!agrupado.has(key)) {
+      agrupado.set(key, {
+        id: key,
+        ano: row.ano,
+        mes: row.mes,
+        loja_id: row.lojaId,
+        funcionarioId: row.funcionarioId,
+        nome: "",
+        funcao: "",
+        tipoMeta: "",
+        regraMeta: "",
+
+        sem1: 0,
+        perc1: 0,
+        com1: 0,
+
+        sem2: 0,
+        perc2: 0,
+        com2: 0,
+
+        sem3: 0,
+        perc3: 0,
+        com3: 0,
+
+        sem4: 0,
+        perc4: 0,
+        com4: 0,
+
+        totalLiquidez: 0,
+        totalComissao: 0,
+
+        premiacoesManuais: [],
+        premiacao: 0,
+
+        vales: [],
+        vale: 0,
+
+        aluguel: 0,
+        inss: 0,
+        adiant: 0,
+        holerite: 0,
+
+        observacoes: [],
+        boleto: 0,
+      });
+    }
+
+    const item = agrupado.get(key)!;
+
+    if (row.semana === 1) {
+      item.sem1 = Number(row.liquidez || 0);
+      item.perc1 = Number(row.percentualComissao || 0);
+      item.com1 = Number(row.valorComissao || 0);
+    }
+
+    if (row.semana === 2) {
+      item.sem2 = Number(row.liquidez || 0);
+      item.perc2 = Number(row.percentualComissao || 0);
+      item.com2 = Number(row.valorComissao || 0);
+    }
+
+    if (row.semana === 3) {
+      item.sem3 = Number(row.liquidez || 0);
+      item.perc3 = Number(row.percentualComissao || 0);
+      item.com3 = Number(row.valorComissao || 0);
+    }
+
+    if (row.semana === 4) {
+      item.sem4 = Number(row.liquidez || 0);
+      item.perc4 = Number(row.percentualComissao || 0);
+      item.com4 = Number(row.valorComissao || 0);
+    }
+  }
+
+  setFolhas(Array.from(agrupado.values()));
+}, [folhaBaseQuery.data]);
 
   const linhas = useMemo<LinhaComQuadrante[]>(() => {
     return funcionariosDaCidade.map((func) => {
@@ -843,7 +987,7 @@ function getFuncionarioById(funcionarioId: number) {
         tipoMeta: func.tipoMeta,
       });
 
-      const base =
+      const baseLocal =
         existente ||
         buildEmptyLine({
           ano,
@@ -855,6 +999,27 @@ function getFuncionarioById(funcionarioId: number) {
           tipoMeta: func.tipoMeta,
           regraMeta: meta?.regra || "Sem meta cadastrada",
         });
+
+      const extras = folhaExtrasQuery.data;
+
+      const descontosFuncionario =
+        extras?.descontosByFuncionario?.[func.id] || {
+          aluguel: 0,
+          inss: 0,
+          adiant: 0,
+          holerite: 0,
+        };
+
+      const base = {
+        ...baseLocal,
+        premiacoesManuais: extras?.premiacoesByFuncionario?.[func.id] || [],
+        vales: extras?.valesByFuncionario?.[func.id] || [],
+        observacoes: extras?.observacoesByFuncionario?.[func.id] || [],
+        aluguel: descontosFuncionario.aluguel,
+        inss: descontosFuncionario.inss,
+        adiant: descontosFuncionario.adiant,
+        holerite: descontosFuncionario.holerite,
+      };
 
       const calculado = computeFolhaLinha({
         meta,
@@ -881,269 +1046,356 @@ function getFuncionarioById(funcionarioId: number) {
         ...calculado,
       };
     });
-  }, [funcionariosDaCidade, folhas, lojaId, ano, mes, selectedLoja]);
+  }, [funcionariosDaCidade, folhas, lojaId, ano, mes, selectedLoja, folhaExtrasQuery.data]);
  
-  function replaceCurrentMonthLines(modified: FolhaMensal[]) {
-  
-    const remaining = folhas.filter(
-      (f) => !(f.loja_id === lojaId && f.ano === ano && f.mes === mes)
+  async function updateLinha(
+  funcionarioId: number,
+  campo: keyof FolhaMensal,
+  valor: any
+) {
+  const currentLine = linhas.find((l) => l.funcionarioId === funcionarioId);
+  if (!currentLine) return;
+
+  const updatedLine = {
+    ...currentLine,
+    [campo]: valor,
+  };
+
+  const recalculado = computeFolhaLinha({
+    meta: findMetaForFuncionario({
+      funcionarioNome: updatedLine.nome,
+      funcao: updatedLine.funcao,
+      cidade: selectedLoja,
+      tipoMeta: updatedLine.tipoMeta,
+    }),
+    funcao: updatedLine.funcao,
+    cidade: selectedLoja,
+    funcionarioNome: updatedLine.nome,
+    tipoMeta: updatedLine.tipoMeta,
+    sem1: updatedLine.sem1,
+    sem2: updatedLine.sem2,
+    sem3: updatedLine.sem3,
+    sem4: updatedLine.sem4,
+    premiacoesManuais: updatedLine.premiacoesManuais || [],
+    vales: updatedLine.vales || [],
+    aluguel: updatedLine.aluguel,
+    inss: updatedLine.inss,
+    adiant: updatedLine.adiant,
+    holerite: updatedLine.holerite,
+  });
+
+  const mergedLine: FolhaMensal = {
+    ...updatedLine,
+    ...recalculado,
+  };
+
+  setFolhas((prev) => {
+    const exists = prev.some(
+      (f) =>
+        f.funcionarioId === funcionarioId &&
+        f.loja_id === lojaId &&
+        f.ano === ano &&
+        f.mes === mes
     );
-    updateFolhas([...remaining, ...modified]);
+
+    if (exists) {
+      return prev.map((f) =>
+        f.funcionarioId === funcionarioId &&
+        f.loja_id === lojaId &&
+        f.ano === ano &&
+        f.mes === mes
+          ? mergedLine
+          : f
+      );
+    }
+
+    return [...prev, mergedLine];
+  });
+
+  const camposBase = ["sem1", "sem2", "sem3", "sem4"] as const;
+  const camposDesconto = ["aluguel", "inss", "adiant", "holerite"] as const;
+
+  if (camposBase.includes(campo as (typeof camposBase)[number])) {
+    const semanas = [
+      {
+        semana: 1,
+        liquidez: mergedLine.sem1,
+        percentual: mergedLine.perc1,
+        comissao: mergedLine.com1,
+      },
+      {
+        semana: 2,
+        liquidez: mergedLine.sem2,
+        percentual: mergedLine.perc2,
+        comissao: mergedLine.com2,
+      },
+      {
+        semana: 3,
+        liquidez: mergedLine.sem3,
+        percentual: mergedLine.perc3,
+        comissao: mergedLine.com3,
+      },
+      {
+        semana: 4,
+        liquidez: mergedLine.sem4,
+        percentual: mergedLine.perc4,
+        comissao: mergedLine.com4,
+      },
+    ];
+
+    for (const item of semanas) {
+      await upsertFolhaBaseMutation.mutateAsync({
+        funcionarioId,
+        lojaId,
+        ano,
+        mes,
+        semana: item.semana,
+        liquidez: Number(item.liquidez || 0),
+        percentualComissao: Number(item.percentual || 0),
+        valorComissao: Number(item.comissao || 0),
+      });
+    }
   }
 
-  function updateLinha(
-    funcionarioId: number,
-    campo: keyof FolhaMensal,
-    valor: any
-  ) {
-    const currentMonthLines = linhas.map((linha) =>
-      linha.funcionarioId === funcionarioId
-        ? {
-            ...linha,
-            [campo]: valor,
-          }
-        : linha
-    ) as FolhaMensal[];
+  if (camposDesconto.includes(campo as (typeof camposDesconto)[number])) {
+    const tipoMap: Record<string, "aluguel" | "inss" | "adiantamento" | "holerite"> = {
+      aluguel: "aluguel",
+      inss: "inss",
+      adiant: "adiantamento",
+      holerite: "holerite",
+    };
 
-    replaceCurrentMonthLines(currentMonthLines);
-  }
-
-  function openCellEditor(
-    linha: LinhaComQuadrante,
-    campo: keyof FolhaMensal,
-    label: string,
-    mode: "money" | "number"
-  ) {
-    setCellEditor({
-      open: true,
-      funcionarioId: linha.funcionarioId,
-      campo,
-      label,
-      mode,
-      value: String(Number(linha[campo] || 0)),
-    });
-  }
-
-  function saveCellEditor() {
-    if (!cellEditor.funcionarioId || !cellEditor.campo) return;
-    const valor = parseInputNumber(cellEditor.value);
-    updateLinha(cellEditor.funcionarioId, cellEditor.campo, valor);
-    setCellEditor({
-      open: false,
-      funcionarioId: null,
-      campo: null,
-      label: "",
-      mode: "money",
-      value: "",
-    });
-  }
-
-  function openPremioEditor(linha: LinhaComQuadrante) {
-    setPremioEditor({
-      open: true,
-      funcionarioId: linha.funcionarioId,
-      descricao: "",
-      valor: "",
-    });
-  }
-
-  function addPremiacaoManual() {
-    if (!premioEditor.funcionarioId) return;
-    const descricao = premioEditor.descricao.trim();
-    const valor = parseInputNumber(premioEditor.valor);
-    if (!descricao || valor <= 0) return;
-
-    const id =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random()}`;
-
-    const currentMonthLines = linhas.map((linha) =>
-      linha.funcionarioId === premioEditor.funcionarioId
-        ? {
-            ...linha,
-            premiacoesManuais: [
-              ...(linha.premiacoesManuais || []),
-              { id, descricao, valor } as PremioManual,
-            ],
-          }
-        : linha
-    ) as FolhaMensal[];
-
-    replaceCurrentMonthLines(currentMonthLines);
-    setPremioEditor((prev) => ({ ...prev, descricao: "", valor: "" }));
-  }
-
-  function removePremiacaoManual(id: string) {
-    if (!premioEditor.funcionarioId) return;
-
-    const currentMonthLines = linhas.map((linha) =>
-      linha.funcionarioId === premioEditor.funcionarioId
-        ? {
-            ...linha,
-            premiacoesManuais: (linha.premiacoesManuais || []).filter(
-              (item) => item.id !== id
-            ),
-          }
-        : linha
-    ) as FolhaMensal[];
-
-    replaceCurrentMonthLines(currentMonthLines);
-  }
-
-  function openObsEditor(linha: LinhaComQuadrante) {
-    setObsEditor({
-      open: true,
-      funcionarioId: linha.funcionarioId,
-      novaObs: "",
-    });
-  }
-
-  function addObservacao() {
-    if (!obsEditor.funcionarioId || !obsEditor.novaObs.trim()) return;
-
-    const currentMonthLines = linhas.map((linha) =>
-      linha.funcionarioId === obsEditor.funcionarioId
-        ? {
-            ...linha,
-            observacoes: [...(linha.observacoes || []), obsEditor.novaObs.trim()],
-          }
-        : linha
-    ) as FolhaMensal[];
-
-    replaceCurrentMonthLines(currentMonthLines);
-    setObsEditor((prev) => ({ ...prev, novaObs: "" }));
-  }
-
-  function removeObservacao(index: number) {
-    if (!obsEditor.funcionarioId) return;
-
-    const currentMonthLines = linhas.map((linha) =>
-      linha.funcionarioId === obsEditor.funcionarioId
-        ? {
-            ...linha,
-            observacoes: (linha.observacoes || []).filter((_, i) => i !== index),
-          }
-        : linha
-    ) as FolhaMensal[];
-
-    replaceCurrentMonthLines(currentMonthLines);
-  }
-
-  function openValeEditor(linha: LinhaComQuadrante) {
-    setValeEditor({
-      open: true,
-      funcionarioId: linha.funcionarioId,
-      descricao: "",
-      valor: "",
-      parcelas: "1",
-    });
-  }
-
-  function addVale() {
-    if (!valeEditor.funcionarioId) return;
-
-    const descricao = valeEditor.descricao.trim();
-    const valorTotal = parseInputNumber(valeEditor.valor);
-    const parcelas = Math.max(1, Math.floor(parseInputNumber(valeEditor.parcelas)));
-
-    if (!descricao || valorTotal <= 0) return;
-
-    const funcionario = getFuncionarioById(valeEditor.funcionarioId);
-    if (!funcionario) return;
-
-    const parcelasCriadas = createParcelasVale({
-      descricao,
-      valorTotal,
-      parcelas,
+    await saveDescontoMutation.mutateAsync({
+      funcionarioId,
+      lojaId,
       ano,
       mes,
+      tipo: tipoMap[String(campo)],
+      valor: Number(valor || 0),
+    });
+  }
+}
+
+function openCellEditor(
+  linha: LinhaComQuadrante,
+  campo: keyof FolhaMensal,
+  label: string,
+  mode: "money" | "number"
+) {
+  setCellEditor({
+    open: true,
+    funcionarioId: linha.funcionarioId,
+    campo,
+    label,
+    mode,
+    value: String(Number(linha[campo] || 0)),
+  });
+}
+
+async function saveCellEditor() {
+  if (!cellEditor.funcionarioId || !cellEditor.campo) return;
+
+  const valor = parseInputNumber(cellEditor.value);
+  await updateLinha(cellEditor.funcionarioId, cellEditor.campo, valor);
+
+  setCellEditor({
+    open: false,
+    funcionarioId: null,
+    campo: null,
+    label: "",
+    mode: "money",
+    value: "",
+  });
+}
+
+function openPremioEditor(linha: LinhaComQuadrante) {
+  console.log("OPEN PREMIO EDITOR", {
+    nome: linha.nome,
+    funcionarioId: linha.funcionarioId,
+    lojaId: linha.loja_id,
+    premiacoesManuais: linha.premiacoesManuais,
+  });
+
+  setPremioEditor({
+    open: true,
+    funcionarioId: Number(linha.funcionarioId),
+    descricao: "",
+    valor: "",
+  });
+}
+
+async function addPremiacaoManual() {
+  console.log("ADD PREMIO - INICIO", {
+    funcionarioId: premioEditor.funcionarioId,
+    lojaId,
+    ano,
+    mes,
+    descricaoDigitada: premioEditor.descricao,
+    valorDigitado: premioEditor.valor,
+  });
+
+  if (!premioEditor.funcionarioId) {
+    alert("funcionarioId vazio");
+    return;
+  }
+
+  const descricao = premioEditor.descricao.trim();
+  const valor = parseInputNumber(premioEditor.valor);
+
+  console.log("ADD PREMIO - PARSEADO", {
+    funcionarioId: premioEditor.funcionarioId,
+    descricao,
+    valor,
+  });
+
+  if (!descricao) {
+    alert("Digite a descrição da premiação");
+    return;
+  }
+
+  if (valor <= 0) {
+    alert("Digite um valor maior que zero");
+    return;
+  }
+
+  try {
+    const result = await addPremiacaoMutation.mutateAsync({
+      funcionarioId: Number(premioEditor.funcionarioId),
+      lojaId: Number(lojaId),
+      ano: Number(ano),
+      mes: Number(mes),
+      descricao,
+      valor: Number(valor),
     });
 
-    const next = [...folhas];
+    console.log("ADD PREMIO - SUCESSO", result);
 
-    parcelasCriadas.forEach(({ ano: anoParcela, mes: mesParcela, item }) => {
-      const idx = next.findIndex(
-        (f) =>
-          f.funcionarioId === valeEditor.funcionarioId &&
-          f.ano === anoParcela &&
-          f.mes === mesParcela &&
-          f.loja_id === funcionario.loja_id
-      );
+    await folhaExtrasQuery.refetch();
 
-      if (idx >= 0) {
-        next[idx] = {
-          ...next[idx],
-          vales: [...(next[idx].vales || []), item],
-        };
-      } else {
-        next.push({
-          ...buildEmptyLine({
-            ano: anoParcela,
-            mes: mesParcela,
-            loja_id: funcionario.loja_id,
-            funcionarioId: funcionario.id,
-            nome: funcionario.nome,
-            funcao: funcionario.funcao,
-            tipoMeta: funcionario.tipoMeta,
-            regraMeta: "",
-          }),
-          vales: [item],
-        });
-      }
-    });
-
-    updateFolhas(next);
-
-    setValeEditor((prev) => ({
+    setPremioEditor((prev) => ({
       ...prev,
       descricao: "",
       valor: "",
-      parcelas: "1",
     }));
+  } catch (error) {
+    console.error("ADD PREMIO - ERRO", error);
+    alert("Erro ao salvar premiação. Veja o console.");
   }
+}
 
-  function removeVale(vale: ValeItem) {
-    if (!valeEditor.funcionarioId) return;
+async function removePremiacaoManual(id: string) {
+  await removePremiacaoMutation.mutateAsync({ id: Number(id) });
+}
 
-    const next = folhas.map((linha) => {
-      if (linha.funcionarioId !== valeEditor.funcionarioId) return linha;
+function openObsEditor(linha: LinhaComQuadrante) {
+  setObsEditor({
+    open: true,
+    funcionarioId: linha.funcionarioId,
+    novaObs: "",
+  });
+}
 
-      const novosVales = (linha.vales || []).filter((item) => {
-        if (item.grupoId !== vale.grupoId) return true;
+async function addObservacao() {
+  if (!obsEditor.funcionarioId || !obsEditor.novaObs.trim()) return;
 
-        if (
-          shouldRemoveValeFromHereForward({
-            vale: item,
-            currentAno: ano,
-            currentMes: mes,
-            lineAno: linha.ano,
-            lineMes: linha.mes,
-          })
-        ) {
-          return false;
-        }
+  await addObservacaoMutation.mutateAsync({
+    funcionarioId: obsEditor.funcionarioId,
+    lojaId,
+    ano,
+    mes,
+    texto: obsEditor.novaObs.trim(),
+  });
 
-        return true;
-      });
+  setObsEditor((prev) => ({ ...prev, novaObs: "" }));
+}
 
-      return {
-        ...linha,
-        vales: novosVales,
-      };
-    });
+async function removeObservacao(index: number) {
+  if (!obsEditor.funcionarioId) return;
 
-    updateFolhas(next);
-  }
+  const linhaAtual = linhas.find((l) => l.funcionarioId === obsEditor.funcionarioId);
+  const texto = linhaAtual?.observacoes?.[index];
+  if (!texto) return;
 
-  function openNegativoEditor(linha: LinhaComQuadrante) {
-    if (linha.boleto >= 0) return;
-    setNegativoEditor({
-      open: true,
-      linha,
-    });
-  }
+  await removeObservacaoMutation.mutateAsync({
+    funcionarioId: obsEditor.funcionarioId,
+    lojaId,
+    ano,
+    mes,
+    texto,
+  });
+}
 
+function openValeEditor(linha: LinhaComQuadrante) {
+  setValeEditor({
+    open: true,
+    funcionarioId: linha.funcionarioId,
+    descricao: "",
+    valor: "",
+    parcelas: "1",
+  });
+}
+
+async function addVale() {
+  if (!valeEditor.funcionarioId) return;
+
+  const descricao = valeEditor.descricao.trim();
+  const valorTotal = parseInputNumber(valeEditor.valor);
+  const parcelas = Math.max(1, Math.floor(parseInputNumber(valeEditor.parcelas)));
+
+  if (!descricao || valorTotal <= 0) return;
+
+  const parcelasCriadas = createParcelasVale({
+    descricao,
+    valorTotal,
+    parcelas,
+    ano,
+    mes,
+  });
+
+  await addValesMutation.mutateAsync({
+    funcionarioId: valeEditor.funcionarioId,
+    lojaId,
+    items: parcelasCriadas.map(({ ano: anoParcela, mes: mesParcela, item }) => ({
+      grupoId: item.grupoId,
+      descricao: item.descricao,
+      valorTotal,
+      valorParcela: item.valor,
+      parcelas: item.totalParcelas,
+      parcelaAtual: item.parcelaAtual,
+      ano: anoParcela,
+      mes: mesParcela,
+      mesOrigem: item.mesOrigem,
+      tipo: item.totalParcelas > 1 ? "parcelado" as const : "simples" as const,
+    })),
+  });
+
+  setValeEditor((prev) => ({
+    ...prev,
+    descricao: "",
+    valor: "",
+    parcelas: "1",
+  }));
+}
+
+async function removeVale(vale: ValeItem) {
+  if (!valeEditor.funcionarioId) return;
+
+  await removeValesMutation.mutateAsync({
+    funcionarioId: valeEditor.funcionarioId,
+    lojaId,
+    grupoId: vale.grupoId,
+    ano,
+    mes,
+  });
+}
+
+function openNegativoEditor(linha: LinhaComQuadrante) {
+  if (linha.boleto >= 0) return;
+  setNegativoEditor({
+    open: true,
+    linha,
+  });
+}
   function lançarNegativoNoPróximoMês() {
     const linha = negativoEditor.linha;
     if (!linha) return;
@@ -1236,9 +1488,21 @@ function getFuncionarioById(funcionarioId: number) {
   }
 
   const linhaPremioAtual = useMemo(() => {
-    if (!premioEditor.funcionarioId) return null;
-    return linhas.find((l) => l.funcionarioId === premioEditor.funcionarioId) || null;
-  }, [premioEditor.funcionarioId, linhas]);
+  console.log("DEBUG PREMIO", {
+    premioEditorId: premioEditor.funcionarioId,
+    linhas: linhas.map((l) => ({
+      id: l.funcionarioId,
+      nome: l.nome,
+    })),
+  });
+
+  if (!premioEditor.funcionarioId) return null;
+
+  return linhas.find((l) => {
+    console.log("COMPARANDO", l.funcionarioId, premioEditor.funcionarioId);
+    return Number(l.funcionarioId) === Number(premioEditor.funcionarioId);
+  }) || null;
+}, [premioEditor.funcionarioId, linhas]);
 
   const premioAutomaticoAtual = useMemo(() => {
     if (!linhaPremioAtual) return { detalhes: [], total: 0 };
@@ -1423,7 +1687,13 @@ function getFuncionarioById(funcionarioId: number) {
   }
 }, [meQuery.isLoading, meQuery.data, setLocation]);
 
-if (meQuery.isLoading || funcionariosQuery.isLoading) {
+if (
+  meQuery.isLoading ||
+  funcionariosQuery.isLoading ||
+  folhaBaseQuery.isLoading ||
+  folhaExtrasQuery.isLoading
+) {
+
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
       <p className="text-gray-400">Carregando...</p>
@@ -1435,10 +1705,19 @@ if (!meQuery.data) {
   return null;
 }
 
-if (funcionariosQuery.error) {
+if (
+  funcionariosQuery.error ||
+  folhaBaseQuery.error ||
+  folhaExtrasQuery.error
+) {
+
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      <p className="text-red-400">{funcionariosQuery.error.message}</p>
+      <p className="text-red-400">
+        {funcionariosQuery.error?.message ||
+  folhaBaseQuery.error?.message ||
+  folhaExtrasQuery.error?.message}
+      </p>
     </div>
   );
 }
@@ -1664,7 +1943,9 @@ if (funcionariosQuery.error) {
       >
         <DialogContent className="bg-gray-950 border-primary/30 text-white">
           <DialogHeader>
-            <DialogTitle className="text-primary">Premiação</DialogTitle>
+            <DialogTitle className="text-primary">
+              Premiação - {linhaPremioAtual?.nome || "sem nome"} (ID {premioEditor.funcionarioId ?? "null"})
+            </DialogTitle>
             <DialogDescription className="text-gray-400">
               Visualize a automática e adicione quantas premiações manuais quiser.
             </DialogDescription>

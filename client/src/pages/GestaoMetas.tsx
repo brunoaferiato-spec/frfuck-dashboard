@@ -30,7 +30,7 @@ import {
   saveMetas,
   getFuncionarios,
   type Meta,
-  type MetaTipo,
+  type TipoMeta,
 } from "@/lib/payrollStore";
 
 const LOJAS = [
@@ -54,21 +54,28 @@ const FUNCOES = [
   { id: "supervisor", nome: "Supervisor" },
 ];
 
+type TipoMetaForm = TipoMeta | "padrao" | "funcionario_especifico";
+
+type MetaUI = Meta & {
+  dataAtualizacao?: string;
+};
+
 export default function GestaoMetas() {
   const [, navigate] = useLocation();
 
-  const [metas, setMetas] = useState<Meta[]>(getMetas());
+  const [metas, setMetas] = useState<MetaUI[]>(getMetas() as MetaUI[]);
   const [selectedLoja, setSelectedLoja] = useState("1");
 
   const [formData, setFormData] = useState({
     cidade: "1",
     funcao: "vendedor",
-    tipoMeta: "padrao" as MetaTipo,
+    tipoMeta: "padrao" as TipoMetaForm,
     funcionario: "",
     regra: "",
   });
 
   const funcionarios = useMemo(() => getFuncionarios(), []);
+
   const funcionariosDaCidade = useMemo(() => {
     return funcionarios.filter(
       (f) => f.loja_id.toString() === formData.cidade && f.status !== "inativo"
@@ -76,12 +83,12 @@ export default function GestaoMetas() {
   }, [funcionarios, formData.cidade]);
 
   const metasFiltradas = useMemo(() => {
-    return metas.filter((m) => m.cidade === selectedLoja);
+    return metas.filter((m) => String(m.cidade) === selectedLoja);
   }, [metas, selectedLoja]);
 
-  const updateMetas = (novas: Meta[]) => {
+  const updateMetas = (novas: MetaUI[]) => {
     setMetas(novas);
-    saveMetas(novas);
+    saveMetas(novas as Meta[]);
   };
 
   const resetForm = () => {
@@ -100,17 +107,28 @@ export default function GestaoMetas() {
       return;
     }
 
-    if (formData.tipoMeta === "funcionario_especifico" && !formData.funcionario) {
+    if (
+      formData.tipoMeta === "funcionario_especifico" &&
+      !formData.funcionario
+    ) {
       alert("Selecione o funcionário específico");
       return;
     }
 
-    const novaMeta: Meta = {
+    const novaMeta: MetaUI = {
       id: Date.now().toString(),
       cidade: formData.cidade,
       funcao: formData.funcao,
-      tipoMeta: formData.tipoMeta,
+      tipoMeta:
+        formData.tipoMeta === "padrao" ||
+        formData.tipoMeta === "funcionario_especifico"
+          ? undefined
+          : formData.tipoMeta,
       funcionario:
+        formData.tipoMeta === "funcionario_especifico"
+          ? formData.funcionario
+          : undefined,
+      funcionarioNome:
         formData.tipoMeta === "funcionario_especifico"
           ? formData.funcionario
           : undefined,
@@ -124,11 +142,12 @@ export default function GestaoMetas() {
 
   const handleDeleteMeta = (id: string) => {
     if (confirm("Tem certeza que deseja excluir esta meta?")) {
-      updateMetas(metas.filter((m) => m.id !== id));
+      updateMetas(metas.filter((m) => String(m.id) !== id));
     }
   };
 
-  const getTipoMetaLabel = (tipo: MetaTipo) => {
+  const getTipoMetaLabel = (tipo?: TipoMetaForm) => {
+    if (!tipo) return "Padrão";
     if (tipo === "padrao") return "Padrão";
     if (tipo === "meta1") return "Meta 1";
     if (tipo === "meta2") return "Meta 2";
@@ -138,18 +157,18 @@ export default function GestaoMetas() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-black p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="mx-auto max-w-7xl space-y-6">
         <div className="mb-8 flex items-center gap-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate("/")}
-            className="hover:bg-primary/20 text-primary"
+            className="text-primary hover:bg-primary/20"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-primary mb-2">
+            <h1 className="mb-2 text-3xl font-bold text-primary">
               Gestão de Metas
             </h1>
             <p className="text-gray-400">
@@ -158,23 +177,23 @@ export default function GestaoMetas() {
           </div>
         </div>
 
-        <Card className="bg-gray-900 border-primary/30">
+        <Card className="border-primary/30 bg-gray-900">
           <CardHeader>
             <CardTitle className="text-primary">Adicionar Meta</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label className="text-gray-300 mb-2 block">Cidade</Label>
+              <Label className="mb-2 block text-gray-300">Cidade</Label>
               <Select
                 value={formData.cidade}
                 onValueChange={(value) =>
                   setFormData({ ...formData, cidade: value, funcionario: "" })
                 }
               >
-                <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
+                <SelectTrigger className="border-primary/30 bg-gray-800 text-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-primary/30">
+                <SelectContent className="border-primary/30 bg-gray-900">
                   {LOJAS.map((loja) => (
                     <SelectItem
                       key={loja.id}
@@ -189,7 +208,7 @@ export default function GestaoMetas() {
             </div>
 
             <div>
-              <Label className="text-gray-300 mb-2 block">Função</Label>
+              <Label className="mb-2 block text-gray-300">Função</Label>
               <Select
                 value={formData.funcao}
                 onValueChange={(value) =>
@@ -202,10 +221,10 @@ export default function GestaoMetas() {
                   })
                 }
               >
-                <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
+                <SelectTrigger className="border-primary/30 bg-gray-800 text-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-primary/30">
+                <SelectContent className="border-primary/30 bg-gray-900">
                   {FUNCOES.map((funcao) => (
                     <SelectItem
                       key={funcao.id}
@@ -220,22 +239,24 @@ export default function GestaoMetas() {
             </div>
 
             <div>
-              <Label className="text-gray-300 mb-2 block">Tipo de Meta</Label>
+              <Label className="mb-2 block text-gray-300">Tipo de Meta</Label>
               <Select
                 value={formData.tipoMeta}
                 onValueChange={(value) =>
                   setFormData({
                     ...formData,
-                    tipoMeta: value as MetaTipo,
+                    tipoMeta: value as TipoMetaForm,
                     funcionario:
-                      value === "funcionario_especifico" ? formData.funcionario : "",
+                      value === "funcionario_especifico"
+                        ? formData.funcionario
+                        : "",
                   })
                 }
               >
-                <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
+                <SelectTrigger className="border-primary/30 bg-gray-800 text-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-primary/30">
+                <SelectContent className="border-primary/30 bg-gray-900">
                   {formData.funcao === "consultor_vendas" ? (
                     <>
                       <SelectItem value="meta1" className="text-white">
@@ -244,7 +265,10 @@ export default function GestaoMetas() {
                       <SelectItem value="meta2" className="text-white">
                         Meta 2 (Nova)
                       </SelectItem>
-                      <SelectItem value="funcionario_especifico" className="text-white">
+                      <SelectItem
+                        value="funcionario_especifico"
+                        className="text-white"
+                      >
                         Funcionário específico
                       </SelectItem>
                     </>
@@ -253,7 +277,10 @@ export default function GestaoMetas() {
                       <SelectItem value="padrao" className="text-white">
                         Padrão
                       </SelectItem>
-                      <SelectItem value="funcionario_especifico" className="text-white">
+                      <SelectItem
+                        value="funcionario_especifico"
+                        className="text-white"
+                      >
                         Funcionário específico
                       </SelectItem>
                     </>
@@ -264,17 +291,17 @@ export default function GestaoMetas() {
 
             {formData.tipoMeta === "funcionario_especifico" && (
               <div>
-                <Label className="text-gray-300 mb-2 block">Funcionário</Label>
+                <Label className="mb-2 block text-gray-300">Funcionário</Label>
                 <Select
                   value={formData.funcionario}
                   onValueChange={(value) =>
                     setFormData({ ...formData, funcionario: value })
                   }
                 >
-                  <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
+                  <SelectTrigger className="border-primary/30 bg-gray-800 text-white">
                     <SelectValue placeholder="Selecione o funcionário" />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-primary/30">
+                  <SelectContent className="border-primary/30 bg-gray-900">
                     {funcionariosDaCidade
                       .filter((f) => f.funcao === formData.funcao)
                       .map((func) => (
@@ -292,38 +319,38 @@ export default function GestaoMetas() {
             )}
 
             <div>
-              <Label className="text-gray-300 mb-2 block">Regra da Meta</Label>
+              <Label className="mb-2 block text-gray-300">Regra da Meta</Label>
               <Input
                 placeholder="Ex: até 33.000 = 5% | 33.000 a 39.999 = 6%"
                 value={formData.regra}
                 onChange={(e) =>
                   setFormData({ ...formData, regra: e.target.value })
                 }
-                className="bg-gray-800 border-primary/30 text-white"
+                className="border-primary/30 bg-gray-800 text-white"
               />
             </div>
 
             <Button
               onClick={handleSalvarMeta}
-              className="w-full bg-primary text-black hover:bg-yellow-300 font-semibold"
+              className="w-full bg-primary font-semibold text-black hover:bg-yellow-300"
             >
               Salvar Meta
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-900 border-primary/30">
+        <Card className="border-primary/30 bg-gray-900">
           <CardHeader>
             <CardTitle className="text-primary">Visualizar Metas</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="mb-4">
-              <Label className="text-gray-300 mb-2 block">Cidade</Label>
+              <Label className="mb-2 block text-gray-300">Cidade</Label>
               <Select value={selectedLoja} onValueChange={setSelectedLoja}>
-                <SelectTrigger className="w-full md:w-64 bg-gray-800 border-primary/30 text-white">
+                <SelectTrigger className="w-full border-primary/30 bg-gray-800 text-white md:w-64">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-primary/30">
+                <SelectContent className="border-primary/30 bg-gray-900">
                   {LOJAS.map((loja) => (
                     <SelectItem
                       key={loja.id}
@@ -346,7 +373,7 @@ export default function GestaoMetas() {
                     <TableHead className="text-primary">Funcionário</TableHead>
                     <TableHead className="text-primary">Regra</TableHead>
                     <TableHead className="text-primary">Atualização</TableHead>
-                    <TableHead className="text-primary text-right">
+                    <TableHead className="text-right text-primary">
                       Ações
                     </TableHead>
                   </TableRow>
@@ -356,7 +383,7 @@ export default function GestaoMetas() {
                     <TableRow>
                       <TableCell
                         colSpan={6}
-                        className="text-center text-gray-400 py-8"
+                        className="py-8 text-center text-gray-400"
                       >
                         Nenhuma meta cadastrada para esta cidade
                       </TableCell>
@@ -364,32 +391,42 @@ export default function GestaoMetas() {
                   ) : (
                     metasFiltradas.map((meta) => (
                       <TableRow
-                        key={meta.id}
+                        key={String(meta.id)}
                         className="border-primary/20 hover:bg-gray-800"
                       >
-                        <TableCell className="text-white font-semibold">
-                          {FUNCOES.find((f) => f.id === meta.funcao)?.nome || meta.funcao}
+                        <TableCell className="font-semibold text-white">
+                          {FUNCOES.find((f) => f.id === meta.funcao)?.nome ||
+                            meta.funcao}
                         </TableCell>
                         <TableCell className="text-yellow-300">
-                          {getTipoMetaLabel(meta.tipoMeta)}
+                          {getTipoMetaLabel(
+                            meta.funcionario || meta.funcionarioNome
+                              ? "funcionario_especifico"
+                              : (meta.tipoMeta as TipoMetaForm | undefined) ??
+                                  "padrao"
+                          )}
                         </TableCell>
                         <TableCell className="text-gray-300">
-                          {meta.funcionario || "-"}
+                          {meta.funcionario || meta.funcionarioNome || "-"}
                         </TableCell>
                         <TableCell className="text-gray-300">
                           {meta.regra}
                         </TableCell>
                         <TableCell className="text-gray-300">
-                          {new Date(meta.dataAtualizacao).toLocaleDateString("pt-BR")}
+                          {meta.dataAtualizacao
+                            ? new Date(meta.dataAtualizacao).toLocaleDateString(
+                                "pt-BR"
+                              )
+                            : "-"}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleDeleteMeta(meta.id)}
+                            onClick={() => handleDeleteMeta(String(meta.id))}
                             className="text-red-400 hover:bg-red-500/20"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
                       </TableRow>

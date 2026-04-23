@@ -32,6 +32,8 @@ import { ENV } from "./_core/env";
 let _db: any | null = null;
 
 export async function getDb() {
+  console.log("DATABASE_URL existe?", !!process.env.DATABASE_URL);
+
   if (!_db && process.env.DATABASE_URL) {
     try {
       const connection = await mysql.createConnection(process.env.DATABASE_URL);
@@ -42,6 +44,11 @@ export async function getDb() {
       _db = null;
     }
   }
+
+  if (!process.env.DATABASE_URL) {
+    console.error("❌ DATABASE_URL não encontrada no process.env");
+  }
+
   return _db;
 }
 
@@ -639,4 +646,363 @@ export async function deleteUserById(id: number) {
   return {
     success: true,
   };
+}
+// ===== Folha Extras =====
+export async function getFolhaExtrasByLojaAnoMes(lojaId: number, ano: number, mes: number) {
+  const db = await getDb();
+  if (!db) {
+    return {
+      premiacoesByFuncionario: {},
+      observacoesByFuncionario: {},
+      descontosByFuncionario: {},
+      valesByFuncionario: {},
+    };
+  }
+
+  const [premiosRows, obsRows, descontosRows, valesRows] = await Promise.all([
+    db.select().from(premiacoes).where(
+      and(eq(premiacoes.lojaId, lojaId), eq(premiacoes.ano, ano), eq(premiacoes.mes, mes))
+    ),
+    db.select().from(observacoes).where(
+      and(eq(observacoes.lojaId, lojaId), eq(observacoes.ano, ano), eq(observacoes.mes, mes))
+    ),
+    db.select().from(descontos).where(
+      and(eq(descontos.lojaId, lojaId), eq(descontos.ano, ano), eq(descontos.mes, mes))
+    ),
+    db.select().from(vales).where(
+      and(eq(vales.lojaId, lojaId), eq(vales.ano, ano), eq(vales.mes, mes), eq(vales.status, "ativo"))
+    ),
+  ]);
+
+  const premiacoesByFuncionario: Record<number, Array<{ id: string; descricao: string; valor: number }>> = {};
+  const observacoesByFuncionario: Record<number, string[]> = {};
+  const descontosByFuncionario: Record<number, { aluguel: number; inss: number; adiant: number; holerite: number }> = {};
+  const valesByFuncionario: Record<number, Array<{
+    id: string;
+    grupoId: string;
+    descricao: string;
+    valor: number;
+    parcelaAtual: number;
+    totalParcelas: number;
+    anoOrigem: number;
+    mesOrigem: number;
+  }>> = {};
+
+  for (const row of premiosRows) {
+    const fid = row.funcionarioId;
+    if (!premiacoesByFuncionario[fid]) premiacoesByFuncionario[fid] = [];
+    premiacoesByFuncionario[fid].push({
+      id: String(row.id),
+      descricao: row.descricao,
+      valor: Number(row.valor || 0),
+    });
+  }
+
+  for (const row of obsRows) {
+    const fid = row.funcionarioId;
+    if (!observacoesByFuncionario[fid]) observacoesByFuncionario[fid] = [];
+    observacoesByFuncionario[fid].push(row.texto);
+  }
+
+  for (const row of descontosRows) {
+    const fid = row.funcionarioId;
+    if (!descontosByFuncionario[fid]) {
+      descontosByFuncionario[fid] = {
+        aluguel: 0,
+        inss: 0,
+        adiant: 0,
+        holerite: 0,
+      };
+    }
+
+    const valor = Number(row.valor || 0);
+
+    if (row.tipo === "aluguel") descontosByFuncionario[fid].aluguel = valor;
+    if (row.tipo === "inss") descontosByFuncionario[fid].inss = valor;
+    if (row.tipo === "adiantamento") descontosByFuncionario[fid].adiant = valor;
+    if (row.tipo === "holerite") descontosByFuncionario[fid].holerite = valor;
+  }
+
+  for (const row of valesRows) {
+    const fid = row.funcionarioId;
+    if (!valesByFuncionario[fid]) valesByFuncionario[fid] = [];
+    valesByFuncionario[fid].push({
+      id: String(row.id),
+      grupoId: row.grupoId,
+      descricao: row.descricao,
+      valor: Number(row.valorParcela || 0),
+      parcelaAtual: Number(row.parcelaAtual || 1),
+      totalParcelas: Number(row.parcelas || 1),
+      anoOrigem: row.ano,
+      mesOrigem: row.mesOrigem,
+    });
+  }
+
+  return {
+    premiacoesByFuncionario,
+    observacoesByFuncionario,
+    descontosByFuncionario,
+    valesByFuncionario,
+  };
+}
+
+export async function createPremiacao(data: {
+  funcionarioId: number;
+  lojaId: number;
+  ano: number;
+  mes: number;
+  descricao: string;
+  valor: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco não conectado");
+
+  await db.insert(premiacoes).values({
+    funcionarioId: data.funcionarioId,
+    lojaId: data.lojaId,
+    ano: data.ano,
+    mes: data.mes,
+    descricao: data.descricao,
+    valor: data.valor.toFixed(2),
+  } as any);
+
+  return { success: true };
+}
+
+export async function deletePremiacaoById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco não conectado");
+
+  await db.delete(premiacoes).where(eq(premiacoes.id, id));
+  return { success: true };
+}
+
+export async function createObservacao(data: {
+  funcionarioId: number;
+  lojaId: number;
+  ano: number;
+  mes: number;
+  texto: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco não conectado");
+
+  await db.insert(observacoes).values({
+    funcionarioId: data.funcionarioId,
+    lojaId: data.lojaId,
+    ano: data.ano,
+    mes: data.mes,
+    texto: data.texto,
+  } as any);
+
+  return { success: true };
+}
+
+export async function deleteObservacaoByTexto(data: {
+  funcionarioId: number;
+  lojaId: number;
+  ano: number;
+  mes: number;
+  texto: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco não conectado");
+
+  const rows = await db.select().from(observacoes).where(
+    and(
+      eq(observacoes.funcionarioId, data.funcionarioId),
+      eq(observacoes.lojaId, data.lojaId),
+      eq(observacoes.ano, data.ano),
+      eq(observacoes.mes, data.mes),
+      eq(observacoes.texto, data.texto)
+    )
+  );
+
+  if (rows[0]) {
+    await db.delete(observacoes).where(eq(observacoes.id, rows[0].id));
+  }
+
+  return { success: true };
+}
+
+export async function upsertDesconto(data: {
+  funcionarioId: number;
+  lojaId: number;
+  ano: number;
+  mes: number;
+  tipo: "aluguel" | "inss" | "adiantamento" | "holerite";
+  valor: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco não conectado");
+
+  const existing = await db.select().from(descontos).where(
+    and(
+      eq(descontos.funcionarioId, data.funcionarioId),
+      eq(descontos.lojaId, data.lojaId),
+      eq(descontos.ano, data.ano),
+      eq(descontos.mes, data.mes),
+      eq(descontos.tipo, data.tipo)
+    )
+  ).limit(1);
+
+  if (existing[0]) {
+    await db.update(descontos).set({
+      valor: data.valor.toFixed(2),
+    } as any).where(eq(descontos.id, existing[0].id));
+  } else {
+    await db.insert(descontos).values({
+      funcionarioId: data.funcionarioId,
+      lojaId: data.lojaId,
+      ano: data.ano,
+      mes: data.mes,
+      tipo: data.tipo,
+      valor: data.valor.toFixed(2),
+    } as any);
+  }
+
+  return { success: true };
+}
+
+export async function createValesBatch(data: {
+  funcionarioId: number;
+  lojaId: number;
+  items: Array<{
+    grupoId: string;
+    descricao: string;
+    valorTotal: number;
+    valorParcela: number;
+    parcelas: number;
+    parcelaAtual: number;
+    ano: number;
+    mes: number;
+    mesOrigem: number;
+    tipo: "simples" | "parcelado";
+  }>;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco não conectado");
+
+  if (!data.items.length) return { success: true };
+
+  await db.insert(vales).values(
+    data.items.map((item) => ({
+      funcionarioId: data.funcionarioId,
+      lojaId: data.lojaId,
+      grupoId: item.grupoId,
+      descricao: item.descricao,
+      valorTotal: item.valorTotal.toFixed(2),
+      valorParcela: item.valorParcela.toFixed(2),
+      parcelas: item.parcelas,
+      parcelaAtual: item.parcelaAtual,
+      ano: item.ano,
+      mes: item.mes,
+      mesOrigem: item.mesOrigem,
+      tipo: item.tipo,
+      status: "ativo",
+    })) as any
+  );
+
+  return { success: true };
+}
+
+export async function cancelValesByGrupoFromCurrentForward(data: {
+  funcionarioId: number;
+  lojaId: number;
+  grupoId: string;
+  ano: number;
+  mes: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco não conectado");
+
+  const rows = await db.select().from(vales).where(
+    and(
+      eq(vales.funcionarioId, data.funcionarioId),
+      eq(vales.lojaId, data.lojaId),
+      eq(vales.grupoId, data.grupoId),
+      eq(vales.status, "ativo")
+    )
+  );
+
+  const currentRef = new Date(data.ano, data.mes - 1, 1).getTime();
+
+  for (const row of rows) {
+    const rowRef = new Date(row.ano, row.mes - 1, 1).getTime();
+    if (rowRef >= currentRef) {
+      await db.update(vales).set({ status: "cancelado" } as any).where(eq(vales.id, row.id));
+    }
+  }
+
+  return { success: true };
+}
+
+export async function getFolhaBaseByLojaAnoMes(lojaId: number, ano: number, mes: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db
+    .select()
+    .from(folhaPagamento)
+    .where(
+      and(
+        eq(folhaPagamento.lojaId, lojaId),
+        eq(folhaPagamento.ano, ano),
+        eq(folhaPagamento.mes, mes)
+      )
+    );
+}
+
+export async function upsertFolhaBaseItem(data: {
+  funcionarioId: number;
+  lojaId: number;
+  ano: number;
+  mes: number;
+  semana: number;
+  liquidez: number;
+  percentualComissao: number;
+  valorComissao: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco não conectado");
+
+  const existing = await db
+    .select()
+    .from(folhaPagamento)
+    .where(
+      and(
+        eq(folhaPagamento.funcionarioId, data.funcionarioId),
+        eq(folhaPagamento.lojaId, data.lojaId),
+        eq(folhaPagamento.ano, data.ano),
+        eq(folhaPagamento.mes, data.mes),
+        eq(folhaPagamento.semana, data.semana)
+      )
+    )
+    .limit(1);
+
+  if (existing[0]) {
+    await db
+      .update(folhaPagamento)
+      .set({
+        liquidez: data.liquidez.toFixed(2),
+        percentualComissao: data.percentualComissao.toFixed(2),
+        valorComissao: data.valorComissao.toFixed(2),
+      } as any)
+      .where(eq(folhaPagamento.id, existing[0].id));
+
+    return { success: true, id: existing[0].id };
+  }
+
+  const inserted = await db.insert(folhaPagamento).values({
+    funcionarioId: data.funcionarioId,
+    lojaId: data.lojaId,
+    ano: data.ano,
+    mes: data.mes,
+    semana: data.semana,
+    liquidez: data.liquidez.toFixed(2),
+    percentualComissao: data.percentualComissao.toFixed(2),
+    valorComissao: data.valorComissao.toFixed(2),
+  } as any);
+
+  return { success: true, id: inserted?.insertId ?? null };
 }

@@ -18,6 +18,16 @@ import {
   getContaBancariaById,
   getComprasByLojaAnoMes,
   getComissaoFuncionario,
+  getFolhaExtrasByLojaAnoMes,
+  getFolhaBaseByLojaAnoMes,
+  upsertFolhaBaseItem,
+  createPremiacao,
+  deletePremiacaoById,
+  createObservacao,
+  deleteObservacaoByTexto,
+  upsertDesconto,
+  createValesBatch,
+  cancelValesByGrupoFromCurrentForward,
 } from "./db";
 import { signAuthToken, comparePassword, hashPassword } from "./auth";
 import { COOKIE_NAME } from "@shared/const";
@@ -407,6 +417,135 @@ export const appRouter = router({
       .query(({ input }) =>
         getFolhaByLojaAnoMes(input.lojaId, input.ano, input.mes)
       ),
+      getBaseByLojaAnoMes: protectedProcedure
+  .input(
+    z.object({
+      lojaId: z.number(),
+      ano: z.number(),
+      mes: z.number(),
+    })
+  )
+  .query(({ input }) =>
+    getFolhaBaseByLojaAnoMes(input.lojaId, input.ano, input.mes)
+  ),
+
+upsertBaseItem: protectedProcedure
+  .input(
+    z.object({
+      funcionarioId: z.number(),
+      lojaId: z.number(),
+      ano: z.number(),
+      mes: z.number(),
+      semana: z.number(),
+      liquidez: z.number(),
+      percentualComissao: z.number(),
+      valorComissao: z.number(),
+    })
+  )
+  .mutation(({ input }) => upsertFolhaBaseItem(input)),
+  }),
+
+  folhaExtras: router({
+    getByLojaAnoMes: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number(),
+        })
+      )
+      .query(({ input }) =>
+        getFolhaExtrasByLojaAnoMes(input.lojaId, input.ano, input.mes)
+      ),
+
+    addPremiacao: protectedProcedure
+      .input(
+        z.object({
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number(),
+          descricao: z.string().min(1),
+          valor: z.number().positive(),
+        })
+      )
+      .mutation(({ input }) => createPremiacao(input)),
+
+    removePremiacao: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(({ input }) => deletePremiacaoById(input.id)),
+
+    addObservacao: protectedProcedure
+      .input(
+        z.object({
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number(),
+          texto: z.string().min(1),
+        })
+      )
+      .mutation(({ input }) => createObservacao(input)),
+
+    removeObservacao: protectedProcedure
+      .input(
+        z.object({
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number(),
+          texto: z.string().min(1),
+        })
+      )
+      .mutation(({ input }) => deleteObservacaoByTexto(input)),
+
+    saveDesconto: protectedProcedure
+      .input(
+        z.object({
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number(),
+          tipo: z.enum(["aluguel", "inss", "adiantamento", "holerite"]),
+          valor: z.number().min(0),
+        })
+      )
+      .mutation(({ input }) => upsertDesconto(input)),
+
+    addVales: protectedProcedure
+      .input(
+        z.object({
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+          items: z.array(
+            z.object({
+              grupoId: z.string(),
+              descricao: z.string(),
+              valorTotal: z.number(),
+              valorParcela: z.number(),
+              parcelas: z.number(),
+              parcelaAtual: z.number(),
+              ano: z.number(),
+              mes: z.number(),
+              mesOrigem: z.number(),
+              tipo: z.enum(["simples", "parcelado"]),
+            })
+          ),
+        })
+      )
+      .mutation(({ input }) => createValesBatch(input)),
+
+    removeValesFromCurrentForward: protectedProcedure
+      .input(
+        z.object({
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+          grupoId: z.string(),
+          ano: z.number(),
+          mes: z.number(),
+        })
+      )
+      .mutation(({ input }) => cancelValesByGrupoFromCurrentForward(input)),
   }),
 
   comissaoFuncionario: router({
