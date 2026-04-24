@@ -1209,13 +1209,6 @@ async function saveCellEditor() {
 }
 
 function openPremioEditor(linha: LinhaComQuadrante) {
-  console.log("OPEN PREMIO EDITOR", {
-    nome: linha.nome,
-    funcionarioId: linha.funcionarioId,
-    lojaId: linha.loja_id,
-    premiacoesManuais: linha.premiacoesManuais,
-  });
-
   setPremioEditor({
     open: true,
     funcionarioId: Number(linha.funcionarioId),
@@ -1225,62 +1218,29 @@ function openPremioEditor(linha: LinhaComQuadrante) {
 }
 
 async function addPremiacaoManual() {
-  console.log("ADD PREMIO - INICIO", {
-    funcionarioId: premioEditor.funcionarioId,
-    lojaId,
-    ano,
-    mes,
-    descricaoDigitada: premioEditor.descricao,
-    valorDigitado: premioEditor.valor,
-  });
-
-  if (!premioEditor.funcionarioId) {
-    alert("funcionarioId vazio");
-    return;
-  }
+  if (!premioEditor.funcionarioId) return;
 
   const descricao = premioEditor.descricao.trim();
   const valor = parseInputNumber(premioEditor.valor);
 
-  console.log("ADD PREMIO - PARSEADO", {
-    funcionarioId: premioEditor.funcionarioId,
+  if (!descricao || valor <= 0) return;
+
+  await addPremiacaoMutation.mutateAsync({
+    funcionarioId: Number(premioEditor.funcionarioId),
+    lojaId: Number(lojaId),
+    ano: Number(ano),
+    mes: Number(mes),
     descricao,
-    valor,
+    valor: Number(valor),
   });
 
-  if (!descricao) {
-    alert("Digite a descrição da premiação");
-    return;
-  }
+  await folhaExtrasQuery.refetch();
 
-  if (valor <= 0) {
-    alert("Digite um valor maior que zero");
-    return;
-  }
-
-  try {
-    const result = await addPremiacaoMutation.mutateAsync({
-      funcionarioId: Number(premioEditor.funcionarioId),
-      lojaId: Number(lojaId),
-      ano: Number(ano),
-      mes: Number(mes),
-      descricao,
-      valor: Number(valor),
-    });
-
-    console.log("ADD PREMIO - SUCESSO", result);
-
-    await folhaExtrasQuery.refetch();
-
-    setPremioEditor((prev) => ({
-      ...prev,
-      descricao: "",
-      valor: "",
-    }));
-  } catch (error) {
-    console.error("ADD PREMIO - ERRO", error);
-    alert("Erro ao salvar premiação. Veja o console.");
-  }
+  setPremioEditor((prev) => ({
+    ...prev,
+    descricao: "",
+    valor: "",
+  }));
 }
 
 async function removePremiacaoManual(id: string) {
@@ -1488,18 +1448,9 @@ function openNegativoEditor(linha: LinhaComQuadrante) {
   }
 
   const linhaPremioAtual = useMemo(() => {
-  console.log("DEBUG PREMIO", {
-    premioEditorId: premioEditor.funcionarioId,
-    linhas: linhas.map((l) => ({
-      id: l.funcionarioId,
-      nome: l.nome,
-    })),
-  });
-
   if (!premioEditor.funcionarioId) return null;
 
   return linhas.find((l) => {
-    console.log("COMPARANDO", l.funcionarioId, premioEditor.funcionarioId);
     return Number(l.funcionarioId) === Number(premioEditor.funcionarioId);
   }) || null;
 }, [premioEditor.funcionarioId, linhas]);
@@ -1943,9 +1894,7 @@ if (
       >
         <DialogContent className="bg-gray-950 border-primary/30 text-white">
           <DialogHeader>
-            <DialogTitle className="text-primary">
-              Premiação - {linhaPremioAtual?.nome || "sem nome"} (ID {premioEditor.funcionarioId ?? "null"})
-            </DialogTitle>
+            <DialogTitle className="text-primary">Premiação</DialogTitle>
             <DialogDescription className="text-gray-400">
               Visualize a automática e adicione quantas premiações manuais quiser.
             </DialogDescription>
