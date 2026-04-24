@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Loader2, Pencil } from "lucide-react";
+import { ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,8 @@ const LOJAS = [
   { id: 2, nome: "Blumenau" },
   { id: 3, nome: "São José" },
   { id: 4, nome: "Florianópolis" },
+  { id: 5, nome: "ACI Promoções" },
+  { id: 6, nome: "Contrato PJ" },
 ];
 
 const FUNCOES = [
@@ -97,6 +99,12 @@ export default function GestaoFuncionarios() {
     },
   });
 
+  const inativarFuncionario = trpc.funcionarios.inativar.useMutation({
+    onSuccess: async () => {
+      await utils.funcionarios.listByLoja.invalidate({ lojaId });
+    },
+  });
+
   const lojaNome = useMemo(() => {
     return LOJAS.find((l) => l.id === lojaId)?.nome ?? "Loja";
   }, [lojaId]);
@@ -123,9 +131,24 @@ export default function GestaoFuncionarios() {
       dataNascimento: formatDateInput(func.dataNascimento),
       funcao: func.funcao,
       tipoMeta: (func.tipoMeta as TipoMeta) || "",
-      dataAdmissao: formatDateInput(func.dataAdmissao) || new Date().toISOString().split("T")[0],
+      dataAdmissao:
+        formatDateInput(func.dataAdmissao) ||
+        new Date().toISOString().split("T")[0],
     });
     setIsOpen(true);
+  };
+
+  const handleInativarFuncionario = async (func: FuncionarioItem) => {
+    const confirmar = confirm(`Deseja inativar ${func.nome}?`);
+
+    if (!confirmar) return;
+
+    try {
+      await inativarFuncionario.mutateAsync({ id: func.id });
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message ?? "Erro ao inativar funcionário");
+    }
   };
 
   const handleSaveFuncionario = async () => {
@@ -296,7 +319,9 @@ export default function GestaoFuncionarios() {
                         ...prev,
                         funcao: e.target.value as FuncaoId,
                         tipoMeta:
-                          e.target.value === "consultor_vendas" ? prev.tipoMeta : "",
+                          e.target.value === "consultor_vendas"
+                            ? prev.tipoMeta
+                            : "",
                       }))
                     }
                     className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
@@ -451,7 +476,7 @@ export default function GestaoFuncionarios() {
                               {func.status === "ativo" ? "Ativo" : "Inativo"}
                             </span>
                           </td>
-                          <td className="p-3">
+                          <td className="p-3 whitespace-nowrap">
                             <Button
                               size="sm"
                               variant="outline"
@@ -461,6 +486,19 @@ export default function GestaoFuncionarios() {
                               <Pencil className="mr-2 h-4 w-4" />
                               Editar
                             </Button>
+
+                            {func.status === "ativo" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleInativarFuncionario(func)}
+                                disabled={inativarFuncionario.isPending}
+                                className="ml-2 border-red-500/30 bg-transparent text-red-400 hover:bg-red-500/10"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Inativar
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       ))

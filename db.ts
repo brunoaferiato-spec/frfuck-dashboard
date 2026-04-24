@@ -37,3 +37,19 @@ export async function getDb() {
       _db = null;
     }
   }
+
+  return _db;
+}
+  export async function inativarFuncionarioById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Banco não conectado");
+
+  await db
+    .update(funcionarios)
+    .set({
+      status: "inativo",
+    } as any)
+    .where(eq(funcionarios.id, id));
+
+  return { success: true };
+}

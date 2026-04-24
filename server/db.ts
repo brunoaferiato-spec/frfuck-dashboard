@@ -297,6 +297,22 @@ export async function updateFuncionario(data: {
   return result[0] ?? null;
 }
 
+export async function inativarFuncionarioById(id: number) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Banco não conectado");
+  }
+
+  await db
+    .update(funcionarios)
+    .set({
+      status: "inativo",
+    } as any)
+    .where(eq(funcionarios.id, id));
+
+  return { success: true };
+}
+
 // ===== Metas =====
 export async function getMetaByFuncaoLojaAnoMes(lojaId: number, funcao: string, ano: number, mes: number) {
   const db = await getDb();

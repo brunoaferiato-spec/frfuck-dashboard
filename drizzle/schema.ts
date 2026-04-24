@@ -147,6 +147,7 @@ export const vales = mysqlTable("vales", {
   id: int("id").autoincrement().primaryKey(),
   funcionarioId: int("funcionarioId").notNull(),
   lojaId: int("lojaId").notNull(),
+  grupoId: varchar("grupoId", { length: 64 }).notNull(),
   descricao: varchar("descricao", { length: 200 }).notNull(),
   valorTotal: decimal("valorTotal", { precision: 12, scale: 2 }).notNull(),
   valorParcela: decimal("valorParcela", { precision: 12, scale: 2 }).notNull(),
