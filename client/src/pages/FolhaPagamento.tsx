@@ -341,7 +341,7 @@ function TabelaQuadrante({
       <button
         type="button"
         onClick={() => onOpenCellEditor(linha, campo, label, mode)}
-        className="w-full rounded-md border border-primary/20 bg-gray-800 px-3 py-2 text-right text-white hover:border-primary/60"
+        className="w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 text-white hover:border-primary/60"
       >
         {text}
       </button>
