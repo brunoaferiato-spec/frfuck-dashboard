@@ -778,6 +778,8 @@ const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
   {
     enabled: !!lojaId,
     retry: false,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
   }
 );
 const folhaBaseQuery = trpc.folhaPagamento.getBaseByLojaAnoMes.useQuery(
@@ -785,6 +787,8 @@ const folhaBaseQuery = trpc.folhaPagamento.getBaseByLojaAnoMes.useQuery(
   {
     enabled: !!lojaId,
     retry: false,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
   }
 );
 
@@ -799,6 +803,8 @@ const folhaExtrasQuery = trpc.folhaExtras.getByLojaAnoMes.useQuery(
   {
     enabled: !!lojaId,
     retry: false,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
   }
 );
 

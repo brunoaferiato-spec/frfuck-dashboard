@@ -74,12 +74,14 @@ export default function GestaoFuncionarios() {
   const lojaId = Number(selectedLoja);
 
   const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
-    { lojaId },
-    {
-      enabled: !!lojaId,
-      retry: false,
-    }
-  );
+  { lojaId },
+  {
+    enabled: !!lojaId,
+    retry: false,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  }
+);
 
   const createFuncionario = trpc.funcionarios.create.useMutation({
     onSuccess: async () => {
