@@ -772,7 +772,6 @@ export default function FolhaPagamento() {
   });
 
   const lojaId = parseInt(selectedLoja, 10);
-
 const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
   { lojaId },
   {
@@ -782,6 +781,7 @@ const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
     refetchOnWindowFocus: true,
   }
 );
+
 const folhaBaseQuery = trpc.folhaPagamento.getBaseByLojaAnoMes.useQuery(
   { lojaId, ano, mes },
   {
@@ -906,8 +906,8 @@ useEffect(() => {
         mes: row.mes,
         loja_id: row.lojaId,
         funcionarioId: row.funcionarioId,
-        nome: "",
-        funcao: "",
+        nome: todosFuncionarios.find((f) => Number(f.id) === Number(row.funcionarioId))?.nome || "",
+        funcao: todosFuncionarios.find((f) => Number(f.id) === Number(row.funcionarioId))?.funcao || "",
         tipoMeta: "",
         regraMeta: "",
 
@@ -974,7 +974,7 @@ useEffect(() => {
   }
 
   setFolhas(Array.from(agrupado.values()));
-}, [folhaBaseQuery.data]);
+}, [folhaBaseQuery.data, todosFuncionarios]);
 
   const linhas = useMemo<LinhaComQuadrante[]>(() => {
     return funcionariosDaCidade.map((func) => {
