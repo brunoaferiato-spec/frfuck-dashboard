@@ -543,29 +543,31 @@ export function shouldRemoveValeFromHereForward(args: {
 
 function getPercentualFromRegra(meta: Meta | null, valor: number) {
   if (!meta || !meta.regra) return 0;
+  if (valor <= 0) return 0;
 
-  const regra = String(meta.regra);
-  const lines = regra
+  const lines = String(meta.regra)
     .split("|")
     .map((s) => s.trim())
     .filter(Boolean);
 
   for (const line of lines) {
-    const nums = [...line.matchAll(/(\d[\d\.\,]*)/g)].map((m) =>
+    const lower = line.toLowerCase();
+
+    const percMatch = line.match(/(\d{1,2}(?:[\.,]\d+)?)\s*%/);
+    const perc = percMatch ? Number(percMatch[1].replace(",", ".")) : 0;
+
+    const lineSemPercentual = line.replace(/(\d{1,2}(?:[\.,]\d+)?)\s*%/g, "");
+
+    const nums = [...lineSemPercentual.matchAll(/(\d[\d\.\,]*)/g)].map((m) =>
       parseMoneyText(m[1])
     );
 
-    const percMatch = line.match(/(\d{1,2}(?:[\.,]\d+)?)%/);
-    const perc = percMatch ? Number(percMatch[1].replace(",", ".")) : 0;
-
-    const lower = line.toLowerCase();
-
     if (lower.includes("ou mais")) {
       if (valor >= (nums[0] || 0)) return perc;
+    } else if (lower.includes("até") && nums.length === 1) {
+      if (valor <= nums[0]) return perc;
     } else if (nums.length >= 2) {
       if (valor >= nums[0] && valor <= nums[1]) return perc;
-    } else if (nums.length === 1) {
-      if (valor <= nums[0]) return perc;
     }
   }
 
