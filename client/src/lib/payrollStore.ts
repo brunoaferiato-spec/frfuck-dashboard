@@ -179,7 +179,12 @@ function normalizeName(text: string) {
 }
 
 function parseMoneyText(text: string) {
-  return Number(String(text).replace(/\./g, "").replace(",", "."));
+  const cleaned = String(text)
+    .replace(/\s/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+
+  return Number(cleaned);
 }
 
 // =========================
@@ -545,35 +550,42 @@ function getPercentualFromRegra(meta: Meta | null, valor: number) {
   if (!meta || !meta.regra) return 0;
   if (valor <= 0) return 0;
 
-  const lines = String(meta.regra)
+  const regras = String(meta.regra)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .split("|")
-    .map((s) => s.trim())
+    .map((r) => r.trim())
     .filter(Boolean);
 
-  for (const line of lines) {
-    const lower = line.toLowerCase();
+  for (const regra of regras) {
+    const percMatch = regra.match(/=\s*(\d+(?:[.,]\d+)?)\s*%/);
+    const percentual = percMatch ? Number(percMatch[1].replace(",", ".")) : 0;
 
-    const percMatch = line.match(/(\d{1,2}(?:[\.,]\d+)?)\s*%/);
-    const perc = percMatch ? Number(percMatch[1].replace(",", ".")) : 0;
+    const textoSemPercentual = regra.replace(/=\s*\d+(?:[.,]\d+)?\s*%/, "");
 
-    const lineSemPercentual = line.replace(/(\d{1,2}(?:[\.,]\d+)?)\s*%/g, "");
-
-    const nums = [...lineSemPercentual.matchAll(/(\d[\d\.\,]*)/g)].map((m) =>
-      parseMoneyText(m[1])
+    const numeros = [...textoSemPercentual.matchAll(/\d+(?:[.,]\d+)?/g)].map((m) =>
+      Number(m[0].replace(/\./g, "").replace(",", "."))
     );
 
-    if (lower.includes("ou mais")) {
-      if (valor >= (nums[0] || 0)) return perc;
-    } else if (lower.includes("até") && nums.length === 1) {
-      if (valor <= nums[0]) return perc;
-    } else if (nums.length >= 2) {
-      if (valor >= nums[0] && valor <= nums[1]) return perc;
+    if (regra.includes("ou mais")) {
+      if (valor >= numeros[0]) return percentual;
+      continue;
+    }
+
+    if (regra.includes("ate")) {
+      if (valor <= numeros[0]) return percentual;
+      continue;
+    }
+
+    if (numeros.length >= 2) {
+      if (valor >= numeros[0] && valor <= numeros[1]) return percentual;
+      continue;
     }
   }
 
   return 0;
 }
-
 // =========================
 // CÁLCULO PRINCIPAL
 // =========================
@@ -754,10 +766,34 @@ export function computeFolhaLinha(args: {
     };
   }
 
-  const p1 = getPercentualFromRegra(meta, Number(sem1 || 0));
-  const p2 = getPercentualFromRegra(meta, Number(sem2 || 0));
-  const p3 = getPercentualFromRegra(meta, Number(sem3 || 0));
-  const p4 = getPercentualFromRegra(meta, Number(sem4 || 0));
+const funcaoNormalizada = String(funcao || "").trim().toLowerCase();
+const cidadeNormalizada = String(cidade || "").trim();
+
+const metaUsada =
+  meta ||
+  (funcaoNormalizada === "mecanico"
+    ? {
+        cidade,
+        funcao,
+        tipoMeta: "padrao",
+        regra:
+          "ATÉ 7.999,99 = 10% | 8.000 A 9.999,99 = 12% | 10.000 A 19.999,99 = 15% | 20.000 OU MAIS = 17%",
+      }
+    : null) ||
+  (["1", "2"].includes(String(cidade)) && funcaoNormalizada === "vendedor"
+    ? {
+        cidade,
+        funcao,
+        tipoMeta: "padrao",
+        regra:
+          "ATÉ 32.999 = 5% | 33.000 A 39.999 = 6% | 40.000 ATÉ 46.999 = 7% | 47.000 OU MAIS = 8%",
+      }
+    : null);
+
+  const p1 = getPercentualFromRegra(metaUsada, Number(sem1 || 0));
+  const p2 = getPercentualFromRegra(metaUsada, Number(sem2 || 0));
+  const p3 = getPercentualFromRegra(metaUsada, Number(sem3 || 0));
+  const p4 = getPercentualFromRegra(metaUsada, Number(sem4 || 0));
 
   const c1 = Number(sem1 || 0) * (p1 / 100);
   const c2 = Number(sem2 || 0) * (p2 / 100);
