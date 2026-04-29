@@ -1214,6 +1214,21 @@ async function saveCellEditor() {
   });
 }
 
+async function clearCellEditor() {
+  if (!cellEditor.funcionarioId || !cellEditor.campo) return;
+
+  await updateLinha(cellEditor.funcionarioId, cellEditor.campo, 0);
+
+  setCellEditor({
+    open: false,
+    funcionarioId: null,
+    campo: null,
+    label: "",
+    mode: "money",
+    value: "",
+  });
+}
+
 function openPremioEditor(linha: LinhaComQuadrante) {
   setPremioEditor({
     open: true,
@@ -1855,26 +1870,34 @@ if (
 
           <DialogFooter>
             <Button
-              variant="ghost"
-              onClick={() =>
-                setCellEditor({
-                  open: false,
-                  funcionarioId: null,
-                  campo: null,
-                  label: "",
-                  mode: "money",
-                  value: "",
-                })
-              }
-            >
-              Cancelar
-            </Button>
-            <Button
-              className="bg-primary text-black hover:bg-yellow-300"
-              onClick={saveCellEditor}
-            >
-              Salvar
-            </Button>
+  variant="ghost"
+  onClick={() =>
+    setCellEditor({
+      open: false,
+      funcionarioId: null,
+      campo: null,
+      label: "",
+      mode: "money",
+      value: "",
+    })
+  }
+>
+  Cancelar
+</Button>
+
+<Button
+  className="bg-red-600 text-white hover:bg-red-500"
+  onClick={clearCellEditor}
+>
+  Limpar
+</Button>
+
+<Button
+  className="bg-primary text-black hover:bg-yellow-300"
+  onClick={saveCellEditor}
+>
+  Salvar
+</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
