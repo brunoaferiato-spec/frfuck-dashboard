@@ -1362,69 +1362,54 @@ function openNegativoEditor(linha: LinhaComQuadrante) {
     linha,
   });
 }
-  function lançarNegativoNoPróximoMês() {
-    const linha = negativoEditor.linha;
-    if (!linha) return;
 
-    const funcionario = getFuncionarioById(linha.funcionarioId);
-    if (!funcionario) return;
+async function lançarNegativoNoPróximoMês() {
+  const linha = negativoEditor.linha;
+  if (!linha) return;
 
-    const valor = Math.abs(linha.boleto);
-    if (valor <= 0) return;
+  const valor = Math.abs(linha.boleto);
+  if (valor <= 0) return;
 
-    const currentDate = new Date(ano, mes - 1, 1);
-    const nextDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
-    const proximoAno = nextDate.getFullYear();
-    const proximoMes = nextDate.getMonth() + 1;
+  const currentDate = new Date(ano, mes - 1, 1);
+  const nextDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+  const proximoAno = nextDate.getFullYear();
+  const proximoMes = nextDate.getMonth() + 1;
 
-    const nomeMesAtual = currentDate.toLocaleDateString("pt-BR", {
-      month: "long",
-    });
+  const nomeMesAtual = currentDate.toLocaleDateString("pt-BR", {
+    month: "long",
+  });
 
-    const parcelasCriadas = createParcelasVale({
-      descricao: `Negativo ${nomeMesAtual}/${ano}`,
+  const descricao = `Negativo do mês ${nomeMesAtual}/${ano}`;
+
+  const parcelasCriadas = createParcelasVale({
+    descricao,
+    valorTotal: valor,
+    parcelas: 1,
+    ano: proximoAno,
+    mes: proximoMes,
+  });
+
+  await addValesMutation.mutateAsync({
+    funcionarioId: linha.funcionarioId,
+    lojaId: linha.loja_id,
+    items: parcelasCriadas.map(({ ano: anoParcela, mes: mesParcela, item }) => ({
+      grupoId: item.grupoId,
+      descricao: item.descricao,
       valorTotal: valor,
-      parcelas: 1,
-      ano: proximoAno,
-      mes: proximoMes,
-    });
+      valorParcela: item.valor,
+      parcelas: item.totalParcelas,
+      parcelaAtual: item.parcelaAtual,
+      ano: anoParcela,
+      mes: mesParcela,
+      mesOrigem: item.mesOrigem,
+      tipo: "simples" as const,
+    })),
+  });
 
-    const next = [...folhas];
+  await folhaExtrasQuery.refetch();
 
-    parcelasCriadas.forEach(({ ano: anoParcela, mes: mesParcela, item }) => {
-      const idx = next.findIndex(
-        (f) =>
-          f.funcionarioId === linha.funcionarioId &&
-          f.ano === anoParcela &&
-          f.mes === mesParcela &&
-          f.loja_id === funcionario.loja_id
-      );
-
-      if (idx >= 0) {
-        next[idx] = {
-          ...next[idx],
-          vales: [...(next[idx].vales || []), item],
-        };
-      } else {
-        next.push({
-          ...buildEmptyLine({
-            ano: anoParcela,
-            mes: mesParcela,
-            loja_id: funcionario.loja_id,
-            funcionarioId: funcionario.id,
-            nome: funcionario.nome,
-            funcao: funcionario.funcao,
-            tipoMeta: funcionario.tipoMeta,
-            regraMeta: "",
-          }),
-          vales: [item],
-        });
-      }
-    });
-
-    updateFolhas(next);
-    setNegativoEditor({ open: false, linha: null });
-  }
+  setNegativoEditor({ open: false, linha: null });
+}
 
   function exportarBoletos() {
     const rows = linhas
@@ -1834,7 +1819,7 @@ if (
               onOpenPremioEditor={openPremioEditor}
               onOpenObsEditor={openObsEditor}
               onOpenValeEditor={openValeEditor}
-              onOpenNegativoEditor={openNegativoEditor}
+              onOpenNegativoEditor={(linha) => setNegativoEditor({ open: true, linha })}
               onOpenRegraSemanaEditor={openRegraSemanaEditor}
             />
           ))
