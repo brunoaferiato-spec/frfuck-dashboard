@@ -180,12 +180,6 @@ function getQuadranteDescricao(key: QuadranteKey) {
   }
 }
 
-function parseInputNumber(value: string) {
-  const normalized = value.replace(/\./g, "").replace(",", ".");
-  const n = Number(normalized);
-  return Number.isFinite(n) ? n : 0;
-}
-
 function buildEmptyLine(args: {
   ano: number;
   mes: number;
@@ -1201,7 +1195,7 @@ function openCellEditor(
 async function saveCellEditor() {
   if (!cellEditor.funcionarioId || !cellEditor.campo) return;
 
-  const valor = parseInputNumber(cellEditor.value);
+  const valor = Number(cellEditor.value || 0);
   await updateLinha(cellEditor.funcionarioId, cellEditor.campo, valor);
 
   setCellEditor({
@@ -1858,14 +1852,13 @@ if (
               {cellEditor.mode === "money" ? "Valor em R$" : "Quantidade"}
             </Label>
             <Input
-              type="number"
-              step={cellEditor.mode === "money" ? "0.01" : "1"}
-              value={cellEditor.value}
-              onChange={(e) =>
-                setCellEditor((prev) => ({ ...prev, value: e.target.value }))
-              }
-              className="bg-gray-800 border-primary/30 text-white"
-            />
+             type="number"
+             step={cellEditor.mode === "money" ? "0.01" : "1"}
+             value={cellEditor.value}
+            onChange={(e) =>
+           setCellEditor((prev) => ({ ...prev, value: e.target.value }))
+          }
+          />
           </div>
 
           <DialogFooter>
