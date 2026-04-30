@@ -614,13 +614,17 @@ function TabelaQuadrante({
                       </td>
                       <td className="p-2 text-right">{renderRegraButton(linha, 4)}</td>
 
-                      <td className="p-2 text-right text-white font-semibold">
-                        R$ {money(linha.totalLiquidez)}
+                      <td className="p-2 text-right">
+  <                   span className="whitespace-nowrap text-white font-semibold">
+                       R$ {money(linha.totalLiquidez)}
+                      </span>
                       </td>
 
-                      <td className="p-2 text-right text-yellow-300 font-semibold">
+                      <td className="p-2 text-right">
+                      <span className="whitespace-nowrap text-yellow-300 font-semibold">
                         R$ {money(linha.totalComissao)}
-                      </td>
+                      </span>
+                     </td>
                     </>
                   )}
 
