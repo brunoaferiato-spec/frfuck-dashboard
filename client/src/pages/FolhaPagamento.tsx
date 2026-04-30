@@ -58,6 +58,15 @@ function money(value: number) {
   });
 }
 
+function parseValorBR(value: string) {
+  const normalized = String(value || "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
 type QuadranteKey =
   | "gerente"
   | "comissao_semanal"
@@ -1236,7 +1245,7 @@ async function addPremiacaoManual() {
   if (!premioEditor.funcionarioId) return;
 
   const descricao = premioEditor.descricao.trim();
-  const valor = parseInputNumber(premioEditor.valor);
+  const valor = parseValorBR(premioEditor.valor);
 
   if (!descricao || valor <= 0) return;
 
@@ -1314,8 +1323,8 @@ async function addVale() {
   if (!valeEditor.funcionarioId) return;
 
   const descricao = valeEditor.descricao.trim();
-  const valorTotal = parseInputNumber(valeEditor.valor);
-  const parcelas = Math.max(1, Math.floor(parseInputNumber(valeEditor.parcelas)));
+  const valorTotal = parseValorBR(valeEditor.valor);
+  const parcelas = Math.max(1, Math.floor(Number(valeEditor.parcelas || 1)));
 
   if (!descricao || valorTotal <= 0) return;
 
