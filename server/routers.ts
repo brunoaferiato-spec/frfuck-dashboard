@@ -74,7 +74,7 @@ export const appRouter = router({
       )
       .mutation(async ({ input, ctx }) => {
         try {
-          const user = await getUserByEmail(input.email);
+          const user = await getUserByEmail(input.email.trim().toLowerCase());
 
           if (!user) {
             throw new TRPCError({
