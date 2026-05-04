@@ -125,18 +125,24 @@ export async function getUserByOpenId(openId: string) {
 
 export async function getUserByEmail(email: string) {
   const db = await getDb();
+
   if (!db) {
     console.warn("[Database] Cannot get user by email: database not available");
     return undefined;
   }
 
+  const emailNormalizado = email.trim().toLowerCase();
+
   const result = await db
     .select()
     .from(users)
-    .where(eq(users.email, email))
+    .where(eq(users.email, emailNormalizado))
     .limit(1);
 
+  console.log("🔍 LOGIN EMAIL:", emailNormalizado, "USER FOUND:", result[0]?.email);
+
   return result[0] ?? undefined;
+
 }
 
 // ===== Lojas =====
@@ -960,6 +966,7 @@ export async function cancelValesByGrupoFromCurrentForward(data: {
 }
 
 export async function getFolhaBaseByLojaAnoMes(lojaId: number, ano: number, mes: number) {
+  console.log("BUSCANDO FOLHA:", lojaId, ano, mes);
   const db = await getDb();
   if (!db) return [];
 
@@ -985,6 +992,8 @@ export async function upsertFolhaBaseItem(data: {
   percentualComissao: number;
   valorComissao: number;
 }) {
+  console.log("SALVANDO FOLHA:", data);
+
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
 
@@ -1002,29 +1011,16 @@ export async function upsertFolhaBaseItem(data: {
     )
     .limit(1);
 
-  if (existing[0]) {
+  if (existing.length > 0) {
     await db
       .update(folhaPagamento)
       .set({
-        liquidez: data.liquidez.toFixed(2),
-        percentualComissao: data.percentualComissao.toFixed(2),
-        valorComissao: data.valorComissao.toFixed(2),
-      } as any)
+        liquidez: data.liquidez,
+        percentualComissao: data.percentualComissao,
+        valorComissao: data.valorComissao,
+      })
       .where(eq(folhaPagamento.id, existing[0].id));
-
-    return { success: true, id: existing[0].id };
+  } else {
+    await db.insert(folhaPagamento).values(data);
   }
-
-  const inserted = await db.insert(folhaPagamento).values({
-    funcionarioId: data.funcionarioId,
-    lojaId: data.lojaId,
-    ano: data.ano,
-    mes: data.mes,
-    semana: data.semana,
-    liquidez: data.liquidez.toFixed(2),
-    percentualComissao: data.percentualComissao.toFixed(2),
-    valorComissao: data.valorComissao.toFixed(2),
-  } as any);
-
-  return { success: true, id: inserted?.insertId ?? null };
 }
