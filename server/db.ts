@@ -1,4 +1,4 @@
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import * as schema from "../drizzle/schema";
@@ -163,7 +163,18 @@ export async function getLojaById(id: number) {
 export async function getFuncionariosByLoja(lojaId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db.select().from(funcionarios).where(eq(funcionarios.lojaId, lojaId));
+  return await db
+  .select()
+  .from(funcionarios)
+  .where(eq(funcionarios.lojaId, lojaId))
+  .orderBy(
+    sql`CASE 
+      WHEN ${funcionarios.funcao} = 'vendedor' THEN 1
+      WHEN ${funcionarios.funcao} = 'mecanico' THEN 2
+      ELSE 3
+    END`,
+    funcionarios.nome
+  );
 }
 
 export async function getFuncionarioById(id: number) {
