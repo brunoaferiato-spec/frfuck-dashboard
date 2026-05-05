@@ -289,13 +289,18 @@ export async function updateFuncionario(data: {
     | "administrativo"
     | "gerente"
     | "supervisor";
-  tipoMeta?: "meta1" | "meta2" | null;
+  tipoMeta?: "meta1" | "meta2" | "" | null;
   dataAdmissao: Date;
 }) {
   const db = await getDb();
   if (!db) {
     throw new Error("Banco não conectado");
   }
+
+  const tipoMetaNormalizado =
+    data.tipoMeta === "meta1" || data.tipoMeta === "meta2"
+      ? data.tipoMeta
+      : null;
 
   await db
     .update(funcionarios)
@@ -306,10 +311,7 @@ export async function updateFuncionario(data: {
       pix: data.pix ?? null,
       dataNascimento: data.dataNascimento ?? null,
       funcao: data.funcao,
-      tipoMeta:
-      data.tipoMeta === "meta1" || data.tipoMeta === "meta2"
-        ? data.tipoMeta
-        : null,
+      tipoMeta: tipoMetaNormalizado,
       dataAdmissao: data.dataAdmissao,
     } as any)
     .where(eq(funcionarios.id, data.id));
