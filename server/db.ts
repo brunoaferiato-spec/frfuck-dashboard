@@ -238,7 +238,7 @@ export async function createFuncionario(data: {
     pix: data.pix ?? null,
     dataNascimento: data.dataNascimento ?? null,
     funcao: data.funcao,
-    tipoMeta: data.tipoMeta ?? null,
+    tipoMeta: data.tipoMeta && data.tipoMeta !== "" ? data.tipoMeta : null,
     dataAdmissao: data.dataAdmissao,
     status: "ativo",
   };
