@@ -307,7 +307,10 @@ export const appRouter = router({
           pix: z.string().nullable().optional(),
           dataNascimento: z.coerce.date().nullable().optional(),
           funcao: funcaoSchema,
-          tipoMeta: z.enum(["meta1", "meta2"]).nullable().optional(),
+          tipoMeta: z.preprocess(
+          (val) => val === "" ? null : val,
+          z.enum(["meta1", "meta2"]).nullable().optional()
+        ),
           dataAdmissao: z.coerce.date(),
         })
       )
@@ -340,7 +343,10 @@ export const appRouter = router({
           pix: z.string().nullable().optional(),
           dataNascimento: z.coerce.date().nullable().optional(),
           funcao: funcaoSchema,
-          tipoMeta: z.enum(["meta1", "meta2"]).nullable().optional(),
+          tipoMeta: z.preprocess(
+          (val) => val === "" ? null : val,
+          z.enum(["meta1", "meta2"]).nullable().optional()
+        ),
           dataAdmissao: z.coerce.date(),
         })
       )
