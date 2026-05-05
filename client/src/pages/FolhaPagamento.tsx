@@ -59,12 +59,48 @@ function money(value: number) {
 }
 
 function parseValorBR(value: string) {
-  const normalized = String(value || "")
-    .replace(/\./g, "")
-    .replace(",", ".");
+  const raw = String(value || "").trim();
 
-  const n = Number(normalized);
-  return Number.isFinite(n) ? n : 0;
+  if (!raw) return 0;
+
+  const cleaned = raw.replace(/[R$\s]/g, "");
+
+  if (cleaned.includes(",")) {
+    return Number(cleaned.replace(/\./g, "").replace(",", "."));
+  }
+
+  return Number(cleaned);
+}
+
+function calcularBoletoAjustado(args: {
+  quadrante: QuadranteKey;
+  funcao: string;
+  premiacao: number;
+  vale: number;
+  aluguel: number;
+  boletoOriginal: number;
+}) {
+  const premiacao = Number(args.premiacao || 0);
+  const vale = Number(args.vale || 0);
+  const aluguel = Number(args.aluguel || 0);
+
+  // Recepção não usa boleto
+  if (args.quadrante === "recepcao") {
+    return 0;
+  }
+
+  // Salário fixo: somente premiação vai para boleto
+  if (args.quadrante === "salario_fixo") {
+    return premiacao;
+  }
+
+  // Alinhador: premiação - vale - aluguel
+  if (args.quadrante === "alinhador") {
+    return premiacao - vale - aluguel;
+  }
+
+  // Demais funções seguem a regra atual
+  return Number(args.boletoOriginal || 0);
 }
 
 type QuadranteKey =
@@ -615,13 +651,13 @@ function TabelaQuadrante({
                       <td className="p-2 text-right">{renderRegraButton(linha, 4)}</td>
 
                       <td className="p-2 text-right">
-  <                   span className="whitespace-nowrap text-white font-semibold">
-                       R$ {money(linha.totalLiquidez)}
+                       <span className="whitespace-nowrap text-white font-semibold">
+                        R$ {money(linha.totalLiquidez)}
                       </span>
-                      </td>
+                    </td>
 
                       <td className="p-2 text-right">
-                      <span className="whitespace-nowrap text-yellow-300 font-semibold">
+                       <span className="whitespace-nowrap text-yellow-300 font-semibold">
                         R$ {money(linha.totalComissao)}
                       </span>
                      </td>
@@ -1052,12 +1088,25 @@ useEffect(() => {
         holerite: base.holerite,
       });
 
-      return {
-        ...base,
-        regraMeta: meta?.regra || "Sem meta cadastrada",
-        quadrante: getQuadrante(lojaId, func.funcao),
-        ...calculado,
-      };
+      const quadrante = getQuadrante(lojaId, func.funcao);
+
+      const boletoAjustado = calcularBoletoAjustado({
+      quadrante,
+      funcao: func.funcao,
+      premiacao: calculado.premiacao,
+      vale: calculado.vale,
+      aluguel: base.aluguel,
+      boletoOriginal: calculado.boleto,
+    });
+
+    return {
+      ...base,
+      regraMeta: meta?.regra || "Sem meta cadastrada",
+      quadrante,
+      ...calculado,
+      boleto: boletoAjustado,
+    };
+
     });
   }, [funcionariosDaCidade, folhas, lojaId, ano, mes, selectedLoja, folhaExtrasQuery.data]);
  
