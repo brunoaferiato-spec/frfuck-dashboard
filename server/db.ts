@@ -306,7 +306,10 @@ export async function updateFuncionario(data: {
       pix: data.pix ?? null,
       dataNascimento: data.dataNascimento ?? null,
       funcao: data.funcao,
-      tipoMeta: data.tipoMeta ?? null,
+      tipoMeta:
+      data.tipoMeta === "meta1" || data.tipoMeta === "meta2"
+        ? data.tipoMeta
+        : null,
       dataAdmissao: data.dataAdmissao,
     } as any)
     .where(eq(funcionarios.id, data.id));
