@@ -2155,7 +2155,7 @@ if (
         open={valeEditor.open}
         onOpenChange={(open) => setValeEditor((prev) => ({ ...prev, open }))}
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white">
+        <DialogContent className="bg-gray-950 border-primary/30 text-white max-h-[90vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-primary">Vale</DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -2165,7 +2165,7 @@ if (
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
+            <div className="rounded-md border border-primary/20 bg-gray-900 p-4 max-h-[300px] overflow-y-auto">
               <p className="mb-3 text-sm font-semibold text-primary">
                 Vales do mês atual
               </p>
