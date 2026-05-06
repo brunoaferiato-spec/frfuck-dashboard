@@ -2155,7 +2155,7 @@ if (
         open={valeEditor.open}
         onOpenChange={(open) => setValeEditor((prev) => ({ ...prev, open }))}
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white max-h-[90vh] overflow-hidden">
+        <DialogContent className="bg-gray-950 border-primary/30 text-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-primary">Vale</DialogTitle>
             <DialogDescription className="text-gray-400">
