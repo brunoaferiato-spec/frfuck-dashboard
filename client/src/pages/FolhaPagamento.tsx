@@ -628,7 +628,7 @@ function TabelaQuadrante({
 
                   {isSupervisor && (
                     <>
-                      <td className="p-2 text-right text-white font-semibold">
+                      <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
                         R$ {money(SUPERVISOR_SALARIO_FIXO)}
                       </td>
 
@@ -668,20 +668,20 @@ function TabelaQuadrante({
 
                   {!isSalarioFixo && !isRecepcao && !isSupervisor && (
                     <>
-                      <td className="p-2 text-right text-white font-semibold">
+                      <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
                         {isConsultor
                           ? linha.totalLiquidez.toLocaleString("pt-BR")
                           : `R$ ${money(linha.totalLiquidez)}`}
                       </td>
 
-                      <td className="p-2 text-right text-yellow-300 font-semibold">
+                      <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
                         R$ {money(linha.totalComissao)}
                       </td>
                     </>
                   )}
 
                   {isRecepcao &&(
-                    <td className="p-2 text-right text-yellow-300 font-semibold">
+                    <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
                       R$ {money(linha.totalComissao)}
                     </td>
                   )}
