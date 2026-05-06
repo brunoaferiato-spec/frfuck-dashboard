@@ -163,18 +163,19 @@ export async function getLojaById(id: number) {
 export async function getFuncionariosByLoja(lojaId: number) {
   const db = await getDb();
   if (!db) return [];
-  return await db
-  .select()
-  .from(funcionarios)
-  .where(eq(funcionarios.lojaId, lojaId))
-  .orderBy(
-    sql`CASE 
-      WHEN ${funcionarios.funcao} = 'vendedor' THEN 1
-      WHEN ${funcionarios.funcao} = 'mecanico' THEN 2
-      ELSE 3
-    END`,
-    funcionarios.nome
-  );
+
+  return await db.execute(sql`
+    SELECT *
+    FROM funcionarios
+    WHERE lojaId = ${lojaId}
+    ORDER BY 
+      CASE 
+        WHEN funcao = 'vendedor' THEN 1
+        WHEN funcao = 'mecanico' THEN 2
+        ELSE 3
+      END,
+      nome
+  `);
 }
 
 export async function getFuncionarioById(id: number) {
