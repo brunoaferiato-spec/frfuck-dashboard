@@ -164,7 +164,7 @@ export async function getFuncionariosByLoja(lojaId: number) {
   const db = await getDb();
   if (!db) return [];
 
-  return await db.execute(sql`
+  const result = await db.execute(sql`
     SELECT *
     FROM funcionarios
     WHERE lojaId = ${lojaId}
@@ -176,6 +176,8 @@ export async function getFuncionariosByLoja(lojaId: number) {
       END,
       nome
   `);
+
+  return result.rows;
 }
 
 export async function getFuncionarioById(id: number) {
@@ -239,7 +241,10 @@ export async function createFuncionario(data: {
     pix: data.pix ?? null,
     dataNascimento: data.dataNascimento ?? null,
     funcao: data.funcao,
-    tipoMeta: data.tipoMeta && data.tipoMeta !== "" ? data.tipoMeta : null,
+    tipoMeta:
+  data.tipoMeta === "meta1" || data.tipoMeta === "meta2"
+    ? data.tipoMeta
+    : null,
     dataAdmissao: data.dataAdmissao,
     status: "ativo",
   };
