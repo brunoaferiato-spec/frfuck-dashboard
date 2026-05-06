@@ -563,7 +563,7 @@ function TabelaQuadrante({
                   className="border-b border-primary/10 hover:bg-gray-800"
                 >
                   <td className="p-2 text-white font-semibold sticky left-0 z-10 bg-gray-900">
-                    linha.nome}
+                    {linha.nome}
                   </td>
                   <td className="p-2 text-gray-300">{linha.funcao}</td>
 
