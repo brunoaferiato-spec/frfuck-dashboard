@@ -482,7 +482,7 @@ function TabelaQuadrante({
           <table className="w-full min-w-[1900px] text-sm">
             <thead>
               <tr className="border-b border-primary/30 text-primary">
-                <th className="text-left p-2">Nome</th>
+                <th className="text-left p-2 sticky left-0 z-20 bg-gray-900">Nome</th>
                 <th className="text-left p-2">Função</th>
 
                 {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && (
@@ -562,7 +562,9 @@ function TabelaQuadrante({
                   key={linha.id}
                   className="border-b border-primary/10 hover:bg-gray-800"
                 >
-                  <td className="p-2 text-white font-semibold">{linha.nome}</td>
+                  <td className="p-2 text-white font-semibold sticky left-0 z-10 bg-gray-900">
+                    linha.nome}
+                  </td>
                   <td className="p-2 text-gray-300">{linha.funcao}</td>
 
                   {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && (
