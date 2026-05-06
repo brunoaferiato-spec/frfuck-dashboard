@@ -165,19 +165,19 @@ export async function getFuncionariosByLoja(lojaId: number) {
   if (!db) return [];
 
   const result = await db.execute(sql`
-    SELECT *
-    FROM funcionarios
-    WHERE lojaId = ${lojaId}
-    ORDER BY 
-      CASE 
-        WHEN funcao = 'vendedor' THEN 1
-        WHEN funcao = 'mecanico' THEN 2
-        ELSE 3
-      END,
-      nome
-  `);
+  SELECT *
+  FROM funcionarios
+  WHERE lojaId = ${lojaId}
+  ORDER BY 
+    CASE 
+      WHEN funcao = 'vendedor' THEN 1
+      WHEN funcao = 'mecanico' THEN 2
+      ELSE 3
+    END,
+    nome
+`);
 
-  return result.rows;
+return result[0];
 }
 
 export async function getFuncionarioById(id: number) {
