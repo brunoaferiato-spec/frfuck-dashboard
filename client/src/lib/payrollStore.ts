@@ -372,109 +372,93 @@ export function getRecepcaoConfig(funcionarioNome: string, cidade: string) {
 // =========================
 
 export function computeSupervisor(args: {
-  liqJoinville: number;
-  liqBlumenau: number;
-  liqSaoJose: number;
-  liqFlorianopolis: number;
+  cidade: string;
+  sem1: number;
+  sem2: number;
+  sem3: number;
+  sem4: number;
   premiacoesManuais?: PremioManual[];
   vales?: ValeItem[];
   aluguel: number;
+  adiant: number;
 }) {
-  const {
-    liqJoinville,
-    liqBlumenau,
-    liqSaoJose,
-    liqFlorianopolis,
-    premiacoesManuais,
-    vales,
-    aluguel,
-  } = args;
+const totalLiquidez = Number(args.sem1 || 0);
 
-  let premioJoinville = 0;
-  let premioBlumenau = 0;
-  let premioSaoJose = 0;
-  let premioFlorianopolis = 0;
+  let premiacaoAutomatica = 0;
 
-  if (liqJoinville >= 560000) premioJoinville = 2000;
-  else if (liqJoinville >= 520000) premioJoinville = 2000;
-  else if (liqJoinville >= 480000) premioJoinville = 2000;
-  else if (liqJoinville >= 440000) premioJoinville = 2000;
-  else if (liqJoinville >= 400000) premioJoinville = 2000;
-  else if (liqJoinville >= 360000) premioJoinville = 2000;
-  else if (liqJoinville >= 300000) premioJoinville = 1000;
+const regrasPorCidade: Record<string, Array<{ meta: number; premio: number }>> = {
+  "1": [
+    { meta: 300000, premio: 1000 },
+    { meta: 360000, premio: 2000 },
+    { meta: 400000, premio: 2000 },
+    { meta: 440000, premio: 2000 },
+    { meta: 480000, premio: 2000 },
+    { meta: 520000, premio: 2000 },
+    { meta: 560000, premio: 2000 },
+  ],
+  "2": [
+    { meta: 300000, premio: 1000 },
+    { meta: 360000, premio: 2000 },
+    { meta: 400000, premio: 3000 },
+    { meta: 440000, premio: 3000 },
+    { meta: 480000, premio: 3000 },
+    { meta: 520000, premio: 3000 },
+    { meta: 560000, premio: 3000 },
+  ],
+  "3": [
+    { meta: 300000, premio: 1000 },
+    { meta: 360000, premio: 2000 },
+    { meta: 400000, premio: 3000 },
+    { meta: 440000, premio: 3000 },
+    { meta: 480000, premio: 3000 },
+    { meta: 520000, premio: 3000 },
+    { meta: 560000, premio: 3000 },
+  ],
+  "4": [
+    { meta: 300000, premio: 1000 },
+    { meta: 360000, premio: 1000 },
+    { meta: 400000, premio: 1000 },
+    { meta: 440000, premio: 1000 },
+    { meta: 480000, premio: 1000 },
+    { meta: 520000, premio: 1000 },
+    { meta: 560000, premio: 1000 },
+  ],
+};
 
-  if (liqBlumenau >= 560000) premioBlumenau = 3000;
-  else if (liqBlumenau >= 520000) premioBlumenau = 3000;
-  else if (liqBlumenau >= 480000) premioBlumenau = 3000;
-  else if (liqBlumenau >= 440000) premioBlumenau = 3000;
-  else if (liqBlumenau >= 400000) premioBlumenau = 3000;
-  else if (liqBlumenau >= 360000) premioBlumenau = 2000;
-  else if (liqBlumenau >= 300000) premioBlumenau = 1000;
+const regras = regrasPorCidade[String(args.cidade)] || [];
 
-  if (liqSaoJose >= 560000) premioSaoJose = 3000;
-  else if (liqSaoJose >= 520000) premioSaoJose = 3000;
-  else if (liqSaoJose >= 480000) premioSaoJose = 3000;
-  else if (liqSaoJose >= 440000) premioSaoJose = 3000;
-  else if (liqSaoJose >= 400000) premioSaoJose = 3000;
-  else if (liqSaoJose >= 360000) premioSaoJose = 2000;
-  else if (liqSaoJose >= 300000) premioSaoJose = 1000;
-
-  if (liqFlorianopolis >= 560000) premioFlorianopolis = 1000;
-  else if (liqFlorianopolis >= 520000) premioFlorianopolis = 1000;
-  else if (liqFlorianopolis >= 480000) premioFlorianopolis = 1000;
-  else if (liqFlorianopolis >= 440000) premioFlorianopolis = 1000;
-  else if (liqFlorianopolis >= 400000) premioFlorianopolis = 1000;
-  else if (liqFlorianopolis >= 360000) premioFlorianopolis = 1000;
-  else if (liqFlorianopolis >= 300000) premioFlorianopolis = 1000;
-
-  const totalLiquidez =
-    liqJoinville + liqBlumenau + liqSaoJose + liqFlorianopolis;
-
-  let premioGrupo = 0;
-  if (totalLiquidez >= 1420000) premioGrupo += 1000;
-  if (totalLiquidez >= 1540000) premioGrupo += 1000;
-  if (totalLiquidez >= 1600000) premioGrupo += 1000;
-
-  let premioRecorde = 0;
-  if (totalLiquidez > SUPERVISOR_RECORDE_GRUPO) {
-    premioRecorde = totalLiquidez * 0.001;
+for (const regra of regras) {
+  if (totalLiquidez >= regra.meta) {
+    premiacaoAutomatica += regra.premio;
   }
+}
 
-  const premiacaoAutomatica =
-    premioJoinville +
-    premioBlumenau +
-    premioSaoJose +
-    premioFlorianopolis +
-    premioGrupo +
-    premioRecorde;
-
-  const premiacaoManual = sumPremiacoesManuais(premiacoesManuais);
-  const vale = sumVales(vales);
+  const salarioFixo = 1500;
+  const premiacaoManual = sumPremiacoesManuais(args.premiacoesManuais);
+  const vale = sumVales(args.vales);
 
   const totalPremiacao = premiacaoAutomatica + premiacaoManual;
 
-  const boleto =
-    SUPERVISOR_SALARIO_FIXO +
-    totalPremiacao -
-    vale -
-    aluguel;
+const total =
+  salarioFixo +
+  premiacaoAutomatica;
+
+const boleto =
+  total +
+  premiacaoManual -
+  vale -
+  args.aluguel-
+  args.adiant;
 
   return {
-    salarioFixo: SUPERVISOR_SALARIO_FIXO,
-    premioJoinville,
-    premioBlumenau,
-    premioSaoJose,
-    premioFlorianopolis,
-    premioGrupo,
-    premioRecorde,
+    salarioFixo,
     premiacaoAutomatica,
     premiacaoManual,
-    totalPremiacao,
-    totalLiquidez,
+    total,
     vale,
     boleto,
   };
-}
+ }
 
 // =========================
 // VALE PARCELADO
@@ -607,6 +591,7 @@ export function computeFolhaLinha(args: {
   adiant: number;
   holerite: number;
 }) {
+
   const {
     meta,
     funcao,
@@ -629,32 +614,40 @@ export function computeFolhaLinha(args: {
   const vale = sumVales(vales);
 
   if (funcao === "supervisor") {
-    const supervisor = computeSupervisor({
-      liqJoinville: Number(sem1 || 0),
-      liqBlumenau: Number(sem2 || 0),
-      liqSaoJose: Number(sem3 || 0),
-      liqFlorianopolis: Number(sem4 || 0),
-      premiacoesManuais,
-      vales,
-      aluguel,
-    });
+  const supervisor = computeSupervisor({
+    cidade,
+    sem1,
+    sem2,
+    sem3,
+    sem4,
+    premiacoesManuais,
+    vales,
+    aluguel,
+    adiant,
+  });
 
-    return {
-      perc1: supervisor.premioJoinville,
-      perc2: supervisor.premioBlumenau,
-      perc3: supervisor.premioSaoJose,
-      perc4: supervisor.premioFlorianopolis,
-      com1: supervisor.premioJoinville,
-      com2: supervisor.premioBlumenau,
-      com3: supervisor.premioSaoJose,
-      com4: supervisor.premioFlorianopolis,
-      totalLiquidez: supervisor.totalLiquidez,
-      totalComissao: supervisor.premiacaoAutomatica,
-      premiacao: supervisor.totalPremiacao,
-      vale: supervisor.vale,
-      boleto: supervisor.boleto,
-    };
-  }
+  return {
+  perc1: 0,
+  perc2: 0,
+  perc3: 0,
+  perc4: 0,
+
+  com1: 0,
+  com2: 0,
+  com3: 0,
+  com4: 0,
+
+  totalLiquidez: Number(sem1 || 0),
+
+  totalComissao: supervisor.total,
+
+  premiacao: supervisor.premiacaoManual,
+
+  vale: supervisor.vale,
+
+  boleto: supervisor.boleto,
+};
+}
 
   if (funcao === "recepcionista") {
     const config = getRecepcaoConfig(funcionarioNome || "", cidade);
@@ -680,14 +673,18 @@ export function computeFolhaLinha(args: {
       perc2: config.valorEntrada,
       perc3: 0,
       perc4: 0,
+
       com1,
       com2,
       com3: 0,
       com4: 0,
+
       totalLiquidez: 0,
       totalComissao,
+
       premiacao: premiacaoManual,
       vale,
+
       boleto,
     };
   }

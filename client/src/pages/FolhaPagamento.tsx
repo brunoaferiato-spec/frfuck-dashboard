@@ -162,7 +162,7 @@ function getQuadrante(lojaId: number, funcao: string): QuadranteKey {
   const semanal = lojaId === 1 || lojaId === 2;
   const mensal = lojaId === 3 || lojaId === 4;
 
-  if (funcao === "supervisor" && lojaId === 6) return "supervisor_pj";
+  if (funcao === "supervisor") return "supervisor_pj";
   if (funcao === "gerente") return "gerente";
   if (funcao === "consultor_vendas") return "consultor_vendas";
   if (funcao === "alinhador" || funcao === "aux_alinhador") return "alinhador";
@@ -520,18 +520,11 @@ function TabelaQuadrante({
 
                 {isSupervisor && (
                   <>
-                    <th className="text-right p-2">Salário fixo</th>
-                    <th className="text-right p-2">Líq. Joinville</th>
-                    <th className="text-right p-2">Premiação</th>
-                    <th className="text-right p-2">Líq. Blumenau</th>
-                    <th className="text-right p-2">Premiação</th>
-                    <th className="text-right p-2">Líq. São José</th>
-                    <th className="text-right p-2">Premiação</th>
-                    <th className="text-right p-2">Líq. Florianópolis</th>
-                    <th className="text-right p-2">Premiação</th>
-                    <th className="text-right p-2">Total de liquidez</th>
-                    <th className="text-right p-2">Total de premiação</th>
-                  </>
+                   <th className="text-right p-2">Salário</th>
+                   <th className="text-right p-2">Liquidez</th>
+                   <th className="text-right p-2">Total comissão</th>
+                   <th className="text-right p-2">Total</th>
+                 </>
                 )}
 
                 {!isSalarioFixo && !isRecepcao && !isSupervisor && (
@@ -629,42 +622,26 @@ function TabelaQuadrante({
                   {isSupervisor && (
                     <>
                       <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
-                        R$ {money(SUPERVISOR_SALARIO_FIXO)}
+                        R$ {money(1500)}
                       </td>
 
                       <td className="p-2">
-                        {renderEditButton(linha, "sem1", "Líq. Joinville", "money")}
-                      </td>
-                      <td className="p-2 text-right">{renderRegraButton(linha, 1)}</td>
-
-                      <td className="p-2">
-                        {renderEditButton(linha, "sem2", "Líq. Blumenau", "money")}
-                      </td>
-                      <td className="p-2 text-right">{renderRegraButton(linha, 2)}</td>
-
-                      <td className="p-2">
-                        {renderEditButton(linha, "sem3", "Líq. São José", "money")}
-                      </td>
-                      <td className="p-2 text-right">{renderRegraButton(linha, 3)}</td>
-
-                      <td className="p-2">
-                        {renderEditButton(linha, "sem4", "Líq. Florianópolis", "money")}
-                      </td>
-                      <td className="p-2 text-right">{renderRegraButton(linha, 4)}</td>
+                        {renderEditButton(linha, "sem1", "Liquidez", "money")}
+                       </td>
 
                       <td className="p-2 text-right">
-                       <span className="whitespace-nowrap text-white font-semibold">
-                        R$ {money(linha.totalLiquidez)}
+                        <span className="whitespace-nowrap text-yellow-300 font-semibold">
+                          R$ {money(linha.totalComissao)}
                       </span>
                     </td>
 
-                      <td className="p-2 text-right">
-                       <span className="whitespace-nowrap text-yellow-300 font-semibold">
-                        R$ {money(linha.totalComissao)}
+                    <td className="p-2 text-right">
+                      <span className="whitespace-nowrap text-green-400 font-bold">
+                        R$ {money(linha.boleto)}
                       </span>
-                     </td>
-                    </>
-                  )}
+                    </td>
+                  </>
+                 )}
 
                   {!isSalarioFixo && !isRecepcao && !isSupervisor && (
                     <>
@@ -1559,13 +1536,15 @@ async function lançarNegativoNoPróximoMês() {
         semana === 1 ? linha.com1 : semana === 2 ? linha.com2 : semana === 3 ? linha.com3 : linha.com4;
 
       const supervisor = computeSupervisor({
-        liqJoinville: linha.sem1,
-        liqBlumenau: linha.sem2,
-        liqSaoJose: linha.sem3,
-        liqFlorianopolis: linha.sem4,
+        cidade: linha.loja_id.toString(),
+        sem1: linha.sem1,
+        sem2: linha.sem2,
+        sem3: linha.sem3,
+        sem4: linha.sem4,
         premiacoesManuais: linha.premiacoesManuais || [],
         vales: linha.vales || [],
         aluguel: linha.aluguel || 0,
+        adiant: linha.adiant || 0,
       });
 
       return {
@@ -1581,7 +1560,7 @@ async function lançarNegativoNoPróximoMês() {
         baseLabel: `Liquidez ${labels[semana - 1]}`,
         extra:
           semana === 4
-            ? `Grupo: R$ ${money(supervisor.totalLiquidez)} | Recorde atual: R$ ${money(
+            ? `Grupo: R$ ${money(supervisor.total)} | Recorde atual: R$ ${money(
                 SUPERVISOR_RECORDE_GRUPO
               )}`
             : "",
