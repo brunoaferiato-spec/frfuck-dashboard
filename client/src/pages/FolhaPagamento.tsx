@@ -637,7 +637,7 @@ function TabelaQuadrante({
 
                       <td className="p-2 text-right">
                         <span className="whitespace-nowrap text-green-400 font-bold">
-                          R$ {money(linha.totalComissao + linha.premiacao)}
+                          R$ {money(1500 + linha.totalComissao)}
                         </span>
                       </td>
                   </>
