@@ -630,16 +630,16 @@ function TabelaQuadrante({
                        </td>
 
                       <td className="p-2 text-right">
-                        <span className="whitespace-nowrap text-yellow-300 font-semibold">
-                          R$ {money(linha.totalComissao)}
-                      </span>
-                    </td>
+                         <span className="whitespace-nowrap text-yellow-300 font-semibold">
+                           R$ {money(linha.totalComissao)}
+                         </span>
+                      </td>
 
-                    <td className="p-2 text-right">
-                      <span className="whitespace-nowrap text-green-400 font-bold">
-                        R$ {money(linha.boleto)}
-                      </span>
-                    </td>
+                      <td className="p-2 text-right">
+                        <span className="whitespace-nowrap text-green-400 font-bold">
+                          R$ {money(linha.totalComissao + linha.premiacao)}
+                        </span>
+                      </td>
                   </>
                  )}
 

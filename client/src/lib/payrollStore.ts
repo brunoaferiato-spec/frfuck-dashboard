@@ -439,25 +439,28 @@ for (const regra of regras) {
 
   const totalPremiacao = premiacaoAutomatica + premiacaoManual;
 
+const totalComissao = premiacaoAutomatica;
+
 const total =
   salarioFixo +
-  premiacaoAutomatica;
+  totalComissao;
 
 const boleto =
   total +
   premiacaoManual -
   vale -
-  args.aluguel-
+  args.aluguel -
   args.adiant;
 
   return {
-    salarioFixo,
-    premiacaoAutomatica,
-    premiacaoManual,
-    total,
-    vale,
-    boleto,
-  };
+  salarioFixo,
+  totalComissao,
+  premiacaoAutomatica,
+  premiacaoManual,
+  total,
+  vale,
+  boleto,
+ };
  }
 
 // =========================
@@ -639,13 +642,13 @@ export function computeFolhaLinha(args: {
 
   totalLiquidez: Number(sem1 || 0),
 
-  totalComissao: supervisor.total,
+totalComissao: supervisor.totalComissao,
 
-  premiacao: supervisor.premiacaoManual,
+premiacao: supervisor.premiacaoManual,
 
-  vale: supervisor.vale,
+vale: supervisor.vale,
 
-  boleto: supervisor.boleto,
+boleto: supervisor.boleto,
 };
 }
 
