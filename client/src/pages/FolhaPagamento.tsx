@@ -1236,7 +1236,10 @@ function openCellEditor(
 async function saveCellEditor() {
   if (!cellEditor.funcionarioId || !cellEditor.campo) return;
 
-  const valor = Number(cellEditor.value || 0);
+  const valor =
+    cellEditor.mode === "money"
+      ? parseValorBR(cellEditor.value)
+      : Number(cellEditor.value || 0);
   await updateLinha(cellEditor.funcionarioId, cellEditor.campo, valor);
 
   setCellEditor({
@@ -1895,8 +1898,8 @@ if (
               {cellEditor.mode === "money" ? "Valor em R$" : "Quantidade"}
             </Label>
             <Input
-             type="number"
-             step={cellEditor.mode === "money" ? "0.01" : "1"}
+             type="text"
+             inputMode={cellEditor.mode === "money" ? "decimal" : "numeric"}
              value={cellEditor.value}
             onChange={(e) =>
            setCellEditor((prev) => ({ ...prev, value: e.target.value }))
