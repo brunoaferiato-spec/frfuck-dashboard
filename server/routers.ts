@@ -51,7 +51,7 @@ const funcaoSchema = z.enum([
   "recepcionista",
   "auxiliar_estoque",
   "lider_estoque",
-  "auxiliar_caixa",
+  "auxiliar_mecanico",
   "administrativo",
   "gerente",
   "supervisor",

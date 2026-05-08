@@ -67,7 +67,7 @@ export const funcionarios = mysqlTable("funcionarios", {
     "recepcionista",
     "auxiliar_estoque",
     "lider_estoque",
-    "auxiliar_caixa",
+    "auxiliar_mecanico",
     "administrativo",
     "gerente",
     "supervisor",

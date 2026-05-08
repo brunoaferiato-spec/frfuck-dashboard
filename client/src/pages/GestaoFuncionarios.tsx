@@ -29,7 +29,7 @@ const FUNCOES = [
   { id: "recepcionista", nome: "Recepcionista" },
   { id: "auxiliar_estoque", nome: "Auxiliar de Estoque" },
   { id: "lider_estoque", nome: "Líder de Estoque" },
-  { id: "auxiliar_caixa", nome: "Auxiliar de Caixa" },
+  { id: "auxiliar_mecanico", nome: "Auxiliar de Mecânico" },
   { id: "auxiliar_limpeza", nome: "Auxiliar Limpeza" },
   { id: "caixa", nome: "Caixa" },
   { id: "caixa_lider", nome: "Caixa Líder" },
