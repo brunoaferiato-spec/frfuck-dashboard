@@ -2095,8 +2095,7 @@ if (
               <div className="space-y-2">
                 <Label className="text-gray-300">Valor</Label>
                 <Input
-                  type="number"
-                  step="0.01"
+                  type="text"
                   value={premioEditor.valor}
                   onChange={(e) =>
                     setPremioEditor((prev) => ({
@@ -2209,8 +2208,7 @@ if (
               <div className="space-y-2">
                 <Label className="text-gray-300">Valor total</Label>
                 <Input
-                  type="number"
-                  step="0.01"
+                  type="text"
                   value={valeEditor.valor}
                   onChange={(e) =>
                     setValeEditor((prev) => ({
