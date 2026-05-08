@@ -556,19 +556,35 @@ function getPercentualFromRegra(meta: Meta | null, valor: number) {
     );
 
     if (regra.includes("ou mais")) {
-      if (valor >= numeros[0]) return percentual;
-      continue;
-    }
+  const minimo = numeros[0] || 0;
 
-    if (regra.includes("ate")) {
-      if (valor <= numeros[0]) return percentual;
-      continue;
-    }
+  if (valor >= minimo) {
+    return percentual;
+  }
 
-    if (numeros.length >= 2) {
-      if (valor >= numeros[0] && valor <= numeros[1]) return percentual;
-      continue;
-    }
+  continue;
+}
+
+if (numeros.length >= 2) {
+  const minimo = numeros[0] || 0;
+  const maximo = numeros[1] || 0;
+
+  if (valor >= minimo && valor <= maximo) {
+    return percentual;
+  }
+
+  continue;
+}
+
+if (regra.includes("ate")) {
+  const maximo = numeros[0] || 0;
+
+  if (valor <= maximo) {
+    return percentual;
+  }
+
+  continue;
+}
   }
 
   return 0;
