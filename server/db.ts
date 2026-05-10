@@ -172,8 +172,9 @@ export async function getFuncionariosByLoja(lojaId: number) {
     CASE 
       WHEN funcao = 'vendedor' THEN 1
       WHEN funcao = 'mecanico' THEN 2
-      ELSE 3
-    END,
+      WHEN funcao = 'auxiliar_mecanico' THEN 3
+      ELSE 4
+      END
     nome
 `);
 
