@@ -551,40 +551,28 @@ function getPercentualFromRegra(meta: Meta | null, valor: number) {
 
     const textoSemPercentual = regra.replace(/=\s*\d+(?:[.,]\d+)?\s*%/, "");
 
-    const numeros = [...textoSemPercentual.matchAll(/\d+(?:[.,]\d+)?/g)].map((m) =>
+    const numeros = [...textoSemPercentual.matchAll(/\d+(?:[.,]\d+)*/g)].map((m) =>
       Number(m[0].replace(/\./g, "").replace(",", "."))
     );
 
-    if (regra.includes("ou mais")) {
-  const minimo = numeros[0] || 0;
+    if (textoSemPercentual.includes("ou mais")) {
+      const minimo = numeros[0] || 0;
+      if (valor >= minimo) return percentual;
+      continue;
+    }
 
-  if (valor >= minimo) {
-    return percentual;
-  }
+    if (textoSemPercentual.includes("ate")) {
+      const maximo = numeros[0] || 0;
+      if (valor <= maximo) return percentual;
+      continue;
+    }
 
-  continue;
-}
-
-if (numeros.length >= 2) {
-  const minimo = numeros[0] || 0;
-  const maximo = numeros[1] || 0;
-
-  if (valor >= minimo && valor <= maximo) {
-    return percentual;
-  }
-
-  continue;
-}
-
-if (regra.includes("ate")) {
-  const maximo = numeros[0] || 0;
-
-  if (valor <= maximo) {
-    return percentual;
-  }
-
-  continue;
-}
+    if (textoSemPercentual.includes(" a ") && numeros.length >= 2) {
+      const minimo = numeros[0] || 0;
+      const maximo = numeros[1] || 0;
+      if (valor >= minimo && valor <= maximo) return percentual;
+      continue;
+    }
   }
 
   return 0;
