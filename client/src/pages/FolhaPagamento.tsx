@@ -380,7 +380,7 @@ function TabelaQuadrante({
       <button
         type="button"
         onClick={() => onOpenCellEditor(linha, campo, label, mode)}
-        className={`w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 hover:border-primary/60 ${
+        className={`w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 font-bold hover:border-primary/60 ${
   rawValue > 0
     ? ["sem1", "sem2", "sem3", "sem4", "premiacao"].includes(String(campo))
       ? "text-green-400"
@@ -675,7 +675,7 @@ function TabelaQuadrante({
                     <button
                       type="button"
                       onClick={() => onOpenPremioEditor(linha)}
-                      className={`w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 hover:border-primary/60 ${
+                      className={`w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 hover:border-primary/60 font-bold ${
                         linha.premiacao > 0 ? "text-green-400" : "text-white"
                       }`}
                     >
@@ -687,7 +687,7 @@ function TabelaQuadrante({
                     <button
                       type="button"
                       onClick={() => onOpenValeEditor(linha)}
-                      className={`w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 hover:border-primary/60 ${
+                      className={`w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 hover:border-primary/60 font-bold ${
                         linha.vale > 0 ? "text-red-400" : "text-white"
                       }`}
                     >
