@@ -57,6 +57,7 @@ const FUNCOES = [
 type TipoMetaForm = TipoMeta | "padrao" | "funcionario_especifico";
 
 type MetaUI = Meta & {
+  lojaId?: string | number;
   dataAtualizacao?: string;
 };
 
@@ -84,14 +85,23 @@ function normalizeCidadeMeta(cidade: unknown) {
   return mapa[value] || value;
 }
 
+function getLojaIdFromMeta(meta: MetaUI) {
+  return normalizeCidadeMeta((meta as any).lojaId ?? meta.cidade);
+}
+
 export default function GestaoMetas() {
   const [, navigate] = useLocation();
 
   const [metas, setMetas] = useState<MetaUI[]>(() =>
-    (getMetas() as MetaUI[]).map((meta) => ({
-      ...meta,
-      cidade: normalizeCidadeMeta(meta.cidade),
-    }))
+    (getMetas() as MetaUI[]).map((meta) => {
+      const lojaId = getLojaIdFromMeta(meta);
+
+      return {
+        ...meta,
+        cidade: lojaId,
+        lojaId,
+      };
+    })
   );
 
   const [selectedLoja, setSelectedLoja] = useState("1");
@@ -115,16 +125,19 @@ export default function GestaoMetas() {
   }, [funcionarios, formData.cidade]);
 
   const metasFiltradas = useMemo(() => {
-    return metas.filter(
-      (m) => normalizeCidadeMeta(m.cidade) === String(selectedLoja)
-    );
+    return metas.filter((meta) => getLojaIdFromMeta(meta) === String(selectedLoja));
   }, [metas, selectedLoja]);
 
   const updateMetas = (novas: MetaUI[]) => {
-    const normalizadas = novas.map((meta) => ({
-      ...meta,
-      cidade: normalizeCidadeMeta(meta.cidade),
-    }));
+    const normalizadas = novas.map((meta) => {
+      const lojaId = getLojaIdFromMeta(meta);
+
+      return {
+        ...meta,
+        cidade: lojaId,
+        lojaId,
+      };
+    });
 
     setMetas(normalizadas);
     saveMetas(normalizadas as Meta[]);
@@ -154,6 +167,8 @@ export default function GestaoMetas() {
       return;
     }
 
+    const lojaId = normalizeCidadeMeta(formData.cidade);
+
     const tipoMetaNormalizado =
       formData.tipoMeta === "padrao" ||
       formData.tipoMeta === "funcionario_especifico"
@@ -167,7 +182,8 @@ export default function GestaoMetas() {
 
     const novaMeta: MetaUI = {
       id: Date.now().toString(),
-      cidade: normalizeCidadeMeta(formData.cidade),
+      cidade: lojaId,
+      lojaId,
       funcao: formData.funcao,
       tipoMeta: tipoMetaNormalizado,
       funcionario:
@@ -183,9 +199,7 @@ export default function GestaoMetas() {
     };
 
     const metasSemDuplicidade = metas.filter((meta) => {
-      const mesmaCidade =
-        normalizeCidadeMeta(meta.cidade) === normalizeCidadeMeta(formData.cidade);
-
+      const mesmaCidade = getLojaIdFromMeta(meta) === lojaId;
       const mesmaFuncao = String(meta.funcao) === String(formData.funcao);
 
       const mesmoTipo =
