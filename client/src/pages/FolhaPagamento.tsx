@@ -86,18 +86,14 @@ function calcularBoletoAjustado(args: {
   const vale = Number(args.vale || 0);
   const aluguel = Number(args.aluguel || 0);
 
-  // Recepção não usa boleto
   if (args.quadrante === "recepcao") {
     return 0;
   }
 
-  // Salário fixo: somente premiação vai para boleto
   if (args.quadrante === "salario_fixo") {
     return premiacao;
   }
 
-  // Consultor de vendas e alinhador:
-  // boleto = total comissão + premiação - vale - aluguel
   if (
     args.quadrante === "consultor_vendas" ||
     args.quadrante === "alinhador"
@@ -105,7 +101,6 @@ function calcularBoletoAjustado(args: {
     return totalComissao + premiacao - vale - aluguel;
   }
 
-  // Demais funções seguem a regra atual
   return Number(args.boletoOriginal || 0);
 }
 
