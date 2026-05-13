@@ -75,11 +75,13 @@ function parseValorBR(value: string) {
 function calcularBoletoAjustado(args: {
   quadrante: QuadranteKey;
   funcao: string;
+  totalComissao: number;
   premiacao: number;
   vale: number;
   aluguel: number;
   boletoOriginal: number;
 }) {
+  const totalComissao = Number(args.totalComissao || 0);
   const premiacao = Number(args.premiacao || 0);
   const vale = Number(args.vale || 0);
   const aluguel = Number(args.aluguel || 0);
@@ -94,9 +96,13 @@ function calcularBoletoAjustado(args: {
     return premiacao;
   }
 
-  // Alinhador: premiação - vale - aluguel
-  if (args.quadrante === "alinhador") {
-    return premiacao - vale - aluguel;
+  // Consultor de vendas e alinhador:
+  // boleto = total comissão + premiação - vale - aluguel
+  if (
+    args.quadrante === "consultor_vendas" ||
+    args.quadrante === "alinhador"
+  ) {
+    return totalComissao + premiacao - vale - aluguel;
   }
 
   // Demais funções seguem a regra atual
@@ -1082,13 +1088,14 @@ useEffect(() => {
       const quadrante = getQuadrante(lojaId, func.funcao);
 
       const boletoAjustado = calcularBoletoAjustado({
-      quadrante,
-      funcao: func.funcao,
-      premiacao: calculado.premiacao,
-      vale: calculado.vale,
-      aluguel: base.aluguel,
-      boletoOriginal: calculado.boleto,
-    });
+        quadrante,
+        funcao: func.funcao,
+        totalComissao: calculado.totalComissao,
+        premiacao: calculado.premiacao,
+        vale: calculado.vale,
+        aluguel: base.aluguel,
+        boletoOriginal: calculado.boleto,
+      });
 
     return {
       ...base,
