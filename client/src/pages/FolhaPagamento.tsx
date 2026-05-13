@@ -86,17 +86,14 @@ function calcularBoletoAjustado(args: {
   const vale = Number(args.vale || 0);
   const aluguel = Number(args.aluguel || 0);
 
-  if (args.quadrante === "recepcao") {
-    return 0;
-  }
-
   if (args.quadrante === "salario_fixo") {
     return premiacao;
   }
 
   if (
     args.quadrante === "consultor_vendas" ||
-    args.quadrante === "alinhador"
+    args.quadrante === "alinhador" ||
+    args.quadrante === "recepcao"
   ) {
     return totalComissao + premiacao - vale - aluguel;
   }
