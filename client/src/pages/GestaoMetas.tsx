@@ -60,10 +60,40 @@ type MetaUI = Meta & {
   dataAtualizacao?: string;
 };
 
+function normalizeCidadeMeta(cidade: unknown) {
+  const value = String(cidade || "").trim();
+
+  const mapa: Record<string, string> = {
+    "1": "1",
+    "2": "2",
+    "3": "3",
+    "4": "4",
+    "5": "5",
+    "6": "6",
+    Joinville: "1",
+    Blumenau: "2",
+    "São José": "3",
+    "Sao Jose": "3",
+    Florianópolis: "4",
+    Florianopolis: "4",
+    "ACI Promoções": "5",
+    "ACI Promocoes": "5",
+    "Contrato PJ": "6",
+  };
+
+  return mapa[value] || value;
+}
+
 export default function GestaoMetas() {
   const [, navigate] = useLocation();
 
-  const [metas, setMetas] = useState<MetaUI[]>(getMetas() as MetaUI[]);
+  const [metas, setMetas] = useState<MetaUI[]>(() =>
+    (getMetas() as MetaUI[]).map((meta) => ({
+      ...meta,
+      cidade: normalizeCidadeMeta(meta.cidade),
+    }))
+  );
+
   const [selectedLoja, setSelectedLoja] = useState("1");
 
   const [formData, setFormData] = useState({
@@ -78,17 +108,26 @@ export default function GestaoMetas() {
 
   const funcionariosDaCidade = useMemo(() => {
     return funcionarios.filter(
-      (f) => f.loja_id.toString() === formData.cidade && f.status !== "inativo"
+      (f) =>
+        String(f.loja_id) === String(formData.cidade) &&
+        f.status !== "inativo"
     );
   }, [funcionarios, formData.cidade]);
 
   const metasFiltradas = useMemo(() => {
-    return metas.filter((m) => String(m.cidade) === selectedLoja);
+    return metas.filter(
+      (m) => normalizeCidadeMeta(m.cidade) === String(selectedLoja)
+    );
   }, [metas, selectedLoja]);
 
   const updateMetas = (novas: MetaUI[]) => {
-    setMetas(novas);
-    saveMetas(novas as Meta[]);
+    const normalizadas = novas.map((meta) => ({
+      ...meta,
+      cidade: normalizeCidadeMeta(meta.cidade),
+    }));
+
+    setMetas(normalizadas);
+    saveMetas(normalizadas as Meta[]);
   };
 
   const resetForm = () => {
@@ -115,15 +154,22 @@ export default function GestaoMetas() {
       return;
     }
 
+    const tipoMetaNormalizado =
+      formData.tipoMeta === "padrao" ||
+      formData.tipoMeta === "funcionario_especifico"
+        ? undefined
+        : formData.tipoMeta;
+
+    const funcionarioChave =
+      formData.tipoMeta === "funcionario_especifico"
+        ? formData.funcionario
+        : "";
+
     const novaMeta: MetaUI = {
       id: Date.now().toString(),
-      cidade: formData.cidade,
+      cidade: normalizeCidadeMeta(formData.cidade),
       funcao: formData.funcao,
-      tipoMeta:
-        formData.tipoMeta === "padrao" ||
-        formData.tipoMeta === "funcionario_especifico"
-          ? undefined
-          : formData.tipoMeta,
+      tipoMeta: tipoMetaNormalizado,
       funcionario:
         formData.tipoMeta === "funcionario_especifico"
           ? formData.funcionario
@@ -132,11 +178,28 @@ export default function GestaoMetas() {
         formData.tipoMeta === "funcionario_especifico"
           ? formData.funcionario
           : undefined,
-      regra: formData.regra,
+      regra: formData.regra.trim(),
       dataAtualizacao: new Date().toISOString().split("T")[0],
     };
 
-    updateMetas([...metas, novaMeta]);
+    const metasSemDuplicidade = metas.filter((meta) => {
+      const mesmaCidade =
+        normalizeCidadeMeta(meta.cidade) === normalizeCidadeMeta(formData.cidade);
+
+      const mesmaFuncao = String(meta.funcao) === String(formData.funcao);
+
+      const mesmoTipo =
+        String(meta.tipoMeta || "padrao") ===
+        String(novaMeta.tipoMeta || "padrao");
+
+      const mesmoFuncionario =
+        String(meta.funcionario || meta.funcionarioNome || "") ===
+        String(funcionarioChave);
+
+      return !(mesmaCidade && mesmaFuncao && mesmoTipo && mesmoFuncionario);
+    });
+
+    updateMetas([...metasSemDuplicidade, novaMeta]);
     resetForm();
   };
 
@@ -167,6 +230,7 @@ export default function GestaoMetas() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
+
           <div>
             <h1 className="mb-2 text-3xl font-bold text-primary">
               Gestão de Metas
@@ -181,6 +245,7 @@ export default function GestaoMetas() {
           <CardHeader>
             <CardTitle className="text-primary">Adicionar Meta</CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-4">
             <div>
               <Label className="mb-2 block text-gray-300">Cidade</Label>
@@ -193,6 +258,7 @@ export default function GestaoMetas() {
                 <SelectTrigger className="border-primary/30 bg-gray-800 text-white">
                   <SelectValue />
                 </SelectTrigger>
+
                 <SelectContent className="border-primary/30 bg-gray-900">
                   {LOJAS.map((loja) => (
                     <SelectItem
@@ -216,7 +282,9 @@ export default function GestaoMetas() {
                     ...formData,
                     funcao: value,
                     tipoMeta:
-                      value === "consultor_vendas" ? formData.tipoMeta : "padrao",
+                      value === "consultor_vendas"
+                        ? formData.tipoMeta
+                        : "padrao",
                     funcionario: "",
                   })
                 }
@@ -224,6 +292,7 @@ export default function GestaoMetas() {
                 <SelectTrigger className="border-primary/30 bg-gray-800 text-white">
                   <SelectValue />
                 </SelectTrigger>
+
                 <SelectContent className="border-primary/30 bg-gray-900">
                   {FUNCOES.map((funcao) => (
                     <SelectItem
@@ -256,15 +325,18 @@ export default function GestaoMetas() {
                 <SelectTrigger className="border-primary/30 bg-gray-800 text-white">
                   <SelectValue />
                 </SelectTrigger>
+
                 <SelectContent className="border-primary/30 bg-gray-900">
                   {formData.funcao === "consultor_vendas" ? (
                     <>
                       <SelectItem value="meta1" className="text-white">
                         Meta 1 (Antiga)
                       </SelectItem>
+
                       <SelectItem value="meta2" className="text-white">
                         Meta 2 (Nova)
                       </SelectItem>
+
                       <SelectItem
                         value="funcionario_especifico"
                         className="text-white"
@@ -277,6 +349,7 @@ export default function GestaoMetas() {
                       <SelectItem value="padrao" className="text-white">
                         Padrão
                       </SelectItem>
+
                       <SelectItem
                         value="funcionario_especifico"
                         className="text-white"
@@ -301,6 +374,7 @@ export default function GestaoMetas() {
                   <SelectTrigger className="border-primary/30 bg-gray-800 text-white">
                     <SelectValue placeholder="Selecione o funcionário" />
                   </SelectTrigger>
+
                   <SelectContent className="border-primary/30 bg-gray-900">
                     {funcionariosDaCidade
                       .filter((f) => f.funcao === formData.funcao)
@@ -343,6 +417,7 @@ export default function GestaoMetas() {
           <CardHeader>
             <CardTitle className="text-primary">Visualizar Metas</CardTitle>
           </CardHeader>
+
           <CardContent>
             <div className="mb-4">
               <Label className="mb-2 block text-gray-300">Cidade</Label>
@@ -350,6 +425,7 @@ export default function GestaoMetas() {
                 <SelectTrigger className="w-full border-primary/30 bg-gray-800 text-white md:w-64">
                   <SelectValue />
                 </SelectTrigger>
+
                 <SelectContent className="border-primary/30 bg-gray-900">
                   {LOJAS.map((loja) => (
                     <SelectItem
@@ -378,6 +454,7 @@ export default function GestaoMetas() {
                     </TableHead>
                   </TableRow>
                 </TableHeader>
+
                 <TableBody>
                   {metasFiltradas.length === 0 ? (
                     <TableRow>
@@ -398,6 +475,7 @@ export default function GestaoMetas() {
                           {FUNCOES.find((f) => f.id === meta.funcao)?.nome ||
                             meta.funcao}
                         </TableCell>
+
                         <TableCell className="text-yellow-300">
                           {getTipoMetaLabel(
                             meta.funcionario || meta.funcionarioNome
@@ -406,12 +484,15 @@ export default function GestaoMetas() {
                                   "padrao"
                           )}
                         </TableCell>
+
                         <TableCell className="text-gray-300">
                           {meta.funcionario || meta.funcionarioNome || "-"}
                         </TableCell>
+
                         <TableCell className="text-gray-300">
                           {meta.regra}
                         </TableCell>
+
                         <TableCell className="text-gray-300">
                           {meta.dataAtualizacao
                             ? new Date(meta.dataAtualizacao).toLocaleDateString(
@@ -419,6 +500,7 @@ export default function GestaoMetas() {
                               )
                             : "-"}
                         </TableCell>
+
                         <TableCell className="text-right">
                           <Button
                             size="sm"
