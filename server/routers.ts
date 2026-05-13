@@ -454,6 +454,8 @@ upsertBaseItem: protectedProcedure
       liquidez: z.number(),
       percentualComissao: z.number(),
       valorComissao: z.number(),
+      percentualManual: z.number().nullable().optional(),
+      motivoPercentualManual: z.string().nullable().optional(),
     })
   )
   .mutation(({ input }) => upsertFolhaBaseItem(input)),

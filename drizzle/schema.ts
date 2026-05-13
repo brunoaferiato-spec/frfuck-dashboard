@@ -118,6 +118,8 @@ export const folhaPagamento = mysqlTable("folha_pagamento", {
   liquidez: decimal("liquidez", { precision: 12, scale: 2 }).notNull(),
   percentualComissao: decimal("percentualComissao", { precision: 5, scale: 2 }).notNull(),
   valorComissao: decimal("valorComissao", { precision: 12, scale: 2 }).notNull(),
+  percentualManual: decimal("percentualManual", { precision: 5, scale: 2 }),
+  motivoPercentualManual: varchar("motivoPercentualManual", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -1012,6 +1012,8 @@ export async function upsertFolhaBaseItem(data: {
   liquidez: number;
   percentualComissao: number;
   valorComissao: number;
+  percentualManual?: number | null;
+  motivoPercentualManual?: string | null;
 }) {
   console.log("SALVANDO FOLHA:", data);
 
@@ -1034,14 +1036,20 @@ export async function upsertFolhaBaseItem(data: {
 
   if (existing.length > 0) {
     await db
-      .update(folhaPagamento)
-      .set({
-        liquidez: data.liquidez,
-        percentualComissao: data.percentualComissao,
-        valorComissao: data.valorComissao,
-      })
-      .where(eq(folhaPagamento.id, existing[0].id));
+  .update(folhaPagamento)
+  .set({
+    liquidez: data.liquidez,
+    percentualComissao: data.percentualComissao,
+    valorComissao: data.valorComissao,
+    percentualManual: data.percentualManual ?? null,
+    motivoPercentualManual: data.motivoPercentualManual ?? null,
+  } as any)
+  .where(eq(folhaPagamento.id, existing[0].id));
   } else {
-    await db.insert(folhaPagamento).values(data);
+    await db.insert(folhaPagamento).values({
+  ...data,
+  percentualManual: data.percentualManual ?? null,
+  motivoPercentualManual: data.motivoPercentualManual ?? null,
+} as any);
   }
 }
