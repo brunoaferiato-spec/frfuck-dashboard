@@ -156,9 +156,33 @@ type RegraSemanaEditorState = {
   semana: 1 | 2 | 3 | 4 | null;
 };
 
-function getQuadrante(lojaId: number, funcao: string): QuadranteKey {
-  const semanal = lojaId === 1 || lojaId === 2;
-  const mensal = lojaId === 3 || lojaId === 4;
+function usaMetaSemanal(lojaId: number, ano: number, mes: number) {
+  // Joinville e Blumenau sempre semanal
+  if (lojaId === 1 || lojaId === 2) return true;
+
+  // São José semanal a partir de maio/2026
+  if (lojaId === 3) {
+    if (ano > 2026) return true;
+    if (ano === 2026 && mes >= 5) return true;
+    return false;
+  }
+
+  // Florianópolis permanece mensal
+  return false;
+}
+
+function usaMetaMensal(lojaId: number, ano: number, mes: number) {
+  return !usaMetaSemanal(lojaId, ano, mes);
+}
+
+function getQuadrante(
+  lojaId: number,
+  funcao: string,
+  ano: number,
+  mes: number
+): QuadranteKey {
+  const semanal = usaMetaSemanal(lojaId, ano, mes);
+  const mensal = usaMetaMensal(lojaId, ano, mes);
 
   if (funcao === "supervisor") return "supervisor_pj";
   if (funcao === "gerente") return "gerente";
@@ -1077,7 +1101,7 @@ useEffect(() => {
         holerite: base.holerite,
       });
 
-      const quadrante = getQuadrante(lojaId, func.funcao);
+      const quadrante = getQuadrante(lojaId, func.funcao, ano, mes);
 
       const boletoAjustado = calcularBoletoAjustado({
         quadrante,
