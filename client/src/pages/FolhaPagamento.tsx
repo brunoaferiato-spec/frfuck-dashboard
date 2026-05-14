@@ -2505,9 +2505,62 @@ if (
                       ? "Regra aplicada"
                       : "% aplicado"}
                   </span>
-                  <span className="text-yellow-300 font-semibold">
-                    {detalheSemanaAtual.regraTexto}
-                  </span>
+                  <Input
+  type="number"
+  step="0.01"
+  defaultValue={Number(detalheSemanaAtual.percentual || 0)}
+  className="w-28 text-right border-yellow-500/30 bg-black text-yellow-300 font-semibold"
+  onBlur={async (e) => {
+  const valor = Number(e.target.value || 0);
+
+  const semana = regraSemanaEditor.semana;
+  const linha = regraSemanaEditor.linha;
+
+  if (!linha || !semana) return;
+
+  const campoManual =
+    semana === 1
+      ? "percManual1"
+      : semana === 2
+      ? "percManual2"
+      : semana === 3
+      ? "percManual3"
+      : "percManual4";
+
+  const liquidez =
+    semana === 1
+      ? Number(linha.sem1 || 0)
+      : semana === 2
+      ? Number(linha.sem2 || 0)
+      : semana === 3
+      ? Number(linha.sem3 || 0)
+      : Number(linha.sem4 || 0);
+
+  const valorComissao = Number((liquidez * (valor / 100)).toFixed(2));
+
+  await updateLinha(
+    linha.funcionarioId,
+    campoManual as keyof FolhaMensal,
+    valor
+  );
+
+  try {
+    await upsertFolhaBaseMutation.mutateAsync({
+      funcionarioId: linha.funcionarioId,
+      lojaId,
+      ano,
+      mes,
+      semana,
+      liquidez,
+      percentualComissao: valor,
+      percentualManual: valor,
+      valorComissao,
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}}
+/>
                 </div>
 
                 <div className="flex items-center justify-between border-t border-primary/20 pt-3">
