@@ -29,27 +29,45 @@ import {
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
+let _pool: mysql.Pool | null = null;
 let _db: any | null = null;
 
 export async function getDb() {
-  console.log("DATABASE_URL existe?", !!process.env.DATABASE_URL);
-
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      const connection = await mysql.createConnection(process.env.DATABASE_URL);
-      _db = drizzle(connection, { schema, mode: "default" });
-      console.log("✅ Banco conectado");
-    } catch (error) {
-      console.error("❌ Erro ao conectar no banco:", error);
-      _db = null;
-    }
-  }
-
   if (!process.env.DATABASE_URL) {
     console.error("❌ DATABASE_URL não encontrada no process.env");
+    return null;
   }
 
-  return _db;
+  try {
+    if (!_pool || !_db) {
+      _pool = mysql.createPool({
+        uri: process.env.DATABASE_URL,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 0,
+      });
+
+      _db = drizzle(_pool, { schema, mode: "default" });
+      console.log("✅ Pool do banco conectado");
+    }
+
+    await _pool.query("SELECT 1");
+
+    return _db;
+  } catch (error) {
+    console.error("❌ Conexão do banco caiu. Recriando pool...", error);
+
+    try {
+      await _pool?.end();
+    } catch {}
+
+    _pool = null;
+    _db = null;
+
+    return null;
+  }
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
