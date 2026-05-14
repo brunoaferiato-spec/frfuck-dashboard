@@ -759,19 +759,21 @@ function TabelaQuadrante({
                     </td>
                   )}
 
-                  <td className="p-2 text-right font-bold">
-                    {linha.boleto < 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => onOpenNegativoEditor(linha)}
-                        className="text-red-500 hover:text-red-400 underline underline-offset-4"
-                      >
-                        R$ {money(linha.boleto)}
-                      </button>
-                    ) : (
-                      <span className="text-green-400">R$ {money(linha.boleto)}</span>
-                    )}
-                  </td>
+                  <td className="p-2 text-right font-bold whitespace-nowrap min-w-[120px]">
+  {linha.boleto < 0 ? (
+    <button
+      type="button"
+      onClick={() => onOpenNegativoEditor(linha)}
+      className="text-red-500 hover:text-red-400 underline underline-offset-4 whitespace-nowrap"
+    >
+      R$ {money(linha.boleto)}
+    </button>
+  ) : (
+    <span className="text-green-400 whitespace-nowrap">
+      R$ {money(linha.boleto)}
+    </span>
+  )}
+</td>
 
                   <td className="p-2 text-center">
                     <button
@@ -1803,13 +1805,30 @@ async function lançarNegativoNoPróximoMês() {
   ];
 
   const linhasPorQuadrante = useMemo(() => {
-    return ordemQuadrantes.map((key) => ({
+  return ordemQuadrantes.map((key) => {
+    let linhasQuadrante = linhas.filter((l) => l.quadrante === key);
+
+    // Ordenação especial para salário fixo
+    if (key === "salario_fixo") {
+      linhasQuadrante = [...linhasQuadrante].sort((a, b) => {
+        const funcaoCompare = a.funcao.localeCompare(b.funcao);
+
+        if (funcaoCompare !== 0) {
+          return funcaoCompare;
+        }
+
+        return a.nome.localeCompare(b.nome);
+      });
+    }
+
+    return {
       key,
       titulo: getQuadranteTitulo(key),
       descricao: getQuadranteDescricao(key),
-      linhas: linhas.filter((l) => l.quadrante === key),
-    }));
-  }, [linhas]);
+      linhas: linhasQuadrante,
+    };
+  });
+}, [linhas]);
   useEffect(() => {
   if (!meQuery.isLoading && !meQuery.data) {
     setLocation("/");
