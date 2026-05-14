@@ -21,6 +21,7 @@ import {
   getComissaoFuncionario,
   getFolhaExtrasByLojaAnoMes,
   getFolhaBaseByLojaAnoMes,
+  getResumoSupervisorMensal,
   upsertFolhaBaseItem,
   createPremiacao,
   deletePremiacaoById,
@@ -30,6 +31,7 @@ import {
   createValesBatch,
   cancelValesByGrupoFromCurrentForward,
 } from "./db";
+
 import { signAuthToken, comparePassword, hashPassword } from "./auth";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -290,9 +292,9 @@ export const appRouter = router({
       .input(z.object({ lojaId: z.number() }))
       .query(({ input }) => getFuncionariosByLoja(input.lojaId)),
 
-      inativar: protectedProcedure
-  .input(z.object({ id: z.number() }))
-  .mutation(({ input }) => inativarFuncionarioById(input.id)),
+    inativar: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(({ input }) => inativarFuncionarioById(input.id)),
 
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
@@ -308,9 +310,9 @@ export const appRouter = router({
           dataNascimento: z.coerce.date().nullable().optional(),
           funcao: funcaoSchema,
           tipoMeta: z.preprocess(
-          (val) => val === "" ? null : val,
-          z.enum(["meta1", "meta2"]).nullable().optional()
-        ),
+            (val) => (val === "" ? null : val),
+            z.enum(["meta1", "meta2"]).nullable().optional()
+          ),
           dataAdmissao: z.coerce.date(),
         })
       )
@@ -344,9 +346,9 @@ export const appRouter = router({
           dataNascimento: z.coerce.date().nullable().optional(),
           funcao: funcaoSchema,
           tipoMeta: z.preprocess(
-          (val) => val === "" ? null : val,
-          z.enum(["meta1", "meta2"]).nullable().optional()
-        ),
+            (val) => (val === "" ? null : val),
+            z.enum(["meta1", "meta2"]).nullable().optional()
+          ),
           dataAdmissao: z.coerce.date(),
         })
       )
@@ -431,34 +433,66 @@ export const appRouter = router({
       .query(({ input }) =>
         getFolhaByLojaAnoMes(input.lojaId, input.ano, input.mes)
       ),
-      getBaseByLojaAnoMes: protectedProcedure
-  .input(
-    z.object({
-      lojaId: z.number(),
-      ano: z.number(),
-      mes: z.number(),
-    })
-  )
-  .query(({ input }) =>
-    getFolhaBaseByLojaAnoMes(input.lojaId, input.ano, input.mes)
-  ),
 
-upsertBaseItem: protectedProcedure
-  .input(
-    z.object({
-      funcionarioId: z.number(),
-      lojaId: z.number(),
-      ano: z.number(),
-      mes: z.number(),
-      semana: z.number(),
-      liquidez: z.number(),
-      percentualComissao: z.number(),
-      valorComissao: z.number(),
-      percentualManual: z.number().nullable().optional(),
-      motivoPercentualManual: z.string().nullable().optional(),
-    })
-  )
-  .mutation(({ input }) => upsertFolhaBaseItem(input)),
+    getBaseByLojaAnoMes: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number(),
+        })
+      )
+      .query(({ input }) =>
+        getFolhaBaseByLojaAnoMes(input.lojaId, input.ano, input.mes)
+      ),
+
+    getResumoSupervisorMensal: protectedProcedure
+      .input(
+        z.object({
+          ano: z.number(),
+          mes: z.number(),
+        })
+      )
+      .query(async ({ input }) => {
+        const result = await getResumoSupervisorMensal(input.ano, input.mes);
+        const rows = Array.isArray(result) ? result[0] ?? result : [];
+
+        const getValor = (lojaId: number) =>
+          Number(
+            (rows as any[]).find((r: any) => Number(r.lojaId) === lojaId)
+              ?.liquidez || 0
+          );
+
+        const joinville = getValor(1);
+        const blumenau = getValor(2);
+        const saoJose = getValor(3);
+        const florianopolis = getValor(4);
+
+        return {
+          joinville,
+          blumenau,
+          saoJose,
+          florianopolis,
+          total: joinville + blumenau + saoJose + florianopolis,
+        };
+      }),
+
+    upsertBaseItem: protectedProcedure
+      .input(
+        z.object({
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number(),
+          semana: z.number(),
+          liquidez: z.number(),
+          percentualComissao: z.number(),
+          valorComissao: z.number(),
+          percentualManual: z.number().nullable().optional(),
+          motivoPercentualManual: z.string().nullable().optional(),
+        })
+      )
+      .mutation(({ input }) => upsertFolhaBaseItem(input)),
   }),
 
   folhaExtras: router({
