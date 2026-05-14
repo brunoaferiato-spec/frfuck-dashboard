@@ -332,19 +332,16 @@ function exportBoletosCsv(rows: Array<{
   pix: string;
   valor: number;
 }>) {
-  const header = ["Nome", "CPF", "PIX", "Valor do boleto"];
-  const lines = rows.map((r) => [
-    r.nome,
-    r.cpf,
-    r.pix,
-    r.valor.toFixed(2).replace(".", ","),
-  ]);
+  const lines = rows.map((r) => {
+    const cpf = String(r.cpf || "").replace(/\D/g, "");
+    const nome = String(r.nome || "").trim();
+    const valor = Number(r.valor || 0).toFixed(2);
+    const pix = String(r.pix || cpf).trim();
 
-  const csv = [header, ...lines]
-    .map((line) =>
-      line.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(";")
-    )
-    .join("\n");
+    return `${cpf},${nome},${valor},,,,,${pix},`;
+  });
+
+  const csv = lines.join("\n");
 
   const blob = new Blob(["\ufeff" + csv], {
     type: "text/csv;charset=utf-8;",
@@ -1600,7 +1597,7 @@ async function lançarNegativoNoPróximoMês() {
 
   function exportarBoletos() {
     const rows = linhas
-      .filter((linha) => linha.boleto !== 0)
+      .filter((linha) => linha.boleto > 0)
       .map((linha) => {
         const funcionario = getFuncionarioById(linha.funcionarioId) as any;
         return {
