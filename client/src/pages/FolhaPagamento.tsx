@@ -1786,9 +1786,21 @@ async function lançarNegativoNoPróximoMês() {
     };
   }, [regraSemanaEditor]);
 
-  const totalLiquidezGeral = linhas.reduce((sum, l) => sum + l.totalLiquidez, 0);
-  const totalComissaoGeral = linhas.reduce((sum, l) => sum + l.totalComissao, 0);
-  const totalBoletoGeral = linhas.reduce((sum, l) => sum + l.boleto, 0);
+  const supervisorAtual = linhas.find((l) => l.funcao === "supervisor");
+
+const totalLiquidezGeral = Number(supervisorAtual?.sem1 || 0);
+
+const totalComissaoGeral = linhas.reduce(
+  (sum, l) => sum + Number(l.totalComissao || 0) + Number(l.premiacao || 0),
+  0
+);
+
+const totalBoletoGeral = linhas.reduce((sum, l) => sum + Number(l.boleto || 0), 0);
+
+const totalINSS = linhas.reduce((sum, l) => sum + Number(l.inss || 0), 0);
+const totalAdiant = linhas.reduce((sum, l) => sum + Number(l.adiant || 0), 0);
+const totalHolerite = linhas.reduce((sum, l) => sum + Number(l.holerite || 0), 0);
+const totalFolhaGeral = totalBoletoGeral + totalINSS + totalAdiant + totalHolerite;
 
   const ordemQuadrantes: QuadranteKey[] = [
     "gerente",
@@ -1902,7 +1914,7 @@ if (
             <CardTitle className="text-primary">Filtros</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label className="text-gray-300 mb-2 block">Cidade</Label>
                 <Select value={selectedLoja} onValueChange={setSelectedLoja}>
@@ -1976,7 +1988,7 @@ if (
           <Card className="bg-gray-900 border-primary/30">
             <CardHeader>
               <CardTitle className="text-primary text-sm">
-                Total Comissão / Premiação Auto
+                Total Comissão + Premiação
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -2002,6 +2014,35 @@ if (
               </p>
             </CardContent>
           </Card>
+          <Card className="bg-gray-900 border-primary/30">
+  <CardHeader>
+    <CardTitle className="text-primary text-sm">
+      Total Folha
+    </CardTitle>
+  </CardHeader>
+  <CardContent>
+    <p className="text-2xl font-bold text-green-400">
+      R$ {money(totalFolhaGeral)}
+    </p>
+
+    <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+      <div className="rounded-md bg-gray-800 px-2 py-1 text-center">
+        <span className="block text-gray-400">INSS</span>
+        <strong className="text-red-400">R$ {money(totalINSS)}</strong>
+      </div>
+
+      <div className="rounded-md bg-gray-800 px-2 py-1 text-center">
+        <span className="block text-gray-400">Adiant.</span>
+        <strong className="text-red-400">R$ {money(totalAdiant)}</strong>
+      </div>
+
+      <div className="rounded-md bg-gray-800 px-2 py-1 text-center">
+        <span className="block text-gray-400">Holerite</span>
+        <strong className="text-red-400">R$ {money(totalHolerite)}</strong>
+      </div>
+    </div>
+  </CardContent>
+</Card>
         </div>
 
         {linhas.length === 0 ? (
