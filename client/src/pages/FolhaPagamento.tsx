@@ -2609,12 +2609,39 @@ if (
   defaultValue={Number(detalheSemanaAtual.percentual || 0)}
   className="w-28 text-right border-yellow-500/30 bg-black text-yellow-300 font-semibold"
   onBlur={async (e) => {
-  const valor = Number(e.target.value || 0);
+  const valorDigitado = e.target.value.trim();
+  const valor = valorDigitado === "" ? null : Number(valorDigitado);
 
   const semana = regraSemanaEditor.semana;
   const linha = regraSemanaEditor.linha;
 
   if (!linha || !semana) return;
+
+  const campoManual =
+    semana === 1
+      ? "percManual1"
+      : semana === 2
+      ? "percManual2"
+      : semana === 3
+      ? "percManual3"
+      : "percManual4";
+
+  await updateLinha(
+    linha.funcionarioId,
+    campoManual as keyof FolhaMensal,
+    valor
+  );
+
+  const percentualAutomatico =
+    semana === 1
+      ? linha.perc1
+      : semana === 2
+      ? linha.perc2
+      : semana === 3
+      ? linha.perc3
+      : linha.perc4;
+
+  const percentualFinal = valor ?? percentualAutomatico;
 
   const liquidez =
     semana === 1
@@ -2625,37 +2652,9 @@ if (
       ? Number(linha.sem3 || 0)
       : Number(linha.sem4 || 0);
 
-  const valorComissao = Number((liquidez * (valor / 100)).toFixed(2));
-
-  const patch: Partial<FolhaMensal> =
-    semana === 1
-      ? { perc1: valor, com1: valorComissao, percManual1: valor }
-      : semana === 2
-      ? { perc2: valor, com2: valorComissao, percManual2: valor }
-      : semana === 3
-      ? { perc3: valor, com3: valorComissao, percManual3: valor }
-      : { perc4: valor, com4: valorComissao, percManual4: valor };
-
-  const linhaAtualizada = {
-    ...linha,
-    ...patch,
-  };
-
-  setFolhas((prev) =>
-    prev.map((f) =>
-      f.funcionarioId === linha.funcionarioId &&
-      f.loja_id === lojaId &&
-      f.ano === ano &&
-      f.mes === mes
-        ? { ...f, ...patch }
-        : f
-    )
+  const valorComissao = Number(
+    (liquidez * (percentualFinal / 100)).toFixed(2)
   );
-
-  setRegraSemanaEditor((prev) => ({
-    ...prev,
-    linha: linhaAtualizada as LinhaComQuadrante,
-  }));
 
   try {
     await upsertFolhaBaseMutation.mutateAsync({
@@ -2665,7 +2664,7 @@ if (
       mes,
       semana,
       liquidez,
-      percentualComissao: valor,
+      percentualComissao: percentualFinal,
       percentualManual: valor,
       valorComissao,
     });
