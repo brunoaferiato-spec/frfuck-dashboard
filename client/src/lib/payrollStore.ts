@@ -83,6 +83,15 @@ export type FolhaMensal = {
   sem4: number;
   perc4: number;
   com4: number;
+  percManual1?: number | null;
+  percManual2?: number | null;
+  percManual3?: number | null;
+  percManual4?: number | null;
+
+  motivoPercManual1?: string | null;
+  motivoPercManual2?: string | null;
+  motivoPercManual3?: string | null;
+  motivoPercManual4?: string | null;
 
   totalLiquidez: number;
   totalComissao: number;
@@ -551,7 +560,7 @@ function getPercentualFromRegra(meta: Meta | null, valor: number) {
 
     const textoSemPercentual = regra.replace(/=\s*\d+(?:[.,]\d+)?\s*%/, "");
 
-    const numeros = [...textoSemPercentual.matchAll(/\d+(?:[.,]\d+)*/g)].map((m) =>
+    const numeros = [...textoSemPercentual.matchAll(/\d[\d.,]*/g)].map((m) =>
       Number(m[0].replace(/\./g, "").replace(",", "."))
     );
 
@@ -591,6 +600,12 @@ export function computeFolhaLinha(args: {
   sem2: number;
   sem3: number;
   sem4: number;
+
+  percManual1?: number | null;
+  percManual2?: number | null;
+  percManual3?: number | null;
+  percManual4?: number | null;
+
   premiacoesManuais?: PremioManual[];
   vales?: ValeItem[];
   aluguel: number;
@@ -600,22 +615,26 @@ export function computeFolhaLinha(args: {
 }) {
 
   const {
-    meta,
-    funcao,
-    cidade,
-    funcionarioNome,
-    tipoMeta,
-    sem1,
-    sem2,
-    sem3,
-    sem4,
-    premiacoesManuais,
-    vales,
-    aluguel,
-    inss,
-    adiant,
-    holerite,
-  } = args;
+  meta,
+  funcao,
+  cidade,
+  funcionarioNome,
+  tipoMeta,
+  sem1,
+  sem2,
+  sem3,
+  sem4,
+  percManual1,
+  percManual2,
+  percManual3,
+  percManual4,
+  premiacoesManuais,
+  vales,
+  aluguel,
+  inss,
+  adiant,
+  holerite,
+} = args;
 
   const premiacaoManual = sumPremiacoesManuais(premiacoesManuais);
   const vale = sumVales(vales);
@@ -794,10 +813,25 @@ const metaUsada =
       }
     : null);
 
-  const p1 = getPercentualFromRegra(metaUsada, Number(sem1 || 0));
-  const p2 = getPercentualFromRegra(metaUsada, Number(sem2 || 0));
-  const p3 = getPercentualFromRegra(metaUsada, Number(sem3 || 0));
-  const p4 = getPercentualFromRegra(metaUsada, Number(sem4 || 0));
+  const p1 =
+  percManual1 !== null && percManual1 !== undefined
+    ? Number(percManual1)
+    : getPercentualFromRegra(metaUsada, Number(sem1 || 0));
+
+const p2 =
+  percManual2 !== null && percManual2 !== undefined
+    ? Number(percManual2)
+    : getPercentualFromRegra(metaUsada, Number(sem2 || 0));
+
+const p3 =
+  percManual3 !== null && percManual3 !== undefined
+    ? Number(percManual3)
+    : getPercentualFromRegra(metaUsada, Number(sem3 || 0));
+
+const p4 =
+  percManual4 !== null && percManual4 !== undefined
+    ? Number(percManual4)
+    : getPercentualFromRegra(metaUsada, Number(sem4 || 0));
 
   const c1 = Number(sem1 || 0) * (p1 / 100);
   const c2 = Number(sem2 || 0) * (p2 / 100);
