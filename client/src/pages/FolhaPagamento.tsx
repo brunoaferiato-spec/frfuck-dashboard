@@ -1099,48 +1099,82 @@ setFolhas(Array.from(agrupado.values()));
       };
 
      const calculado = computeFolhaLinha({
-       meta,
-       funcao: func.funcao,
-       cidade: selectedLoja,
-       funcionarioNome: func.nome,
-       tipoMeta: func.tipoMeta,
-       sem1: base.sem1,
-       sem2: base.sem2,
-       sem3: base.sem3,
-       sem4: base.sem4,
+  meta,
+  funcao: func.funcao,
+  cidade: selectedLoja,
+  funcionarioNome: func.nome,
+  tipoMeta: func.tipoMeta,
+  sem1: base.sem1,
+  sem2: base.sem2,
+  sem3: base.sem3,
+  sem4: base.sem4,
+  percManual1: base.percManual1,
+  percManual2: base.percManual2,
+  percManual3: base.percManual3,
+  percManual4: base.percManual4,
+  premiacoesManuais: base.premiacoesManuais || [],
+  vales: base.vales || [],
+  aluguel: base.aluguel,
+  inss: base.inss,
+  adiant: base.adiant,
+  holerite: base.holerite,
+});
 
-       percManual1: base.percManual1,
-       percManual2: base.percManual2,
-       percManual3: base.percManual3,
-       percManual4: base.percManual4,
-       
-       premiacoesManuais: base.premiacoesManuais || [],
-       vales: base.vales || [],
-       aluguel: base.aluguel,
-       inss: base.inss,
-       adiant: base.adiant,
-       holerite: base.holerite,
-      });
+const calculadoAjustado = { ...calculado };
 
-      const quadrante = getQuadrante(lojaId, func.funcao, ano, mes);
+if (base.percManual1 !== null && base.percManual1 !== undefined) {
+  calculadoAjustado.perc1 = Number(base.percManual1);
+  calculadoAjustado.com1 = Number(
+    (Number(base.sem1 || 0) * (Number(base.percManual1) / 100)).toFixed(2)
+  );
+}
 
-      const boletoAjustado = calcularBoletoAjustado({
-        quadrante,
-        funcao: func.funcao,
-        totalComissao: calculado.totalComissao,
-        premiacao: calculado.premiacao,
-        vale: calculado.vale,
-        aluguel: base.aluguel,
-        boletoOriginal: calculado.boleto,
-      });
+if (base.percManual2 !== null && base.percManual2 !== undefined) {
+  calculadoAjustado.perc2 = Number(base.percManual2);
+  calculadoAjustado.com2 = Number(
+    (Number(base.sem2 || 0) * (Number(base.percManual2) / 100)).toFixed(2)
+  );
+}
 
-    return {
-      ...base,
-      regraMeta: meta?.regra || "Sem meta cadastrada",
-      quadrante,
-      ...calculado,
-      boleto: boletoAjustado,
-    };
+if (base.percManual3 !== null && base.percManual3 !== undefined) {
+  calculadoAjustado.perc3 = Number(base.percManual3);
+  calculadoAjustado.com3 = Number(
+    (Number(base.sem3 || 0) * (Number(base.percManual3) / 100)).toFixed(2)
+  );
+}
+
+if (base.percManual4 !== null && base.percManual4 !== undefined) {
+  calculadoAjustado.perc4 = Number(base.percManual4);
+  calculadoAjustado.com4 = Number(
+    (Number(base.sem4 || 0) * (Number(base.percManual4) / 100)).toFixed(2)
+  );
+}
+
+calculadoAjustado.totalComissao =
+  Number(calculadoAjustado.com1 || 0) +
+  Number(calculadoAjustado.com2 || 0) +
+  Number(calculadoAjustado.com3 || 0) +
+  Number(calculadoAjustado.com4 || 0);
+
+const quadrante = getQuadrante(lojaId, func.funcao, ano, mes);
+
+const boletoAjustado = calcularBoletoAjustado({
+  quadrante,
+  funcao: func.funcao,
+  totalComissao: calculadoAjustado.totalComissao,
+  premiacao: calculadoAjustado.premiacao,
+  vale: calculadoAjustado.vale,
+  aluguel: base.aluguel,
+  boletoOriginal: calculadoAjustado.boleto,
+});
+
+return {
+  ...base,
+  regraMeta: meta?.regra || "Sem meta cadastrada",
+  quadrante,
+  ...calculadoAjustado,
+  boleto: boletoAjustado,
+};
 
     });
   }, [funcionariosDaCidade, folhas, lojaId, ano, mes, selectedLoja, folhaExtrasQuery.data]);
