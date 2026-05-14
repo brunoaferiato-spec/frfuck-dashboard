@@ -1071,3 +1071,24 @@ export async function upsertFolhaBaseItem(data: {
 } as any);
   }
 }
+
+export async function getResumoSupervisorMensal(ano: number, mes: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.execute(sql`
+    SELECT 
+      f.lojaId,
+      fp.liquidez,
+      fp.valorComissao
+    FROM folha_pagamento fp
+    INNER JOIN funcionarios f 
+      ON f.id = fp.funcionarioId
+    WHERE 
+      f.funcao = 'supervisor'
+      AND fp.ano = ${ano}
+      AND fp.mes = ${mes}
+      AND fp.semana = 1
+      AND fp.lojaId IN (1, 2, 3, 4)
+  `);
+}
