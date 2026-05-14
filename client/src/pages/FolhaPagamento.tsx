@@ -1988,7 +1988,7 @@ if (
         <p className="text-primary font-semibold">Filtros</p>
       </div>
 
-      <div className="col-span-12 md:col-span-3">
+      <div className="col-span-12 md:col-span-2">
         <div className="flex items-center gap-3">
           <Label className="text-gray-300 whitespace-nowrap">Cidade</Label>
           <Select value={selectedLoja} onValueChange={setSelectedLoja}>
@@ -2010,7 +2010,7 @@ if (
         </div>
       </div>
 
-      <div className="col-span-12 md:col-span-4">
+      <div className="col-span-12 md:col-span-2">
         <div className="flex items-center gap-3">
           <Label className="text-gray-300 whitespace-nowrap">Ano</Label>
           <Input
@@ -2022,7 +2022,7 @@ if (
         </div>
       </div>
 
-      <div className="col-span-12 md:col-span-4">
+      <div className="col-span-12 md:col-span-2">
         <div className="flex items-center gap-3">
           <Label className="text-gray-300 whitespace-nowrap">Mês</Label>
           <Select
