@@ -1985,9 +1985,9 @@ if (
           <CardHeader>
             <CardTitle className="text-primary">Filtros</CardTitle>
           </CardHeader>
-          <CardContent className="py-2">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-              <div>
+          <CardContent className="py-2 px-4">
+            <div className="grid grid-cols-12 items-center gap-3">
+              <div className="col-span-12 md:col-span-4">
                 <Label className="text-gray-300 mb-2 block">Cidade</Label>
                 <Select value={selectedLoja} onValueChange={setSelectedLoja}>
                   <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
@@ -2007,7 +2007,7 @@ if (
                 </Select>
               </div>
 
-              <div>
+              <div className="col-span-12 md:col-span-4">
                 <Label className="text-gray-300 mb-2 block">Ano</Label>
                 <Input
                   type="number"
@@ -2017,7 +2017,7 @@ if (
                 />
               </div>
 
-              <div>
+              <div className="col-span-12 md:col-span-4">
                 <Label className="text-gray-300 mb-2 block">Mês</Label>
                 <Select
                   value={mes.toString()}
