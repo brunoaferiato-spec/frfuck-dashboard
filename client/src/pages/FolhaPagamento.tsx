@@ -1982,68 +1982,75 @@ if (
         </div>
 
 <Card className="bg-gray-900 border-primary/30 py-1">
-          <CardHeader>
-            <CardTitle className="text-primary">Filtros</CardTitle>
-          </CardHeader>
-          <CardContent className="py-2 px-4">
-            <div className="grid grid-cols-12 items-center gap-3">
-              <div className="col-span-12 md:col-span-4">
-                <Label className="text-gray-300 mb-2 block">Cidade</Label>
-                <Select value={selectedLoja} onValueChange={setSelectedLoja}>
-                  <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-primary/30">
-                    {LOJAS.map((loja) => (
-                      <SelectItem
-                        key={loja.id}
-                        value={loja.id.toString()}
-                        className="text-white"
-                      >
-                        {loja.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+  <CardContent className="py-3 px-4">
+    <div className="grid grid-cols-12 items-center gap-4">
+      <div className="col-span-12 md:col-span-1">
+        <p className="text-primary font-semibold">Filtros</p>
+      </div>
 
-              <div className="col-span-12 md:col-span-4">
-                <Label className="text-gray-300 mb-2 block">Ano</Label>
-                <Input
-                  type="number"
-                  value={ano}
-                  onChange={(e) => setAno(parseInt(e.target.value, 10) || 2026)}
-                  className="bg-gray-800 border-primary/30 text-white"
-                />
-              </div>
-
-              <div className="col-span-12 md:col-span-4">
-                <Label className="text-gray-300 mb-2 block">Mês</Label>
-                <Select
-                  value={mes.toString()}
-                  onValueChange={(value) => setMes(parseInt(value, 10))}
+      <div className="col-span-12 md:col-span-3">
+        <div className="flex items-center gap-3">
+          <Label className="text-gray-300 whitespace-nowrap">Cidade</Label>
+          <Select value={selectedLoja} onValueChange={setSelectedLoja}>
+            <SelectTrigger className="bg-gray-800 border-primary/30 text-white h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-primary/30">
+              {LOJAS.map((loja) => (
+                <SelectItem
+                  key={loja.id}
+                  value={loja.id.toString()}
+                  className="text-white"
                 >
-                  <SelectTrigger className="bg-gray-800 border-primary/30 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-primary/30">
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                      <SelectItem
-                        key={m}
-                        value={m.toString()}
-                        className="text-white"
-                      >
-                        {new Date(2026, m - 1).toLocaleDateString("pt-BR", {
-                          month: "long",
-                        })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                  {loja.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="col-span-12 md:col-span-4">
+        <div className="flex items-center gap-3">
+          <Label className="text-gray-300 whitespace-nowrap">Ano</Label>
+          <Input
+            type="number"
+            value={ano}
+            onChange={(e) => setAno(parseInt(e.target.value, 10) || 2026)}
+            className="bg-gray-800 border-primary/30 text-white h-9"
+          />
+        </div>
+      </div>
+
+      <div className="col-span-12 md:col-span-4">
+        <div className="flex items-center gap-3">
+          <Label className="text-gray-300 whitespace-nowrap">Mês</Label>
+          <Select
+            value={mes.toString()}
+            onValueChange={(value) => setMes(parseInt(value, 10))}
+          >
+            <SelectTrigger className="bg-gray-800 border-primary/30 text-white h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-primary/30">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <SelectItem
+                  key={m}
+                  value={m.toString()}
+                  className="text-white"
+                >
+                  {new Date(2026, m - 1).toLocaleDateString("pt-BR", {
+                    month: "long",
+                  })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  </CardContent>
+</Card>
 
         {linhas.length === 0 ? (
           <Card className="bg-gray-900 border-primary/30">
