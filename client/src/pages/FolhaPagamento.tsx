@@ -2543,15 +2543,6 @@ if (
 
   if (!linha || !semana) return;
 
-  const campoManual =
-    semana === 1
-      ? "percManual1"
-      : semana === 2
-      ? "percManual2"
-      : semana === 3
-      ? "percManual3"
-      : "percManual4";
-
   const liquidez =
     semana === 1
       ? Number(linha.sem1 || 0)
@@ -2563,11 +2554,35 @@ if (
 
   const valorComissao = Number((liquidez * (valor / 100)).toFixed(2));
 
-  await updateLinha(
-    linha.funcionarioId,
-    campoManual as keyof FolhaMensal,
-    valor
+  const patch: Partial<FolhaMensal> =
+    semana === 1
+      ? { perc1: valor, com1: valorComissao, percManual1: valor }
+      : semana === 2
+      ? { perc2: valor, com2: valorComissao, percManual2: valor }
+      : semana === 3
+      ? { perc3: valor, com3: valorComissao, percManual3: valor }
+      : { perc4: valor, com4: valorComissao, percManual4: valor };
+
+  const linhaAtualizada = {
+    ...linha,
+    ...patch,
+  };
+
+  setFolhas((prev) =>
+    prev.map((f) =>
+      f.funcionarioId === linha.funcionarioId &&
+      f.loja_id === lojaId &&
+      f.ano === ano &&
+      f.mes === mes
+        ? { ...f, ...patch }
+        : f
+    )
   );
+
+  setRegraSemanaEditor((prev) => ({
+    ...prev,
+    linha: linhaAtualizada as LinhaComQuadrante,
+  }));
 
   try {
     await upsertFolhaBaseMutation.mutateAsync({
@@ -2581,6 +2596,8 @@ if (
       percentualManual: valor,
       valorComissao,
     });
+
+    await folhaBaseQuery.refetch();
   } catch (err) {
     console.error(err);
   }
