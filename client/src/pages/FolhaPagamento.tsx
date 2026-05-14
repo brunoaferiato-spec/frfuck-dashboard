@@ -1043,9 +1043,9 @@ if (row.semana === 4) {
   item.perc4 = Number(row.percentualComissao || 0);
   item.com4 = Number(row.valorComissao || 0);
 }
-  setFolhas(Array.from(agrupado.values()));
-  }
+}
 
+setFolhas(Array.from(agrupado.values()));
 }, [folhaBaseQuery.data, todosFuncionarios]);
   const linhas = useMemo<LinhaComQuadrante[]>(() => {
     return funcionariosDaCidade.map((func) => {
@@ -1108,10 +1108,12 @@ if (row.semana === 4) {
        sem2: base.sem2,
        sem3: base.sem3,
        sem4: base.sem4,
+
        percManual1: base.percManual1,
        percManual2: base.percManual2,
        percManual3: base.percManual3,
        percManual4: base.percManual4,
+       
        premiacoesManuais: base.premiacoesManuais || [],
        vales: base.vales || [],
        aluguel: base.aluguel,
