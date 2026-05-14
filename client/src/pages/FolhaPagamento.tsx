@@ -864,6 +864,17 @@ const folhaExtrasQuery = trpc.folhaExtras.getByLojaAnoMes.useQuery(
   }
 );
 
+const resumoSupervisorQuery =
+  trpc.folhaPagamento.getResumoSupervisorMensal.useQuery(
+    { ano, mes },
+    {
+      enabled: !!ano && !!mes,
+      retry: false,
+      refetchInterval: 5000,
+      refetchOnWindowFocus: true,
+    }
+  );
+
 const addPremiacaoMutation = trpc.folhaExtras.addPremiacao.useMutation({
   onSuccess: async () => {
     await folhaExtrasQuery.refetch();
@@ -2079,12 +2090,13 @@ if (
             )}
 
             {linhaPremioAtual?.funcao === "supervisor" && (() => {
-  const premioJoinville = linhaPremioAtual.com1 || 0;
-  const premioBlumenau = linhaPremioAtual.com2 || 0;
-  const premioSaoJose = linhaPremioAtual.com3 || 0;
-  const premioFlorianopolis = linhaPremioAtual.com4 || 0;
+  const resumoSupervisor = resumoSupervisorQuery.data;
 
-  const total =
+    const premioJoinville = Number(resumoSupervisor?.joinville || 0);
+    const premioBlumenau = Number(resumoSupervisor?.blumenau || 0);
+    const premioSaoJose = Number(resumoSupervisor?.saoJose || 0);
+    const premioFlorianopolis = Number(resumoSupervisor?.florianopolis || 0);
+    const total =
     premioJoinville +
     premioBlumenau +
     premioSaoJose +
