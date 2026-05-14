@@ -1005,33 +1005,48 @@ useEffect(() => {
     const item = agrupado.get(key)!;
 
     if (row.semana === 1) {
-      item.sem1 = Number(row.liquidez || 0);
-      item.perc1 = Number(row.percentualComissao || 0);
-      item.com1 = Number(row.valorComissao || 0);
+       item.sem1 = Number(row.liquidez || 0);
+       item.percManual1 =
+       row.percentualManual !== null && row.percentualManual !== undefined
+       ? Number(row.percentualManual)
+       : null;
+       item.perc1 = Number(row.percentualComissao || 0);
+       item.com1 = Number(row.valorComissao || 0);
     }
 
     if (row.semana === 2) {
-      item.sem2 = Number(row.liquidez || 0);
-      item.perc2 = Number(row.percentualComissao || 0);
-      item.com2 = Number(row.valorComissao || 0);
-    }
+  item.sem2 = Number(row.liquidez || 0);
+  item.percManual2 =
+    row.percentualManual !== null && row.percentualManual !== undefined
+      ? Number(row.percentualManual)
+      : null;
+  item.perc2 = Number(row.percentualComissao || 0);
+  item.com2 = Number(row.valorComissao || 0);
+}
 
-    if (row.semana === 3) {
-      item.sem3 = Number(row.liquidez || 0);
-      item.perc3 = Number(row.percentualComissao || 0);
-      item.com3 = Number(row.valorComissao || 0);
-    }
+if (row.semana === 3) {
+  item.sem3 = Number(row.liquidez || 0);
+  item.percManual3 =
+    row.percentualManual !== null && row.percentualManual !== undefined
+      ? Number(row.percentualManual)
+      : null;
+  item.perc3 = Number(row.percentualComissao || 0);
+  item.com3 = Number(row.valorComissao || 0);
+}
 
-    if (row.semana === 4) {
-      item.sem4 = Number(row.liquidez || 0);
-      item.perc4 = Number(row.percentualComissao || 0);
-      item.com4 = Number(row.valorComissao || 0);
-    }
+if (row.semana === 4) {
+  item.sem4 = Number(row.liquidez || 0);
+  item.percManual4 =
+    row.percentualManual !== null && row.percentualManual !== undefined
+      ? Number(row.percentualManual)
+      : null;
+  item.perc4 = Number(row.percentualComissao || 0);
+  item.com4 = Number(row.valorComissao || 0);
+}
+  setFolhas(Array.from(agrupado.values()));
   }
 
-  setFolhas(Array.from(agrupado.values()));
 }, [folhaBaseQuery.data, todosFuncionarios]);
-
   const linhas = useMemo<LinhaComQuadrante[]>(() => {
     return funcionariosDaCidade.map((func) => {
       const existente = folhas.find(
@@ -1083,22 +1098,26 @@ useEffect(() => {
         holerite: descontosFuncionario.holerite,
       };
 
-      const calculado = computeFolhaLinha({
-        meta,
-        funcao: func.funcao,
-        cidade: selectedLoja,
-        funcionarioNome: func.nome,
-        tipoMeta: func.tipoMeta,
-        sem1: base.sem1,
-        sem2: base.sem2,
-        sem3: base.sem3,
-        sem4: base.sem4,
-        premiacoesManuais: base.premiacoesManuais || [],
-        vales: base.vales || [],
-        aluguel: base.aluguel,
-        inss: base.inss,
-        adiant: base.adiant,
-        holerite: base.holerite,
+     const calculado = computeFolhaLinha({
+       meta,
+       funcao: func.funcao,
+       cidade: selectedLoja,
+       funcionarioNome: func.nome,
+       tipoMeta: func.tipoMeta,
+       sem1: base.sem1,
+       sem2: base.sem2,
+       sem3: base.sem3,
+       sem4: base.sem4,
+       percManual1: base.percManual1,
+       percManual2: base.percManual2,
+       percManual3: base.percManual3,
+       percManual4: base.percManual4,
+       premiacoesManuais: base.premiacoesManuais || [],
+       vales: base.vales || [],
+       aluguel: base.aluguel,
+       inss: base.inss,
+       adiant: base.adiant,
+       holerite: base.holerite,
       });
 
       const quadrante = getQuadrante(lojaId, func.funcao, ano, mes);
@@ -1138,27 +1157,33 @@ useEffect(() => {
   };
 
   const recalculado = computeFolhaLinha({
-    meta: findMetaForFuncionario({
-      funcionarioNome: updatedLine.nome,
-      funcao: updatedLine.funcao,
-      cidade: selectedLoja,
-      tipoMeta: updatedLine.tipoMeta,
-    }),
+  meta: findMetaForFuncionario({
+    funcionarioNome: updatedLine.nome,
     funcao: updatedLine.funcao,
     cidade: selectedLoja,
-    funcionarioNome: updatedLine.nome,
     tipoMeta: updatedLine.tipoMeta,
-    sem1: updatedLine.sem1,
-    sem2: updatedLine.sem2,
-    sem3: updatedLine.sem3,
-    sem4: updatedLine.sem4,
-    premiacoesManuais: updatedLine.premiacoesManuais || [],
-    vales: updatedLine.vales || [],
-    aluguel: updatedLine.aluguel,
-    inss: updatedLine.inss,
-    adiant: updatedLine.adiant,
-    holerite: updatedLine.holerite,
-  });
+  }),
+  funcao: updatedLine.funcao,
+  cidade: selectedLoja,
+  funcionarioNome: updatedLine.nome,
+  tipoMeta: updatedLine.tipoMeta,
+  sem1: updatedLine.sem1,
+  sem2: updatedLine.sem2,
+  sem3: updatedLine.sem3,
+  sem4: updatedLine.sem4,
+
+  percManual1: updatedLine.percManual1,
+  percManual2: updatedLine.percManual2,
+  percManual3: updatedLine.percManual3,
+  percManual4: updatedLine.percManual4,
+
+  premiacoesManuais: updatedLine.premiacoesManuais || [],
+  vales: updatedLine.vales || [],
+  aluguel: updatedLine.aluguel,
+  inss: updatedLine.inss,
+  adiant: updatedLine.adiant,
+  holerite: updatedLine.holerite,
+});
 
   const mergedLine: FolhaMensal = {
     ...updatedLine,
