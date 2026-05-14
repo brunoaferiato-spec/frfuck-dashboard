@@ -806,6 +806,11 @@ export default function FolhaPagamento() {
   const [ano, setAno] = useState(2026);
   const [mes, setMes] = useState(new Date().getMonth() + 1);
   const [folhas, setFolhas] = useState<FolhaMensal[]>([]);
+  const [folhaFiltros, setFolhaFiltros] = useState({
+  inss: true,
+  adiant: true,
+  holerite: true,
+  });
 
   const [cellEditor, setCellEditor] = useState<CellEditorState>({
     open: false,
@@ -1800,7 +1805,11 @@ const totalBoletoGeral = linhas.reduce((sum, l) => sum + Number(l.boleto || 0), 
 const totalINSS = linhas.reduce((sum, l) => sum + Number(l.inss || 0), 0);
 const totalAdiant = linhas.reduce((sum, l) => sum + Number(l.adiant || 0), 0);
 const totalHolerite = linhas.reduce((sum, l) => sum + Number(l.holerite || 0), 0);
-const totalFolhaGeral = totalBoletoGeral + totalINSS + totalAdiant + totalHolerite;
+const totalFolhaGeral =
+  totalBoletoGeral +
+  (folhaFiltros.inss ? totalINSS : 0) +
+  (folhaFiltros.adiant ? totalAdiant : 0) +
+  (folhaFiltros.holerite ? totalHolerite : 0);
 
   const ordemQuadrantes: QuadranteKey[] = [
     "gerente",
@@ -1962,24 +1971,45 @@ if (
     </p>
 
     <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-      <div className="rounded-md bg-gray-800 px-2 py-1 text-center">
-        <span className="block text-gray-400">INSS</span>
-        <strong className="text-red-400">R$ {money(totalINSS)}</strong>
-      </div>
+  <button
+    type="button"
+    onClick={() =>
+      setFolhaFiltros((prev) => ({ ...prev, inss: !prev.inss }))
+    }
+    className={`rounded-md px-2 py-1 text-center ${
+      folhaFiltros.inss ? "bg-gray-700" : "bg-gray-900 opacity-50"
+    }`}
+  >
+    <span className="block text-gray-400">INSS</span>
+    <strong className="text-red-400">R$ {money(totalINSS)}</strong>
+  </button>
 
-      <div className="rounded-md bg-gray-800 px-2 py-1 text-center">
-        <span className="block text-gray-400">Adiant.</span>
-        <strong className="text-red-400">R$ {money(totalAdiant)}</strong>
-      </div>
+  <button
+    type="button"
+    onClick={() =>
+      setFolhaFiltros((prev) => ({ ...prev, adiant: !prev.adiant }))
+    }
+    className={`rounded-md px-2 py-1 text-center ${
+      folhaFiltros.adiant ? "bg-gray-700" : "bg-gray-900 opacity-50"
+    }`}
+  >
+    <span className="block text-gray-400">Adiant.</span>
+    <strong className="text-red-400">R$ {money(totalAdiant)}</strong>
+  </button>
 
-      <div className="rounded-md bg-gray-800 px-2 py-1 text-center">
-        <span className="block text-gray-400">Holerite</span>
-        <strong className="text-red-400">R$ {money(totalHolerite)}</strong>
-      </div>
-    </div>
-  </CardContent>
-</Card>
-        </div>
+  <button
+    type="button"
+    onClick={() =>
+      setFolhaFiltros((prev) => ({ ...prev, holerite: !prev.holerite }))
+    }
+    className={`rounded-md px-2 py-1 text-center ${
+      folhaFiltros.holerite ? "bg-gray-700" : "bg-gray-900 opacity-50"
+    }`}
+  >
+    <span className="block text-gray-400">Holerite</span>
+    <strong className="text-red-400">R$ {money(totalHolerite)}</strong>
+  </button>
+</div>
 
 <Card className="bg-gray-900 border-primary/30 py-1">
   <CardContent className="py-3 px-4">
