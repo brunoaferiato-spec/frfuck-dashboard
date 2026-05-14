@@ -79,12 +79,18 @@ function calcularBoletoAjustado(args: {
   premiacao: number;
   vale: number;
   aluguel: number;
+  inss: number;
+  adiant: number;
+  holerite: number;
   boletoOriginal: number;
 }) {
   const totalComissao = Number(args.totalComissao || 0);
   const premiacao = Number(args.premiacao || 0);
   const vale = Number(args.vale || 0);
   const aluguel = Number(args.aluguel || 0);
+  const inss = Number(args.inss || 0);
+  const adiant = Number(args.adiant || 0);
+  const holerite = Number(args.holerite || 0);
 
   if (args.quadrante === "salario_fixo") {
     return premiacao;
@@ -96,6 +102,22 @@ function calcularBoletoAjustado(args: {
     args.quadrante === "recepcao"
   ) {
     return totalComissao + premiacao - vale - aluguel;
+  }
+
+  if (
+    args.quadrante === "comissao_semanal" ||
+    args.quadrante === "comissao_mensal" ||
+    args.quadrante === "gerente"
+  ) {
+    return (
+      totalComissao +
+      premiacao -
+      vale -
+      aluguel -
+      inss -
+      adiant -
+      holerite
+    );
   }
 
   return Number(args.boletoOriginal || 0);
@@ -1176,6 +1198,9 @@ const boletoAjustado = calcularBoletoAjustado({
   premiacao: calculadoAjustado.premiacao,
   vale: calculadoAjustado.vale,
   aluguel: base.aluguel,
+  inss: base.inss,
+  adiant: base.adiant,
+  holerite: base.holerite,
   boletoOriginal: calculadoAjustado.boleto,
 });
 
