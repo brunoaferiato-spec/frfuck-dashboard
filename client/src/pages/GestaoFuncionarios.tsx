@@ -118,6 +118,13 @@ export default function GestaoFuncionarios() {
   },
 });
 
+const excluirMutation =
+  trpc.funcionarios.excluir.useMutation({
+    onSuccess: async () => {
+      await funcionariosQuery.refetch();
+    },
+  });
+
   const lojaNome = useMemo(() => {
     return LOJAS.find((l) => l.id === lojaId)?.nome ?? "Loja";
   }, [lojaId]);
@@ -562,6 +569,25 @@ export default function GestaoFuncionarios() {
                              Reativar
                            </Button>
                           )}
+
+                        <Button
+                           variant="destructive"
+                           size="sm"
+                           onClick={async () => {
+                           const confirmar = confirm(
+                           "Deseja realmente excluir este funcionário?"
+                          );
+
+                           if (!confirmar) return;
+
+                           await excluirMutation.mutateAsync({
+                           id: func.id,
+                          });
+                        }}
+                      >
+                  Excluir
+                </Button>
+
                           </td>
                         </tr>
                       ))

@@ -12,6 +12,7 @@ import {
   updateFuncionario,
   inativarFuncionarioById,
   reativarFuncionarioById,
+  deleteFuncionarioById,
   getMetaByFuncaoLojaAnoMes,
   getMetasByLoja,
   getFolhaByFuncionarioAnoMes,
@@ -314,6 +315,16 @@ export const appRouter = router({
       .mutation(({ input }) =>
         reativarFuncionarioById(input.id, input.dataReativacao)
       ),
+
+      excluir: protectedProcedure
+       .input(
+       z.object({
+       id: z.number(),
+      })
+    )
+  .mutation(async ({ input }) => {
+    return deleteFuncionarioById(input.id);
+  }),
 
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))

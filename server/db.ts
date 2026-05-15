@@ -386,6 +386,18 @@ export async function reativarFuncionarioById(
   return { success: true };
 }
 
+export async function deleteFuncionarioById(id: number) {
+  const db = await getDb();
+
+  if (!db) {
+    throw new Error("Banco não conectado");
+  }
+
+  await db.delete(funcionarios).where(eq(funcionarios.id, id));
+
+  return { success: true };
+}
+
 // ===== Metas =====
 export async function getMetaByFuncaoLojaAnoMes(lojaId: number, funcao: string, ano: number, mes: number) {
   const db = await getDb();
