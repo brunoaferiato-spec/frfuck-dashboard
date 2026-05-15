@@ -2727,75 +2727,90 @@ if (
   defaultValue={Number(detalheSemanaAtual.percentual || 0)}
   className="w-28 text-right border-yellow-500/30 bg-black text-yellow-300 font-semibold"
   onBlur={async (e) => {
-  const valorDigitado = e.target.value.trim();
-  const valor = valorDigitado === "" ? null : Number(valorDigitado);
+    const valorDigitado = e.target.value.trim();
+    const valor = valorDigitado === "" ? null : Number(valorDigitado);
 
-  const semana = regraSemanaEditor.semana;
-  const linha = regraSemanaEditor.linha;
+    const semana = regraSemanaEditor.semana;
+    const linha = regraSemanaEditor.linha;
 
-  if (!linha || !semana) return;
+    if (!linha || !semana) return;
 
-  const campoManual =
-    semana === 1
-      ? "percManual1"
-      : semana === 2
-      ? "percManual2"
-      : semana === 3
-      ? "percManual3"
-      : "percManual4";
+    const percentualAutomatico =
+      semana === 1
+        ? linha.perc1
+        : semana === 2
+        ? linha.perc2
+        : semana === 3
+        ? linha.perc3
+        : linha.perc4;
 
-  await updateLinha(
-    linha.funcionarioId,
-    campoManual as keyof FolhaMensal,
-    valor
-  );
+    const percentualFinal = valor ?? percentualAutomatico;
 
-  const percentualAutomatico =
-    semana === 1
-      ? linha.perc1
-      : semana === 2
-      ? linha.perc2
-      : semana === 3
-      ? linha.perc3
-      : linha.perc4;
+    const liquidez =
+      semana === 1
+        ? Number(linha.sem1 || 0)
+        : semana === 2
+        ? Number(linha.sem2 || 0)
+        : semana === 3
+        ? Number(linha.sem3 || 0)
+        : Number(linha.sem4 || 0);
 
-  const percentualFinal = valor ?? percentualAutomatico;
+    const valorComissao = Number(
+      (
+        linha.funcao === "consultor_vendas"
+          ? liquidez * percentualFinal
+          : liquidez * (percentualFinal / 100)
+      ).toFixed(2)
+    );
 
-  const liquidez =
-    semana === 1
-      ? Number(linha.sem1 || 0)
-      : semana === 2
-      ? Number(linha.sem2 || 0)
-      : semana === 3
-      ? Number(linha.sem3 || 0)
-      : Number(linha.sem4 || 0);
+    const patch =
+      semana === 1
+        ? { perc1: percentualFinal, com1: valorComissao, percManual1: valor }
+        : semana === 2
+        ? { perc2: percentualFinal, com2: valorComissao, percManual2: valor }
+        : semana === 3
+        ? { perc3: percentualFinal, com3: valorComissao, percManual3: valor }
+        : { perc4: percentualFinal, com4: valorComissao, percManual4: valor };
 
-  const valorComissao = Number(
-  (
-    linha.funcao === "consultor_vendas"
-      ? liquidez * percentualFinal
-      : liquidez * (percentualFinal / 100)
-  ).toFixed(2)
-  );
+    const linhaAtualizada = {
+      ...linha,
+      ...patch,
+    };
 
-  try {
-    await upsertFolhaBaseMutation.mutateAsync({
-      funcionarioId: linha.funcionarioId,
-      lojaId,
-      ano,
-      mes,
-      semana,
-      liquidez,
-      percentualComissao: percentualFinal,
-      percentualManual: valor,
-      valorComissao,
-    });
+    setRegraSemanaEditor((prev) => ({
+      ...prev,
+      linha: linhaAtualizada as LinhaComQuadrante,
+    }));
 
-    await folhaBaseQuery.refetch();
-  } catch (err) {
-    console.error(err);
-  }
-}}
+    setFolhas((prev) =>
+      prev.map((f) =>
+        f.funcionarioId === linha.funcionarioId &&
+        f.loja_id === lojaId &&
+        f.ano === ano &&
+        f.mes === mes
+          ? { ...f, ...patch }
+          : f
+      )
+    );
+
+    try {
+      await upsertFolhaBaseMutation.mutateAsync({
+        funcionarioId: linha.funcionarioId,
+        lojaId,
+        ano,
+        mes,
+        semana,
+        liquidez,
+        percentualComissao: percentualFinal,
+        percentualManual: valor,
+        valorComissao,
+      });
+
+      await folhaBaseQuery.refetch();
+    } catch (err) {
+      console.error(err);
+    }
+  }}
 />
                 </div>
 
