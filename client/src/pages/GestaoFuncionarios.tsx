@@ -51,6 +51,7 @@ type FuncionarioItem = {
   funcao: FuncaoId;
   tipoMeta?: TipoMeta | null;
   dataAdmissao?: string | Date | null;
+  dataDesligamento?: string | Date | null;
   status?: string | null;
 };
 
@@ -61,6 +62,7 @@ export default function GestaoFuncionarios() {
   const [selectedLoja, setSelectedLoja] = useState("1");
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [buscaFuncionario, setBuscaFuncionario] = useState("");
 
   const emptyForm = {
     nome: "",
@@ -77,14 +79,14 @@ export default function GestaoFuncionarios() {
   const lojaId = Number(selectedLoja);
 
   const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
-  { lojaId },
-  {
-    enabled: !!lojaId,
-    retry: false,
-    refetchInterval: 5000,
-    refetchOnWindowFocus: true,
-  }
-);
+    { lojaId },
+    {
+      enabled: !!lojaId,
+      retry: false,
+      refetchInterval: 5000,
+      refetchOnWindowFocus: true,
+    }
+  );
 
   const createFuncionario = trpc.funcionarios.create.useMutation({
     onSuccess: async () => {
@@ -144,23 +146,23 @@ export default function GestaoFuncionarios() {
   };
 
   const handleInativarFuncionario = async (func: FuncionarioItem) => {
-  const data = prompt(
-    `Digite a data de desligamento de ${func.nome}\nFormato: 2026-05-01`,
-    new Date().toISOString().split("T")[0]
-  );
+    const data = prompt(
+      `Digite a data de desligamento de ${func.nome}\nFormato: 2026-05-01`,
+      new Date().toISOString().split("T")[0]
+    );
 
-  if (!data) return;
+    if (!data) return;
 
-  try {
-    await inativarFuncionario.mutateAsync({
-      id: func.id,
-      dataDesligamento: new Date(`${data}T00:00:00`),
-    });
-  } catch (error: any) {
-    console.error(error);
-    alert(error?.message ?? "Erro ao inativar funcionário");
-  }
-};
+    try {
+      await inativarFuncionario.mutateAsync({
+        id: func.id,
+        dataDesligamento: new Date(`${data}T00:00:00`),
+      });
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message ?? "Erro ao inativar funcionário");
+    }
+  };
 
   const handleSaveFuncionario = async () => {
     if (!formData.nome.trim()) {
@@ -199,7 +201,11 @@ export default function GestaoFuncionarios() {
     }
   };
 
-  const funcionarios = (funcionariosQuery.data ?? []) as FuncionarioItem[];
+  const funcionariosBase = (funcionariosQuery.data ?? []) as FuncionarioItem[];
+
+  const funcionarios = funcionariosBase.filter((func) =>
+    func.nome.toLowerCase().includes(buscaFuncionario.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-black p-6 text-white">
@@ -425,6 +431,16 @@ export default function GestaoFuncionarios() {
           </CardHeader>
 
           <CardContent>
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Buscar funcionário pelo nome..."
+                value={buscaFuncionario}
+                onChange={(e) => setBuscaFuncionario(e.target.value)}
+                className="w-full rounded-md border border-yellow-500/30 bg-gray-800 px-3 py-2 text-white outline-none placeholder:text-gray-500"
+              />
+            </div>
+
             {funcionariosQuery.isLoading ? (
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="h-6 w-6 animate-spin text-yellow-400" />
