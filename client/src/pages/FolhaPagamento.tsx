@@ -967,6 +967,7 @@ const todosFuncionarios = useMemo(() => {
     funcao: f.funcao,
     loja_id: f.lojaId,
     dataAdmissao: f.dataAdmissao || "",
+    dataDesligamento: f.dataDesligamento || null,
     dataExperiencia45: "",
     dataExperiencia90: "",
     status: (f.status || "ativo") as "ativo" | "inativo" | "experiencia",
@@ -982,10 +983,20 @@ const todosFuncionarios = useMemo(() => {
 }, [funcionariosQuery.data]);
 
 const funcionariosDaCidade = useMemo(() => {
-  return todosFuncionarios.filter(
-    (f) => f.loja_id === lojaId && f.status !== "inativo"
-  );
-}, [lojaId, todosFuncionarios]);
+  const dataReferencia = new Date(ano, mes - 1, 1);
+
+  return todosFuncionarios.filter((f: any) => {
+    if (f.loja_id !== lojaId) return false;
+
+    if (f.status !== "inativo") return true;
+
+    if (!f.dataDesligamento) return false;
+
+    const dataDesligamento = new Date(f.dataDesligamento);
+
+    return dataReferencia < dataDesligamento;
+  });
+}, [lojaId, todosFuncionarios, ano, mes]);
 
 function updateFolhas(next: FolhaMensal[]) {
   setFolhas(next);
