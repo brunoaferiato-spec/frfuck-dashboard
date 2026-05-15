@@ -1806,11 +1806,9 @@ const totalINSS = linhas.reduce((sum, l) => sum + Number(l.inss || 0), 0);
 const totalAdiant = linhas.reduce((sum, l) => sum + Number(l.adiant || 0), 0);
 const totalHolerite = linhas.reduce((sum, l) => sum + Number(l.holerite || 0), 0);
 const totalFolhaGeral =
-  totalBoletoGeral +
   (folhaFiltros.inss ? totalINSS : 0) +
   (folhaFiltros.adiant ? totalAdiant : 0) +
   (folhaFiltros.holerite ? totalHolerite : 0);
-
   const ordemQuadrantes: QuadranteKey[] = [
     "gerente",
     "comissao_semanal",
@@ -1981,9 +1979,7 @@ if (
     }`}
   >
     <span className="block text-gray-400">INSS</span>
-    <strong className="text-red-400">
-      R$ {money(totalINSS)}
-    </strong>
+    
   </button>
 
   <button
@@ -1996,9 +1992,7 @@ if (
     }`}
   >
     <span className="block text-gray-400">Adiant.</span>
-    <strong className="text-red-400">
-      R$ {money(totalAdiant)}
-    </strong>
+    
   </button>
 
   <button
@@ -2016,9 +2010,7 @@ if (
     }`}
     >
     <span className="block text-gray-400">Holerite</span>
-    <strong className="text-red-400">
-      R$ {money(totalHolerite)}
-    </strong>
+     
   </button>
 </div>
 
