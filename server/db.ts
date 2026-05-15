@@ -382,8 +382,7 @@ export async function reativarFuncionarioById(
       dataReativacao,
     } as any)
     .where(eq(funcionarios.id, id));
-
-  return { success: true };
+    return { success: true };
 }
 
 export async function deleteFuncionarioById(id: number) {
