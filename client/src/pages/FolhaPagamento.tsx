@@ -450,20 +450,47 @@ function TabelaQuadrante({
     ? linha.percManual3
     : linha.percManual4;
 
+const meta = findMetaForFuncionario({
+  funcionarioNome: linha.nome,
+  funcao: linha.funcao,
+  cidade: linha.loja_id.toString(),
+  tipoMeta: linha.tipoMeta,
+});
+
+const calculadoOriginal = computeFolhaLinha({
+  meta,
+  funcao: linha.funcao,
+  cidade: linha.loja_id.toString(),
+  funcionarioNome: linha.nome,
+  tipoMeta: linha.tipoMeta,
+
+  sem1: linha.sem1,
+  sem2: linha.sem2,
+  sem3: linha.sem3,
+  sem4: linha.sem4,
+
+  premiacoesManuais: [],
+  vales: [],
+  aluguel: 0,
+  inss: 0,
+  adiant: 0,
+  holerite: 0,
+});
+
 const percentualAutomatico =
   semana === 1
-    ? linha.perc1
+    ? calculadoOriginal.perc1
     : semana === 2
-    ? linha.perc2
+    ? calculadoOriginal.perc2
     : semana === 3
-    ? linha.perc3
-    : linha.perc4;
+    ? calculadoOriginal.perc3
+    : calculadoOriginal.perc4;
 
 const manual =
   manualValue !== null &&
   manualValue !== undefined &&
   Math.abs(Number(manualValue) - Number(percentualAutomatico)) > 0.001;
-  
+
 const regraClassName = manual
   ? "text-orange-400 font-bold hover:underline underline-offset-4"
   : "text-yellow-300 font-semibold hover:underline underline-offset-4";
