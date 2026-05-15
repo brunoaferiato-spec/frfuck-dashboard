@@ -2755,7 +2755,11 @@ if (
       : Number(linha.sem4 || 0);
 
   const valorComissao = Number(
-    (liquidez * (percentualFinal / 100)).toFixed(2)
+  (
+    linha.funcao === "consultor_vendas"
+      ? liquidez * percentualFinal
+      : liquidez * (percentualFinal / 100)
+  ).toFixed(2)
   );
 
   try {
