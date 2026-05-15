@@ -443,12 +443,12 @@ function TabelaQuadrante({
 
     const manual =
   semana === 1
-    ? linha.perc1 !== null && linha.perc1 !== undefined
+    ? linha.percManual1 !== null && linha.percManual1 !== undefined
     : semana === 2
-    ? linha.perc2 !== null && linha.perc2 !== undefined
+    ? linha.percManual2 !== null && linha.percManual2 !== undefined
     : semana === 3
-    ? linha.perc3 !== null && linha.perc3 !== undefined
-    : linha.perc4 !== null && linha.perc4 !== undefined;
+    ? linha.percManual3 !== null && linha.percManual3 !== undefined
+    : linha.percManual4 !== null && linha.percManual4 !== undefined;
 
 const regraClassName = manual
   ? "text-orange-400 font-bold hover:underline underline-offset-4"
