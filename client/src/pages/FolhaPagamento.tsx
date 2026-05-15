@@ -1981,7 +1981,9 @@ if (
     }`}
   >
     <span className="block text-gray-400">INSS</span>
-    <strong className="text-red-400">R$ {money(totalINSS)}</strong>
+    <strong className="text-red-400">
+      R$ {money(totalINSS)}
+    </strong>
   </button>
 
   <button
@@ -1994,21 +1996,35 @@ if (
     }`}
   >
     <span className="block text-gray-400">Adiant.</span>
-    <strong className="text-red-400">R$ {money(totalAdiant)}</strong>
+    <strong className="text-red-400">
+      R$ {money(totalAdiant)}
+    </strong>
   </button>
 
   <button
     type="button"
     onClick={() =>
-      setFolhaFiltros((prev) => ({ ...prev, holerite: !prev.holerite }))
+      setFolhaFiltros((prev) => ({
+        ...prev,
+        holerite: !prev.holerite,
+      }))
     }
     className={`rounded-md px-2 py-1 text-center ${
-      folhaFiltros.holerite ? "bg-gray-700" : "bg-gray-900 opacity-50"
+      folhaFiltros.holerite
+        ? "bg-gray-700"
+        : "bg-gray-900 opacity-50"
     }`}
-  >
+    >
     <span className="block text-gray-400">Holerite</span>
-    <strong className="text-red-400">R$ {money(totalHolerite)}</strong>
+    <strong className="text-red-400">
+      R$ {money(totalHolerite)}
+    </strong>
   </button>
+</div>
+
+</CardContent>
+</Card>
+
 </div>
 
 <Card className="bg-gray-900 border-primary/30 py-1">
