@@ -440,6 +440,19 @@ function TabelaQuadrante({
     linha: LinhaComQuadrante,
     semana: 1 | 2 | 3 | 4
   ) {
+
+    const manual =
+  semana === 1
+    ? linha.perc1 !== null && linha.perc1 !== undefined
+    : semana === 2
+    ? linha.perc2 !== null && linha.perc2 !== undefined
+    : semana === 3
+    ? linha.perc3 !== null && linha.perc3 !== undefined
+    : linha.perc4 !== null && linha.perc4 !== undefined;
+
+const regraClassName = manual
+  ? "text-orange-400 font-bold hover:underline underline-offset-4"
+  : "text-yellow-300 font-semibold hover:underline underline-offset-4";
     if (isConsultor) {
       const carrosSemana =
         semana === 1
@@ -463,7 +476,7 @@ function TabelaQuadrante({
   <button
     type="button"
     onClick={() => onOpenRegraSemanaEditor(linha, semana)}
-    className="text-yellow-300 font-semibold hover:underline underline-offset-4"
+    className={regraClassName}
   >
     {valorManual > 0
       ? `R$ ${money(valorManual)} / carro`
@@ -480,7 +493,7 @@ function TabelaQuadrante({
         <button
           type="button"
           onClick={() => onOpenRegraSemanaEditor(linha, semana)}
-          className="text-yellow-300 font-semibold hover:underline underline-offset-4"
+          className={regraClassName}
         >
           R$ {money(valor)}
         </button>
@@ -501,7 +514,7 @@ function TabelaQuadrante({
         <button
           type="button"
           onClick={() => onOpenRegraSemanaEditor(linha, semana)}
-          className="text-yellow-300 font-semibold hover:underline underline-offset-4"
+          className={regraClassName}
         >
           R$ {money(premio)}
         </button>
