@@ -441,14 +441,28 @@ function TabelaQuadrante({
     semana: 1 | 2 | 3 | 4
   ) {
 
-    const manual =
+    const manualValue =
   semana === 1
-    ? linha.percManual1 !== null && linha.percManual1 !== undefined
+    ? linha.percManual1
     : semana === 2
-    ? linha.percManual2 !== null && linha.percManual2 !== undefined
+    ? linha.percManual2
     : semana === 3
-    ? linha.percManual3 !== null && linha.percManual3 !== undefined
-    : linha.percManual4 !== null && linha.percManual4 !== undefined;
+    ? linha.percManual3
+    : linha.percManual4;
+
+const percentualAtual =
+  semana === 1
+    ? linha.perc1
+    : semana === 2
+    ? linha.perc2
+    : semana === 3
+    ? linha.perc3
+    : linha.perc4;
+
+const manual =
+  manualValue !== null &&
+  manualValue !== undefined &&
+  Number(manualValue) !== Number(percentualAtual);
 
 const regraClassName = manual
   ? "text-orange-400 font-bold hover:underline underline-offset-4"
