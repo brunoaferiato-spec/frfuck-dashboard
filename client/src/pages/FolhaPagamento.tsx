@@ -450,7 +450,7 @@ function TabelaQuadrante({
     ? linha.percManual3
     : linha.percManual4;
 
-const percentualAtual =
+const percentualAutomatico =
   semana === 1
     ? linha.perc1
     : semana === 2
@@ -462,8 +462,8 @@ const percentualAtual =
 const manual =
   manualValue !== null &&
   manualValue !== undefined &&
-  Number(manualValue) !== Number(percentualAtual);
-
+  Math.abs(Number(manualValue) - Number(percentualAutomatico)) > 0.001;
+  
 const regraClassName = manual
   ? "text-orange-400 font-bold hover:underline underline-offset-4"
   : "text-yellow-300 font-semibold hover:underline underline-offset-4";
