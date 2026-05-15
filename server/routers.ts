@@ -293,8 +293,15 @@ export const appRouter = router({
       .query(({ input }) => getFuncionariosByLoja(input.lojaId)),
 
     inativar: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(({ input }) => inativarFuncionarioById(input.id)),
+  .input(
+    z.object({
+      id: z.number(),
+      dataDesligamento: z.coerce.date(),
+    })
+  )
+  .mutation(({ input }) =>
+    inativarFuncionarioById(input.id, input.dataDesligamento)
+  ),
 
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))

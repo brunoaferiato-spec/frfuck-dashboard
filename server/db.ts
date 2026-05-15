@@ -348,7 +348,7 @@ export async function updateFuncionario(data: {
   return result[0] ?? null;
 }
 
-export async function inativarFuncionarioById(id: number) {
+export async function inativarFuncionarioById(id: number, dataDesligamento: Date) {
   const db = await getDb();
   if (!db) {
     throw new Error("Banco não conectado");
@@ -358,6 +358,7 @@ export async function inativarFuncionarioById(id: number) {
     .update(funcionarios)
     .set({
       status: "inativo",
+      dataDesligamento,
     } as any)
     .where(eq(funcionarios.id, id));
 

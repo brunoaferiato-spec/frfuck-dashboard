@@ -144,17 +144,23 @@ export default function GestaoFuncionarios() {
   };
 
   const handleInativarFuncionario = async (func: FuncionarioItem) => {
-    const confirmar = confirm(`Deseja inativar ${func.nome}?`);
+  const data = prompt(
+    `Digite a data de desligamento de ${func.nome}\nFormato: 2026-05-01`,
+    new Date().toISOString().split("T")[0]
+  );
 
-    if (!confirmar) return;
+  if (!data) return;
 
-    try {
-      await inativarFuncionario.mutateAsync({ id: func.id });
-    } catch (error: any) {
-      console.error(error);
-      alert(error?.message ?? "Erro ao inativar funcionário");
-    }
-  };
+  try {
+    await inativarFuncionario.mutateAsync({
+      id: func.id,
+      dataDesligamento: new Date(`${data}T00:00:00`),
+    });
+  } catch (error: any) {
+    console.error(error);
+    alert(error?.message ?? "Erro ao inativar funcionário");
+  }
+};
 
   const handleSaveFuncionario = async () => {
     if (!formData.nome.trim()) {
