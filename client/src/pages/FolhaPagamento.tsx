@@ -531,15 +531,15 @@ const regraClassName = manual
         : linha.perc4;
 
     return (
-      <button
-        type="button"
-        onClick={() => onOpenRegraSemanaEditor(linha, semana)}
-        className="text-yellow-300 font-semibold hover:underline underline-offset-4"
-      >
-        {percentual.toFixed(2)}%
-      </button>
-    );
-  }
+  <button
+    type="button"
+    onClick={() => onOpenRegraSemanaEditor(linha, semana)}
+    className={regraClassName}
+  >
+    {percentual.toFixed(2)}%
+  </button>
+);
+}
 
   return (
     <Card className="bg-gray-900 border-primary/30">
