@@ -450,15 +450,26 @@ function TabelaQuadrante({
           ? linha.sem3
           : linha.sem4;
 
-      return (
-        <button
-          type="button"
-          onClick={() => onOpenRegraSemanaEditor(linha, semana)}
-          className="text-yellow-300 font-semibold hover:underline underline-offset-4"
-        >
-          {getRegraConsultorTexto(linha, carrosSemana)}
-        </button>
-      );
+      const valorManual =
+        semana === 1
+          ? linha.perc1
+          : semana === 2
+          ? linha.perc2
+          : semana === 3
+          ? linha.perc3
+          : linha.perc4;
+
+  return (
+  <button
+    type="button"
+    onClick={() => onOpenRegraSemanaEditor(linha, semana)}
+    className="text-yellow-300 font-semibold hover:underline underline-offset-4"
+  >
+    {valorManual > 0
+      ? `R$ ${money(valorManual)} / carro`
+      : getRegraConsultorTexto(linha, carrosSemana)}
+  </button>
+    );
     }
 
     if (isRecepcao) {
