@@ -968,6 +968,7 @@ const todosFuncionarios = useMemo(() => {
     loja_id: f.lojaId,
     dataAdmissao: f.dataAdmissao || "",
     dataDesligamento: f.dataDesligamento || null,
+    dataReativacao: f.dataReativacao || null,
     dataExperiencia45: "",
     dataExperiencia90: "",
     status: (f.status || "ativo") as "ativo" | "inativo" | "experiencia",
@@ -988,13 +989,41 @@ const funcionariosDaCidade = useMemo(() => {
   return todosFuncionarios.filter((f: any) => {
     if (f.loja_id !== lojaId) return false;
 
-    if (f.status !== "inativo") return true;
+    const desligamento = f.dataDesligamento
+      ? new Date(f.dataDesligamento)
+      : null;
 
-    if (!f.dataDesligamento) return false;
+    const reativacao = f.dataReativacao
+      ? new Date(f.dataReativacao)
+      : null;
 
-    const dataDesligamento = new Date(f.dataDesligamento);
+    if (f.status === "ativo") {
+      if (!desligamento) return true;
 
-    return dataReferencia < dataDesligamento;
+      if (reativacao) {
+        return (
+          dataReferencia < desligamento ||
+          dataReferencia >= reativacao
+        );
+      }
+
+      return true;
+    }
+
+    if (f.status === "inativo") {
+      if (!desligamento) return false;
+
+      if (reativacao) {
+        return (
+          dataReferencia < desligamento ||
+          dataReferencia >= reativacao
+        );
+      }
+
+      return dataReferencia < desligamento;
+    }
+
+    return true;
   });
 }, [lojaId, todosFuncionarios, ano, mes]);
 

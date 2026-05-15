@@ -112,6 +112,12 @@ export default function GestaoFuncionarios() {
     },
   });
 
+  const reativarFuncionario = trpc.funcionarios.reativar.useMutation({
+  onSuccess: async () => {
+    await utils.funcionarios.listByLoja.invalidate({ lojaId });
+  },
+});
+
   const lojaNome = useMemo(() => {
     return LOJAS.find((l) => l.id === lojaId)?.nome ?? "Loja";
   }, [lojaId]);
@@ -163,6 +169,25 @@ export default function GestaoFuncionarios() {
       alert(error?.message ?? "Erro ao inativar funcionário");
     }
   };
+
+  const handleReativarFuncionario = async (func: FuncionarioItem) => {
+  const data = prompt(
+    `Digite a data de reativação de ${func.nome}\nFormato: 2026-08-01`,
+    new Date().toISOString().split("T")[0]
+  );
+
+  if (!data) return;
+
+  try {
+    await reativarFuncionario.mutateAsync({
+      id: func.id,
+      dataReativacao: new Date(`${data}T00:00:00`),
+    });
+  } catch (error: any) {
+    console.error(error);
+    alert(error?.message ?? "Erro ao reativar funcionário");
+  }
+};
 
   const handleSaveFuncionario = async () => {
     if (!formData.nome.trim()) {
@@ -526,6 +551,17 @@ export default function GestaoFuncionarios() {
                                 Inativar
                               </Button>
                             )}
+
+                            {func.status === "inativo" && (
+                             <Button
+                               size="sm"
+                               variant="outline"
+                               onClick={() => handleReativarFuncionario(func)}
+                               className="ml-2 border-green-500/30 bg-transparent text-green-400 hover:bg-green-500/10"
+                              >
+                             Reativar
+                           </Button>
+                          )}
                           </td>
                         </tr>
                       ))

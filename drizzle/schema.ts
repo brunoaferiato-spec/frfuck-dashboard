@@ -75,6 +75,7 @@ export const funcionarios = mysqlTable("funcionarios", {
   tipoMeta: mysqlEnum("tipoMeta", ["meta1", "meta2"]),
   dataAdmissao: timestamp("dataAdmissao").notNull(),
   dataDesligamento: timestamp("dataDesligamento"),
+  dataReativacao: timestamp("data_reativacao"),
   motivoDesligamento: varchar("motivoDesligamento", { length: 100 }),
   deveEmpresa: decimal("deveEmpresa", { precision: 12, scale: 2 }).default("0"),
   status: mysqlEnum("status", ["ativo", "inativo", "experiencia"]).default("ativo").notNull(),

@@ -11,6 +11,7 @@ import {
   createFuncionario,
   updateFuncionario,
   inativarFuncionarioById,
+  reativarFuncionarioById,
   getMetaByFuncaoLojaAnoMes,
   getMetasByLoja,
   getFolhaByFuncionarioAnoMes,
@@ -292,16 +293,27 @@ export const appRouter = router({
       .input(z.object({ lojaId: z.number() }))
       .query(({ input }) => getFuncionariosByLoja(input.lojaId)),
 
-    inativar: protectedProcedure
-  .input(
-    z.object({
-      id: z.number(),
-      dataDesligamento: z.coerce.date(),
-    })
-  )
-  .mutation(({ input }) =>
-    inativarFuncionarioById(input.id, input.dataDesligamento)
-  ),
+        inativar: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          dataDesligamento: z.coerce.date(),
+        })
+      )
+      .mutation(({ input }) =>
+        inativarFuncionarioById(input.id, input.dataDesligamento)
+      ),
+
+    reativar: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          dataReativacao: z.coerce.date(),
+        })
+      )
+      .mutation(({ input }) =>
+        reativarFuncionarioById(input.id, input.dataReativacao)
+      ),
 
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
