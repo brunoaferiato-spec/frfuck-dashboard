@@ -1495,6 +1495,9 @@ return {
       ultimaAlteracaoPor: usuarioLogado,
       ultimaAlteracaoEm: new Date(),
     });
+
+    await folhaBaseQuery.refetch();
+    await folhaExtrasQuery.refetch();
   }
 }
 

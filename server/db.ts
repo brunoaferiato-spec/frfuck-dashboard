@@ -748,8 +748,13 @@ export async function deleteUserById(id: number) {
   };
 }
 // ===== Folha Extras =====
-export async function getFolhaExtrasByLojaAnoMes(lojaId: number, ano: number, mes: number) {
+export async function getFolhaExtrasByLojaAnoMes(
+  lojaId: number,
+  ano: number,
+  mes: number
+) {
   const db = await getDb();
+
   if (!db) {
     return {
       premiacoesByFuncionario: {},
@@ -760,53 +765,114 @@ export async function getFolhaExtrasByLojaAnoMes(lojaId: number, ano: number, me
     };
   }
 
-  const [premiosRows, obsRows, descontosRows, valesRows] = await Promise.all([
-    db.select().from(premiacoes).where(
-      and(eq(premiacoes.lojaId, lojaId), eq(premiacoes.ano, ano), eq(premiacoes.mes, mes))
-    ),
-    db.select().from(observacoes).where(
-      and(eq(observacoes.lojaId, lojaId), eq(observacoes.ano, ano), eq(observacoes.mes, mes))
-    ),
-    db.select().from(descontos).where(
-      and(eq(descontos.lojaId, lojaId), eq(descontos.ano, ano), eq(descontos.mes, mes))
-    ),
-    db.select().from(vales).where(
-      and(eq(vales.lojaId, lojaId), eq(vales.ano, ano), eq(vales.mes, mes), eq(vales.status, "ativo"))
-    ),
-  ]);
+  const [premiosRows, obsRows, descontosRows, valesRows] =
+    await Promise.all([
+      db
+        .select()
+        .from(premiacoes)
+        .where(
+          and(
+            eq(premiacoes.lojaId, lojaId),
+            eq(premiacoes.ano, ano),
+            eq(premiacoes.mes, mes)
+          )
+        ),
 
-  const premiacoesByFuncionario: Record<number, Array<{ id: string; descricao: string; valor: number }>> = {};
+      db
+        .select()
+        .from(observacoes)
+        .where(
+          and(
+            eq(observacoes.lojaId, lojaId),
+            eq(observacoes.ano, ano),
+            eq(observacoes.mes, mes)
+          )
+        ),
+
+      db
+        .select()
+        .from(descontos)
+        .where(
+          and(
+            eq(descontos.lojaId, lojaId),
+            eq(descontos.ano, ano),
+            eq(descontos.mes, mes)
+          )
+        ),
+
+      db
+        .select()
+        .from(vales)
+        .where(
+          and(
+            eq(vales.lojaId, lojaId),
+            eq(vales.ano, ano),
+            eq(vales.mes, mes)
+          )
+        ),
+    ]);
+
+  const premiacoesByFuncionario: Record<
+    number,
+    Array<{ id: string; descricao: string; valor: number }>
+  > = {};
+
   const observacoesByFuncionario: Record<number, string[]> = {};
-  const descontosByFuncionario: Record<number, { aluguel: number; inss: number; adiant: number; holerite: number }> = {};
-  const valesByFuncionario: Record<number, Array<{
-    id: string;
-    grupoId: string;
-    descricao: string;
-    valor: number;
-    parcelaAtual: number;
-    totalParcelas: number;
-    anoOrigem: number;
-    mesOrigem: number;
-  }>> = {};
+
+  const descontosByFuncionario: Record<
+    number,
+    {
+      aluguel: number;
+      inss: number;
+      adiant: number;
+      holerite: number;
+    }
+  > = {};
+
+  const descontosAuditoriaByFuncionario: Record<number, any> = {};
+
+  const valesByFuncionario: Record<
+    number,
+    Array<{
+      id: string;
+      grupoId: string;
+      descricao: string;
+      valor: number;
+      parcelaAtual: number;
+      totalParcelas: number;
+      anoOrigem: number;
+      mesOrigem: number;
+    }>
+  > = {};
 
   for (const row of premiosRows) {
-    const fid = row.funcionarioId;
-    if (!premiacoesByFuncionario[fid]) premiacoesByFuncionario[fid] = [];
+    const fid = Number(row.funcionarioId);
+
+    if (!premiacoesByFuncionario[fid]) {
+      premiacoesByFuncionario[fid] = [];
+    }
+
     premiacoesByFuncionario[fid].push({
       id: String(row.id),
-      descricao: row.descricao,
+      descricao: String(row.descricao || ""),
       valor: Number(row.valor || 0),
     });
   }
 
   for (const row of obsRows) {
-    const fid = row.funcionarioId;
-    if (!observacoesByFuncionario[fid]) observacoesByFuncionario[fid] = [];
-    observacoesByFuncionario[fid].push(row.texto);
+    const fid = Number(row.funcionarioId);
+
+    if (!observacoesByFuncionario[fid]) {
+      observacoesByFuncionario[fid] = [];
+    }
+
+    observacoesByFuncionario[fid].push(String(row.texto || ""));
   }
 
   for (const row of descontosRows) {
-    const fid = row.funcionarioId;
+    const fid = Number(row.funcionarioId);
+    const tipo = String(row.tipo);
+
     if (!descontosByFuncionario[fid]) {
       descontosByFuncionario[fid] = {
         aluguel: 0,
@@ -816,26 +882,39 @@ export async function getFolhaExtrasByLojaAnoMes(lojaId: number, ano: number, me
       };
     }
 
+    if (!descontosAuditoriaByFuncionario[fid]) {
+      descontosAuditoriaByFuncionario[fid] = {};
+    }
+
+    descontosAuditoriaByFuncionario[fid][tipo] = {
+      ultimaAlteracaoPor: (row as any).ultimaAlteracaoPor || null,
+      ultimaAlteracaoEm: (row as any).ultimaAlteracaoEm || null,
+    };
+
     const valor = Number(row.valor || 0);
 
-    if (row.tipo === "aluguel") descontosByFuncionario[fid].aluguel = valor;
-    if (row.tipo === "inss") descontosByFuncionario[fid].inss = valor;
-    if (row.tipo === "adiantamento") descontosByFuncionario[fid].adiant = valor;
-    if (row.tipo === "holerite") descontosByFuncionario[fid].holerite = valor;
+    if (tipo === "aluguel") descontosByFuncionario[fid].aluguel = valor;
+    if (tipo === "inss") descontosByFuncionario[fid].inss = valor;
+    if (tipo === "adiantamento") descontosByFuncionario[fid].adiant = valor;
+    if (tipo === "holerite") descontosByFuncionario[fid].holerite = valor;
   }
 
   for (const row of valesRows) {
-    const fid = row.funcionarioId;
-    if (!valesByFuncionario[fid]) valesByFuncionario[fid] = [];
+    const fid = Number(row.funcionarioId);
+
+    if (!valesByFuncionario[fid]) {
+      valesByFuncionario[fid] = [];
+    }
+
     valesByFuncionario[fid].push({
       id: String(row.id),
-      grupoId: row.grupoId,
-      descricao: row.descricao,
-      valor: Number(row.valorParcela || 0),
+      grupoId: String(row.grupoId || ""),
+      descricao: String(row.descricao || ""),
+      valor: Number(row.valorParcela || row.valor || 0),
       parcelaAtual: Number(row.parcelaAtual || 1),
-      totalParcelas: Number(row.parcelas || 1),
-      anoOrigem: row.ano,
-      mesOrigem: row.mesOrigem,
+      totalParcelas: Number(row.parcelas || row.totalParcelas || 1),
+      anoOrigem: Number(row.anoOrigem || row.ano || ano),
+      mesOrigem: Number(row.mesOrigem || row.mes || mes),
     });
   }
 
@@ -843,6 +922,7 @@ export async function getFolhaExtrasByLojaAnoMes(lojaId: number, ano: number, me
     premiacoesByFuncionario,
     observacoesByFuncionario,
     descontosByFuncionario,
+    descontosAuditoriaByFuncionario,
     valesByFuncionario,
   };
 }
