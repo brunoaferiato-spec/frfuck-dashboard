@@ -2761,9 +2761,17 @@ if (
         <DialogContent className="bg-gray-950 border-primary/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-primary">Detalhe da regra</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Meta, regra aplicada e valor do período selecionado.
-            </DialogDescription>
+            <DialogDescription className="text-gray-400 text-xs">
+  Última alteração:
+  {" "}
+  {(detalheSemanaAtual as any)?.linha?.ultimaAlteracaoPor || "Sistema"}
+  {" • "}
+  {(detalheSemanaAtual as any)?.linha?.ultimaAlteracaoEm
+  ? new Date(
+      (detalheSemanaAtual as any).linha.ultimaAlteracaoEm
+    ).toLocaleString("pt-BR")
+  : "Sem alterações"}
+</DialogDescription>
           </DialogHeader>
 
           {detalheSemanaAtual && (
