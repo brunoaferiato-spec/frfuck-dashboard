@@ -2937,6 +2937,9 @@ if (
         percentualComissao: percentualFinal,
         percentualManual: valor,
         valorComissao,
+
+        ultimaAlteracaoPor: usuarioLogado,
+        ultimaAlteracaoEm: new Date(),
       });
 
       await folhaBaseQuery.refetch();
