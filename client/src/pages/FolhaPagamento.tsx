@@ -995,6 +995,7 @@ const removeObservacaoMutation = trpc.folhaExtras.removeObservacao.useMutation({
 const saveDescontoMutation = trpc.folhaExtras.saveDesconto.useMutation({
   onSuccess: async () => {
     await folhaExtrasQuery.refetch();
+    await folhaBaseQuery.refetch();
   },
 });
 
