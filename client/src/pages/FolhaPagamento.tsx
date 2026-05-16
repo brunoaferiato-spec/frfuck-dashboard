@@ -2268,44 +2268,44 @@ if (
         onOpenChange={(open) => setCellEditor((prev) => ({ ...prev, open }))}
       >
         <DialogContent className="bg-gray-950 border-primary/30 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-primary">{cellEditor.label}</DialogTitle>
-            <DialogDescription className="text-gray-400 text-xs">
-  Última alteração:{" "}
-{(
-  cellEditor.campo === "sem1"
-    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoPor1
-    : cellEditor.campo === "sem2"
-    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoPor2
-    : cellEditor.campo === "sem3"
-    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoPor3
-    : (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoPor4
-) || "Sistema"}
+  <DialogHeader>
+    <DialogTitle className="text-primary">
+      {cellEditor.label}
+    </DialogTitle>
 
-{" • "}
+    <DialogDescription className="text-gray-400 text-xs">
+      <>
+        {(() => {
+          const tipoMap: Record<string, string> = {
+            aluguel: "aluguel",
+            inss: "inss",
+            adiant: "adiantamento",
+            holerite: "holerite",
+          };
 
-{(
-  cellEditor.campo === "sem1"
-    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm1
-    : cellEditor.campo === "sem2"
-    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm2
-    : cellEditor.campo === "sem3"
-    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm3
-    : (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm4
-)
-  ? new Date(
-      cellEditor.campo === "sem1"
-        ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm1
-        : cellEditor.campo === "sem2"
-        ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm2
-        : cellEditor.campo === "sem3"
-        ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm3
-        : (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm4
-    ).toLocaleString("pt-BR")
-  : "Sem alterações"}
-</DialogDescription>
-          </DialogHeader>
+          const auditoria =
+            cellEditor.funcionarioId && cellEditor.campo
+              ? (folhaExtrasQuery.data as any)
+                  ?.descontosAuditoriaByFuncionario?.[
+                    cellEditor.funcionarioId
+                  ]?.[tipoMap[String(cellEditor.campo)]]
+              : null;
 
+          return (
+            <>
+              Última alteração:{" "}
+              {auditoria?.ultimaAlteracaoPor || "Sistema"} {" • "}
+              {auditoria?.ultimaAlteracaoEm
+                ? new Date(
+                    auditoria.ultimaAlteracaoEm
+                  ).toLocaleString("pt-BR")
+                : "Sem alterações"}
+            </>
+          );
+        })()}
+      </>
+    </DialogDescription>
+  </DialogHeader>
           <div className="space-y-2">
             <Label className="text-gray-300">
               {cellEditor.mode === "money" ? "Valor em R$" : "Quantidade"}
