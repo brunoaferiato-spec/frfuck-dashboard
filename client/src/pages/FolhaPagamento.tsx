@@ -1143,7 +1143,10 @@ useEffect(() => {
 
         observacoes: [],
         boleto: 0,
-      });
+
+        ultimaAlteracaoPor: (row as any).ultimaAlteracaoPor || null,
+        ultimaAlteracaoEm: (row as any).ultimaAlteracaoEm || null,
+        } as any);
     }
 
     const item = agrupado.get(key)!;
@@ -1156,6 +1159,9 @@ useEffect(() => {
        : null;
        item.perc1 = Number(row.percentualComissao || 0);
        item.com1 = Number(row.valorComissao || 0);
+
+       (item as any).ultimaAlteracaoPor = row.ultimaAlteracaoPor || null;
+       (item as any).ultimaAlteracaoEm = row.ultimaAlteracaoEm || null;
     }
 
     if (row.semana === 2) {
@@ -1166,6 +1172,9 @@ useEffect(() => {
       : null;
   item.perc2 = Number(row.percentualComissao || 0);
   item.com2 = Number(row.valorComissao || 0);
+
+  (item as any).ultimaAlteracaoPor = row.ultimaAlteracaoPor || null;
+  (item as any).ultimaAlteracaoEm = row.ultimaAlteracaoEm || null;
 }
 
 if (row.semana === 3) {
@@ -1176,6 +1185,9 @@ if (row.semana === 3) {
       : null;
   item.perc3 = Number(row.percentualComissao || 0);
   item.com3 = Number(row.valorComissao || 0);
+
+  (item as any).ultimaAlteracaoPor = row.ultimaAlteracaoPor || null;
+  (item as any).ultimaAlteracaoEm = row.ultimaAlteracaoEm || null;
 }
 
 if (row.semana === 4) {
@@ -1186,6 +1198,9 @@ if (row.semana === 4) {
       : null;
   item.perc4 = Number(row.percentualComissao || 0);
   item.com4 = Number(row.valorComissao || 0);
+
+  (item as any).ultimaAlteracaoPor = row.ultimaAlteracaoPor || null;
+  (item as any).ultimaAlteracaoEm = row.ultimaAlteracaoEm || null;
 }
 }
 
