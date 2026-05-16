@@ -2265,16 +2265,37 @@ if (
             <DialogTitle className="text-primary">{cellEditor.label}</DialogTitle>
             <DialogDescription className="text-gray-400 text-xs">
   Última alteração:{" "}
-  {(cellEditor.funcionarioId
+{(
+  cellEditor.campo === "sem1"
     ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoPor1
-    : null) || "Sistema"}
-  {" • "}
-  {cellEditor.funcionarioId &&
-  (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm1
-    ? new Date(
-        (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any).ultimaAlteracaoEm1
-      ).toLocaleString("pt-BR")
-    : "Sem alterações"}
+    : cellEditor.campo === "sem2"
+    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoPor2
+    : cellEditor.campo === "sem3"
+    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoPor3
+    : (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoPor4
+) || "Sistema"}
+
+{" • "}
+
+{(
+  cellEditor.campo === "sem1"
+    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm1
+    : cellEditor.campo === "sem2"
+    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm2
+    : cellEditor.campo === "sem3"
+    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm3
+    : (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm4
+)
+  ? new Date(
+      cellEditor.campo === "sem1"
+        ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm1
+        : cellEditor.campo === "sem2"
+        ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm2
+        : cellEditor.campo === "sem3"
+        ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm3
+        : (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm4
+    ).toLocaleString("pt-BR")
+  : "Sem alterações"}
 </DialogDescription>
           </DialogHeader>
 
