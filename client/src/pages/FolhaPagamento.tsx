@@ -2370,9 +2370,16 @@ if (
         <DialogContent className="bg-gray-950 border-primary/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-primary">Premiação</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Visualize a automática e adicione quantas premiações manuais quiser.
-            </DialogDescription>
+            <DialogDescription className="text-gray-400 text-xs">
+  Última alteração:{" "}
+  {(linhaPremioAtual?.premiacoesManuais?.[0] as any)?.ultimaAlteracaoPor || "Sistema"}{" "}
+  •{" "}
+  {(linhaPremioAtual?.premiacoesManuais?.[0] as any)?.ultimaAlteracaoEm
+    ? new Date(
+    (linhaPremioAtual?.premiacoesManuais?.[0] as any)?.ultimaAlteracaoEm
+  ).toLocaleString("pt-BR")
+    : "Sem alterações"}
+</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -2564,10 +2571,16 @@ if (
         <DialogContent className="bg-gray-950 border-primary/30 text-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-primary">Vale</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Adicione vale simples ou parcelado. Ao excluir um parcelado, ele sai
-              do mês atual em diante.
-            </DialogDescription>
+            <DialogDescription className="text-gray-400 text-xs">
+  Última alteração:{" "}
+  {(linhaValeAtual?.vales?.[0] as any)?.ultimaAlteracaoPor || "Sistema"}{" "}
+  •{" "}
+  {(linhaValeAtual?.vales?.[0] as any)?.ultimaAlteracaoEm
+    ? new Date(
+        (linhaValeAtual?.vales?.[0] as any)?.ultimaAlteracaoEm
+      ).toLocaleString("pt-BR")
+    : "Sem alterações"}
+</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
