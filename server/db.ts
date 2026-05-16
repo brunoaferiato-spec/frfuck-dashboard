@@ -932,6 +932,9 @@ export async function upsertDesconto(data: {
   mes: number;
   tipo: "aluguel" | "inss" | "adiantamento" | "holerite";
   valor: number;
+
+  ultimaAlteracaoPor?: string | null;
+  ultimaAlteracaoEm?: Date | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
@@ -949,6 +952,9 @@ export async function upsertDesconto(data: {
   if (existing[0]) {
     await db.update(descontos).set({
       valor: data.valor.toFixed(2),
+      
+        ultimaAlteracaoPor: data.ultimaAlteracaoPor ?? null,
+        ultimaAlteracaoEm: data.ultimaAlteracaoEm ?? null,
     } as any).where(eq(descontos.id, existing[0].id));
   } else {
     await db.insert(descontos).values({
@@ -958,6 +964,9 @@ export async function upsertDesconto(data: {
       mes: data.mes,
       tipo: data.tipo,
       valor: data.valor.toFixed(2),
+
+      ultimaAlteracaoPor: data.ultimaAlteracaoPor ?? null,
+      ultimaAlteracaoEm: data.ultimaAlteracaoEm ?? null,
     } as any);
   }
 

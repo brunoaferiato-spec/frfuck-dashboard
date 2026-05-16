@@ -590,6 +590,9 @@ export const appRouter = router({
           mes: z.number(),
           tipo: z.enum(["aluguel", "inss", "adiantamento", "holerite"]),
           valor: z.number().min(0),
+
+          ultimaAlteracaoPor: z.string().nullable().optional(),
+          ultimaAlteracaoEm: z.coerce.date().nullable().optional(),
         })
       )
       .mutation(({ input }) => upsertDesconto(input)),

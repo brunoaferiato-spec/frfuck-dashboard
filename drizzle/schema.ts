@@ -187,6 +187,9 @@ export const descontos = mysqlTable("descontos", {
   descricao: varchar("descricao", { length: 200 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+
+  ultimaAlteracaoPor: varchar("ultima_alteracao_por", { length: 255 }),
+  ultimaAlteracaoEm: timestamp("ultima_alteracao_em"),
 });
 
 export type Desconto = typeof descontos.$inferSelect;

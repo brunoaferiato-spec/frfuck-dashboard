@@ -1490,6 +1490,9 @@ return {
       mes,
       tipo: tipoMap[String(campo)],
       valor: Number(valor || 0),
+
+      ultimaAlteracaoPor: usuarioLogado,
+      ultimaAlteracaoEm: new Date(),
     });
   }
 }
