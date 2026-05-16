@@ -939,6 +939,8 @@ const folhaBaseQuery = trpc.folhaPagamento.getBaseByLojaAnoMes.useQuery(
   }
 );
 
+const usuarioLogado = "Bruno";
+
 const upsertFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation({
   onSuccess: async () => {
     await folhaBaseQuery.refetch();
@@ -1451,6 +1453,9 @@ return {
         liquidez: Number(item.liquidez || 0),
         percentualComissao: Number(item.percentual || 0),
         valorComissao: Number(item.comissao || 0),
+
+        ultimaAlteracaoPor: usuarioLogado,
+        ultimaAlteracaoEm: new Date(),
       });
     }
   }

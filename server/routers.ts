@@ -520,6 +520,8 @@ export const appRouter = router({
           valorComissao: z.number(),
           percentualManual: z.number().nullable().optional(),
           motivoPercentualManual: z.string().nullable().optional(),
+          ultimaAlteracaoPor: z.string().nullable().optional(),
+          ultimaAlteracaoEm: z.coerce.date().nullable().optional(),
         })
       )
       .mutation(({ input }) => upsertFolhaBaseItem(input)),

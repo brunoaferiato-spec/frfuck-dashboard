@@ -1065,6 +1065,9 @@ export async function upsertFolhaBaseItem(data: {
   valorComissao: number;
   percentualManual?: number | null;
   motivoPercentualManual?: string | null;
+
+  ultimaAlteracaoPor?: string | null;
+  ultimaAlteracaoEm?: Date | null;
 }) {
   console.log("SALVANDO FOLHA:", data);
 
@@ -1094,6 +1097,8 @@ export async function upsertFolhaBaseItem(data: {
     valorComissao: data.valorComissao,
     percentualManual: data.percentualManual ?? null,
     motivoPercentualManual: data.motivoPercentualManual ?? null,
+    ultimaAlteracaoPor: data.ultimaAlteracaoPor ?? null,
+    ultimaAlteracaoEm: data.ultimaAlteracaoEm ?? null,
   } as any)
   .where(eq(folhaPagamento.id, existing[0].id));
   } else {
@@ -1101,6 +1106,8 @@ export async function upsertFolhaBaseItem(data: {
   ...data,
   percentualManual: data.percentualManual ?? null,
   motivoPercentualManual: data.motivoPercentualManual ?? null,
+  ultimaAlteracaoPor: data.ultimaAlteracaoPor ?? null,
+  ultimaAlteracaoEm: data.ultimaAlteracaoEm ?? null,
 } as any);
   }
 }
