@@ -197,20 +197,34 @@ const excluirMutation =
 };
 
   const handleSaveFuncionario = async () => {
-    if (!formData.nome.trim()) {
-      alert("Preencha o nome do funcionário");
-      return;
+    const camposFaltando: string[] = [];
+
+    if (!formData.nome.trim()) camposFaltando.push("Nome completo");
+    if (!formData.cpf.trim()) camposFaltando.push("CPF");
+    if (!formData.pix.trim()) camposFaltando.push("PIX");
+    if (!formData.dataNascimento) camposFaltando.push("Data de aniversário");
+    if (!formData.funcao) camposFaltando.push("Função");
+    if (!formData.dataAdmissao) camposFaltando.push("Data de admissão");
+
+    if (formData.funcao === "consultor_vendas" && !formData.tipoMeta) {
+      camposFaltando.push("Tipo de meta / comissão");
     }
+
+   if (camposFaltando.length > 0) {
+  alert(
+    "Preencha todos os campos obrigatórios antes de salvar:\n\n- " +
+      camposFaltando.join("\n- ")
+  );
+  return;
+}
 
     try {
       const payload = {
         lojaId,
         nome: formData.nome.trim(),
-        cpf: formData.cpf.trim() || null,
-        pix: formData.pix.trim() || null,
-        dataNascimento: formData.dataNascimento
-          ? new Date(`${formData.dataNascimento}T00:00:00`)
-          : null,
+        cpf: formData.cpf.trim(),
+        pix: formData.pix.trim(),
+        dataNascimento: new Date(`${formData.dataNascimento}T00:00:00`),
         funcao: formData.funcao,
         tipoMeta:
           formData.funcao === "consultor_vendas" && formData.tipoMeta
