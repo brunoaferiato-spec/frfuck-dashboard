@@ -143,6 +143,9 @@ export const premiacoes = mysqlTable("premiacao", {
   valor: decimal("valor", { precision: 12, scale: 2 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+
+  ultimaAlteracaoPor: varchar("ultima_alteracao_por", { length: 255 }),
+  ultimaAlteracaoEm: timestamp("ultima_alteracao_em"),
 });
 
 export type Premiacao = typeof premiacoes.$inferSelect;
@@ -168,6 +171,9 @@ export const vales = mysqlTable("vales", {
   status: mysqlEnum("status", ["ativo", "cancelado"]).default("ativo"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+
+  ultimaAlteracaoPor: varchar("ultima_alteracao_por", { length: 255 }),
+  ultimaAlteracaoEm: timestamp("ultima_alteracao_em"),
 });
 
 export type Vale = typeof vales.$inferSelect;

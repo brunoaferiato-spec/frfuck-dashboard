@@ -1569,13 +1569,16 @@ async function addPremiacaoManual() {
   if (!descricao || valor <= 0) return;
 
   await addPremiacaoMutation.mutateAsync({
-    funcionarioId: Number(premioEditor.funcionarioId),
-    lojaId: Number(lojaId),
-    ano: Number(ano),
-    mes: Number(mes),
-    descricao,
-    valor: Number(valor),
-  });
+  funcionarioId: Number(premioEditor.funcionarioId),
+  lojaId: Number(lojaId),
+  ano: Number(ano),
+  mes: Number(mes),
+  descricao,
+  valor: Number(valor),
+
+  ultimaAlteracaoPor: usuarioLogado,
+  ultimaAlteracaoEm: new Date(),
+});
 
   await folhaExtrasQuery.refetch();
 
@@ -1656,9 +1659,11 @@ async function addVale() {
   });
 
   await addValesMutation.mutateAsync({
-    funcionarioId: valeEditor.funcionarioId,
-    lojaId,
-    items: parcelasCriadas.map(({ ano: anoParcela, mes: mesParcela, item }) => ({
+  funcionarioId: Number(valeEditor.funcionarioId),
+  lojaId,
+
+  items: parcelasCriadas.map(
+    ({ ano: anoParcela, mes: mesParcela, item }: any) => ({
       grupoId: item.grupoId,
       descricao: item.descricao,
       valorTotal,
@@ -1669,8 +1674,12 @@ async function addVale() {
       mes: mesParcela,
       mesOrigem: item.mesOrigem,
       tipo: item.totalParcelas > 1 ? "parcelado" as const : "simples" as const,
-    })),
-  });
+    })
+  ),
+
+  ultimaAlteracaoPor: usuarioLogado,
+  ultimaAlteracaoEm: new Date(),
+});
 
   setValeEditor((prev) => ({
     ...prev,

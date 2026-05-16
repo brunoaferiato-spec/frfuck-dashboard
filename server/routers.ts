@@ -541,17 +541,20 @@ export const appRouter = router({
       ),
 
     addPremiacao: protectedProcedure
-      .input(
-        z.object({
-          funcionarioId: z.number(),
-          lojaId: z.number(),
-          ano: z.number(),
-          mes: z.number(),
-          descricao: z.string().min(1),
-          valor: z.number().positive(),
-        })
-      )
-      .mutation(({ input }) => createPremiacao(input)),
+  .input(
+    z.object({
+      funcionarioId: z.number(),
+      lojaId: z.number(),
+      ano: z.number(),
+      mes: z.number(),
+      descricao: z.string().min(1),
+      valor: z.number().positive(),
+
+      ultimaAlteracaoPor: z.string().nullable().optional(),
+      ultimaAlteracaoEm: z.coerce.date().nullable().optional(),
+    })
+  )
+  .mutation(({ input }) => createPremiacao(input)),
 
     removePremiacao: protectedProcedure
       .input(z.object({ id: z.number() }))
@@ -598,27 +601,31 @@ export const appRouter = router({
       .mutation(({ input }) => upsertDesconto(input)),
 
     addVales: protectedProcedure
-      .input(
+  .input(
+    z.object({
+      funcionarioId: z.number(),
+      lojaId: z.number(),
+
+      items: z.array(
         z.object({
-          funcionarioId: z.number(),
-          lojaId: z.number(),
-          items: z.array(
-            z.object({
-              grupoId: z.string(),
-              descricao: z.string(),
-              valorTotal: z.number(),
-              valorParcela: z.number(),
-              parcelas: z.number(),
-              parcelaAtual: z.number(),
-              ano: z.number(),
-              mes: z.number(),
-              mesOrigem: z.number(),
-              tipo: z.enum(["simples", "parcelado"]),
-            })
-          ),
+          grupoId: z.string(),
+          descricao: z.string(),
+          valorTotal: z.number(),
+          valorParcela: z.number(),
+          parcelas: z.number(),
+          parcelaAtual: z.number(),
+          ano: z.number(),
+          mes: z.number(),
+          mesOrigem: z.number(),
+          tipo: z.enum(["simples", "parcelado"]),
         })
-      )
-      .mutation(({ input }) => createValesBatch(input)),
+      ),
+
+      ultimaAlteracaoPor: z.string().nullable().optional(),
+      ultimaAlteracaoEm: z.coerce.date().nullable().optional(),
+    })
+  )
+  .mutation(({ input }) => createValesBatch(input)),
 
     removeValesFromCurrentForward: protectedProcedure
       .input(

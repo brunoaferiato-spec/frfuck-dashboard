@@ -934,6 +934,9 @@ export async function createPremiacao(data: {
   mes: number;
   descricao: string;
   valor: number;
+
+  ultimaAlteracaoPor?: string | null;
+  ultimaAlteracaoEm?: Date | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
@@ -945,6 +948,9 @@ export async function createPremiacao(data: {
     mes: data.mes,
     descricao: data.descricao,
     valor: data.valor.toFixed(2),
+
+    ultimaAlteracaoPor: data.ultimaAlteracaoPor ?? null,
+    ultimaAlteracaoEm: data.ultimaAlteracaoEm ?? null,
   } as any);
 
   return { success: true };
@@ -1053,7 +1059,6 @@ export async function upsertDesconto(data: {
 
   return { success: true };
 }
-
 export async function createValesBatch(data: {
   funcionarioId: number;
   lojaId: number;
@@ -1069,6 +1074,9 @@ export async function createValesBatch(data: {
     mesOrigem: number;
     tipo: "simples" | "parcelado";
   }>;
+
+  ultimaAlteracaoPor?: string | null;
+  ultimaAlteracaoEm?: Date | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
@@ -1090,6 +1098,9 @@ export async function createValesBatch(data: {
       mesOrigem: item.mesOrigem,
       tipo: item.tipo,
       status: "ativo",
+
+      ultimaAlteracaoPor: data.ultimaAlteracaoPor ?? null,
+      ultimaAlteracaoEm: data.ultimaAlteracaoEm ?? null,
     })) as any
   );
 
