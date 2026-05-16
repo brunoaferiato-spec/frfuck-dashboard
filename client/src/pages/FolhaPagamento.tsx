@@ -2906,9 +2906,11 @@ if (
         : { perc4: percentualFinal, com4: valorComissao, percManual4: valor };
 
     const linhaAtualizada = {
-      ...linha,
-      ...patch,
-    };
+         ...linha,
+         ...patch,
+         ultimaAlteracaoPor: usuarioLogado,
+         ultimaAlteracaoEm: new Date(),
+       } as any;
 
     setRegraSemanaEditor((prev) => ({
       ...prev,
