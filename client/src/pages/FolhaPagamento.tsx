@@ -2263,9 +2263,19 @@ if (
         <DialogContent className="bg-gray-950 border-primary/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-primary">{cellEditor.label}</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Informe o valor e salve.
-            </DialogDescription>
+            <DialogDescription className="text-gray-400 text-xs">
+  Última alteração:{" "}
+  {(cellEditor.funcionarioId
+    ? (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoPor1
+    : null) || "Sistema"}
+  {" • "}
+  {cellEditor.funcionarioId &&
+  (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any)?.ultimaAlteracaoEm1
+    ? new Date(
+        (folhas.find((l) => l.funcionarioId === cellEditor.funcionarioId) as any).ultimaAlteracaoEm1
+      ).toLocaleString("pt-BR")
+    : "Sem alterações"}
+</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
