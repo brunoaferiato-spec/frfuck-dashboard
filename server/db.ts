@@ -755,6 +755,7 @@ export async function getFolhaExtrasByLojaAnoMes(lojaId: number, ano: number, me
       premiacoesByFuncionario: {},
       observacoesByFuncionario: {},
       descontosByFuncionario: {},
+      descontosAuditoriaByFuncionario: {},
       valesByFuncionario: {},
     };
   }
@@ -952,7 +953,7 @@ export async function upsertDesconto(data: {
   if (existing[0]) {
     await db.update(descontos).set({
       valor: data.valor.toFixed(2),
-      
+
         ultimaAlteracaoPor: data.ultimaAlteracaoPor ?? null,
         ultimaAlteracaoEm: data.ultimaAlteracaoEm ?? null,
     } as any).where(eq(descontos.id, existing[0].id));
