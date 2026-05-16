@@ -1160,8 +1160,8 @@ useEffect(() => {
        item.perc1 = Number(row.percentualComissao || 0);
        item.com1 = Number(row.valorComissao || 0);
 
-       (item as any).ultimaAlteracaoPor = row.ultimaAlteracaoPor || null;
-       (item as any).ultimaAlteracaoEm = row.ultimaAlteracaoEm || null;
+       (item as any).ultimaAlteracaoPor1 = (row as any).ultimaAlteracaoPor || null;
+       (item as any).ultimaAlteracaoEm1 = (row as any).ultimaAlteracaoEm || null;
     }
 
     if (row.semana === 2) {
@@ -1173,8 +1173,8 @@ useEffect(() => {
   item.perc2 = Number(row.percentualComissao || 0);
   item.com2 = Number(row.valorComissao || 0);
 
-  (item as any).ultimaAlteracaoPor = row.ultimaAlteracaoPor || null;
-  (item as any).ultimaAlteracaoEm = row.ultimaAlteracaoEm || null;
+  (item as any).ultimaAlteracaoPor2 = (row as any).ultimaAlteracaoPor || null;
+  (item as any).ultimaAlteracaoEm2 = (row as any).ultimaAlteracaoEm || null;
 }
 
 if (row.semana === 3) {
@@ -1186,8 +1186,8 @@ if (row.semana === 3) {
   item.perc3 = Number(row.percentualComissao || 0);
   item.com3 = Number(row.valorComissao || 0);
 
-  (item as any).ultimaAlteracaoPor = row.ultimaAlteracaoPor || null;
-  (item as any).ultimaAlteracaoEm = row.ultimaAlteracaoEm || null;
+  (item as any).ultimaAlteracaoPor3 = (row as any).ultimaAlteracaoPor || null;
+  (item as any).ultimaAlteracaoEm3 = (row as any).ultimaAlteracaoEm || null;
 }
 
 if (row.semana === 4) {
@@ -1199,8 +1199,8 @@ if (row.semana === 4) {
   item.perc4 = Number(row.percentualComissao || 0);
   item.com4 = Number(row.valorComissao || 0);
 
-  (item as any).ultimaAlteracaoPor = row.ultimaAlteracaoPor || null;
-  (item as any).ultimaAlteracaoEm = row.ultimaAlteracaoEm || null;
+  (item as any).ultimaAlteracaoPor4 = (row as any).ultimaAlteracaoPor || null;
+  (item as any).ultimaAlteracaoEm4 = (row as any).ultimaAlteracaoEm || null;
 }
 }
 
