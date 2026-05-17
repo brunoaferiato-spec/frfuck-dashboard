@@ -2483,7 +2483,21 @@ if (
                       key={item.id}
                       className="flex items-center justify-between gap-4 rounded-md border border-primary/10 p-2"
                     >
-                      <span className="text-sm text-gray-300">{item.descricao}</span>
+                      <div className="text-sm text-gray-300">
+  <div>{item.descricao}</div>
+
+  <div className="text-xs text-gray-500">
+    Última alteração:
+    {" "}
+    {(item as any).ultimaAlteracaoPor || "Sistema"}
+    {" • "}
+    {(item as any).ultimaAlteracaoEm
+      ? new Date(
+          (item as any).ultimaAlteracaoEm
+        ).toLocaleString("pt-BR")
+      : "Sem alterações"}
+  </div>
+</div>
                       <div className="flex items-center gap-3">
                         <span className="text-yellow-300">
                           R$ {money(item.valor)}
@@ -2599,11 +2613,24 @@ if (
                       className="flex items-center justify-between gap-4 rounded-md border border-primary/10 p-2"
                     >
                       <div className="text-sm text-gray-300">
-                        <div>{vale.descricao}</div>
-                        <div className="text-xs text-gray-500">
-                          Parcela {vale.parcelaAtual}/{vale.totalParcelas}
-                        </div>
-                      </div>
+  <div>{vale.descricao}</div>
+
+  <div className="text-xs text-gray-500">
+    Última alteração:
+    {" "}
+    {(vale as any).ultimaAlteracaoPor || "Sistema"}
+    {" • "}
+    {(vale as any).ultimaAlteracaoEm
+      ? new Date(
+          (vale as any).ultimaAlteracaoEm
+        ).toLocaleString("pt-BR")
+      : "Sem alterações"}
+  </div>
+
+  <div className="text-xs text-gray-500">
+    Parcela {vale.parcelaAtual}/{vale.totalParcelas}
+  </div>
+</div>
 
                       <div className="flex items-center gap-3">
                         <span className="text-yellow-300">
