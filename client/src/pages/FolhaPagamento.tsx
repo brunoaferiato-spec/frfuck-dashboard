@@ -2370,8 +2370,7 @@ if (
         <DialogContent className="bg-gray-950 border-primary/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-primary">Premiação</DialogTitle>
-            <DialogDescription className="text-gray-400 text-xs">
-  Última alteração:{" "}
+            
   {(linhaPremioAtual?.premiacoesManuais?.[0] as any)?.ultimaAlteracaoPor || "Sistema"}{" "}
   •{" "}
   {(linhaPremioAtual?.premiacoesManuais?.[0] as any)?.ultimaAlteracaoEm
@@ -2379,7 +2378,6 @@ if (
     (linhaPremioAtual?.premiacoesManuais?.[0] as any)?.ultimaAlteracaoEm
   ).toLocaleString("pt-BR")
     : "Sem alterações"}
-</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -2585,8 +2583,6 @@ if (
         <DialogContent className="bg-gray-950 border-primary/30 text-white max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-primary">Vale</DialogTitle>
-            <DialogDescription className="text-gray-400 text-xs">
-  Última alteração:{" "}
   {(linhaValeAtual?.vales?.[0] as any)?.ultimaAlteracaoPor || "Sistema"}{" "}
   •{" "}
   {(linhaValeAtual?.vales?.[0] as any)?.ultimaAlteracaoEm
@@ -2594,7 +2590,6 @@ if (
         (linhaValeAtual?.vales?.[0] as any)?.ultimaAlteracaoEm
       ).toLocaleString("pt-BR")
     : "Sem alterações"}
-</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
