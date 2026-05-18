@@ -1692,10 +1692,13 @@ async function removeVale(vale: ValeItem) {
   await removeValesMutation.mutateAsync({
     funcionarioId: valeEditor.funcionarioId,
     lojaId,
-    grupoId: vale.grupoId,
+    grupoId: (vale as any).grupoId,
+    valeId: Number((vale as any).id),
     ano,
     mes,
   });
+
+  await folhaExtrasQuery.refetch();
 }
 
 function openNegativoEditor(linha: LinhaComQuadrante) {

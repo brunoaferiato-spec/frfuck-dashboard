@@ -1113,23 +1113,28 @@ export async function cancelValesByGrupoFromCurrentForward(data: {
   grupoId: string;
   ano: number;
   mes: number;
+  valeId?: number;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
 
   const rows = await db.select().from(vales).where(
-  and(
-    eq(vales.grupoId, data.grupoId),
-    eq(vales.status, "ativo")
-  )
-);
+    and(
+      eq(vales.grupoId, data.grupoId),
+      eq(vales.status, "ativo")
+    )
+  );
 
   const currentRef = new Date(data.ano, data.mes - 1, 1).getTime();
 
   for (const row of rows) {
     const rowRef = new Date(row.ano, row.mes - 1, 1).getTime();
+
     if (rowRef >= currentRef) {
-      await db.update(vales).set({ status: "cancelado" } as any).where(eq(vales.id, row.id));
+      await db
+        .update(vales)
+        .set({ status: "cancelado" } as any)
+        .where(eq(vales.id, row.id));
     }
   }
 

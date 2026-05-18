@@ -628,16 +628,17 @@ export const appRouter = router({
   .mutation(({ input }) => createValesBatch(input)),
 
     removeValesFromCurrentForward: protectedProcedure
-      .input(
-        z.object({
-          funcionarioId: z.number(),
-          lojaId: z.number(),
-          grupoId: z.string(),
-          ano: z.number(),
-          mes: z.number(),
-        })
-      )
-      .mutation(({ input }) => cancelValesByGrupoFromCurrentForward(input)),
+  .input(
+    z.object({
+      funcionarioId: z.number(),
+      lojaId: z.number(),
+      grupoId: z.string(),
+      valeId: z.number().optional(),
+      ano: z.number(),
+      mes: z.number(),
+    })
+  )
+  .mutation(({ input }) => cancelValesByGrupoFromCurrentForward(input)),
   }),
 
   comissaoFuncionario: router({
