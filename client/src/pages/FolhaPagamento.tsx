@@ -1676,6 +1676,9 @@ async function addVale() {
       tipo: item.totalParcelas > 1 ? "parcelado" as const : "simples" as const,
     })
   ),
+
+      ultimaAlteracaoPor: usuarioLogado,
+      ultimaAlteracaoEm: new Date()
 });
 
   setValeEditor((prev) => ({
@@ -1743,7 +1746,7 @@ async function lançarNegativoNoPróximoMês() {
     ({ ano: anoParcela, mes: mesParcela, item }: any) => ({
       grupoId: item.grupoId,
       descricao: item.descricao,
-      valorTotal,
+      valorTotal:valor,
       valorParcela: item.valor,
       parcelas: item.totalParcelas,
       parcelaAtual: item.parcelaAtual,
@@ -2376,14 +2379,6 @@ if (
         <DialogContent className="bg-gray-950 border-primary/30 text-white">
           <DialogHeader>
             <DialogTitle className="text-primary">Premiação</DialogTitle>
-            
-  {(linhaPremioAtual?.premiacoesManuais?.[0] as any)?.ultimaAlteracaoPor || "Sistema"}{" "}
-  •{" "}
-  {(linhaPremioAtual?.premiacoesManuais?.[0] as any)?.ultimaAlteracaoEm
-    ? new Date(
-    (linhaPremioAtual?.premiacoesManuais?.[0] as any)?.ultimaAlteracaoEm
-  ).toLocaleString("pt-BR")
-    : "Sem alterações"}
           </DialogHeader>
 
           <div className="space-y-4">
