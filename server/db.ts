@@ -1118,20 +1118,11 @@ export async function cancelValesByGrupoFromCurrentForward(data: {
   if (!db) throw new Error("Banco não conectado");
 
   const rows = await db.select().from(vales).where(
-    and(
-  eq(vales.grupoId, data.grupoId),
-  eq(vales.funcionarioId, data.funcionarioId),
-  eq(vales.lojaId, data.lojaId),
-  eq(vales.status, "ativo"),
-  or(
-    gt(vales.ano, data.ano),
-    and(
-      eq(vales.ano, data.ano),
-      gte(vales.mes, data.mes)
-    )
+  and(
+    eq(vales.grupoId, data.grupoId),
+    eq(vales.status, "ativo")
   )
-)
-  );
+);
 
   const currentRef = new Date(data.ano, data.mes - 1, 1).getTime();
 
