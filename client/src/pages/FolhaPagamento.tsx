@@ -2858,19 +2858,40 @@ if (
       >
         <DialogContent className="bg-gray-950 border-primary/30 text-white">
           <DialogHeader>
-            <DialogTitle className="text-primary">Detalhe da regra</DialogTitle>
-            <DialogDescription className="text-gray-400 text-xs">
-  Última alteração:
-  {" "}
-  {(detalheSemanaAtual as any)?.linha?.ultimaAlteracaoPor || "Sistema"}
-  {" • "}
-  {(detalheSemanaAtual as any)?.linha?.ultimaAlteracaoEm
-  ? new Date(
-      (detalheSemanaAtual as any).linha.ultimaAlteracaoEm
-    ).toLocaleString("pt-BR")
-  : "Sem alterações"}
-</DialogDescription>
-          </DialogHeader>
+  <DialogTitle className="text-primary">
+    Detalhe da regra
+  </DialogTitle>
+
+  <DialogDescription className="text-gray-400 text-xs">
+    {(() => {
+      const semana = detalheSemanaAtual?.semana;
+      const linha = detalheSemanaAtual?.linha as any;
+
+      const por =
+        semana === 1 ? linha?.ultimaAlteracaoPor1 :
+        semana === 2 ? linha?.ultimaAlteracaoPor2 :
+        semana === 3 ? linha?.ultimaAlteracaoPor3 :
+        semana === 4 ? linha?.ultimaAlteracaoPor4 :
+        null;
+
+      const em =
+        semana === 1 ? linha?.ultimaAlteracaoEm1 :
+        semana === 2 ? linha?.ultimaAlteracaoEm2 :
+        semana === 3 ? linha?.ultimaAlteracaoEm3 :
+        semana === 4 ? linha?.ultimaAlteracaoEm4 :
+        null;
+
+      return (
+        <>
+          Última alteração: {por || "Sistema"} •{" "}
+          {em
+            ? new Date(em).toLocaleString("pt-BR")
+            : "Sem alterações"}
+        </>
+      );
+    })()}
+  </DialogDescription>
+</DialogHeader>
 
           {detalheSemanaAtual && (
             <div className="space-y-4">
