@@ -2294,33 +2294,35 @@ if (
     <DialogDescription className="text-gray-400 text-xs">
       <>
         {(() => {
-          const tipoMap: Record<string, string> = {
-            aluguel: "aluguel",
-            inss: "inss",
-            adiant: "adiantamento",
-            holerite: "holerite",
-          };
+  const linha = linhas.find(
+    (l) => l.funcionarioId === cellEditor.funcionarioId
+  ) as any;
 
-          const auditoria =
-            cellEditor.funcionarioId && cellEditor.campo
-              ? (folhaExtrasQuery.data as any)
-                  ?.descontosAuditoriaByFuncionario?.[
-                    cellEditor.funcionarioId
-                  ]?.[tipoMap[String(cellEditor.campo)]]
-              : null;
+  const campo = cellEditor.campo;
 
-          return (
-            <>
-              Última alteração:{" "}
-              {auditoria?.ultimaAlteracaoPor || "Sistema"} {" • "}
-              {auditoria?.ultimaAlteracaoEm
-                ? new Date(
-                    auditoria.ultimaAlteracaoEm
-                  ).toLocaleString("pt-BR")
-                : "Sem alterações"}
-            </>
-          );
-        })()}
+  const por =
+    campo === "sem1" ? linha?.ultimaAlteracaoPor1 :
+    campo === "sem2" ? linha?.ultimaAlteracaoPor2 :
+    campo === "sem3" ? linha?.ultimaAlteracaoPor3 :
+    campo === "sem4" ? linha?.ultimaAlteracaoPor4 :
+    linha?.ultimaAlteracaoPor;
+
+  const em =
+    campo === "sem1" ? linha?.ultimaAlteracaoEm1 :
+    campo === "sem2" ? linha?.ultimaAlteracaoEm2 :
+    campo === "sem3" ? linha?.ultimaAlteracaoEm3 :
+    campo === "sem4" ? linha?.ultimaAlteracaoEm4 :
+    linha?.ultimaAlteracaoEm;
+
+  return (
+    <>
+      Última alteração: {por || "Sistema"} •{" "}
+      {em
+        ? new Date(em).toLocaleString("pt-BR")
+        : "Sem alterações"}
+    </>
+  );
+})()}
       </>
     </DialogDescription>
   </DialogHeader>
