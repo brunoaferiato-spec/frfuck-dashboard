@@ -1,4 +1,4 @@
-import { eq, and, desc, isNull, sql } from "drizzle-orm";
+import { eq, and, or, gt, gte, desc, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import * as schema from "../drizzle/schema";
@@ -1119,11 +1119,18 @@ export async function cancelValesByGrupoFromCurrentForward(data: {
 
   const rows = await db.select().from(vales).where(
     and(
-      eq(vales.funcionarioId, data.funcionarioId),
-      eq(vales.lojaId, data.lojaId),
-      eq(vales.grupoId, data.grupoId),
-      eq(vales.status, "ativo")
+  eq(vales.grupoId, data.grupoId),
+  eq(vales.funcionarioId, data.funcionarioId),
+  eq(vales.lojaId, data.lojaId),
+  eq(vales.status, "ativo"),
+  or(
+    gt(vales.ano, data.ano),
+    and(
+      eq(vales.ano, data.ano),
+      gte(vales.mes, data.mes)
     )
+  )
+)
   );
 
   const currentRef = new Date(data.ano, data.mes - 1, 1).getTime();
