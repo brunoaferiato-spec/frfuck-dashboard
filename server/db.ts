@@ -813,11 +813,17 @@ export async function getFolhaExtrasByLojaAnoMes(
   ),
     ]);
 
-  const premiacoesByFuncionario: Record<
-    number,
-    Array<{ id: string; descricao: string; valor: number }>
-  > = {};
-
+    const premiacoesByFuncionario: Record<
+  number,
+  Array<{
+    id: string;
+    descricao: string;
+    valor: number;
+    ultimaAlteracaoPor?: string | null;
+    ultimaAlteracaoEm?: Date | null;
+  }>
+> = {};
+  
   const observacoesByFuncionario: Record<number, string[]> = {};
 
   const descontosByFuncionario: Record<
@@ -857,10 +863,13 @@ export async function getFolhaExtrasByLojaAnoMes(
     }
 
     premiacoesByFuncionario[fid].push({
-      id: String(row.id),
-      descricao: String(row.descricao || ""),
-      valor: Number(row.valor || 0),
-    });
+  id: String(row.id),
+  descricao: String(row.descricao || ""),
+  valor: Number(row.valor || 0),
+
+  ultimaAlteracaoPor: (row as any).ultimaAlteracaoPor || null,
+  ultimaAlteracaoEm: (row as any).ultimaAlteracaoEm || null,
+});
   }
 
   for (const row of obsRows) {
