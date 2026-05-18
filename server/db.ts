@@ -1118,27 +1118,37 @@ export async function cancelValesByGrupoFromCurrentForward(data: {
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
 
-  const rows = await db.select().from(vales).where(
-    and(
-      eq(vales.grupoId, data.grupoId),
-      eq(vales.status, "ativo")
-    )
-  );
+const valeAtual = data.valeId
+  ? await db
+      .select()
+      .from(vales)
+      .where(eq(vales.id, data.valeId))
+      .limit(1)
+  : [];
 
-  const currentRef = new Date(data.ano, data.mes - 1, 1).getTime();
+const grupoId = valeAtual[0]?.grupoId || data.grupoId;
 
-  for (const row of rows) {
-    const rowRef = new Date(row.ano, row.mes - 1, 1).getTime();
+const rows = await db.select().from(vales).where(
+  and(
+    eq(vales.grupoId, grupoId),
+    eq(vales.status, "ativo")
+  )
+);
 
-    if (rowRef >= currentRef) {
-      await db
-        .update(vales)
-        .set({ status: "cancelado" } as any)
-        .where(eq(vales.id, row.id));
-    }
+const currentRef = new Date(data.ano, data.mes - 1, 1).getTime();
+
+for (const row of rows) {
+  const rowRef = new Date(row.ano, row.mes - 1, 1).getTime();
+
+  if (rowRef >= currentRef) {
+    await db
+      .update(vales)
+      .set({ status: "cancelado" } as any)
+      .where(eq(vales.id, row.id));
   }
+}
 
-  return { success: true };
+return { success: true };
 }
 
 export async function getFolhaBaseByLojaAnoMes(lojaId: number, ano: number, mes: number) {
