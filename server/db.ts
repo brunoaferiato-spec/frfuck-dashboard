@@ -801,15 +801,16 @@ export async function getFolhaExtrasByLojaAnoMes(
         ),
 
       db
-        .select()
-        .from(vales)
-        .where(
-          and(
-            eq(vales.lojaId, lojaId),
-            eq(vales.ano, ano),
-            eq(vales.mes, mes)
-          )
-        ),
+  .select()
+  .from(vales)
+  .where(
+    and(
+      eq(vales.lojaId, lojaId),
+      eq(vales.ano, ano),
+      eq(vales.mes, mes),
+      eq(vales.status, "ativo")
+    )
+  ),
     ]);
 
   const premiacoesByFuncionario: Record<
@@ -832,18 +833,21 @@ export async function getFolhaExtrasByLojaAnoMes(
   const descontosAuditoriaByFuncionario: Record<number, any> = {};
 
   const valesByFuncionario: Record<
-    number,
-    Array<{
-      id: string;
-      grupoId: string;
-      descricao: string;
-      valor: number;
-      parcelaAtual: number;
-      totalParcelas: number;
-      anoOrigem: number;
-      mesOrigem: number;
-    }>
-  > = {};
+  number,
+  Array<{
+    id: string;
+    grupoId: string;
+    descricao: string;
+    valor: number;
+    parcelaAtual: number;
+    totalParcelas: number;
+    anoOrigem: number;
+    mesOrigem: number;
+
+    ultimaAlteracaoPor?: string | null;
+    ultimaAlteracaoEm?: Date | null;
+  }>
+> = {};
 
   for (const row of premiosRows) {
     const fid = Number(row.funcionarioId);
@@ -915,6 +919,9 @@ export async function getFolhaExtrasByLojaAnoMes(
       totalParcelas: Number(row.parcelas || row.totalParcelas || 1),
       anoOrigem: Number(row.anoOrigem || row.ano || ano),
       mesOrigem: Number(row.mesOrigem || row.mes || mes),
+
+      ultimaAlteracaoPor: (row as any).ultimaAlteracaoPor || null,
+      ultimaAlteracaoEm: (row as any).ultimaAlteracaoEm || null,
     });
   }
 

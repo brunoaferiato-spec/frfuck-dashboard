@@ -1736,21 +1736,27 @@ async function lançarNegativoNoPróximoMês() {
   });
 
   await addValesMutation.mutateAsync({
-    funcionarioId: linha.funcionarioId,
-    lojaId: linha.loja_id,
-    items: parcelasCriadas.map(({ ano: anoParcela, mes: mesParcela, item }) => ({
+  funcionarioId: Number(valeEditor.funcionarioId),
+  lojaId,
+
+  items: parcelasCriadas.map(
+    ({ ano: anoParcela, mes: mesParcela, item }: any) => ({
       grupoId: item.grupoId,
       descricao: item.descricao,
-      valorTotal: valor,
+      valorTotal,
       valorParcela: item.valor,
       parcelas: item.totalParcelas,
       parcelaAtual: item.parcelaAtual,
       ano: anoParcela,
       mes: mesParcela,
       mesOrigem: item.mesOrigem,
-      tipo: "simples" as const,
-    })),
-  });
+      tipo: item.totalParcelas > 1 ? "parcelado" as const : "simples" as const,
+    })
+  ),
+
+  ultimaAlteracaoPor: usuarioLogado,
+  ultimaAlteracaoEm: new Date(),
+});
 
   await folhaExtrasQuery.refetch();
 
