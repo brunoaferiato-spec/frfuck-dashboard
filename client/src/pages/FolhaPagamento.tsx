@@ -1676,9 +1676,6 @@ async function addVale() {
       tipo: item.totalParcelas > 1 ? "parcelado" as const : "simples" as const,
     })
   ),
-
-  ultimaAlteracaoPor: usuarioLogado,
-  ultimaAlteracaoEm: new Date(),
 });
 
   setValeEditor((prev) => ({
