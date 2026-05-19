@@ -470,7 +470,7 @@ const total = salarioFixo + totalComissao;
 
 const boleto =
   total +
-  premiacaoManual -
+  totalPremiacao -
   vale -
   args.aluguel -
   args.adiant;
