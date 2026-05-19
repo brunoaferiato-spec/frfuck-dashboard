@@ -442,6 +442,22 @@ for (const regra of regras) {
   }
 }
 
+const premioGrupo =
+  totalLiquidez >= 1600000
+    ? 3000
+    : totalLiquidez >= 1540000
+    ? 2000
+    : totalLiquidez >= 1420000
+    ? 1000
+    : 0;
+
+const premioRecordeGrupo =
+  totalLiquidez > SUPERVISOR_RECORDE_GRUPO
+    ? totalLiquidez * 0.001
+    : 0;
+
+premiacaoAutomatica += (premioGrupo + premioRecordeGrupo) / 4;
+
   const salarioFixo = 1500;
   const premiacaoManual = sumPremiacoesManuais(args.premiacoesManuais);
   const vale = sumVales(args.vales);
