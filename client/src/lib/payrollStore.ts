@@ -456,14 +456,14 @@ const premioRecordeGrupo =
     ? totalLiquidez * 0.001
     : 0;
 
-premiacaoAutomatica += (premioGrupo + premioRecordeGrupo) / 4;
+const premiacaoGrupo = (premioGrupo + premioRecordeGrupo) / 4;
 
   const salarioFixo = 1500;
   const premiacaoManual = sumPremiacoesManuais(args.premiacoesManuais);
   const vale = sumVales(args.vales);
 
-  const totalPremiacao = premiacaoAutomatica + premiacaoManual;
-
+  const totalPremiacao = premiacaoManual + premiacaoGrupo;
+  
   const totalComissao = premiacaoAutomatica;
 
 const total = salarioFixo + totalComissao;
@@ -479,7 +479,7 @@ const boleto =
   salarioFixo,
   totalComissao,
   premiacaoAutomatica,
-  premiacaoManual,
+  premiacaoManual: totalPremiacao,
   total,
   vale,
   boleto,
