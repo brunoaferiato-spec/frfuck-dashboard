@@ -1326,12 +1326,13 @@ if (base.percManual4 !== null && base.percManual4 !== undefined) {
 );
 }
 
-calculadoAjustado.totalComissao =
-  Number(calculadoAjustado.com1 || 0) +
-  Number(calculadoAjustado.com2 || 0) +
-  Number(calculadoAjustado.com3 || 0) +
-  Number(calculadoAjustado.com4 || 0);
-
+if (func.funcao !== "supervisor") {
+  calculadoAjustado.totalComissao =
+    Number(calculadoAjustado.com1 || 0) +
+    Number(calculadoAjustado.com2 || 0) +
+    Number(calculadoAjustado.com3 || 0) +
+    Number(calculadoAjustado.com4 || 0);
+}
 const quadrante = getQuadrante(lojaId, func.funcao, ano, mes);
 
 const boletoAjustado = calcularBoletoAjustado({
