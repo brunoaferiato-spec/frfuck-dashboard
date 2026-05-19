@@ -761,10 +761,8 @@ boleto: supervisor.boleto,
     }).total;
 
     const premiacao = premiacaoAutomatica + premiacaoManual;
-    const totalLiquidez =
-  args.funcao === "alinhador" || args.funcao === "aux_alinhador"
-    ? Number(sem1 || 0)
-    : semanas.reduce((acc, item) => acc + item, 0);
+    const totalLiquidez = semanas.reduce((acc, item) => acc + item, 0);
+
     const boleto =
       totalComissao +
       premiacao -
@@ -841,10 +839,14 @@ const p4 =
   const c4 = Number(sem4 || 0) * (p4 / 100);
 
   const totalLiquidez =
-    Number(sem1 || 0) +
-    Number(sem2 || 0) +
-    Number(sem3 || 0) +
-    Number(sem4 || 0);
+  funcaoNormalizada === "alinhador" ||
+  funcaoNormalizada === "aux_alinhador" ||
+  funcaoNormalizada === "supervisor"
+    ? Number(sem1 || 0)
+    : Number(sem1 || 0) +
+      Number(sem2 || 0) +
+      Number(sem3 || 0) +
+      Number(sem4 || 0);
 
   const totalComissao = c1 + c2 + c3 + c4;
 
