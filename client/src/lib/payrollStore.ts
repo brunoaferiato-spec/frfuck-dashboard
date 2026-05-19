@@ -448,11 +448,9 @@ for (const regra of regras) {
 
   const totalPremiacao = premiacaoAutomatica + premiacaoManual;
 
-  const totalComissao = totalPremiacao;
+  const totalComissao = premiacaoAutomatica;
 
-  const total =
-  salarioFixo +
-  totalComissao;
+const total = salarioFixo + totalComissao;
 
 const boleto =
   total +
