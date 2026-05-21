@@ -475,15 +475,46 @@ const boleto =
   args.aluguel -
   args.adiant;
 
+  const detalhesGrupo = [];
+
+if (totalLiquidez >= 1420000) {
+  detalhesGrupo.push({
+    descricao: "Meta Grupo R$ 1.420.000,00",
+    valor: 250,
+  });
+}
+
+if (totalLiquidez >= 1540000) {
+  detalhesGrupo.push({
+    descricao: "Meta Grupo R$ 1.540.000,00",
+    valor: 250,
+  });
+}
+
+if (totalLiquidez >= 1600000) {
+  detalhesGrupo.push({
+    descricao: "Meta Grupo R$ 1.600.000,00",
+    valor: 250,
+  });
+}
+
+if (premioRecordeGrupo > 0) {
+  detalhesGrupo.push({
+    descricao: "Recorde Grupo",
+    valor: premioRecordeGrupo / 4,
+  });
+}
+
   return {
   salarioFixo,
   totalComissao,
   premiacaoAutomatica,
   premiacaoManual: totalPremiacao,
+  detalhesGrupo,
   total,
   vale,
   boleto,
- };
+};
  }
 
 // =========================
