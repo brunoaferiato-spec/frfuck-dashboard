@@ -685,17 +685,44 @@ export function computeFolhaLinha(args: {
   const vale = sumVales(vales);
 
   if (funcao === "supervisor") {
-  const supervisor = computeSupervisor({
-    cidade,
-    sem1,
-    sem2,
-    sem3,
-    sem4,
-    premiacoesManuais,
-    vales,
-    aluguel,
-    adiant,
-  });
+ const supervisor = computeSupervisor({
+  cidade,
+  sem1,
+  sem2,
+  sem3,
+  sem4,
+  premiacoesManuais,
+  vales,
+  aluguel,
+  adiant,
+});
+
+const detalhesGrupo = supervisor.detalhesGrupo || [];
+
+return {
+  perc1: 0,
+  perc2: 0,
+  perc3: 0,
+  perc4: 0,
+
+  com1: 0,
+  com2: 0,
+  com3: 0,
+  com4: 0,
+
+  totalLiquidez: Number(sem1 || 0),
+
+  totalComissao: supervisor.totalComissao,
+
+  premiacao: supervisor.premiacaoManual,
+
+  detalhesGrupo,
+
+  vale: supervisor.vale,
+
+  boleto: supervisor.boleto,
+};
+
 
   return {
   perc1: 0,
