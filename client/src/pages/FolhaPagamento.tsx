@@ -1813,24 +1813,38 @@ async function lançarNegativoNoPróximoMês() {
     if (!linhaPremioAtual) return { detalhes: [], total: 0 };
 
   if (linhaPremioAtual.funcao === "supervisor") {
-  const supervisor = computeSupervisor({
-    cidade: linhaPremioAtual.loja_id.toString(),
-    sem1: linhaPremioAtual.sem1,
-    sem2: linhaPremioAtual.sem2,
-    sem3: linhaPremioAtual.sem3,
-    sem4: linhaPremioAtual.sem4,
-    premiacoesManuais: linhaPremioAtual.premiacoesManuais || [],
-    vales: linhaPremioAtual.vales || [],
-    aluguel: linhaPremioAtual.aluguel || 0,
-    adiant: linhaPremioAtual.adiant || 0,
-  }) as any;
+  const resumo = resumoSupervisorQuery.data as any;
+
+  const totalGrupo =
+    Number(resumo?.joinville || 0) +
+    Number(resumo?.blumenau || 0) +
+    Number(resumo?.saoJose || 0) +
+    Number(resumo?.florianopolis || 0);
+
+  const detalhes = [];
+
+  if (totalGrupo >= 1420000) {
+    detalhes.push({ descricao: "Meta Grupo R$ 1.420.000,00", valor: 250 });
+  }
+
+  if (totalGrupo >= 1540000) {
+    detalhes.push({ descricao: "Meta Grupo R$ 1.540.000,00", valor: 250 });
+  }
+
+  if (totalGrupo >= 1600000) {
+    detalhes.push({ descricao: "Meta Grupo R$ 1.600.000,00", valor: 250 });
+  }
+
+  if (totalGrupo > SUPERVISOR_RECORDE_GRUPO) {
+    detalhes.push({
+      descricao: "Recorde Grupo",
+      valor: (totalGrupo * 0.001) / 4,
+    });
+  }
 
   return {
-    detalhes: supervisor.detalhesGrupo || [],
-    total: (supervisor.detalhesGrupo || []).reduce(
-      (acc: number, item: any) => acc + Number(item.valor || 0),
-      0
-    ),
+    detalhes,
+    total: detalhes.reduce((acc, item) => acc + Number(item.valor || 0), 0),
   };
 }
     return getPremiacaoAutomaticaDetalhes({
