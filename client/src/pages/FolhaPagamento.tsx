@@ -1022,7 +1022,7 @@ const todosFuncionarios = useMemo(() => {
     pix: f.pix || "",
     dataNascimento: "",
     funcao: f.funcao,
-    loja_id: f.lojaId,
+    loja_id: f.loja_id ?? f.lojaId,
     dataAdmissao: f.dataAdmissao || "",
     dataDesligamento: f.dataDesligamento || null,
     dataReativacao: f.dataReativacao || null,
