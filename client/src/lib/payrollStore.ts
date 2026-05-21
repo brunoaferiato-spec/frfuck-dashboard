@@ -391,7 +391,11 @@ export function computeSupervisor(args: {
   aluguel: number;
   adiant: number;
 }) {
-const totalLiquidez = Number(args.sem1 || 0);
+const totalLiquidez = 
+  Number(args.sem1 || 0) +
+  Number(args.sem2 || 0) +
+  Number(args.sem3 || 0) +
+  Number(args.sem4 || 0);
 
   let premiacaoAutomatica = 0;
 
@@ -710,7 +714,11 @@ return {
   com3: 0,
   com4: 0,
 
-  totalLiquidez: Number(sem1 || 0),
+  totalLiquidez:
+  Number(sem1 || 0) +
+  Number(sem2 || 0) +
+  Number(sem3 || 0) +
+  Number(sem4 || 0),
 
   totalComissao: supervisor.totalComissao,
 
