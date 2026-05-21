@@ -919,7 +919,7 @@ export default function FolhaPagamento() {
   });
 
   const lojaId = parseInt(selectedLoja, 10);
-const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
+  const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(   
   { lojaId },
   {
     enabled: !!lojaId,
@@ -928,6 +928,10 @@ const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
     refetchOnWindowFocus: true,
   }
 );
+
+console.log("FUNCIONARIOS QUERY DATA:", funcionariosQuery.data);
+console.log("FUNCIONARIOS QUERY ERROR:", funcionariosQuery.error);
+console.log("LOJA ID ENVIADO:", lojaId);
 
 const folhaBaseQuery = trpc.folhaPagamento.getBaseByLojaAnoMes.useQuery(
   { lojaId, ano, mes },
