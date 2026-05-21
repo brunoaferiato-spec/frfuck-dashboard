@@ -1812,7 +1812,7 @@ async function lançarNegativoNoPróximoMês() {
   const premioAutomaticoAtual = useMemo(() => {
     if (!linhaPremioAtual) return { detalhes: [], total: 0 };
 
-    /* if (linhaPremioAtual.funcao === "supervisor") {
+  if (linhaPremioAtual.funcao === "supervisor") {
   const supervisor = computeSupervisor({
     cidade: linhaPremioAtual.loja_id.toString(),
     sem1: linhaPremioAtual.sem1,
@@ -1832,7 +1832,7 @@ async function lançarNegativoNoPróximoMês() {
       0
     ),
   };
-} */
+}
     return getPremiacaoAutomaticaDetalhes({
       funcao: linhaPremioAtual.funcao,
       cidade: linhaPremioAtual.loja_id.toString(),
@@ -2414,7 +2414,8 @@ if (
           </DialogHeader>
 
           <div className="space-y-4">
-            {linhaPremioAtual?.funcao === "consultor_vendas" && (
+            {(linhaPremioAtual?.funcao === "consultor_vendas" ||
+               linhaPremioAtual?.funcao === "supervisor") && (
               <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
                 <p className="mb-3 text-sm font-semibold text-primary">
                   Discriminação automática
@@ -2426,7 +2427,8 @@ if (
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {premioAutomaticoAtual.detalhes.map((item, index) => (
+                    {premioAutomaticoAtual.detalhes.map(
+                     (item: { descricao: string; valor: number }, index: number) => (
                       <div
                         key={`${item.descricao}-${index}`}
                         className="flex items-center justify-between text-sm"
