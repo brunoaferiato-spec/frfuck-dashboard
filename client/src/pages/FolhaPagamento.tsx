@@ -1043,6 +1043,9 @@ const todosFuncionarios = useMemo(() => {
 const funcionariosDaCidade = useMemo(() => {
   const dataReferencia = new Date(ano, mes - 1, 1);
 
+  console.log("TODOS FUNCIONARIOS:", todosFuncionarios);
+  console.log("LOJA ATUAL:", lojaId);
+
   return todosFuncionarios.filter((f: any) => {
     if (f.loja_id !== lojaId) return false;
 
