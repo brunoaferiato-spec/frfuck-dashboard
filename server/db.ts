@@ -182,20 +182,11 @@ export async function getFuncionariosByLoja(lojaId: number) {
   const db = await getDb();
   if (!db) return [];
 
-  const result = await db.execute(sql`
-    SELECT *,
-      lojaId as loja_id
-    FROM funcionarios
-    WHERE lojaId = ${lojaId}
-    ORDER BY CASE 
-      WHEN funcao = 'vendedor' THEN 1
-      WHEN funcao = 'mecanico' THEN 2
-      WHEN funcao = 'auxiliar_mecanico' THEN 3
-      ELSE 4
-    END, nome
-  `);
-
-  return result[0];
+  return await db
+    .select()
+    .from(funcionarios)
+    .where(eq(funcionarios.lojaId, lojaId))
+    .orderBy(funcionarios.nome);
 }
 
 export async function getFuncionarioById(id: number) {

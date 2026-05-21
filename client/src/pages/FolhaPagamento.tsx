@@ -1051,7 +1051,7 @@ const funcionariosDaCidade = useMemo(() => {
   console.log("LOJA ATUAL:", lojaId);
 
   return todosFuncionarios.filter((f: any) => {
-    if (f.loja_id !== lojaId) return false;
+    if (Number(f.loja_id ?? f.lojaId) !== Number(lojaId)) return false;
 
     const desligamento = f.dataDesligamento
       ? new Date(f.dataDesligamento)
