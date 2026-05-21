@@ -1805,7 +1805,7 @@ async function lançarNegativoNoPróximoMês() {
   const premioAutomaticoAtual = useMemo(() => {
     if (!linhaPremioAtual) return { detalhes: [], total: 0 };
 
-    if (linhaPremioAtual.funcao === "supervisor") {
+    /* if (linhaPremioAtual.funcao === "supervisor") {
   const supervisor = computeSupervisor({
     cidade: linhaPremioAtual.loja_id.toString(),
     sem1: linhaPremioAtual.sem1,
@@ -1825,7 +1825,7 @@ async function lançarNegativoNoPróximoMês() {
       0
     ),
   };
-}
+} */
     return getPremiacaoAutomaticaDetalhes({
       funcao: linhaPremioAtual.funcao,
       cidade: linhaPremioAtual.loja_id.toString(),
