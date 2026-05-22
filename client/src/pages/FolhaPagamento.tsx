@@ -785,7 +785,13 @@ const regraClassName = manual
                         linha.premiacao > 0 ? "text-green-400" : "text-white"
                       }`}
                     >
-                      R$ {money(linha.premiacao)}
+                      R$ {money(
+  linha.premiacao +
+  (((linha as any).detalhesGrupo || []).reduce(
+    (acc: number, item: any) => acc + Number(item.valor || 0),
+    0
+  ))
+)}
                     </button>
                   </td>
 
