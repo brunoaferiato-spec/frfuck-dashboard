@@ -1354,6 +1354,29 @@ if (func.funcao !== "supervisor") {
 }
 const quadrante = getQuadrante(lojaId, func.funcao, ano, mes);
 
+if (func.funcao === "supervisor") {
+  const resumo = resumoSupervisorQuery.data as any;
+
+  const totalGrupo =
+    Number(resumo?.joinville || 0) +
+    Number(resumo?.blumenau || 0) +
+    Number(resumo?.saoJose || 0) +
+    Number(resumo?.florianopolis || 0);
+
+  let premiacaoGrupoSupervisor = 0;
+
+  if (totalGrupo >= 1420000) premiacaoGrupoSupervisor += 250;
+  if (totalGrupo >= 1540000) premiacaoGrupoSupervisor += 250;
+  if (totalGrupo >= 1600000) premiacaoGrupoSupervisor += 250;
+
+  if (totalGrupo > SUPERVISOR_RECORDE_GRUPO) {
+    premiacaoGrupoSupervisor += (totalGrupo * 0.001) / 4;
+  }
+
+  calculadoAjustado.premiacao =
+    Number(calculadoAjustado.premiacao || 0) + premiacaoGrupoSupervisor;
+}
+
 const boletoAjustado = calcularBoletoAjustado({
   quadrante,
   funcao: func.funcao,
@@ -1374,10 +1397,17 @@ return {
   ...calculadoAjustado,
   boleto: boletoAjustado,
 };
-
-    });
-  }, [funcionariosDaCidade, folhas, lojaId, ano, mes, selectedLoja, folhaExtrasQuery.data]);
- 
+}).filter(Boolean) as LinhaComQuadrante[];
+   }, [
+  funcionariosDaCidade,
+  folhas,
+  lojaId,
+  ano,
+  mes,
+  selectedLoja,
+  folhaExtrasQuery.data,
+  resumoSupervisorQuery.data,
+]);
   async function updateLinha(
   funcionarioId: number,
   campo: keyof FolhaMensal,
