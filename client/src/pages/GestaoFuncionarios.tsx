@@ -201,7 +201,6 @@ const excluirMutation =
 
     if (!formData.nome.trim()) camposFaltando.push("Nome completo");
     if (!formData.cpf.trim()) camposFaltando.push("CPF");
-    if (!formData.pix.trim()) camposFaltando.push("PIX");
     if (!formData.dataNascimento) camposFaltando.push("Data de aniversário");
     if (!formData.funcao) camposFaltando.push("Função");
     if (!formData.dataAdmissao) camposFaltando.push("Data de admissão");
