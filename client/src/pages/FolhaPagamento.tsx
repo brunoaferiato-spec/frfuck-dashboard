@@ -207,7 +207,13 @@ function getQuadrante(
   const mensal = usaMetaMensal(lojaId, ano, mes);
 
   if (funcao === "supervisor") return "supervisor_pj";
-  if (funcao === "gerente") return "gerente";
+  if (funcao === "gerente") {
+  if (lojaId === 3 && ano >= 2026 && mes >= 5) {
+    return "comissao_semanal";
+  }
+
+  return "gerente";
+}
   if (funcao === "consultor_vendas") return "consultor_vendas";
   if (funcao === "alinhador" || funcao === "aux_alinhador") return "alinhador";
   if (funcao === "recepcionista") return "recepcao";
