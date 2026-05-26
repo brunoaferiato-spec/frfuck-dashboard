@@ -97,11 +97,22 @@ function calcularBoletoAjustado(args: {
   }
 
   if (
-    args.quadrante === "consultor_vendas" ||
-    args.quadrante === "alinhador" ||
-    args.quadrante === "recepcao"
-  ) {
-    return totalComissao + premiacao - vale - aluguel;
+  args.quadrante === "consultor_vendas" ||
+  args.quadrante === "recepcao"
+) {
+  return totalComissao + premiacao - vale - aluguel;
+}
+
+if (args.quadrante === "alinhador") {
+  return (
+    totalComissao +
+    premiacao -
+    vale -
+    aluguel -
+    inss -
+    adiant -
+    holerite
+  );
   }
 
   if (
