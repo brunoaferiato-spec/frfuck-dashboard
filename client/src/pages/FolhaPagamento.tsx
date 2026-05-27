@@ -1236,7 +1236,22 @@ if (row.semana === 4) {
 setFolhas(Array.from(agrupado.values()));
 }, [folhaBaseQuery.data, todosFuncionarios]);
   const linhas = useMemo<LinhaComQuadrante[]>(() => {
-    return funcionariosDaCidade.map((func) => {
+    return [...funcionariosDaCidade]
+  .sort((a, b) => {
+    const ordemFuncao: Record<string, number> = {
+      vendedor: 1,
+      mecanico: 2,
+      auxiliar_mecanico: 3,
+    };
+
+    const ordemA = ordemFuncao[a.funcao] ?? 99;
+    const ordemB = ordemFuncao[b.funcao] ?? 99;
+
+    if (ordemA !== ordemB) return ordemA - ordemB;
+
+    return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR");
+  })
+  .map((func) => {
       const existente = folhas.find(
         (f) =>
           f.loja_id === lojaId &&
