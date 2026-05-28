@@ -222,8 +222,10 @@ const excluirMutation =
         lojaId,
         nome: formData.nome.trim(),
         cpf: formData.cpf.trim(),
-        pix: formData.pix.trim(),
-        dataNascimento: new Date(`${formData.dataNascimento}T00:00:00`),
+        pix: formData.pix.trim() || null,
+        dataNascimento: formData.dataNascimento
+  ? new Date(`${formData.dataNascimento}T12:00:00`)
+  : null,
         funcao: formData.funcao,
         tipoMeta:
           formData.funcao === "consultor_vendas" && formData.tipoMeta
