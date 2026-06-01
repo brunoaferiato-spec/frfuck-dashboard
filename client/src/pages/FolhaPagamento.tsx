@@ -204,7 +204,8 @@ function getQuadrante(
   lojaId: number,
   funcao: string,
   ano: number,
-  mes: number
+  mes: number,
+  tipoMeta?: string | null
 ): QuadranteKey {
   const semanal = usaMetaSemanal(lojaId, ano, mes);
   const mensal = usaMetaMensal(lojaId, ano, mes);
@@ -217,7 +218,13 @@ function getQuadrante(
 
   return "gerente";
 }
-  if (funcao === "consultor_vendas") return "consultor_vendas";
+  if (funcao === "consultor_vendas") {
+  if (tipoMeta === "meta2") {
+    return "comissao_mensal";
+  }
+
+  return "consultor_vendas";
+}
   if (funcao === "alinhador" || funcao === "aux_alinhador") return "alinhador";
   if (funcao === "recepcionista") return "recepcao";
 
@@ -1376,7 +1383,13 @@ if (func.funcao !== "supervisor") {
     Number(calculadoAjustado.com3 || 0) +
     Number(calculadoAjustado.com4 || 0);
 }
-const quadrante = getQuadrante(lojaId, func.funcao, ano, mes);
+const quadrante = getQuadrante(
+  lojaId,
+  func.funcao,
+  ano,
+  mes,
+  func.tipoMeta
+);
 
 if (func.funcao === "supervisor") {
   const resumo = resumoSupervisorQuery.data as any;
