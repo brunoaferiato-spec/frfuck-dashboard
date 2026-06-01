@@ -410,10 +410,14 @@ function TabelaQuadrante({
   const isSupervisor = quadrante === "supervisor_pj";
   const recepcaoCompleta =
     isRecepcao && (linhas[0]?.loja_id === 3 || linhas[0]?.loja_id === 4);
-  const isMensalUnico =
-    quadrante === "comissao_mensal" ||
-    quadrante === "alinhador" ||
-    quadrante === "gerente";
+  const isConsultorMensal =
+  quadrante === "comissao_mensal" &&
+  linhas[0]?.funcao === "consultor_vendas";
+
+const isMensalUnico =
+  (quadrante === "comissao_mensal" && !isConsultorMensal) ||
+  quadrante === "alinhador" ||
+  quadrante === "gerente";
 
   function getRegraConsultorTexto(linha: LinhaComQuadrante, carrosSemana: number) {
     return getConsultorRegraTexto({
@@ -725,8 +729,20 @@ const regraClassName = manual
                   {!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && (
                     <>
                       <td className="p-2">
-                        {renderEditButton(linha, "sem1", "Liquidez do mês", "money")}
-                      </td>
+  {isConsultorMensal
+    ? renderEditButton(
+        linha,
+        "sem1",
+        "Quantidade de carros",
+        "number"
+      )
+    : renderEditButton(
+        linha,
+        "sem1",
+        "Liquidez do mês",
+        "money"
+      )}
+</td>
                       <td className="p-2 text-right">{renderRegraButton(linha, 1)}</td>
                     </>
                   )}
