@@ -311,7 +311,7 @@ export function getPremiacaoAutomaticaDetalhes(args: {
     bonusMeta2.forEach((bonus) => {
       if (totalCarros >= bonus.carros) {
         detalhes.push({
-          descricao: `Bônus ${bonus.carros} carros`,
+          descricao: `Bateu ${bonus.carros} carros`,
           valor: bonus.valor,
         });
       }
