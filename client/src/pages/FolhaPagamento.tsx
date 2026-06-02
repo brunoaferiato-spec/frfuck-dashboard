@@ -628,7 +628,7 @@ const regraClassName = manual
                 <th className="text-left p-2 sticky left-0 z-20 bg-gray-900">Nome</th>
                 <th className="text-left p-2">Função</th>
 
-                {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && (
+                {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && !isConsultorMeta2 && (
                   <>
                     <th className="text-right p-2">SEM1</th>
                     <th className="text-right p-2">{isConsultor ? "Regra" : "%"}</th>
@@ -641,12 +641,14 @@ const regraClassName = manual
                   </>
                 )}
 
-                {!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && (
-                  <>
-                    <th className="text-right p-2">Liquidez</th>
-                    <th className="text-right p-2">%</th>
-                  </>
-                )}
+ 
+{!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && !isConsultorMeta2 && (
+  <>
+    <th className="text-right p-2">Liquidez</th>
+    <th className="text-right p-2">%</th>
+  </>
+)}
+
                  
                 {isConsultorMeta2 && (
   <>
@@ -753,20 +755,30 @@ const regraClassName = manual
                     </>
                   )}
 
-                  {!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && !isConsultorMeta2 && (
-                    <>
-                      <td className="p-2">
-
-{isConsultorMeta2 && (
+                  {isConsultorMeta2 && (
   <>
     <td className="p-2">
-      {renderEditButton(linha, "sem1", "Total de carros", "number")}
+      {renderEditButton(
+        linha,
+        "sem1",
+        "Quantidade de carros",
+        "number"
+      )}
     </td>
+
     <td className="p-2 text-right">
       {renderRegraButton(linha, 1)}
     </td>
+
+    <td className="p-2 text-right text-primary font-semibold">
+      {money(linha.totalComissao || 0)}
+    </td>
   </>
 )}
+
+                  {!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && !isConsultorMeta2 && (
+                    <>
+                      <td className="p-2">
 
   {isConsultorMensal
     ? renderEditButton(
