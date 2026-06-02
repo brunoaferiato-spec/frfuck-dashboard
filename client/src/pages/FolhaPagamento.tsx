@@ -404,18 +404,23 @@ function TabelaQuadrante({
 }) {
   if (linhas.length === 0) return null;
 
-  const isConsultor = quadrante === "consultor_vendas";
+  const isConsultor =
+  quadrante === "consultor_vendas" ||
+  (quadrante === "comissao_mensal" &&
+    linhas[0]?.funcao === "consultor_vendas");
   const isSalarioFixo = quadrante === "salario_fixo";
   const isRecepcao = quadrante === "recepcao";
   const isSupervisor = quadrante === "supervisor_pj";
   const recepcaoCompleta =
     isRecepcao && (linhas[0]?.loja_id === 3 || linhas[0]?.loja_id === 4);
-  const isConsultorMensal =
+
+const isConsultorMensal =
   quadrante === "comissao_mensal" &&
   linhas[0]?.funcao === "consultor_vendas";
 
 const isMensalUnico =
-  (quadrante === "comissao_mensal" && !isConsultorMensal) ||
+  quadrante === "comissao_mensal" &&
+  !isConsultorMensal ||
   quadrante === "alinhador" ||
   quadrante === "gerente";
 
