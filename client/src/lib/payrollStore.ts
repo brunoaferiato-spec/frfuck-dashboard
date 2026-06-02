@@ -294,40 +294,43 @@ export function getPremiacaoAutomaticaDetalhes(args: {
 
   const semanas = [args.sem1, args.sem2, args.sem3, args.sem4];
 
+  if (args.tipoMeta === "meta2") {
+    const totalCarros = semanas.reduce(
+      (acc, valor) => acc + Number(valor || 0),
+      0
+    );
+
+    const bonusMeta2 = [
+      { carros: 200, valor: 200 },
+      { carros: 250, valor: 250 },
+      { carros: 300, valor: 300 },
+      { carros: 350, valor: 350 },
+      { carros: 400, valor: 400 },
+    ];
+
+    bonusMeta2.forEach((bonus) => {
+      if (totalCarros >= bonus.carros) {
+        detalhes.push({
+          descricao: `Bônus ${bonus.carros} carros`,
+          valor: bonus.valor,
+        });
+      }
+    });
+
+    const total = detalhes.reduce((acc, item) => acc + item.valor, 0);
+    return { detalhes, total };
+  }
+
   semanas.forEach((valor, index) => {
     const carros = Number(valor || 0);
     const semanaLabel = `Semana ${index + 1}`;
 
-    if (args.tipoMeta === "meta2") {
-      const blocos = Math.floor(carros / 25);
-      if (blocos > 0) {
-        detalhes.push({
-          descricao: `${semanaLabel} - blocos de 25`,
-          valor: blocos * 100,
-        });
-      }
+    if (["1", "3", "4"].includes(String(args.cidade))) {
+      if (carros >= 65) detalhes.push({ descricao: semanaLabel, valor: 200 });
+    }
 
-      if (["1", "3", "4"].includes(String(args.cidade))) {
-        if (carros >= 350) detalhes.push({ descricao: `${semanaLabel} - bônus 350`, valor: 350 });
-        else if (carros >= 300) detalhes.push({ descricao: `${semanaLabel} - bônus 300`, valor: 300 });
-        else if (carros >= 250) detalhes.push({ descricao: `${semanaLabel} - bônus 250`, valor: 250 });
-        else if (carros >= 200) detalhes.push({ descricao: `${semanaLabel} - bônus 200`, valor: 200 });
-      }
-
-      if (String(args.cidade) === "2") {
-        if (carros >= 450) detalhes.push({ descricao: `${semanaLabel} - bônus 450`, valor: 450 });
-        else if (carros >= 400) detalhes.push({ descricao: `${semanaLabel} - bônus 400`, valor: 400 });
-        else if (carros >= 350) detalhes.push({ descricao: `${semanaLabel} - bônus 350`, valor: 350 });
-        else if (carros >= 300) detalhes.push({ descricao: `${semanaLabel} - bônus 300`, valor: 300 });
-      }
-    } else {
-      if (["1", "3", "4"].includes(String(args.cidade))) {
-        if (carros >= 65) detalhes.push({ descricao: semanaLabel, valor: 200 });
-      }
-
-      if (String(args.cidade) === "2") {
-        if (carros >= 100) detalhes.push({ descricao: semanaLabel, valor: 200 });
-      }
+    if (String(args.cidade) === "2") {
+      if (carros >= 100) detalhes.push({ descricao: semanaLabel, valor: 200 });
     }
   });
 
@@ -804,11 +807,6 @@ boleto: supervisor.boleto,
     ];
 
     const calcularComissaoSemana = (carros: number) => {
-      if (tipoMeta === "meta2") {
-        const blocos = Math.floor(carros / 25);
-        return blocos * 100;
-      }
-
       if (["1", "3", "4"].includes(String(cidade))) {
         if (carros <= 49) return carros * 8;
         if (carros <= 54) return carros * 9;
@@ -824,12 +822,25 @@ boleto: supervisor.boleto,
       return 0;
     };
 
-    const com1 = calcularComissaoSemana(semanas[0]);
-    const com2 = calcularComissaoSemana(semanas[1]);
-    const com3 = calcularComissaoSemana(semanas[2]);
-    const com4 = calcularComissaoSemana(semanas[3]);
+    const totalCarros = semanas.reduce((acc, item) => acc + Number(item || 0), 0);
 
-    const totalComissao = com1 + com2 + com3 + com4;
+    let com1 = 0;
+    let com2 = 0;
+    let com3 = 0;
+    let com4 = 0;
+    let totalComissao = 0;
+
+    if (tipoMeta === "meta2") {
+      totalComissao = Math.floor(totalCarros / 25) * 100;
+      com1 = totalComissao;
+    } else {
+      com1 = calcularComissaoSemana(semanas[0]);
+      com2 = calcularComissaoSemana(semanas[1]);
+      com3 = calcularComissaoSemana(semanas[2]);
+      com4 = calcularComissaoSemana(semanas[3]);
+
+      totalComissao = com1 + com2 + com3 + com4;
+    }
     const premiacaoAutomatica = getPremiacaoAutomaticaDetalhes({
       funcao,
       cidade,
@@ -841,7 +852,7 @@ boleto: supervisor.boleto,
     }).total;
 
     const premiacao = premiacaoAutomatica + premiacaoManual;
-    const totalLiquidez = semanas.reduce((acc, item) => acc + item, 0);
+    const totalLiquidez = totalCarros;
 
     const boleto =
       totalComissao +
