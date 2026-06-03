@@ -1976,15 +1976,20 @@ async function lançarNegativoNoPróximoMês() {
     total: detalhes.reduce((acc, item) => acc + Number(item.valor || 0), 0),
   };
 }
-    return getPremiacaoAutomaticaDetalhes({
-      funcao: linhaPremioAtual.funcao,
-      cidade: linhaPremioAtual.loja_id.toString(),
-      tipoMeta: linhaPremioAtual.tipoMeta,
-      sem1: linhaPremioAtual.sem1,
-      sem2: linhaPremioAtual.sem2,
-      sem3: linhaPremioAtual.sem3,
-      sem4: linhaPremioAtual.sem4,
-    });
+   return getPremiacaoAutomaticaDetalhes({
+  funcao: linhaPremioAtual.funcao,
+  cidade: linhaPremioAtual.loja_id.toString(),
+  tipoMeta:
+    linhaPremioAtual.funcao === "consultor_vendas" &&
+    linhaPremioAtual.quadrante === "comissao_mensal"
+      ? "meta2"
+      : linhaPremioAtual.tipoMeta,
+  sem1: linhaPremioAtual.sem1,
+  sem2: linhaPremioAtual.sem2,
+  sem3: linhaPremioAtual.sem3,
+  sem4: linhaPremioAtual.sem4,
+});
+
   }, [linhaPremioAtual]);
 
   const linhaObsAtual = useMemo(() => {
