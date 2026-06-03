@@ -469,7 +469,7 @@ const isMensalUnico =
    if (isConsultorMeta2) {
   return (
     <span className="text-yellow-300 font-semibold">
-      R$ 100,00 / 25 carros
+      R$ 100,00 cada 25 carros
     </span>
   );
 }
@@ -657,6 +657,7 @@ const regraClassName = manual
   <>
     <th className="text-right p-2">Quant. Carro</th>
     <th className="text-right p-2">Regra</th>
+    <th className="text-right p-2">Total Carros</th>
     <th className="text-right p-2">Total Comissão</th>
   </>
 )}
@@ -732,11 +733,26 @@ const regraClassName = manual
                       {isConsultorMeta2 && (
   <>
     <td className="p-2">
-      {renderEditButton(linha, "sem1", "Total de carros", "number")}
+      {renderEditButton(
+        linha,
+        "sem1",
+        "Quant. Carro",
+        "number"
+      )}
     </td>
 
     <td className="p-2 text-right">
-      {renderRegraButton(linha, 1)}
+      <span className="text-yellow-300 font-semibold whitespace-nowrap">
+        R$ 100,00 cada 25 carros
+      </span>
+    </td>
+
+    <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
+      {Number(linha.sem1 || 0).toLocaleString("pt-BR")}
+    </td>
+
+    <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
+      R$ {money(linha.totalComissao)}
     </td>
   </>
 )}
@@ -762,20 +778,14 @@ const regraClassName = manual
                   {!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && !isConsultorMeta2 && (
                     <>
                       <td className="p-2">
-
-  {isConsultorMeta2
-    ? renderEditButton(
-        linha,
-        "sem1",
-        "Quantidade de carros",
-        "number"
-      )
-    : renderEditButton(
-        linha,
-        "sem1",
-        "Liquidez do mês",
-        "money"
-      )}
+  {renderEditButton(
+    linha,
+    "sem1",
+    isConsultorMeta2
+      ? "Quant. Carro"
+      : "Liquidez do mês",
+    isConsultorMeta2 ? "number" : "money"
+  )}
 </td>
                       <td className="p-2 text-right">{renderRegraButton(linha, 1)}</td>
                     </>
