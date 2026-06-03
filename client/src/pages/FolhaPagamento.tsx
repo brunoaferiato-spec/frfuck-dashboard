@@ -469,7 +469,14 @@ const isMensalUnico =
     linha: LinhaComQuadrante,
     semana: 1 | 2 | 3 | 4
   ) {
-
+   
+   if (isConsultorMeta2) {
+  return (
+    <span className="text-yellow-300 font-semibold">
+      R$ 100,00 / 25 carros
+    </span>
+  );
+}
     const manualValue =
   semana === 1
     ? linha.percManual1
@@ -654,6 +661,7 @@ const regraClassName = manual
   <>
     <th className="text-right p-2">Total Carros</th>
     <th className="text-right p-2">Regra</th>
+    <th className="text-right p-2">Total Comissão</th>
   </>
 )}
 
