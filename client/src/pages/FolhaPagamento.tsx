@@ -468,7 +468,7 @@ const isMensalUnico =
    
    if (isConsultorMeta2) {
   return (
-    <span className="text-yellow-300 font-semibold">
+    <span className="text-yellow-300 font-semibold whitespace-nowrap">
       R$ 100,00 cada 25 carros
     </span>
   );
