@@ -414,17 +414,13 @@ function TabelaQuadrante({
   const recepcaoCompleta =
     isRecepcao && (linhas[0]?.loja_id === 3 || linhas[0]?.loja_id === 4);
 
-const isConsultorMensal =
-  quadrante === "comissao_mensal" &&
-  linhas[0]?.funcao === "consultor_vendas";
-
 const isConsultorMeta2 =
   quadrante === "comissao_mensal" &&
-  linhas[0]?.funcao === "consultor_vendas";
-
+  linhas[0]?.funcao === "consultor_vendas" &&
+  linhas[0]?.tipoMeta === "meta2";
+  
 const isMensalUnico =
-  quadrante === "comissao_mensal" &&
-  !isConsultorMensal ||
+  (quadrante === "comissao_mensal" && !isConsultorMeta2) ||
   quadrante === "alinhador" ||
   quadrante === "gerente";
 
@@ -763,32 +759,11 @@ const regraClassName = manual
                     </>
                   )}
 
-                  {isConsultorMeta2 && (
-  <>
-    <td className="p-2">
-      {renderEditButton(
-        linha,
-        "sem1",
-        "Quantidade de carros",
-        "number"
-      )}
-    </td>
-
-    <td className="p-2 text-right">
-      {renderRegraButton(linha, 1)}
-    </td>
-
-    <td className="p-2 text-right text-primary font-semibold">
-      {money(linha.totalComissao || 0)}
-    </td>
-  </>
-)}
-
                   {!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && !isConsultorMeta2 && (
                     <>
                       <td className="p-2">
 
-  {isConsultorMensal
+  {isConsultorMeta2
     ? renderEditButton(
         linha,
         "sem1",
