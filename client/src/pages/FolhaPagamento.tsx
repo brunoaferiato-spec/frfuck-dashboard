@@ -416,8 +416,11 @@ function TabelaQuadrante({
 
 const isConsultorMeta2 =
   quadrante === "comissao_mensal" &&
-  linhas[0]?.funcao === "consultor_vendas" &&
-  linhas[0]?.tipoMeta === "meta2";
+  linhas.some(
+    (linha) =>
+      linha.funcao === "consultor_vendas" &&
+      linha.tipoMeta === "meta2"
+  );
   
 const isMensalUnico =
   (quadrante === "comissao_mensal" && !isConsultorMeta2) ||
@@ -1204,8 +1207,9 @@ useEffect(() => {
         funcionarioId: row.funcionarioId,
         nome: todosFuncionarios.find((f) => Number(f.id) === Number(row.funcionarioId))?.nome || "",
         funcao: todosFuncionarios.find((f) => Number(f.id) === Number(row.funcionarioId))?.funcao || "",
-        tipoMeta: "",
-        regraMeta: "",
+        tipoMeta: todosFuncionarios.find((f) => Number(f.id) === Number(row.funcionarioId))?.tipoMeta || "",
+        tipoMeta: (todosFuncionarios.find((f) => Number(f.id) === Number(row.funcionarioId))?.tipoMeta || "") as any,
+regraMeta: "",
 
         sem1: 0,
         perc1: 0,
@@ -1489,11 +1493,13 @@ const boletoAjustado = calcularBoletoAjustado({
 
 return {
   ...base,
+  tipoMeta: func.tipoMeta,
   regraMeta: meta?.regra || "Sem meta cadastrada",
   quadrante,
   ...calculadoAjustado,
   boleto: boletoAjustado,
 };
+
 }).filter(Boolean) as LinhaComQuadrante[];
    }, [
   funcionariosDaCidade,
