@@ -687,14 +687,14 @@ const regraClassName = manual
                  </>
                 )}
 
-                {!isSalarioFixo && !isRecepcao && !isSupervisor && (
-                  <>
-                    <th className="text-right p-2">
-                      {isConsultor ? "Total Carros" : "Total Liquidez"}
-                    </th>
-                    <th className="text-right p-2">Total Comissão</th>
-                  </>
-                )}
+                {!isSalarioFixo && !isRecepcao && !isSupervisor && !isConsultorMeta2 && (
+  <>
+    <th className="text-right p-2">
+      {isConsultor ? "Total Carros" : "Total Liquidez"}
+    </th>
+    <th className="text-right p-2">Total Comissão</th>
+  </>
+)}
 
                 {isRecepcao && <th className="text-right p-2">Total Comissão</th>}
 
@@ -848,7 +848,7 @@ const regraClassName = manual
                   </>
                  )}
 
-                  {!isSalarioFixo && !isRecepcao && !isSupervisor && (
+                  {!isSalarioFixo && !isRecepcao && !isSupervisor && !isConsultorMeta2 && (
                     <>
                       <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
                         {isConsultor
