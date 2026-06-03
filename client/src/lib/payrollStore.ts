@@ -295,10 +295,11 @@ export function getPremiacaoAutomaticaDetalhes(args: {
   const semanas = [args.sem1, args.sem2, args.sem3, args.sem4];
 
   if (args.tipoMeta === "meta2") {
-    const totalCarros = semanas.reduce(
-      (acc, valor) => acc + Number(valor || 0),
-      0
-    );
+   const totalCarros = Number(args.sem1 || 0);
+
+if (totalCarros <= 0) {
+  return { detalhes, total: 0 };
+}
 
     const bonusMeta2 = [
       { carros: 200, valor: 200 },
@@ -309,13 +310,13 @@ export function getPremiacaoAutomaticaDetalhes(args: {
     ];
 
     bonusMeta2.forEach((bonus) => {
-      if (totalCarros >= bonus.carros) {
-        detalhes.push({
-          descricao: `Bateu ${bonus.carros} carros`,
-          valor: bonus.valor,
-        });
-      }
+  if (totalCarros >= bonus.carros) {
+    detalhes.push({
+      descricao: `Meta ${bonus.carros} carros`,
+      valor: bonus.valor,
     });
+  }
+});
 
     const total = detalhes.reduce((acc, item) => acc + item.valor, 0);
     return { detalhes, total };
@@ -822,7 +823,10 @@ boleto: supervisor.boleto,
       return 0;
     };
 
-    const totalCarros = semanas.reduce((acc, item) => acc + Number(item || 0), 0);
+    const totalCarros =
+  tipoMeta === "meta2"
+    ? Number(sem1 || 0)
+    : semanas.reduce((acc, item) => acc + Number(item || 0), 0);
 
     let com1 = 0;
     let com2 = 0;
@@ -831,16 +835,15 @@ boleto: supervisor.boleto,
     let totalComissao = 0;
 
     if (tipoMeta === "meta2") {
-      totalComissao = Math.floor(totalCarros / 25) * 100;
-      com1 = totalComissao;
-    } else {
-      com1 = calcularComissaoSemana(semanas[0]);
-      com2 = calcularComissaoSemana(semanas[1]);
-      com3 = calcularComissaoSemana(semanas[2]);
-      com4 = calcularComissaoSemana(semanas[3]);
+  totalComissao = totalCarros > 0
+    ? Math.floor(totalCarros / 25) * 100
+    : 0;
 
-      totalComissao = com1 + com2 + com3 + com4;
-    }
+  com1 = totalComissao;
+  com2 = 0;
+  com3 = 0;
+  com4 = 0;
+}
     const premiacaoAutomatica = getPremiacaoAutomaticaDetalhes({
       funcao,
       cidade,

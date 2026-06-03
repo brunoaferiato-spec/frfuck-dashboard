@@ -248,7 +248,7 @@ function getQuadranteTitulo(key: QuadranteKey) {
     case "consultor_vendas":
       return "Consultor de Vendas";
     case "comissao_mensal":
-      return "Comissão Mensal";
+  return "Consultor de Vendas Mensal";
     case "alinhador":
       return "Alinhador";
     case "recepcao":
@@ -655,7 +655,7 @@ const regraClassName = manual
                  
                 {isConsultorMeta2 && (
   <>
-    <th className="text-right p-2">Total Carros</th>
+    <th className="text-right p-2">Quant. Carro</th>
     <th className="text-right p-2">Regra</th>
     <th className="text-right p-2">Total Comissão</th>
   </>
