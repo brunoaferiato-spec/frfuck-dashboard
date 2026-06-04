@@ -433,6 +433,9 @@ const isConsultorMeta2 =
       linha.funcao === "consultor_vendas" &&
       linha.tipoMeta === "meta2"
   );
+
+  const isGerente =
+  quadrante === "gerente";
   
 const isMensalUnico =
   (quadrante === "comissao_mensal" && !isConsultorMeta2) ||
@@ -646,7 +649,7 @@ const regraClassName = manual
                 <th className="text-left p-2 sticky left-0 z-20 bg-gray-900">Nome</th>
                 <th className="text-left p-2">Função</th>
 
-                {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && !isConsultorMeta2 && (
+                {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && !isConsultorMeta2 && !isGerente && (
                   <>
                     <th className="text-right p-2">SEM1</th>
                     <th className="text-right p-2">{isConsultor ? "Regra" : "%"}</th>
@@ -658,12 +661,15 @@ const regraClassName = manual
                     <th className="text-right p-2">{isConsultor ? "Regra" : "%"}</th>
                   </>
                 )}
+                
 
  
-{!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && !isConsultorMeta2 && (
+{isGerente && (
   <>
-    <th className="text-right p-2">Liquidez</th>
-    <th className="text-right p-2">%</th>
+    <th className="text-right p-2">Liquidez Venda</th>
+    <th className="text-right p-2">% Venda</th>
+    <th className="text-right p-2">Liquidez Loja</th>
+    <th className="text-right p-2">% Loja</th>
   </>
 )}
 
@@ -732,7 +738,7 @@ const regraClassName = manual
                   </td>
                   <td className="p-2 text-gray-300">{linha.funcao}</td>
 
-                  {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && !isConsultorMeta2 && (
+                  {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && !isConsultorMeta2 && !isGerente && (
                     <>
                       <td className="p-2">
                         {isConsultor
@@ -803,6 +809,36 @@ const regraClassName = manual
 
     <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
       R$ {money(linha.totalComissao)}
+    </td>
+  </>
+)}
+
+{isGerente && (
+  <>
+    <td className="p-2">
+      {renderEditButton(
+        linha,
+        "sem1",
+        "Liquidez Venda",
+        "money"
+      )}
+    </td>
+
+    <td className="p-2 text-right text-yellow-300 font-semibold">
+      {Number(linha.perc1 || 0).toFixed(2)}%
+    </td>
+
+    <td className="p-2">
+      {renderEditButton(
+        linha,
+        "sem2",
+        "Liquidez Loja",
+        "money"
+      )}
+    </td>
+
+    <td className="p-2 text-right text-yellow-300 font-semibold">
+      {Number(linha.perc2 || 0).toFixed(2)}%
     </td>
   </>
 )}

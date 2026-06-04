@@ -759,6 +759,58 @@ boleto: supervisor.boleto,
 };
 }
 
+if (funcao === "gerente" && String(cidade) === "4") {
+  const liquidezVenda = Number(sem1 || 0);
+  const liquidezLoja = Number(sem2 || 0);
+
+  const metas = getMetas();
+
+  const metaVenda = metas.find((m) =>
+    String(m.cidade) === String(cidade) &&
+    String(m.funcao).toLowerCase() === "vendedor" &&
+    !m.funcionarioNome &&
+    !m.funcionario
+  );
+
+  const metaGerente = meta;
+
+  const percentualVenda = getPercentualFromRegra(metaVenda || null, liquidezVenda);
+  const percentualLoja = getPercentualFromRegra(metaGerente || null, liquidezLoja);
+
+  const comVenda = liquidezVenda * (percentualVenda / 100);
+  const comLoja = liquidezLoja * (percentualLoja / 100);
+
+  const totalComissao = comVenda + comLoja;
+
+  const boleto =
+    totalComissao +
+    premiacaoManual -
+    vale -
+    aluguel -
+    inss -
+    adiant -
+    holerite;
+
+  return {
+    perc1: percentualVenda,
+    perc2: percentualLoja,
+    perc3: 0,
+    perc4: 0,
+
+    com1: comVenda,
+    com2: comLoja,
+    com3: 0,
+    com4: 0,
+
+    totalLiquidez: liquidezVenda + liquidezLoja,
+    totalComissao,
+
+    premiacao: premiacaoManual,
+    vale,
+    boleto,
+  };
+}
+
   if (funcao === "recepcionista") {
     const config = getRecepcaoConfig(funcionarioNome || "", cidade);
 
