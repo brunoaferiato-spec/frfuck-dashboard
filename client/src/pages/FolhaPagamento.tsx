@@ -733,32 +733,7 @@ const regraClassName = manual
                         {isConsultor
                           ? renderEditButton(linha, "sem2", "Quantidade SEM2", "number")
                           : renderEditButton(linha, "sem2", "Liquidez SEM2", "money")}
-                      {isConsultorMeta2 && (
-  <>
-    <td className="p-2">
-      {renderEditButton(
-        linha,
-        "sem1",
-        "Quant. Carro",
-        "number"
-      )}
-    </td>
-
-    <td className="p-2 text-right">
-      <span className="text-yellow-300 font-semibold whitespace-nowrap">
-        R$ 100,00 cada 25 carros
-      </span>
-    </td>
-
-    <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
-      {Number(linha.sem1 || 0).toLocaleString("pt-BR")}
-    </td>
-
-    <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
-      R$ {money(linha.totalComissao)}
-    </td>
-  </>
-)}
+                      
                       </td>
                       <td className="p-2 text-right">{renderRegraButton(linha, 2)}</td>
 
@@ -779,20 +754,46 @@ const regraClassName = manual
                   )}
 
                   {!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && !isConsultorMeta2 && (
-                    <>
-                      <td className="p-2">
-  {renderEditButton(
-    linha,
-    "sem1",
-    isConsultorMeta2
-      ? "Quant. Carro"
-      : "Liquidez do mês",
-    isConsultorMeta2 ? "number" : "money"
-  )}
-</td>
-                      <td className="p-2 text-right">{renderRegraButton(linha, 1)}</td>
-                    </>
-                  )}
+  <>
+    <td className="p-2">
+      {renderEditButton(
+        linha,
+        "sem1",
+        "Liquidez do mês",
+        "money"
+      )}
+    </td>
+
+    <td className="p-2 text-right">
+      {renderRegraButton(linha, 1)}
+    </td>
+  </>
+)}
+
+{isConsultorMeta2 && (
+  <>
+    <td className="p-2">
+      {renderEditButton(
+        linha,
+        "sem1",
+        "Quant. Carro",
+        "number"
+      )}
+    </td>
+
+    <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
+      R$ 100,00 cada 25 carros
+    </td>
+
+    <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
+      {Number(linha.sem1 || 0).toLocaleString("pt-BR")}
+    </td>
+
+    <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
+      R$ {money(linha.totalComissao)}
+    </td>
+  </>
+)}
 
                   {isRecepcao && (
                     <>
@@ -1207,7 +1208,6 @@ useEffect(() => {
         funcionarioId: row.funcionarioId,
         nome: todosFuncionarios.find((f) => Number(f.id) === Number(row.funcionarioId))?.nome || "",
         funcao: todosFuncionarios.find((f) => Number(f.id) === Number(row.funcionarioId))?.funcao || "",
-        tipoMeta: todosFuncionarios.find((f) => Number(f.id) === Number(row.funcionarioId))?.tipoMeta || "",
         tipoMeta: (todosFuncionarios.find((f) => Number(f.id) === Number(row.funcionarioId))?.tipoMeta || "") as any,
 regraMeta: "",
 
