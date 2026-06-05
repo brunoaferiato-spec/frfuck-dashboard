@@ -118,6 +118,18 @@ if (
     aluguel
   );
 }
+
+if (args.quadrante === "supervisor_pj") {
+  return (
+    1500 +
+    totalComissao +
+    premiacao -
+    vale -
+    aluguel -
+    adiant
+  );
+}
+
   if (
     args.quadrante === "comissao_semanal" ||
     args.quadrante === "comissao_mensal" ||
