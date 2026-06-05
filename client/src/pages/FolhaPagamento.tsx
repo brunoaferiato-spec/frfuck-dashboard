@@ -670,9 +670,9 @@ const regraClassName = manual
     <th className="text-right p-2">% Venda</th>
     <th className="text-right p-2">Liquidez Loja</th>
     <th className="text-right p-2">% Loja</th>
+    <th className="text-right p-2">Total Comissão</th>
   </>
 )}
-
                  
                 {isConsultorMeta2 && (
   <>
@@ -705,7 +705,7 @@ const regraClassName = manual
                  </>
                 )}
 
-                {!isSalarioFixo && !isRecepcao && !isSupervisor && !isConsultorMeta2 && (
+                {!isSalarioFixo && !isRecepcao && !isSupervisor && !isConsultorMeta2 && !isGerente && (
   <>
     <th className="text-right p-2">
       {isConsultor ? "Total Carros" : "Total Liquidez"}
@@ -771,7 +771,7 @@ const regraClassName = manual
                     </>
                   )}
 
-                  {!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && !isConsultorMeta2 && (
+                  {!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && !isConsultorMeta2 && !isGerente && (
   <>
     <td className="p-2">
       {renderEditButton(
@@ -840,6 +840,10 @@ const regraClassName = manual
     <td className="p-2 text-right text-yellow-300 font-semibold">
       {Number(linha.perc2 || 0).toFixed(2)}%
     </td>
+    <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
+  R$ {money(linha.totalComissao)}
+</td>
+
   </>
 )}
 
@@ -885,7 +889,7 @@ const regraClassName = manual
                   </>
                  )}
 
-                  {!isSalarioFixo && !isRecepcao && !isSupervisor && !isConsultorMeta2 && (
+                  {!isSalarioFixo && !isRecepcao && !isSupervisor && !isConsultorMeta2 && !isGerente && (
                     <>
                       <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
                         {isConsultor
