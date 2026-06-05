@@ -553,6 +553,10 @@ const percentualAutomatico =
     : calculadoOriginal.perc4;
 
 const manual =
+  !(
+    linha.funcao === "gerente" &&
+    linha.loja_id === 3
+  ) &&
   manualValue !== null &&
   manualValue !== undefined &&
   Math.abs(Number(manualValue) - Number(percentualAutomatico)) > 0.001;
