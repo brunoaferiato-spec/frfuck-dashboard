@@ -2241,6 +2241,7 @@ const totalFolhaGeral =
   (folhaFiltros.holerite ? totalHolerite : 0);
   const ordemQuadrantes: QuadranteKey[] = [
   "gerente",
+  "comissao_semanal",
   "comissao_mensal",
   "alinhador",
   "recepcao",
