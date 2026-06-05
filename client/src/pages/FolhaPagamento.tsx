@@ -633,13 +633,15 @@ const regraClassName = manual
     }
 
     const percentual =
-      semana === 1
-        ? linha.perc1
-        : semana === 2
-        ? linha.perc2
-        : semana === 3
-        ? linha.perc3
-        : linha.perc4;
+  linha.funcao === "gerente" && linha.loja_id === 3
+    ? percentualAutomatico
+    : semana === 1
+    ? linha.perc1
+    : semana === 2
+    ? linha.perc2
+    : semana === 3
+    ? linha.perc3
+    : linha.perc4;
 
     return (
   <button
