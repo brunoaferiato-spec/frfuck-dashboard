@@ -511,16 +511,21 @@ const isMensalUnico =
     ? linha.percManual3
     : linha.percManual4;
 
+const funcaoRegra =
+  linha.funcao === "gerente" && linha.loja_id === 3
+    ? "vendedor"
+    : linha.funcao;
+
 const meta = findMetaForFuncionario({
   funcionarioNome: linha.nome,
-  funcao: linha.funcao,
+  funcao: funcaoRegra,
   cidade: linha.loja_id.toString(),
   tipoMeta: linha.tipoMeta,
 });
 
 const calculadoOriginal = computeFolhaLinha({
   meta,
-  funcao: linha.funcao,
+  funcao: funcaoRegra,
   cidade: linha.loja_id.toString(),
   funcionarioNome: linha.nome,
   tipoMeta: linha.tipoMeta,
@@ -822,7 +827,9 @@ const regraClassName = manual
     </td>
 
     <td className="p-2 text-right">
-      {renderRegraButton(linha, 1)}
+      <span className="text-yellow-300 font-semibold">
+  {Number((linha as any).percLojaGerente || 0).toFixed(2)}%
+</span>
     </td>
   </>
 )}
@@ -1467,6 +1474,11 @@ setFolhas(Array.from(agrupado.values()));
           f.funcionarioId === func.id
       );
 
+      const funcaoMetaCalculo =
+  func.funcao === "gerente" && lojaId === 3
+    ? "vendedor"
+    : func.funcao;
+
       const meta = findMetaForFuncionario({
         funcionarioNome: func.nome,
         funcao: func.funcao,
@@ -1510,7 +1522,7 @@ setFolhas(Array.from(agrupado.values()));
 
      const calculado = computeFolhaLinha({
   meta,
-  funcao: func.funcao,
+  funcao: funcaoMetaCalculo,
   cidade: selectedLoja,
   funcionarioNome: func.nome,
   tipoMeta: func.tipoMeta,
