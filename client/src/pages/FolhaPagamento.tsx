@@ -1716,11 +1716,26 @@ return {
 
     return [...prev, mergedLine];
   });
+const camposBase = ["sem1", "sem2", "sem3", "sem4"] as const;
+const camposDesconto = ["aluguel", "inss", "adiant", "holerite"] as const;
 
-  const camposBase = ["sem1", "sem2", "sem3", "sem4"] as const;
-  const camposDesconto = ["aluguel", "inss", "adiant", "holerite"] as const;
+if (String(campo) === "sem5") {
+  await upsertFolhaBaseMutation.mutateAsync({
+    funcionarioId,
+    lojaId,
+    ano,
+    mes,
+    semana: 5,
+    liquidez: Number(valor || 0),
+    percentualComissao: 0,
+    valorComissao: 0,
+  });
 
-  if (camposBase.includes(campo as (typeof camposBase)[number])) {
+  await folhaBaseQuery.refetch();
+  return;
+}
+
+if (camposBase.includes(campo as (typeof camposBase)[number])) {
     const semanas = [
       {
         semana: 1,
