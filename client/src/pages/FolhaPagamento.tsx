@@ -880,9 +880,9 @@ const regraClassName = manual
       {renderEditButton(linha, "totalLiquidez", "Liquidez Loja", "money")}
     </td>
 
-    <td className="p-2 text-right text-yellow-300 font-semibold">
-      0.00%
-    </td>
+    <td className="p-2 text-right">
+  {renderRegraButton(linha, 1)}
+</td>
 
     <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
       R$ {money(linha.totalComissao)}
