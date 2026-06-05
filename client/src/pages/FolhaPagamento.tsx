@@ -224,10 +224,6 @@ function getQuadrante(
 
   if (funcao === "supervisor") return "supervisor_pj";
   if (funcao === "gerente") {
-  if (lojaId === 3 && ano >= 2026 && mes >= 5) {
-    return "comissao_semanal";
-  }
-
   return "gerente";
 }
   if (funcao === "consultor_vendas") {
@@ -256,7 +252,7 @@ function getQuadranteTitulo(key: QuadranteKey) {
     case "gerente":
       return "Gerente";
     case "comissao_semanal":
-      return "Comissão Semanal";
+  return "Vendedor e Mecânico";
     case "consultor_vendas":
       return "Consultor de Vendas";
     case "comissao_mensal":
@@ -435,7 +431,11 @@ const isConsultorMeta2 =
 
   const isGerente =
   quadrante === "gerente";
-  
+
+const isGerenteSaoJoseSemanal =
+  isGerente &&
+  linhas[0]?.loja_id === 3;
+
 const isMensalUnico =
   (quadrante === "comissao_mensal" && !isConsultorMeta2) ||
   quadrante === "alinhador" ||
