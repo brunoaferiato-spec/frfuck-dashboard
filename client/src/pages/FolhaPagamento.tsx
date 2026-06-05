@@ -1544,7 +1544,11 @@ setFolhas(Array.from(agrupado.values()));
 
 const calculadoAjustado = { ...calculado };
 
-if (base.percManual1 !== null && base.percManual1 !== undefined) {
+if (
+  base.percManual1 !== null &&
+  base.percManual1 !== undefined &&
+  !(base.funcao === "gerente" && lojaId === 3)
+) {
   calculadoAjustado.perc1 = Number(base.percManual1);
   calculadoAjustado.com1 = Number(
   (
@@ -1555,7 +1559,11 @@ if (base.percManual1 !== null && base.percManual1 !== undefined) {
 );
 }
 
-if (base.percManual2 !== null && base.percManual2 !== undefined) {
+if (
+  base.percManual1 !== null &&
+  base.percManual1 !== undefined &&
+  !(base.funcao === "gerente" && lojaId === 3)
+) {
   calculadoAjustado.perc2 = Number(base.percManual2);
   calculadoAjustado.com2 = Number(
   (
@@ -1566,7 +1574,11 @@ if (base.percManual2 !== null && base.percManual2 !== undefined) {
 );
 }
 
-if (base.percManual3 !== null && base.percManual3 !== undefined) {
+if (
+  base.percManual1 !== null &&
+  base.percManual1 !== undefined &&
+  !(base.funcao === "gerente" && lojaId === 3)
+) {
   calculadoAjustado.perc3 = Number(base.percManual3);
   calculadoAjustado.com3 = Number(
   (
@@ -1577,7 +1589,11 @@ if (base.percManual3 !== null && base.percManual3 !== undefined) {
 );
 }
 
-if (base.percManual4 !== null && base.percManual4 !== undefined) {
+if (
+  base.percManual1 !== null &&
+  base.percManual1 !== undefined &&
+  !(base.funcao === "gerente" && lojaId === 3)
+) {
   calculadoAjustado.perc4 = Number(base.percManual4);
   calculadoAjustado.com4 = Number(
   (
