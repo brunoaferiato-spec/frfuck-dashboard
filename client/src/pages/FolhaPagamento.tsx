@@ -1479,12 +1479,15 @@ setFolhas(Array.from(agrupado.values()));
     ? "vendedor"
     : func.funcao;
 
-      const meta = findMetaForFuncionario({
-        funcionarioNome: func.nome,
-        funcao: func.funcao,
-        cidade: selectedLoja,
-        tipoMeta: func.tipoMeta,
-      });
+      const isGerenteSaoJose =
+  func.funcao === "gerente" && lojaId === 3;
+
+const meta = findMetaForFuncionario({
+  funcionarioNome: func.nome,
+  funcao: isGerenteSaoJose ? "vendedor" : func.funcao,
+  cidade: selectedLoja,
+  tipoMeta: func.tipoMeta,
+});
 
       const baseLocal =
         existente ||
