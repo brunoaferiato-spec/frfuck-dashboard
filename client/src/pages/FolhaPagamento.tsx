@@ -901,7 +901,20 @@ const regraClassName = manual
     <td className="p-2 text-right">{renderRegraButton(linha, 4)}</td>
 
     <td className="p-2">
-      {renderEditButton(linha, "totalLiquidez", "Liquidez Loja", "money")}
+      <button
+  type="button"
+  onClick={() =>
+    onOpenCellEditor(
+      linha,
+      "sem5" as any,
+      "Liquidez Loja",
+      "money"
+    )
+  }
+  className="w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 font-bold hover:border-primary/60 text-white"
+>
+  R$ {money(Number((linha as any).liquidezLojaGerente || 0))}
+</button>
     </td>
 
     <td className="p-2 text-right">
@@ -1420,8 +1433,13 @@ if (row.semana === 4) {
   (item as any).ultimaAlteracaoPor4 = (row as any).ultimaAlteracaoPor || null;
   (item as any).ultimaAlteracaoEm4 = (row as any).ultimaAlteracaoEm || null;
 }
-}
 
+if (row.semana === 5) {
+  (item as any).liquidezLojaGerente = Number(row.liquidez || 0);
+  (item as any).percLojaGerente = Number(row.percentualComissao || 0);
+  (item as any).comLojaGerente = Number(row.valorComissao || 0);
+}
+}
 setFolhas(Array.from(agrupado.values()));
 }, [folhaBaseQuery.data, todosFuncionarios]);
   const linhas = useMemo<LinhaComQuadrante[]>(() => {
