@@ -825,7 +825,7 @@ const regraClassName = manual
     </td>
 
     <td className="p-2 text-right text-yellow-300 font-semibold">
-      {Number(linha.perc1 || 0).toFixed(2)}%
+      {renderRegraButton(linha, 1)}
     </td>
 
     <td className="p-2">
@@ -838,7 +838,7 @@ const regraClassName = manual
     </td>
 
     <td className="p-2 text-right text-yellow-300 font-semibold">
-      {Number(linha.perc2 || 0).toFixed(2)}%
+      {renderRegraButton(linha, 2)}
     </td>
     <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
   R$ {money(linha.totalComissao)}
@@ -2117,6 +2117,25 @@ async function lançarNegativoNoPróximoMês() {
             : "",
       };
     }
+
+    if (linha.funcao === "gerente") {
+  const isVenda = semana === 1;
+
+  return {
+    linha,
+    semana,
+    isConsultor: false,
+    isRecepcao: false,
+    isSupervisor: false,
+    base: isVenda ? linha.sem1 : linha.sem2,
+    percentual: isVenda ? linha.perc1 : linha.perc2,
+    comissao: isVenda ? linha.com1 : linha.com2,
+    regraTexto: `${(isVenda ? linha.perc1 : linha.perc2).toFixed(2)}%`,
+    metaTitulo: isVenda ? "Meta de vendas" : "Meta gerente loja",
+    baseLabel: isVenda ? "Liquidez venda" : "Liquidez loja",
+    extra: "",
+  };
+}
 
     if (isRecepcao) {
       const config = getRecepcaoConfig(linha.nome, linha.loja_id.toString());
