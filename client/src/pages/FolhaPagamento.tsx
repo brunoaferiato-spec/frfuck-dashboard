@@ -698,6 +698,18 @@ const regraClassName = manual
   </>
 )}
 
+{!isSalarioFixo &&
+  !isRecepcao &&
+  !isSupervisor &&
+  isMensalUnico &&
+  !isConsultorMeta2 &&
+  !isGerente && (
+    <>
+      <th className="text-right p-2">Liquidez</th>
+      <th className="text-right p-2">%</th>
+    </>
+)}
+
                 {isRecepcao && (
                   <>
                     <th className="text-right p-2">Vendas fechadas</th>
