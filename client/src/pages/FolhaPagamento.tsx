@@ -109,8 +109,7 @@ if (args.quadrante === "alinhador") {
 }
 
 if (
-  args.quadrante === "comissao_mensal" &&
-  args.funcao === "consultor_vendas"
+  args.quadrante === "consultor_vendas_mensal"
 ) {
   return (
     totalComissao +
@@ -142,6 +141,7 @@ type QuadranteKey =
   | "gerente"
   | "comissao_semanal"
   | "consultor_vendas"
+  | "consultor_vendas_mensal"
   | "comissao_mensal"
   | "alinhador"
   | "recepcao"
@@ -232,8 +232,8 @@ function getQuadrante(
 }
   if (funcao === "consultor_vendas") {
   if (tipoMeta === "meta2") {
-    return "comissao_mensal";
-  }
+  return "consultor_vendas_mensal";
+}
 
   return "consultor_vendas";
 }
@@ -260,11 +260,13 @@ function getQuadranteTitulo(key: QuadranteKey) {
     case "consultor_vendas":
       return "Consultor de Vendas";
     case "comissao_mensal":
-  return "Consultor de Vendas Mensal";
+  return "Vendedor e Mecânico";
     case "alinhador":
       return "Alinhador";
     case "recepcao":
       return "Recepção";
+      case "consultor_vendas_mensal":
+  return "Consultor de Vendas Mensal";
     case "supervisor_pj":
       return "Supervisor - Contrato PJ";
     case "salario_fixo":
@@ -283,11 +285,13 @@ function getQuadranteDescricao(key: QuadranteKey) {
     case "consultor_vendas":
       return "Consultores por carros na semana";
     case "comissao_mensal":
-      return "Vendedores e mecânicos com cálculo mensal";
+  return "Vendedores e mecânicos com cálculo mensal";
     case "alinhador":
       return "Alinhador e auxiliar de alinhador com cálculo mensal";
     case "recepcao":
       return "Recepção";
+      case "consultor_vendas_mensal":
+  return "Consultores por meta mensal";
     case "supervisor_pj":
       return "Supervisor com cálculo por liquidez das 4 lojas";
     case "salario_fixo":
@@ -416,23 +420,18 @@ function TabelaQuadrante({
 }) {
   if (linhas.length === 0) return null;
 
-  const isConsultor =
-  quadrante === "consultor_vendas" ||
-  (quadrante === "comissao_mensal" &&
-    linhas[0]?.funcao === "consultor_vendas");
   const isSalarioFixo = quadrante === "salario_fixo";
   const isRecepcao = quadrante === "recepcao";
   const isSupervisor = quadrante === "supervisor_pj";
   const recepcaoCompleta =
     isRecepcao && (linhas[0]?.loja_id === 3 || linhas[0]?.loja_id === 4);
 
+    const isConsultor =
+  quadrante === "consultor_vendas" ||
+  quadrante === "consultor_vendas_mensal";
+
 const isConsultorMeta2 =
-  quadrante === "comissao_mensal" &&
-  linhas.some(
-    (linha) =>
-      linha.funcao === "consultor_vendas" &&
-      linha.tipoMeta === "meta2"
-  );
+  quadrante === "consultor_vendas_mensal";
 
   const isGerente =
   quadrante === "gerente";
@@ -2049,7 +2048,7 @@ async function lançarNegativoNoPróximoMês() {
   cidade: linhaPremioAtual.loja_id.toString(),
   tipoMeta:
     linhaPremioAtual.funcao === "consultor_vendas" &&
-    linhaPremioAtual.quadrante === "comissao_mensal"
+   linhaPremioAtual.quadrante === "consultor_vendas_mensal"
       ? "meta2"
       : linhaPremioAtual.tipoMeta,
   sem1: linhaPremioAtual.sem1,
@@ -2241,15 +2240,15 @@ const totalFolhaGeral =
   (folhaFiltros.adiant ? totalAdiant : 0) +
   (folhaFiltros.holerite ? totalHolerite : 0);
   const ordemQuadrantes: QuadranteKey[] = [
-    "gerente",
-    "comissao_semanal",
-    "consultor_vendas",
-    "comissao_mensal",
-    "alinhador",
-    "recepcao",
-    "supervisor_pj",
-    "salario_fixo",
-  ];
+  "gerente",
+  "comissao_mensal",
+  "alinhador",
+  "recepcao",
+  "consultor_vendas",
+  "consultor_vendas_mensal",
+  "supervisor_pj",
+  "salario_fixo",
+];
 
   const linhasPorQuadrante = useMemo(() => {
   return ordemQuadrantes.map((key) => {
