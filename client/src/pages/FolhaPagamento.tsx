@@ -2295,8 +2295,33 @@ async function lançarNegativoNoPróximoMês() {
       };
     }
 
-    if (linha.funcao === "gerente") {
-  const isVenda = semana === 1;
+    if (linha.funcao === "gerente" && linha.loja_id === 3) {
+  const base =
+    semana === 1
+      ? linha.sem1
+      : semana === 2
+      ? linha.sem2
+      : semana === 3
+      ? linha.sem3
+      : linha.sem4;
+
+  const percentual =
+    semana === 1
+      ? linha.perc1
+      : semana === 2
+      ? linha.perc2
+      : semana === 3
+      ? linha.perc3
+      : linha.perc4;
+
+  const comissao =
+    semana === 1
+      ? linha.com1
+      : semana === 2
+      ? linha.com2
+      : semana === 3
+      ? linha.com3
+      : linha.com4;
 
   return {
     linha,
@@ -2304,12 +2329,12 @@ async function lançarNegativoNoPróximoMês() {
     isConsultor: false,
     isRecepcao: false,
     isSupervisor: false,
-    base: isVenda ? linha.sem1 : linha.sem2,
-    percentual: isVenda ? linha.perc1 : linha.perc2,
-    comissao: isVenda ? linha.com1 : linha.com2,
-    regraTexto: `${(isVenda ? linha.perc1 : linha.perc2).toFixed(2)}%`,
-    metaTitulo: isVenda ? "Meta de vendas" : "Meta gerente loja",
-    baseLabel: isVenda ? "Liquidez venda" : "Liquidez loja",
+    base,
+    percentual,
+    comissao,
+    regraTexto: `${percentual.toFixed(2)}%`,
+    metaTitulo: "Meta de vendas",
+    baseLabel: `Liquidez SEM${semana}`,
     extra: "",
   };
 }
