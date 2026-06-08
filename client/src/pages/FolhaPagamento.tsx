@@ -1554,8 +1554,8 @@ percManual4: isGerenteSaoJose ? null : base.percManual4,
 const calculadoAjustado = { ...calculado };
 
 if (
-  base.percManual1 !== null &&
-  base.percManual1 !== undefined &&
+  base.percManual2 !== null &&
+  base.percManual2 !== undefined &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc1 = Number(base.percManual1);
@@ -1569,8 +1569,8 @@ if (
 }
 
 if (
-  base.percManual1 !== null &&
-  base.percManual1 !== undefined &&
+  base.percManual3 !== null &&
+base.percManual3 !== undefined &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc2 = Number(base.percManual2);
@@ -1599,8 +1599,8 @@ if (
 }
 
 if (
-  base.percManual1 !== null &&
-  base.percManual1 !== undefined &&
+  base.percManual4 !== null &&
+base.percManual4 !== undefined &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc4 = Number(base.percManual4);
