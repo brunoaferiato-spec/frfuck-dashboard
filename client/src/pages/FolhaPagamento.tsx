@@ -1554,63 +1554,63 @@ percManual4: isGerenteSaoJose ? null : base.percManual4,
 const calculadoAjustado = { ...calculado };
 
 if (
-  base.percManual2 !== null &&
-  base.percManual2 !== undefined &&
-  !(base.funcao === "gerente" && lojaId === 3)
-) {
-  calculadoAjustado.perc1 = Number(base.percManual1);
-  calculadoAjustado.com1 = Number(
-  (
-    base.funcao === "consultor_vendas"
-      ? Number(base.sem1 || 0) * Number(base.percManual1)
-      : Number(base.sem1 || 0) * (Number(base.percManual1) / 100)
-  ).toFixed(2)
-);
-}
-
-if (
-  base.percManual3 !== null &&
-base.percManual3 !== undefined &&
-  !(base.funcao === "gerente" && lojaId === 3)
-) {
-  calculadoAjustado.perc2 = Number(base.percManual2);
-  calculadoAjustado.com2 = Number(
-  (
-    base.funcao === "consultor_vendas"
-      ? Number(base.sem2 || 0) * Number(base.percManual2)
-      : Number(base.sem2 || 0) * (Number(base.percManual2) / 100)
-  ).toFixed(2)
-);
-}
-
-if (
   base.percManual1 !== null &&
   base.percManual1 !== undefined &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
+  calculadoAjustado.perc1 = Number(base.percManual1);
+  calculadoAjustado.com1 = Number(
+    (
+      base.funcao === "consultor_vendas"
+        ? Number(base.sem1 || 0) * Number(base.percManual1)
+        : Number(base.sem1 || 0) * (Number(base.percManual1) / 100)
+    ).toFixed(2)
+  );
+}
+
+if (
+  base.percManual2 !== null &&
+  base.percManual2 !== undefined &&
+  !(base.funcao === "gerente" && lojaId === 3)
+) {
+  calculadoAjustado.perc2 = Number(base.percManual2);
+  calculadoAjustado.com2 = Number(
+    (
+      base.funcao === "consultor_vendas"
+        ? Number(base.sem2 || 0) * Number(base.percManual2)
+        : Number(base.sem2 || 0) * (Number(base.percManual2) / 100)
+    ).toFixed(2)
+  );
+}
+
+if (
+  base.percManual3 !== null &&
+  base.percManual3 !== undefined &&
+  !(base.funcao === "gerente" && lojaId === 3)
+) {
   calculadoAjustado.perc3 = Number(base.percManual3);
   calculadoAjustado.com3 = Number(
-  (
-    base.funcao === "consultor_vendas"
-      ? Number(base.sem3 || 0) * Number(base.percManual3)
-      : Number(base.sem3 || 0) * (Number(base.percManual3) / 100)
-  ).toFixed(2)
-);
+    (
+      base.funcao === "consultor_vendas"
+        ? Number(base.sem3 || 0) * Number(base.percManual3)
+        : Number(base.sem3 || 0) * (Number(base.percManual3) / 100)
+    ).toFixed(2)
+  );
 }
 
 if (
   base.percManual4 !== null &&
-base.percManual4 !== undefined &&
+  base.percManual4 !== undefined &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc4 = Number(base.percManual4);
   calculadoAjustado.com4 = Number(
-  (
-    base.funcao === "consultor_vendas"
-      ? Number(base.sem4 || 0) * Number(base.percManual4)
-      : Number(base.sem4 || 0) * (Number(base.percManual4) / 100)
-  ).toFixed(2)
-);
+    (
+      base.funcao === "consultor_vendas"
+        ? Number(base.sem4 || 0) * Number(base.percManual4)
+        : Number(base.sem4 || 0) * (Number(base.percManual4) / 100)
+    ).toFixed(2)
+  );
 }
 
 if (func.funcao !== "supervisor") {
