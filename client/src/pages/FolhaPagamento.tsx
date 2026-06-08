@@ -557,10 +557,8 @@ const manual =
     linha.funcao === "gerente" &&
     linha.loja_id === 3
   ) &&
-  manualValue !== null &&
-  manualValue !== undefined &&
+  Number(manualValue || 0) > 0 &&
   Math.abs(Number(manualValue) - Number(percentualAutomatico)) > 0.001;
-
 const regraClassName = manual
   ? "text-orange-400 font-bold hover:underline underline-offset-4"
   : "text-yellow-300 font-semibold hover:underline underline-offset-4";
@@ -1554,11 +1552,11 @@ percManual4: isGerenteSaoJose ? null : base.percManual4,
 const calculadoAjustado = { ...calculado };
 
 if (
-  base.percManual1 !== null &&
-  base.percManual1 !== undefined &&
+  Number(base.percManual1 || 0) > 0 &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc1 = Number(base.percManual1);
+
   calculadoAjustado.com1 = Number(
     (
       base.funcao === "consultor_vendas"
@@ -1569,11 +1567,11 @@ if (
 }
 
 if (
-  base.percManual2 !== null &&
-  base.percManual2 !== undefined &&
+  Number(base.percManual2 || 0) > 0 &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc2 = Number(base.percManual2);
+
   calculadoAjustado.com2 = Number(
     (
       base.funcao === "consultor_vendas"
@@ -1584,11 +1582,11 @@ if (
 }
 
 if (
-  base.percManual3 !== null &&
-  base.percManual3 !== undefined &&
+  Number(base.percManual3 || 0) > 0 &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc3 = Number(base.percManual3);
+
   calculadoAjustado.com3 = Number(
     (
       base.funcao === "consultor_vendas"
@@ -1599,11 +1597,11 @@ if (
 }
 
 if (
-  base.percManual4 !== null &&
-  base.percManual4 !== undefined &&
+  Number(base.percManual4 || 0) > 0 &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc4 = Number(base.percManual4);
+
   calculadoAjustado.com4 = Number(
     (
       base.funcao === "consultor_vendas"
