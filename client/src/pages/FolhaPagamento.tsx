@@ -105,7 +105,7 @@ if (args.quadrante === "consultor_vendas") {
 }
 
 if (args.quadrante === "alinhador") {
-  return totalComissao + premiacao - vale - aluguel - inss - adiant - holerite;
+  return totalComissao + premiacao - vale - aluguel;
 }
 
 if (
