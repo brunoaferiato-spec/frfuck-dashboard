@@ -778,7 +778,7 @@ const regraClassName = manual
             </thead>
 
             <tbody>
-              {linhas.map((linha) => (
+             {linhas.map((linha: LinhaComQuadrante) => (
                 <tr
                   key={linha.id}
                   className="border-b border-primary/10 hover:bg-gray-800"
@@ -931,7 +931,9 @@ const regraClassName = manual
     </td>
 
     <td className="p-2 text-right">
-  {renderRegraButton(linha, 1)}
+  <span className="text-yellow-300 font-semibold">
+    {Number((linha as any).percLojaGerente || 0).toFixed(2)}%
+  </span>
 </td>
 
     <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
@@ -1649,6 +1651,45 @@ if (func.funcao === "supervisor") {
 
   calculadoAjustado.premiacao =
     Number(calculadoAjustado.premiacao || 0) + premiacaoGrupoSupervisor;
+}
+
+if (func.funcao === "gerente" && lojaId === 3) {
+  const liquidezLoja = Number((base as any).liquidezLojaGerente || 0);
+
+  const metaGerente = findMetaForFuncionario({
+    funcionarioNome: func.nome,
+    funcao: "gerente",
+    cidade: selectedLoja,
+    tipoMeta: func.tipoMeta,
+  });
+
+  const calculoLoja = computeFolhaLinha({
+    meta: metaGerente,
+    funcao: "gerente",
+    cidade: selectedLoja,
+    funcionarioNome: func.nome,
+    tipoMeta: func.tipoMeta,
+    sem1: liquidezLoja,
+    sem2: 0,
+    sem3: 0,
+    sem4: 0,
+    premiacoesManuais: [],
+    vales: [],
+    aluguel: 0,
+    inss: 0,
+    adiant: 0,
+    holerite: 0,
+  });
+
+  (calculadoAjustado as any).percLojaGerente = calculoLoja.perc1;
+  (calculadoAjustado as any).comLojaGerente = calculoLoja.com1;
+
+  calculadoAjustado.totalComissao =
+    Number(calculadoAjustado.com1 || 0) +
+    Number(calculadoAjustado.com2 || 0) +
+    Number(calculadoAjustado.com3 || 0) +
+    Number(calculadoAjustado.com4 || 0) +
+    Number(calculoLoja.com1 || 0);
 }
 
 const boletoAjustado = calcularBoletoAjustado({
