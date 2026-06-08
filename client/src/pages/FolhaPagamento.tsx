@@ -833,10 +833,8 @@ const regraClassName = manual
     </td>
 
     <td className="p-2 text-right">
-      <span className="text-yellow-300 font-semibold">
-  {Number((linha as any).percLojaGerente || 0).toFixed(2)}%
-</span>
-    </td>
+  {renderRegraButton(linha, 1)}
+</td>
   </>
 )}
 
