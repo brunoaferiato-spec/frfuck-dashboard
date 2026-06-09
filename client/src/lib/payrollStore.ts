@@ -960,22 +960,22 @@ const metaUsada =
     : null);
 
   const p1 =
-  percManual1 !== null && percManual1 !== undefined
+  Number(percManual1 || 0) > 0
     ? Number(percManual1)
     : getPercentualFromRegra(metaUsada, Number(sem1 || 0));
 
 const p2 =
-  percManual2 !== null && percManual2 !== undefined
+  Number(percManual2 || 0) > 0
     ? Number(percManual2)
     : getPercentualFromRegra(metaUsada, Number(sem2 || 0));
 
 const p3 =
-  percManual3 !== null && percManual3 !== undefined
+  Number(percManual3 || 0) > 0
     ? Number(percManual3)
     : getPercentualFromRegra(metaUsada, Number(sem3 || 0));
 
 const p4 =
-  percManual4 !== null && percManual4 !== undefined
+  Number(percManual4 || 0) > 0
     ? Number(percManual4)
     : getPercentualFromRegra(metaUsada, Number(sem4 || 0));
 
