@@ -552,7 +552,7 @@ const percentualAutomatico =
     ? calculadoOriginal.perc3
     : calculadoOriginal.perc4;
 
-const manual =
+  const manual =
   !(
     linha.funcao === "gerente" &&
     linha.loja_id === 3
