@@ -552,6 +552,18 @@ const percentualAutomatico =
     ? calculadoOriginal.perc3
     : calculadoOriginal.perc4;
 
+if (linha.nome.toUpperCase().includes("VITOR")) {
+  console.log({
+    nome: linha.nome,
+    semana,
+    manualValue,
+    percentualAutomatico,
+    manual:
+      Number(manualValue || 0) > 0 &&
+      Math.abs(Number(manualValue) - Number(percentualAutomatico)) > 0.001,
+  });
+}
+
   const manual =
   !(
     linha.funcao === "gerente" &&
