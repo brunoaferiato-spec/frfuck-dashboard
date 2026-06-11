@@ -552,18 +552,6 @@ const percentualAutomatico =
     ? calculadoOriginal.perc3
     : calculadoOriginal.perc4;
 
-if (linha.nome.toUpperCase().includes("VITOR")) {
-  console.log({
-    nome: linha.nome,
-    semana,
-    manualValue,
-    percentualAutomatico,
-    manual:
-      Number(manualValue || 0) > 0 &&
-      Math.abs(Number(manualValue) - Number(percentualAutomatico)) > 0.001,
-  });
-}
-
  const manual =
   !(
     linha.funcao === "gerente" &&
@@ -1176,10 +1164,6 @@ export default function FolhaPagamento() {
   }
 );
 
-console.log("FUNCIONARIOS QUERY DATA:", funcionariosQuery.data);
-console.log("FUNCIONARIOS QUERY ERROR:", funcionariosQuery.error);
-console.log("LOJA ID ENVIADO:", lojaId);
-
 const folhaBaseQuery = trpc.folhaPagamento.getBaseByLojaAnoMes.useQuery(
   { lojaId, ano, mes },
   {
@@ -1293,9 +1277,6 @@ const todosFuncionarios = useMemo(() => {
 
 const funcionariosDaCidade = useMemo(() => {
   const dataReferencia = new Date(ano, mes - 1, 1);
-
-  console.log("TODOS FUNCIONARIOS:", todosFuncionarios);
-  console.log("LOJA ATUAL:", lojaId);
 
   return todosFuncionarios.filter((f: any) => {
     if (Number(f.loja_id ?? f.lojaId) !== Number(lojaId)) return false;
