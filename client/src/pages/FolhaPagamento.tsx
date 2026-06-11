@@ -564,12 +564,13 @@ if (linha.nome.toUpperCase().includes("VITOR")) {
   });
 }
 
-  const manual =
+ const manual =
   !(
     linha.funcao === "gerente" &&
     linha.loja_id === 3
   ) &&
   Number(manualValue || 0) > 0 &&
+  Number(percentualAutomatico || 0) > 0 &&
   Math.abs(Number(manualValue) - Number(percentualAutomatico)) > 0.001;
 const regraClassName = manual
   ? "text-orange-400 font-bold hover:underline underline-offset-4"
