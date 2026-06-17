@@ -2335,8 +2335,15 @@ async function lançarNegativoNoPróximoMês() {
     percentual,
     comissao,
     regraTexto: `${percentual.toFixed(2)}%`,
-    metaTitulo: "Meta de vendas",
-    baseLabel: semana === 5 ? "Liquidez Loja" : `Liquidez SEM${semana}`,
+    metaTitulo:
+  semana === 5
+    ? "Meta gerente loja"
+    : "Meta de vendas",
+
+baseLabel:
+  semana === 5
+    ? "Liquidez Loja"
+    : `Liquidez SEM${semana}`,
     extra: "",
   };
 }
