@@ -2325,35 +2325,37 @@ async function lançarNegativoNoPróximoMês() {
     ? linha.com3
     : linha.com4;
 
-  return {
-    linha,
-    semana,
-    isConsultor: false,
-    isRecepcao: false,
-    isSupervisor: false,
-    base,
-    percentual,
-    comissao,
-    regraTexto:
-  semana === 5
-    ? findMetaForFuncionario({
-        funcionarioNome: linha.nome,
-        funcao: "gerente",
-        cidade: linha.loja_id.toString(),
-        tipoMeta: linha.tipoMeta,
-      })?.regra || "Sem meta de gerente cadastrada"
-    : `${percentual.toFixed(2)}%`,
-    metaTitulo:
-  semana === 5
-    ? "Meta gerente loja"
-    : "Meta de vendas",
+ const metaGerenteLoja = findMetaForFuncionario({
+  funcionarioNome: linha.nome,
+  funcao: "gerente",
+  cidade: linha.loja_id.toString(),
+  tipoMeta: linha.tipoMeta,
+});
 
-baseLabel:
-  semana === 5
-    ? "Liquidez Loja"
-    : `Liquidez SEM${semana}`,
+return {
+  linha,
+  semana,
+  isConsultor: false,
+  isRecepcao: false,
+  isSupervisor: false,
+  base,
+  percentual,
+  comissao,
+  regraTexto:
+    semana === 5
+      ? metaGerenteLoja?.regra || "Sem meta de gerente cadastrada"
+      : `${percentual.toFixed(2)}%`,
+  metaTitulo:
+    semana === 5
+      ? "Meta gerente loja"
+      : "Meta de vendas",
+  baseLabel:
+    semana === 5
+      ? "Liquidez Loja"
+      : `Liquidez SEM${semana}`,
     extra: "",
-  };
+};
+
 }
 
     if (isRecepcao) {
