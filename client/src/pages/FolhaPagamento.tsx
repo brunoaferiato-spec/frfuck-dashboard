@@ -2325,13 +2325,6 @@ async function lançarNegativoNoPróximoMês() {
     ? linha.com3
     : linha.com4;
 
- const metaGerenteLoja = findMetaForFuncionario({
-  funcionarioNome: linha.nome,
-  funcao: "gerente",
-  cidade: linha.loja_id.toString(),
-  tipoMeta: linha.tipoMeta,
-});
-
 return {
   linha,
   semana,
@@ -2342,9 +2335,9 @@ return {
   percentual,
   comissao,
   regraTexto:
-    semana === 5
-      ? metaGerenteLoja?.regra || "Sem meta de gerente cadastrada"
-      : `${percentual.toFixed(2)}%`,
+  semana === 5
+    ? "Até 359999 = 1,5% | 360000 a 459999 = 2% | 460000 a 559999 = 2,5% | 560000 ou mais = 3%"
+    : `${percentual.toFixed(2)}%`,
   metaTitulo:
     semana === 5
       ? "Meta gerente loja"
