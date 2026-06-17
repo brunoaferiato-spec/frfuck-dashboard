@@ -202,7 +202,7 @@ type NegativoEditorState = {
 type RegraSemanaEditorState = {
   open: boolean;
   linha: LinhaComQuadrante | null;
-  semana: 1 | 2 | 3 | 4 | null;
+  semana: 1 | 2 | 3 | 4 | 5 | null;
 };
 
 function usaMetaSemanal(lojaId: number, ano: number, mes: number) {
@@ -423,7 +423,7 @@ function TabelaQuadrante({
   onOpenNegativoEditor: (linha: LinhaComQuadrante) => void;
   onOpenRegraSemanaEditor: (
     linha: LinhaComQuadrante,
-    semana: 1 | 2 | 3 | 4
+    semana: 1 | 2 | 3 | 4 | 5
   ) => void;
 }) {
   if (linhas.length === 0) return null;
@@ -928,9 +928,13 @@ const regraClassName = manual
     </td>
 
     <td className="p-2 text-right">
-  <span className="text-yellow-300 font-semibold">
+  <button
+    type="button"
+    onClick={() => onOpenRegraSemanaEditor(linha, 5)}
+    className="text-yellow-300 font-semibold hover:underline underline-offset-4"
+  >
     {Number((linha as any).percLojaGerente || 0).toFixed(2)}%
-  </span>
+  </button>
 </td>
 
     <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
@@ -2155,8 +2159,8 @@ async function lançarNegativoNoPróximoMês() {
   }
 
   function openRegraSemanaEditor(
-    linha: LinhaComQuadrante,
-    semana: 1 | 2 | 3 | 4
+  linha: LinhaComQuadrante,
+  semana: 1 | 2 | 3 | 4 | 5
   ) {
     setRegraSemanaEditor({
       open: true,
@@ -2286,32 +2290,40 @@ async function lançarNegativoNoPróximoMês() {
     }
 
     if (linha.funcao === "gerente" && linha.loja_id === 3) {
+
+  // resto do código continua igual...
   const base =
-    semana === 1
-      ? linha.sem1
-      : semana === 2
-      ? linha.sem2
-      : semana === 3
-      ? linha.sem3
-      : linha.sem4;
+  semana === 5
+    ? Number((linha as any).liquidezLojaGerente || 0)
+    : semana === 1
+    ? linha.sem1
+    : semana === 2
+    ? linha.sem2
+    : semana === 3
+    ? linha.sem3
+    : linha.sem4;
 
   const percentual =
-    semana === 1
-      ? linha.perc1
-      : semana === 2
-      ? linha.perc2
-      : semana === 3
-      ? linha.perc3
-      : linha.perc4;
+  semana === 5
+    ? Number((linha as any).percLojaGerente || 0)
+    : semana === 1
+    ? linha.perc1
+    : semana === 2
+    ? linha.perc2
+    : semana === 3
+    ? linha.perc3
+    : linha.perc4;
 
   const comissao =
-    semana === 1
-      ? linha.com1
-      : semana === 2
-      ? linha.com2
-      : semana === 3
-      ? linha.com3
-      : linha.com4;
+  semana === 5
+    ? Number((linha as any).comLojaGerente || 0)
+    : semana === 1
+    ? linha.com1
+    : semana === 2
+    ? linha.com2
+    : semana === 3
+    ? linha.com3
+    : linha.com4;
 
   return {
     linha,
@@ -2324,7 +2336,7 @@ async function lançarNegativoNoPróximoMês() {
     comissao,
     regraTexto: `${percentual.toFixed(2)}%`,
     metaTitulo: "Meta de vendas",
-    baseLabel: `Liquidez SEM${semana}`,
+    baseLabel: semana === 5 ? "Liquidez Loja" : `Liquidez SEM${semana}`,
     extra: "",
   };
 }
@@ -3433,6 +3445,54 @@ if (
     const linha = regraSemanaEditor.linha;
 
     if (!linha || !semana) return;
+
+if (
+  linha.funcao === "gerente" &&
+  linha.loja_id === 3 &&
+  semana === 5
+) {
+  const liquidez = Number((linha as any).liquidezLojaGerente || 0);
+
+  const percentualFinal =
+    valor ?? Number((linha as any).percLojaGerente || 0);
+
+  const valorComissao = Number(
+    (liquidez * (percentualFinal / 100)).toFixed(2)
+  );
+
+  const patch = {
+    percLojaGerente: percentualFinal,
+    comLojaGerente: valorComissao,
+  };
+
+  setFolhas((prev) =>
+    prev.map((f) =>
+      f.funcionarioId === linha.funcionarioId &&
+      f.loja_id === lojaId &&
+      f.ano === ano &&
+      f.mes === mes
+        ? { ...f, ...patch }
+        : f
+    )
+  );
+
+  await upsertFolhaBaseMutation.mutateAsync({
+    funcionarioId: linha.funcionarioId,
+    lojaId,
+    ano,
+    mes,
+    semana: 5,
+    liquidez,
+    percentualComissao: percentualFinal,
+    percentualManual: valor,
+    valorComissao,
+    ultimaAlteracaoPor: usuarioLogado,
+    ultimaAlteracaoEm: new Date(),
+  });
+
+  await folhaBaseQuery.refetch();
+  return;
+}
 
     const percentualAutomatico =
       semana === 1
