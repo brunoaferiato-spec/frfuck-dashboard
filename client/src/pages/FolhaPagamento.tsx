@@ -2334,7 +2334,15 @@ async function lançarNegativoNoPróximoMês() {
     base,
     percentual,
     comissao,
-    regraTexto: `${percentual.toFixed(2)}%`,
+    regraTexto:
+  semana === 5
+    ? findMetaForFuncionario({
+        funcionarioNome: linha.nome,
+        funcao: "gerente",
+        cidade: linha.loja_id.toString(),
+        tipoMeta: linha.tipoMeta,
+      })?.regra || "Sem meta de gerente cadastrada"
+    : `${percentual.toFixed(2)}%`,
     metaTitulo:
   semana === 5
     ? "Meta gerente loja"
