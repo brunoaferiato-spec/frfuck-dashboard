@@ -1582,7 +1582,7 @@ if (
 }
 
 if (
-  Number(base.percManual1 || 0) > 0 &&
+  Number(base.percManual2 || 0) > 0 &&
   base.funcao !== "vendedor" &&
   base.funcao !== "mecanico" &&
   !(base.funcao === "gerente" && lojaId === 3)
@@ -1599,7 +1599,7 @@ if (
 }
 
 if (
-  Number(base.percManual1 || 0) > 0 &&
+  Number(base.percManual3 || 0) > 0 &&
   base.funcao !== "vendedor" &&
   base.funcao !== "mecanico" &&
   !(base.funcao === "gerente" && lojaId === 3)
@@ -1616,7 +1616,7 @@ if (
 }
 
 if (
-  Number(base.percManual1 || 0) > 0 &&
+  Number(base.percManual4 || 0) > 0 &&
   base.funcao !== "vendedor" &&
   base.funcao !== "mecanico" &&
   !(base.funcao === "gerente" && lojaId === 3)
@@ -1755,33 +1755,57 @@ return {
     [campo]: valor,
   };
 
-  const recalculado = computeFolhaLinha({
-  meta: findMetaForFuncionario({
-    funcionarioNome: updatedLine.nome,
-    funcao: updatedLine.funcao,
-    cidade: selectedLoja,
-    tipoMeta: updatedLine.tipoMeta,
-  }),
-  funcao: updatedLine.funcao,
+  const funcaoMetaAtualizacao =
+  updatedLine.funcao === "gerente" && lojaId === 3
+    ? "vendedor"
+    : updatedLine.funcao;
+
+const ignorarPercentualManual =
+  updatedLine.funcao === "vendedor" ||
+  updatedLine.funcao === "mecanico" ||
+  (updatedLine.funcao === "gerente" && lojaId === 3);
+
+const metaAtualizacao = findMetaForFuncionario({
+  funcionarioNome: updatedLine.nome,
+  funcao: funcaoMetaAtualizacao,
+  cidade: selectedLoja,
+  tipoMeta: updatedLine.tipoMeta,
+});
+
+const recalculado = computeFolhaLinha({
+  meta: metaAtualizacao,
+  funcao: funcaoMetaAtualizacao,
   cidade: selectedLoja,
   funcionarioNome: updatedLine.nome,
   tipoMeta: updatedLine.tipoMeta,
-  sem1: updatedLine.sem1,
-  sem2: updatedLine.sem2,
-  sem3: updatedLine.sem3,
-  sem4: updatedLine.sem4,
 
-  percManual1: updatedLine.percManual1,
-  percManual2: updatedLine.percManual2,
-  percManual3: updatedLine.percManual3,
-  percManual4: updatedLine.percManual4,
+  sem1: Number(updatedLine.sem1 || 0),
+  sem2: Number(updatedLine.sem2 || 0),
+  sem3: Number(updatedLine.sem3 || 0),
+  sem4: Number(updatedLine.sem4 || 0),
+
+  percManual1: ignorarPercentualManual
+    ? null
+    : updatedLine.percManual1,
+
+  percManual2: ignorarPercentualManual
+    ? null
+    : updatedLine.percManual2,
+
+  percManual3: ignorarPercentualManual
+    ? null
+    : updatedLine.percManual3,
+
+  percManual4: ignorarPercentualManual
+    ? null
+    : updatedLine.percManual4,
 
   premiacoesManuais: updatedLine.premiacoesManuais || [],
   vales: updatedLine.vales || [],
-  aluguel: updatedLine.aluguel,
-  inss: updatedLine.inss,
-  adiant: updatedLine.adiant,
-  holerite: updatedLine.holerite,
+  aluguel: Number(updatedLine.aluguel || 0),
+  inss: Number(updatedLine.inss || 0),
+  adiant: Number(updatedLine.adiant || 0),
+  holerite: Number(updatedLine.holerite || 0),
 });
 
   const mergedLine: FolhaMensal = {
