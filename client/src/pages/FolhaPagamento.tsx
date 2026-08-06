@@ -1566,6 +1566,8 @@ const calculadoAjustado = { ...calculado };
 
 if (
   Number(base.percManual1 || 0) > 0 &&
+  base.funcao !== "vendedor" &&
+  base.funcao !== "mecanico" &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc1 = Number(base.percManual1);
@@ -1580,7 +1582,9 @@ if (
 }
 
 if (
-  Number(base.percManual2 || 0) > 0 &&
+  Number(base.percManual1 || 0) > 0 &&
+  base.funcao !== "vendedor" &&
+  base.funcao !== "mecanico" &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc2 = Number(base.percManual2);
@@ -1595,7 +1599,9 @@ if (
 }
 
 if (
-  Number(base.percManual3 || 0) > 0 &&
+  Number(base.percManual1 || 0) > 0 &&
+  base.funcao !== "vendedor" &&
+  base.funcao !== "mecanico" &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc3 = Number(base.percManual3);
@@ -1610,7 +1616,9 @@ if (
 }
 
 if (
-  Number(base.percManual4 || 0) > 0 &&
+  Number(base.percManual1 || 0) > 0 &&
+  base.funcao !== "vendedor" &&
+  base.funcao !== "mecanico" &&
   !(base.funcao === "gerente" && lojaId === 3)
 ) {
   calculadoAjustado.perc4 = Number(base.percManual4);

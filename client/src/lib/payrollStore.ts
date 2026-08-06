@@ -596,44 +596,67 @@ export function shouldRemoveValeFromHereForward(args: {
 // =========================
 
 function getPercentualFromRegra(meta: Meta | null, valor: number) {
-  if (!meta || !meta.regra) return 0;
-  if (valor <= 0) return 0;
+  if (!meta?.regra || valor <= 0) return 0;
 
   const regras = String(meta.regra)
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .split("|")
-    .map((r) => r.trim())
+    .map((regra) => regra.trim())
     .filter(Boolean);
 
   for (const regra of regras) {
-    const percMatch = regra.match(/=\s*(\d+(?:[.,]\d+)?)\s*%/);
-    const percentual = percMatch ? Number(percMatch[1].replace(",", ".")) : 0;
-
-    const textoSemPercentual = regra.replace(/=\s*\d+(?:[.,]\d+)?\s*%/, "");
-
-    const numeros = [...textoSemPercentual.matchAll(/\d[\d.,]*/g)].map((m) =>
-      Number(m[0].replace(/\./g, "").replace(",", "."))
+    const percentualEncontrado = regra.match(
+      /=\s*(\d+(?:[.,]\d+)?)\s*%/
     );
 
-    if (textoSemPercentual.includes("ou mais")) {
+    const percentual = percentualEncontrado
+      ? Number(percentualEncontrado[1].replace(",", "."))
+      : 0;
+
+    const texto = regra.replace(
+      /=\s*\d+(?:[.,]\d+)?\s*%/,
+      ""
+    );
+
+    const numeros = [
+      ...texto.matchAll(/\d[\d.,]*/g),
+    ].map((resultado) =>
+      Number(
+        resultado[0]
+          .replace(/\./g, "")
+          .replace(",", ".")
+      )
+    );
+
+    if (texto.includes("ou mais")) {
       const minimo = numeros[0] || 0;
+
       if (valor >= minimo) return percentual;
       continue;
     }
 
-    if (textoSemPercentual.includes("ate")) {
-      const maximo = numeros[0] || 0;
-      if (valor <= maximo) return percentual;
+    // Faixas: "33.000 A 39.999" ou "40.000 ATÉ 46.999"
+    if (
+      numeros.length >= 2 &&
+      (texto.includes(" a ") || texto.includes(" ate "))
+    ) {
+      const minimo = numeros[0] || 0;
+      const maximo = numeros[1] || 0;
+
+      if (valor >= minimo && valor <= maximo) {
+        return percentual;
+      }
+
       continue;
     }
 
-    if (textoSemPercentual.includes(" a ") && numeros.length >= 2) {
-      const minimo = numeros[0] || 0;
-      const maximo = numeros[1] || 0;
-      if (valor >= minimo && valor <= maximo) return percentual;
-      continue;
+    // Apenas "ATÉ 32.999"
+    if (texto.includes("ate") && numeros.length === 1) {
+      const maximo = numeros[0] || 0;
+
+      if (valor <= maximo) return percentual;
     }
   }
 
