@@ -978,7 +978,6 @@ const p4 =
   Number(percManual4 || 0) > 0
     ? Number(percManual4)
     : getPercentualFromRegra(metaUsada, Number(sem4 || 0));
-
   const c1 = Number(sem1 || 0) * (p1 / 100);
   const c2 = Number(sem2 || 0) * (p2 / 100);
   const c3 = Number(sem3 || 0) * (p3 / 100);
