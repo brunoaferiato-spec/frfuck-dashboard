@@ -961,6 +961,68 @@ if (funcao === "gerente" && String(cidade) === "4") {
 const funcaoNormalizada = String(funcao || "").trim().toLowerCase();
 const cidadeNormalizada = String(cidade || "").trim();
 
+/**
+ * REGRA PROVISÓRIA DE PAGAMENTO
+ *
+ * Vendedor e Mecânico são calculados diretamente pelas regras abaixo,
+ * sem depender temporariamente do cadastro de metas.
+ *
+ * 1 = Joinville
+ * 2 = Blumenau
+ * 3 = São José
+ * 4 = Florianópolis
+ */
+function getPercentualProvisorio(valorBruto: number): number | null {
+  const valor = Number(valorBruto || 0);
+
+  if (
+    funcaoNormalizada !== "vendedor" &&
+    funcaoNormalizada !== "mecanico"
+  ) {
+    return null;
+  }
+
+  if (valor <= 0) {
+    return 0;
+  }
+
+  // Joinville / Blumenau / São José
+  if (["1", "2", "3"].includes(cidadeNormalizada)) {
+    if (funcaoNormalizada === "vendedor") {
+      if (valor < 33000) return 5;
+      if (valor < 40000) return 6;
+      if (valor < 47000) return 7;
+      return 8;
+    }
+
+    if (funcaoNormalizada === "mecanico") {
+      if (valor < 8000) return 10;
+      if (valor < 10000) return 12;
+      if (valor < 20000) return 7;
+      return 17;
+    }
+  }
+
+  // Florianópolis
+  if (cidadeNormalizada === "4") {
+    if (funcaoNormalizada === "vendedor") {
+      if (valor < 120000) return 5;
+      if (valor < 130000) return 6;
+      if (valor < 150000) return 7;
+      return 8;
+    }
+
+    if (funcaoNormalizada === "mecanico") {
+      if (valor < 30000) return 10;
+      if (valor < 40000) return 12;
+      if (valor < 50000) return 15;
+      return 17;
+    }
+  }
+
+  return null;
+}
+
 const metaUsada =
   meta ||
   (funcaoNormalizada === "mecanico"
@@ -982,25 +1044,27 @@ const metaUsada =
       }
     : null);
 
-  const p1 =
-  Number(percManual1 || 0) > 0
-    ? Number(percManual1)
-    : getPercentualFromRegra(metaUsada, Number(sem1 || 0));
+function calcularPercentual(
+  valor: number,
+  percentualManual?: number | null
+) {
+  const percentualProvisorio = getPercentualProvisorio(valor);
 
-const p2 =
-  Number(percManual2 || 0) > 0
-    ? Number(percManual2)
-    : getPercentualFromRegra(metaUsada, Number(sem2 || 0));
+  if (percentualProvisorio !== null) {
+    return percentualProvisorio;
+  }
 
-const p3 =
-  Number(percManual3 || 0) > 0
-    ? Number(percManual3)
-    : getPercentualFromRegra(metaUsada, Number(sem3 || 0));
+  if (Number(percentualManual || 0) > 0) {
+    return Number(percentualManual);
+  }
 
-const p4 =
-  Number(percManual4 || 0) > 0
-    ? Number(percManual4)
-    : getPercentualFromRegra(metaUsada, Number(sem4 || 0));
+  return getPercentualFromRegra(metaUsada, valor);
+}
+
+const p1 = calcularPercentual(Number(sem1 || 0), percManual1);
+const p2 = calcularPercentual(Number(sem2 || 0), percManual2);
+const p3 = calcularPercentual(Number(sem3 || 0), percManual3);
+const p4 = calcularPercentual(Number(sem4 || 0), percManual4);
   const c1 = Number(sem1 || 0) * (p1 / 100);
   const c2 = Number(sem2 || 0) * (p2 / 100);
   const c3 = Number(sem3 || 0) * (p3 / 100);
