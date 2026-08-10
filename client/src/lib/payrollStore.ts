@@ -998,7 +998,7 @@ function getPercentualProvisorio(valorBruto: number): number | null {
     if (funcaoNormalizada === "mecanico") {
       if (valor < 8000) return 10;
       if (valor < 10000) return 12;
-      if (valor < 20000) return 7;
+      if (valor < 20000) return 15;
       return 17;
     }
   }
