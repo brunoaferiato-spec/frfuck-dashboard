@@ -1,6 +1,9 @@
 import {
   calcularPercentualVendedorMecanico,
   calcularPercentualAlinhador,
+  calcularConsultorMeta1Semana,
+  calcularConsultorMeta2Mensal,
+  getRegrasConsultor,
 } from "./regrasComissao";
 
 // =========================
@@ -258,22 +261,30 @@ export function getConsultorRegraTexto(args: {
   tipoMeta?: string;
   carrosSemana: number;
 }) {
-  const carros = Number(args.carrosSemana || 0);
+  const regras = getRegrasConsultor({
+    lojaId: args.cidade,
+  });
 
-  if (args.tipoMeta === "meta2") {
-    return "R$ 100,00 / 25 carros";
+  if (!regras) {
+    return "Sem regra cadastrada";
   }
 
+  if (args.tipoMeta === "meta2") {
+    return `R$ ${regras.meta2.valorPorBloco.toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })} / ${regras.meta2.carrosPorBloco} carros`;
+  }
+
+  const carros = Number(args.carrosSemana || 0);
   let valorPorCarro = 0;
 
-  if (["1", "3", "4"].includes(String(args.cidade))) {
-    if (carros <= 49) valorPorCarro = 8;
-    else if (carros <= 54) valorPorCarro = 9;
-    else valorPorCarro = 10;
-  } else if (String(args.cidade) === "2") {
-    if (carros <= 74) valorPorCarro = 8;
-    else if (carros <= 82) valorPorCarro = 9;
-    else valorPorCarro = 10;
+  for (const faixa of regras.meta1.faixas) {
+    if (carros >= faixa.minimoCarros) {
+      valorPorCarro = faixa.valorPorCarro;
+    } else {
+      break;
+    }
   }
 
   return `R$ ${valorPorCarro.toLocaleString("pt-BR", {
@@ -297,50 +308,45 @@ export function getPremiacaoAutomaticaDetalhes(args: {
     return { detalhes, total: 0 };
   }
 
-  const semanas = [args.sem1, args.sem2, args.sem3, args.sem4];
-
   if (args.tipoMeta === "meta2") {
-   const totalCarros = Number(args.sem1 || 0);
-
-if (totalCarros <= 0) {
-  return { detalhes, total: 0 };
-}
-
-    const bonusMeta2 = [
-      { carros: 200, valor: 200 },
-      { carros: 250, valor: 250 },
-      { carros: 300, valor: 300 },
-      { carros: 350, valor: 350 },
-      { carros: 400, valor: 400 },
-    ];
-
-    bonusMeta2.forEach((bonus) => {
-  if (totalCarros >= bonus.carros) {
-    detalhes.push({
-      descricao: `Meta ${bonus.carros} carros`,
-      valor: bonus.valor,
+    const calculado = calcularConsultorMeta2Mensal({
+      lojaId: args.cidade,
+      carros: Number(args.sem1 || 0),
     });
+
+    return {
+      detalhes: calculado.detalhesPremiacao,
+      total: calculado.premiacao,
+    };
   }
-});
 
-    const total = detalhes.reduce((acc, item) => acc + item.valor, 0);
-    return { detalhes, total };
-  }
+  const semanas = [
+    Number(args.sem1 || 0),
+    Number(args.sem2 || 0),
+    Number(args.sem3 || 0),
+    Number(args.sem4 || 0),
+  ];
 
-  semanas.forEach((valor, index) => {
-    const carros = Number(valor || 0);
-    const semanaLabel = `Semana ${index + 1}`;
+  semanas.forEach((carros, index) => {
+    const calculado = calcularConsultorMeta1Semana({
+      lojaId: args.cidade,
+      carros,
+      semana: (index + 1) as 1 | 2 | 3 | 4,
+    });
 
-    if (["1", "3", "4"].includes(String(args.cidade))) {
-      if (carros >= 65) detalhes.push({ descricao: semanaLabel, valor: 200 });
-    }
-
-    if (String(args.cidade) === "2") {
-      if (carros >= 100) detalhes.push({ descricao: semanaLabel, valor: 200 });
+    if (calculado.premiacao > 0 && calculado.descricaoPremiacao) {
+      detalhes.push({
+        descricao: calculado.descricaoPremiacao,
+        valor: calculado.premiacao,
+      });
     }
   });
 
-  const total = detalhes.reduce((acc, item) => acc + item.valor, 0);
+  const total = detalhes.reduce(
+    (acc, item) => acc + Number(item.valor || 0),
+    0
+  );
+
   return { detalhes, total };
 }
 
@@ -880,83 +886,116 @@ if (funcao === "gerente" && String(cidade) === "4") {
   }
 
   if (funcao === "consultor_vendas") {
-    const semanas = [
-      Number(sem1 || 0),
-      Number(sem2 || 0),
-      Number(sem3 || 0),
-      Number(sem4 || 0),
+    // ==================================================
+    // META 2 - MENSAL
+    // R$ 50 a cada 12 carros + bônus acumulativos
+    // ==================================================
+    if (tipoMeta === "meta2") {
+      const totalCarros = Number(sem1 || 0);
+
+      const calculadoMeta2 = calcularConsultorMeta2Mensal({
+        lojaId: cidade,
+        carros: totalCarros,
+      });
+
+      const totalComissao = Number(calculadoMeta2.comissao || 0);
+      const premiacaoAutomatica = Number(calculadoMeta2.premiacao || 0);
+      const premiacao = premiacaoAutomatica + premiacaoManual;
+
+      const boleto =
+        totalComissao +
+        premiacao -
+        vale;
+
+      return {
+        perc1: 0,
+        perc2: 0,
+        perc3: 0,
+        perc4: 0,
+
+        com1: totalComissao,
+        com2: 0,
+        com3: 0,
+        com4: 0,
+
+        totalLiquidez: totalCarros,
+        totalComissao,
+
+        premiacao,
+        vale,
+        boleto,
+      };
+    }
+
+    // ==================================================
+    // META 1 - SEMANAL
+    // Faixa por quantidade de carros em cada semana
+    // + R$ 200 quando atingir 65 carros na semana
+    // ==================================================
+    const resultados = [
+      calcularConsultorMeta1Semana({
+        lojaId: cidade,
+        carros: Number(sem1 || 0),
+        semana: 1,
+      }),
+      calcularConsultorMeta1Semana({
+        lojaId: cidade,
+        carros: Number(sem2 || 0),
+        semana: 2,
+      }),
+      calcularConsultorMeta1Semana({
+        lojaId: cidade,
+        carros: Number(sem3 || 0),
+        semana: 3,
+      }),
+      calcularConsultorMeta1Semana({
+        lojaId: cidade,
+        carros: Number(sem4 || 0),
+        semana: 4,
+      }),
     ];
 
-    const calcularComissaoSemana = (carros: number) => {
-      if (["1", "3", "4"].includes(String(cidade))) {
-        if (carros <= 49) return carros * 8;
-        if (carros <= 54) return carros * 9;
-        return carros * 10;
-      }
+    const [r1, r2, r3, r4] = resultados;
 
-      if (String(cidade) === "2") {
-        if (carros <= 74) return carros * 8;
-        if (carros <= 82) return carros * 9;
-        return carros * 10;
-      }
+    const com1 = Number(r1.comissao || 0);
+    const com2 = Number(r2.comissao || 0);
+    const com3 = Number(r3.comissao || 0);
+    const com4 = Number(r4.comissao || 0);
 
-      return 0;
-    };
+    const totalComissao = com1 + com2 + com3 + com4;
 
-    const totalCarros =
-  tipoMeta === "meta2"
-    ? Number(sem1 || 0)
-    : semanas.reduce((acc, item) => acc + Number(item || 0), 0);
-
-    let com1 = 0;
-    let com2 = 0;
-    let com3 = 0;
-    let com4 = 0;
-    let totalComissao = 0;
-
-    if (tipoMeta === "meta2") {
-  totalComissao = totalCarros > 0
-    ? Math.floor(totalCarros / 25) * 100
-    : 0;
-
-  com1 = totalComissao;
-  com2 = 0;
-  com3 = 0;
-  com4 = 0;
-}
-    const premiacaoAutomatica = getPremiacaoAutomaticaDetalhes({
-      funcao,
-      cidade,
-      tipoMeta,
-      sem1,
-      sem2,
-      sem3,
-      sem4,
-    }).total;
+    const premiacaoAutomatica = resultados.reduce(
+      (acc, item) => acc + Number(item.premiacao || 0),
+      0
+    );
 
     const premiacao = premiacaoAutomatica + premiacaoManual;
-    const totalLiquidez = totalCarros;
+
+    const totalCarros =
+      Number(sem1 || 0) +
+      Number(sem2 || 0) +
+      Number(sem3 || 0) +
+      Number(sem4 || 0);
 
     const boleto =
       totalComissao +
       premiacao -
-      vale -
-      aluguel -
-      inss -
-      adiant -
-      holerite;
+      vale;
 
     return {
-      perc1: 0,
-      perc2: 0,
-      perc3: 0,
-      perc4: 0,
+      perc1: Number(r1.valorPorCarro || 0),
+      perc2: Number(r2.valorPorCarro || 0),
+      perc3: Number(r3.valorPorCarro || 0),
+      perc4: Number(r4.valorPorCarro || 0),
+
       com1,
       com2,
       com3,
       com4,
-      totalLiquidez,
+
+      totalLiquidez: totalCarros,
       totalComissao,
+
       premiacao,
       vale,
       boleto,

@@ -1,7 +1,12 @@
 import type {
   RegrasVendedorMecanico,
   RegraAlinhador,
+  RegrasConsultor,
 } from "./types";
+
+// =========================
+// VENDEDOR E MECÂNICO
+// =========================
 
 export const regrasBlumenau: RegrasVendedorMecanico = {
   vendedor: {
@@ -25,6 +30,10 @@ export const regrasBlumenau: RegrasVendedorMecanico = {
   },
 };
 
+// =========================
+// ALINHADOR PADRÃO
+// =========================
+
 export const regraAlinhadorPadraoBlumenau: RegraAlinhador = {
   periodicidade: "mensal",
   faixas: [
@@ -36,6 +45,10 @@ export const regraAlinhadorPadraoBlumenau: RegraAlinhador = {
   ],
 };
 
+// =========================
+// ALINHADOR MILTON
+// =========================
+
 export const regraAlinhadorMiltonBlumenau: RegraAlinhador = {
   periodicidade: "mensal",
   funcionarioEspecifico: "Milton",
@@ -45,4 +58,38 @@ export const regraAlinhadorMiltonBlumenau: RegraAlinhador = {
     { minimo: 120000, percentual: 10 },
     { minimo: 150000, percentual: 12 },
   ],
+};
+
+// =========================
+// CONSULTOR DE VENDAS
+// =========================
+
+export const regrasConsultorBlumenau: RegrasConsultor = {
+  meta1: {
+    periodicidade: "semanal",
+
+    faixas: [
+      { minimoCarros: 0, valorPorCarro: 8 },
+      { minimoCarros: 50, valorPorCarro: 9 },
+      { minimoCarros: 55, valorPorCarro: 10 },
+    ],
+
+    carrosParaBonus: 65,
+    valorBonus: 200,
+  },
+
+  meta2: {
+    periodicidade: "mensal",
+
+    carrosPorBloco: 12,
+    valorPorBloco: 50,
+
+    bonusAcumulativos: [
+      { carros: 200, valor: 200 },
+      { carros: 250, valor: 250 },
+      { carros: 300, valor: 300 },
+      { carros: 350, valor: 350 },
+      { carros: 400, valor: 400 },
+    ],
+  },
 };

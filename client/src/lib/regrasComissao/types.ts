@@ -20,3 +20,36 @@ export type RegraAlinhador = {
   faixas: FaixaPercentual[];
   funcionarioEspecifico?: string;
 };
+
+// =========================
+// CONSULTOR DE VENDAS
+// =========================
+
+export type FaixaConsultorMeta1 = {
+  minimoCarros: number;
+  valorPorCarro: number;
+};
+
+export type RegraConsultorMeta1 = {
+  periodicidade: "semanal";
+  faixas: FaixaConsultorMeta1[];
+  carrosParaBonus: number;
+  valorBonus: number;
+};
+
+export type BonusConsultorMeta2 = {
+  carros: number;
+  valor: number;
+};
+
+export type RegraConsultorMeta2 = {
+  periodicidade: "mensal";
+  carrosPorBloco: number;
+  valorPorBloco: number;
+  bonusAcumulativos: BonusConsultorMeta2[];
+};
+
+export type RegrasConsultor = {
+  meta1: RegraConsultorMeta1;
+  meta2: RegraConsultorMeta2;
+};

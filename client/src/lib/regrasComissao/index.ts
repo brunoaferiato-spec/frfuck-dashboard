@@ -1,29 +1,38 @@
 import {
   regrasJoinville,
   regraAlinhadorJoinville,
+  regrasConsultorJoinville,
 } from "./joinville";
 
 import {
   regrasBlumenau,
   regraAlinhadorPadraoBlumenau,
   regraAlinhadorMiltonBlumenau,
+  regrasConsultorBlumenau,
 } from "./blumenau";
 
 import {
   regrasSaoJose,
   regraAlinhadorSaoJose,
+  regrasConsultorSaoJose,
 } from "./saoJose";
 
 import {
   regrasFlorianopolis,
   regraAlinhadorFlorianopolis,
+  regrasConsultorFlorianopolis,
 } from "./florianopolis";
 
 import type {
   RegraPercentual,
   RegrasVendedorMecanico,
   RegraAlinhador,
+  RegrasConsultor,
 } from "./types";
+
+// ======================================================
+// MAPAS POR LOJA
+// ======================================================
 
 const REGRAS_POR_LOJA: Record<number, RegrasVendedorMecanico> = {
   1: regrasJoinville,
@@ -31,6 +40,17 @@ const REGRAS_POR_LOJA: Record<number, RegrasVendedorMecanico> = {
   3: regrasSaoJose,
   4: regrasFlorianopolis,
 };
+
+const REGRAS_CONSULTOR_POR_LOJA: Record<number, RegrasConsultor> = {
+  1: regrasConsultorJoinville,
+  2: regrasConsultorBlumenau,
+  3: regrasConsultorSaoJose,
+  4: regrasConsultorFlorianopolis,
+};
+
+// ======================================================
+// HELPERS
+// ======================================================
 
 function calcularPercentualPorFaixas(
   regra: RegraPercentual | RegraAlinhador,
@@ -126,11 +146,12 @@ export function getRegraAlinhador(args: {
 
   // Blumenau
   if (lojaId === 2) {
-    // Milton possui uma regra exclusiva.
+    // Milton possui regra exclusiva.
     if (nome.includes("MILTON")) {
       return regraAlinhadorMiltonBlumenau;
     }
 
+    // Demais alinhadores seguem regra padrão.
     return regraAlinhadorPadraoBlumenau;
   }
 
@@ -165,6 +186,130 @@ export function calcularPercentualAlinhador(args: {
 }
 
 // ======================================================
+// CONSULTOR DE VENDAS
+// ======================================================
+
+export function getRegrasConsultor(args: {
+  lojaId: number | string;
+}): RegrasConsultor | null {
+  const lojaId = Number(args.lojaId);
+
+  return REGRAS_CONSULTOR_POR_LOJA[lojaId] || null;
+}
+
+// ======================================================
+// CONSULTOR META 1 - SEMANAL
+// ======================================================
+
+export function calcularConsultorMeta1Semana(args: {
+  lojaId: number | string;
+  carros: number;
+  semana: 1 | 2 | 3 | 4;
+}) {
+  const regras = getRegrasConsultor({
+    lojaId: args.lojaId,
+  });
+
+  const carros = Number(args.carros || 0);
+
+  if (!regras || carros <= 0) {
+    return {
+      carros,
+      valorPorCarro: 0,
+      comissao: 0,
+      premiacao: 0,
+      descricaoPremiacao: null as string | null,
+    };
+  }
+
+  let valorPorCarro = 0;
+
+  for (const faixa of regras.meta1.faixas) {
+    if (carros >= faixa.minimoCarros) {
+      valorPorCarro = faixa.valorPorCarro;
+    } else {
+      break;
+    }
+  }
+
+  const comissao = carros * valorPorCarro;
+
+  const bateuBonus =
+    carros >= regras.meta1.carrosParaBonus;
+
+  const premiacao = bateuBonus
+    ? regras.meta1.valorBonus
+    : 0;
+
+  const descricaoPremiacao = bateuBonus
+    ? `PREMIAÇÃO SEMANA ${args.semana}`
+    : null;
+
+  return {
+    carros,
+    valorPorCarro,
+    comissao,
+    premiacao,
+    descricaoPremiacao,
+  };
+}
+
+// ======================================================
+// CONSULTOR META 2 - MENSAL
+// ======================================================
+
+export function calcularConsultorMeta2Mensal(args: {
+  lojaId: number | string;
+  carros: number;
+}) {
+  const regras = getRegrasConsultor({
+    lojaId: args.lojaId,
+  });
+
+  const carros = Number(args.carros || 0);
+
+  if (!regras || carros <= 0) {
+    return {
+      carros,
+      blocosCompletos: 0,
+      comissao: 0,
+      premiacao: 0,
+      detalhesPremiacao: [] as Array<{
+        descricao: string;
+        valor: number;
+      }>,
+    };
+  }
+
+  const blocosCompletos = Math.floor(
+    carros / regras.meta2.carrosPorBloco
+  );
+
+  const comissao =
+    blocosCompletos * regras.meta2.valorPorBloco;
+
+  const detalhesPremiacao = regras.meta2.bonusAcumulativos
+    .filter((bonus) => carros >= bonus.carros)
+    .map((bonus) => ({
+      descricao: `META ${bonus.carros} CARROS`,
+      valor: bonus.valor,
+    }));
+
+  const premiacao = detalhesPremiacao.reduce(
+    (total, item) => total + Number(item.valor || 0),
+    0
+  );
+
+  return {
+    carros,
+    blocosCompletos,
+    comissao,
+    premiacao,
+    detalhesPremiacao,
+  };
+}
+
+// ======================================================
 // EXPORTS
 // ======================================================
 
@@ -179,6 +324,11 @@ export {
   regraAlinhadorMiltonBlumenau,
   regraAlinhadorSaoJose,
   regraAlinhadorFlorianopolis,
+
+  regrasConsultorJoinville,
+  regrasConsultorBlumenau,
+  regrasConsultorSaoJose,
+  regrasConsultorFlorianopolis,
 };
 
 export type {
@@ -187,4 +337,9 @@ export type {
   RegraPercentual,
   RegrasVendedorMecanico,
   RegraAlinhador,
+  FaixaConsultorMeta1,
+  RegraConsultorMeta1,
+  BonusConsultorMeta2,
+  RegraConsultorMeta2,
+  RegrasConsultor,
 } from "./types";

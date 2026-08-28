@@ -498,7 +498,7 @@ const isMensalUnico =
    if (isConsultorMeta2) {
   return (
     <span className="text-yellow-300 font-semibold whitespace-nowrap">
-      R$ 100,00 cada 25 carros
+      {getRegraConsultorTexto(linha, Number(linha.sem1 || 0))}
     </span>
   );
 }
@@ -849,8 +849,8 @@ const regraClassName = manual
     </td>
 
     <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
-      R$ 100,00 cada 25 carros
-    </td>
+  {getRegraConsultorTexto(linha, Number(linha.sem1 || 0))}
+</td>
 
     <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
       {Number(linha.sem1 || 0).toLocaleString("pt-BR")}
