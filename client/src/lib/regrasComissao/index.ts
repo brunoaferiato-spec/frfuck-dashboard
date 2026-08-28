@@ -1,11 +1,28 @@
-import { regrasJoinville } from "./joinville";
-import { regrasBlumenau } from "./blumenau";
-import { regrasSaoJose } from "./saoJose";
-import { regrasFlorianopolis } from "./florianopolis";
+import {
+  regrasJoinville,
+  regraAlinhadorJoinville,
+} from "./joinville";
+
+import {
+  regrasBlumenau,
+  regraAlinhadorPadraoBlumenau,
+  regraAlinhadorMiltonBlumenau,
+} from "./blumenau";
+
+import {
+  regrasSaoJose,
+  regraAlinhadorSaoJose,
+} from "./saoJose";
+
+import {
+  regrasFlorianopolis,
+  regraAlinhadorFlorianopolis,
+} from "./florianopolis";
 
 import type {
   RegraPercentual,
   RegrasVendedorMecanico,
+  RegraAlinhador,
 } from "./types";
 
 const REGRAS_POR_LOJA: Record<number, RegrasVendedorMecanico> = {
@@ -16,7 +33,7 @@ const REGRAS_POR_LOJA: Record<number, RegrasVendedorMecanico> = {
 };
 
 function calcularPercentualPorFaixas(
-  regra: RegraPercentual,
+  regra: RegraPercentual | RegraAlinhador,
   valorBruto: number
 ): number {
   const valor = Number(valorBruto || 0);
@@ -37,6 +54,18 @@ function calcularPercentualPorFaixas(
 
   return percentual;
 }
+
+function normalizarNome(nome: string) {
+  return String(nome || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+}
+
+// ======================================================
+// VENDEDOR E MECÂNICO
+// ======================================================
 
 export function getRegraVendedorMecanico(args: {
   lojaId: number | string;
@@ -79,11 +108,77 @@ export function calcularPercentualVendedorMecanico(args: {
   return calcularPercentualPorFaixas(regra, args.valor);
 }
 
+// ======================================================
+// ALINHADOR
+// ======================================================
+
+export function getRegraAlinhador(args: {
+  lojaId: number | string;
+  funcionarioNome?: string;
+}): RegraAlinhador | null {
+  const lojaId = Number(args.lojaId);
+  const nome = normalizarNome(args.funcionarioNome || "");
+
+  // Joinville
+  if (lojaId === 1) {
+    return regraAlinhadorJoinville;
+  }
+
+  // Blumenau
+  if (lojaId === 2) {
+    // Milton possui uma regra exclusiva.
+    if (nome.includes("MILTON")) {
+      return regraAlinhadorMiltonBlumenau;
+    }
+
+    return regraAlinhadorPadraoBlumenau;
+  }
+
+  // São José
+  if (lojaId === 3) {
+    return regraAlinhadorSaoJose;
+  }
+
+  // Florianópolis
+  if (lojaId === 4) {
+    return regraAlinhadorFlorianopolis;
+  }
+
+  return null;
+}
+
+export function calcularPercentualAlinhador(args: {
+  lojaId: number | string;
+  funcionarioNome?: string;
+  valor: number;
+}): number | null {
+  const regra = getRegraAlinhador({
+    lojaId: args.lojaId,
+    funcionarioNome: args.funcionarioNome,
+  });
+
+  if (!regra) {
+    return null;
+  }
+
+  return calcularPercentualPorFaixas(regra, args.valor);
+}
+
+// ======================================================
+// EXPORTS
+// ======================================================
+
 export {
   regrasJoinville,
   regrasBlumenau,
   regrasSaoJose,
   regrasFlorianopolis,
+
+  regraAlinhadorJoinville,
+  regraAlinhadorPadraoBlumenau,
+  regraAlinhadorMiltonBlumenau,
+  regraAlinhadorSaoJose,
+  regraAlinhadorFlorianopolis,
 };
 
 export type {
@@ -91,4 +186,5 @@ export type {
   FaixaPercentual,
   RegraPercentual,
   RegrasVendedorMecanico,
+  RegraAlinhador,
 } from "./types";

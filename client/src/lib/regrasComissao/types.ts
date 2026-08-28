@@ -14,3 +14,9 @@ export type RegrasVendedorMecanico = {
   vendedor: RegraPercentual;
   mecanico: RegraPercentual;
 };
+
+export type RegraAlinhador = {
+  periodicidade: "mensal";
+  faixas: FaixaPercentual[];
+  funcionarioEspecifico?: string;
+};

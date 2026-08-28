@@ -1,4 +1,7 @@
-import { calcularPercentualVendedorMecanico } from "./regrasComissao";
+import {
+  calcularPercentualVendedorMecanico,
+  calcularPercentualAlinhador,
+} from "./regrasComissao";
 
 // =========================
 // TIPOS BÁSICOS
@@ -988,20 +991,38 @@ function calcularPercentual(
   valor: number,
   percentualManual?: number | null
 ) {
-  const percentualPorCidade = calcularPercentualVendedorMecanico({
+  // Vendedor e mecânico: regra oficial isolada por cidade.
+  const percentualVendedorMecanico = calcularPercentualVendedorMecanico({
     lojaId: cidadeNormalizada,
     funcao: funcaoNormalizada,
     valor,
   });
 
-  if (percentualPorCidade !== null) {
-    return percentualPorCidade;
+  if (percentualVendedorMecanico !== null) {
+    return percentualVendedorMecanico;
   }
 
+  // Demais funções continuam respeitando percentual manual válido.
+  // Isso preserva o comportamento já validado do alinhador.
   if (Number(percentualManual || 0) > 0) {
     return Number(percentualManual);
   }
 
+  // Alinhador: regra oficial por cidade/funcionário.
+  // Em Blumenau, Milton recebe a regra especial; os demais usam a padrão.
+  if (funcaoNormalizada === "alinhador") {
+    const percentualAlinhador = calcularPercentualAlinhador({
+      lojaId: cidadeNormalizada,
+      funcionarioNome,
+      valor,
+    });
+
+    if (percentualAlinhador !== null) {
+      return percentualAlinhador;
+    }
+  }
+
+  // Fallback legado para funções que ainda não foram migradas.
   return getPercentualFromRegra(metaUsada, valor);
 }
 

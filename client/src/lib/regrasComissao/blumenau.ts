@@ -1,4 +1,7 @@
-import type { RegrasVendedorMecanico } from "./types";
+import type {
+  RegrasVendedorMecanico,
+  RegraAlinhador,
+} from "./types";
 
 export const regrasBlumenau: RegrasVendedorMecanico = {
   vendedor: {
@@ -20,4 +23,26 @@ export const regrasBlumenau: RegrasVendedorMecanico = {
       { minimo: 20000, percentual: 17 },
     ],
   },
+};
+
+export const regraAlinhadorPadraoBlumenau: RegraAlinhador = {
+  periodicidade: "mensal",
+  faixas: [
+    { minimo: 0, percentual: 2 },
+    { minimo: 100000, percentual: 2.5 },
+    { minimo: 120000, percentual: 3 },
+    { minimo: 140000, percentual: 3.5 },
+    { minimo: 160000, percentual: 4 },
+  ],
+};
+
+export const regraAlinhadorMiltonBlumenau: RegraAlinhador = {
+  periodicidade: "mensal",
+  funcionarioEspecifico: "Milton",
+  faixas: [
+    { minimo: 0, percentual: 6 },
+    { minimo: 90000, percentual: 8 },
+    { minimo: 120000, percentual: 10 },
+    { minimo: 150000, percentual: 12 },
+  ],
 };
