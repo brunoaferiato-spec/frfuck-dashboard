@@ -1,3 +1,5 @@
+import { calcularPercentualVendedorMecanico } from "./regrasComissao";
+
 // =========================
 // TIPOS BÁSICOS
 // =========================
@@ -961,68 +963,6 @@ if (funcao === "gerente" && String(cidade) === "4") {
 const funcaoNormalizada = String(funcao || "").trim().toLowerCase();
 const cidadeNormalizada = String(cidade || "").trim();
 
-/**
- * REGRA PROVISÓRIA DE PAGAMENTO
- *
- * Vendedor e Mecânico são calculados diretamente pelas regras abaixo,
- * sem depender temporariamente do cadastro de metas.
- *
- * 1 = Joinville
- * 2 = Blumenau
- * 3 = São José
- * 4 = Florianópolis
- */
-function getPercentualProvisorio(valorBruto: number): number | null {
-  const valor = Number(valorBruto || 0);
-
-  if (
-    funcaoNormalizada !== "vendedor" &&
-    funcaoNormalizada !== "mecanico"
-  ) {
-    return null;
-  }
-
-  if (valor <= 0) {
-    return 0;
-  }
-
-  // Joinville / Blumenau / São José
-  if (["1", "2", "3"].includes(cidadeNormalizada)) {
-    if (funcaoNormalizada === "vendedor") {
-      if (valor < 33000) return 5;
-      if (valor < 40000) return 6;
-      if (valor < 47000) return 7;
-      return 8;
-    }
-
-    if (funcaoNormalizada === "mecanico") {
-      if (valor < 8000) return 10;
-      if (valor < 10000) return 12;
-      if (valor < 20000) return 15;
-      return 17;
-    }
-  }
-
-  // Florianópolis
-  if (cidadeNormalizada === "4") {
-    if (funcaoNormalizada === "vendedor") {
-      if (valor < 120000) return 5;
-      if (valor < 130000) return 6;
-      if (valor < 150000) return 7;
-      return 8;
-    }
-
-    if (funcaoNormalizada === "mecanico") {
-      if (valor < 30000) return 10;
-      if (valor < 40000) return 12;
-      if (valor < 50000) return 15;
-      return 17;
-    }
-  }
-
-  return null;
-}
-
 const metaUsada =
   meta ||
   (funcaoNormalizada === "mecanico"
@@ -1048,10 +988,14 @@ function calcularPercentual(
   valor: number,
   percentualManual?: number | null
 ) {
-  const percentualProvisorio = getPercentualProvisorio(valor);
+  const percentualPorCidade = calcularPercentualVendedorMecanico({
+    lojaId: cidadeNormalizada,
+    funcao: funcaoNormalizada,
+    valor,
+  });
 
-  if (percentualProvisorio !== null) {
-    return percentualProvisorio;
+  if (percentualPorCidade !== null) {
+    return percentualPorCidade;
   }
 
   if (Number(percentualManual || 0) > 0) {
