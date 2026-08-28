@@ -2,6 +2,7 @@ import type {
   RegrasVendedorMecanico,
   RegraAlinhador,
   RegrasConsultor,
+  RegrasRecepcao,
 } from "./types";
 
 // =========================
@@ -91,5 +92,16 @@ export const regrasConsultorBlumenau: RegrasConsultor = {
       { carros: 350, valor: 350 },
       { carros: 400, valor: 400 },
     ],
+  },
+};
+
+// =========================
+// RECEPÇÃO
+// =========================
+
+export const regrasRecepcaoBlumenau: RegrasRecepcao = {
+  regraPadrao: {
+    valorVenda: 1.5,
+    valorEntrada: 0,
   },
 };

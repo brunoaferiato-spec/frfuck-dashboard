@@ -53,3 +53,18 @@ export type RegrasConsultor = {
   meta1: RegraConsultorMeta1;
   meta2: RegraConsultorMeta2;
 };
+
+// =========================
+// RECEPÇÃO
+// =========================
+
+export type RegraRecepcaoFuncionario = {
+  funcionarioNome?: string;
+  valorVenda: number;
+  valorEntrada: number;
+};
+
+export type RegrasRecepcao = {
+  regraPadrao?: RegraRecepcaoFuncionario;
+  regrasEspecificas?: RegraRecepcaoFuncionario[];
+};

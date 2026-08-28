@@ -2,6 +2,7 @@ import {
   regrasJoinville,
   regraAlinhadorJoinville,
   regrasConsultorJoinville,
+  regrasRecepcaoJoinville,
 } from "./joinville";
 
 import {
@@ -9,18 +10,21 @@ import {
   regraAlinhadorPadraoBlumenau,
   regraAlinhadorMiltonBlumenau,
   regrasConsultorBlumenau,
+  regrasRecepcaoBlumenau,
 } from "./blumenau";
 
 import {
   regrasSaoJose,
   regraAlinhadorSaoJose,
   regrasConsultorSaoJose,
+  regrasRecepcaoSaoJose,
 } from "./saoJose";
 
 import {
   regrasFlorianopolis,
   regraAlinhadorFlorianopolis,
   regrasConsultorFlorianopolis,
+  regrasRecepcaoFlorianopolis,
 } from "./florianopolis";
 
 import type {
@@ -28,6 +32,8 @@ import type {
   RegrasVendedorMecanico,
   RegraAlinhador,
   RegrasConsultor,
+  RegrasRecepcao,
+  RegraRecepcaoFuncionario,
 } from "./types";
 
 // ======================================================
@@ -46,6 +52,13 @@ const REGRAS_CONSULTOR_POR_LOJA: Record<number, RegrasConsultor> = {
   2: regrasConsultorBlumenau,
   3: regrasConsultorSaoJose,
   4: regrasConsultorFlorianopolis,
+};
+
+const REGRAS_RECEPCAO_POR_LOJA: Record<number, RegrasRecepcao> = {
+  1: regrasRecepcaoJoinville,
+  2: regrasRecepcaoBlumenau,
+  3: regrasRecepcaoSaoJose,
+  4: regrasRecepcaoFlorianopolis,
 };
 
 // ======================================================
@@ -139,28 +152,22 @@ export function getRegraAlinhador(args: {
   const lojaId = Number(args.lojaId);
   const nome = normalizarNome(args.funcionarioNome || "");
 
-  // Joinville
   if (lojaId === 1) {
     return regraAlinhadorJoinville;
   }
 
-  // Blumenau
   if (lojaId === 2) {
-    // Milton possui regra exclusiva.
     if (nome.includes("MILTON")) {
       return regraAlinhadorMiltonBlumenau;
     }
 
-    // Demais alinhadores seguem regra padrão.
     return regraAlinhadorPadraoBlumenau;
   }
 
-  // São José
   if (lojaId === 3) {
     return regraAlinhadorSaoJose;
   }
 
-  // Florianópolis
   if (lojaId === 4) {
     return regraAlinhadorFlorianopolis;
   }
@@ -310,6 +317,94 @@ export function calcularConsultorMeta2Mensal(args: {
 }
 
 // ======================================================
+// RECEPÇÃO
+// ======================================================
+
+export function getRegraRecepcao(args: {
+  lojaId: number | string;
+  funcionarioNome?: string;
+}): RegraRecepcaoFuncionario | null {
+  const lojaId = Number(args.lojaId);
+  const nomeFuncionario = normalizarNome(
+    args.funcionarioNome || ""
+  );
+
+  const regrasLoja =
+    REGRAS_RECEPCAO_POR_LOJA[lojaId];
+
+  if (!regrasLoja) {
+    return null;
+  }
+
+  const regraEspecifica =
+    regrasLoja.regrasEspecificas?.find((regra) => {
+      const nomeRegra = normalizarNome(
+        regra.funcionarioNome || ""
+      );
+
+      if (!nomeRegra || !nomeFuncionario) {
+        return false;
+      }
+
+      return (
+        nomeFuncionario === nomeRegra ||
+        nomeFuncionario.includes(nomeRegra) ||
+        nomeRegra.includes(nomeFuncionario)
+      );
+    });
+
+  if (regraEspecifica) {
+    return regraEspecifica;
+  }
+
+  if (regrasLoja.regraPadrao) {
+    return regrasLoja.regraPadrao;
+  }
+
+  return null;
+}
+
+export function calcularRecepcao(args: {
+  lojaId: number | string;
+  funcionarioNome?: string;
+  vendas: number;
+  entradas: number;
+}) {
+  const regra = getRegraRecepcao({
+    lojaId: args.lojaId,
+    funcionarioNome: args.funcionarioNome,
+  });
+
+  const vendas = Number(args.vendas || 0);
+  const entradas = Number(args.entradas || 0);
+
+  if (!regra) {
+    return {
+      valorVenda: 0,
+      valorEntrada: 0,
+      comissaoVenda: 0,
+      comissaoEntrada: 0,
+      totalComissao: 0,
+    };
+  }
+
+  const comissaoVenda =
+    vendas * Number(regra.valorVenda || 0);
+
+  const comissaoEntrada =
+    entradas * Number(regra.valorEntrada || 0);
+
+  return {
+    valorVenda: Number(regra.valorVenda || 0),
+    valorEntrada: Number(regra.valorEntrada || 0),
+    comissaoVenda,
+    comissaoEntrada,
+    totalComissao:
+      comissaoVenda + comissaoEntrada,
+  };
+}
+
+// ======================================================
 // EXPORTS
 // ======================================================
 
@@ -329,6 +424,11 @@ export {
   regrasConsultorBlumenau,
   regrasConsultorSaoJose,
   regrasConsultorFlorianopolis,
+
+  regrasRecepcaoJoinville,
+  regrasRecepcaoBlumenau,
+  regrasRecepcaoSaoJose,
+  regrasRecepcaoFlorianopolis,
 };
 
 export type {
@@ -337,9 +437,13 @@ export type {
   RegraPercentual,
   RegrasVendedorMecanico,
   RegraAlinhador,
+
   FaixaConsultorMeta1,
   RegraConsultorMeta1,
   BonusConsultorMeta2,
   RegraConsultorMeta2,
   RegrasConsultor,
+
+  RegraRecepcaoFuncionario,
+  RegrasRecepcao,
 } from "./types";

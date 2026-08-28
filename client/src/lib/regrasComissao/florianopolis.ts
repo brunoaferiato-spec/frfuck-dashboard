@@ -2,8 +2,8 @@ import type {
   RegrasVendedorMecanico,
   RegraAlinhador,
   RegrasConsultor,
+  RegrasRecepcao,
 } from "./types";
-
 // =========================
 // VENDEDOR E MECÂNICO
 // =========================
@@ -77,4 +77,23 @@ export const regrasConsultorFlorianopolis: RegrasConsultor = {
       { carros: 400, valor: 400 },
     ],
   },
+};
+
+// =========================
+// RECEPÇÃO
+// =========================
+
+export const regrasRecepcaoFlorianopolis: RegrasRecepcao = {
+  regrasEspecificas: [
+    {
+      funcionarioNome: "Samantha",
+      valorVenda: 3,
+      valorEntrada: 0.5,
+    },
+    {
+      funcionarioNome: "Izabela",
+      valorVenda: 2,
+      valorEntrada: 0.5,
+    },
+  ],
 };

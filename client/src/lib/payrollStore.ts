@@ -4,6 +4,7 @@ import {
   calcularConsultorMeta1Semana,
   calcularConsultorMeta2Mensal,
   getRegrasConsultor,
+  getRegraRecepcao,
 } from "./regrasComissao";
 
 // =========================
@@ -355,39 +356,21 @@ export function getPremiacaoAutomaticaDetalhes(args: {
 // =========================
 
 export function getRecepcaoConfig(funcionarioNome: string, cidade: string) {
-  const nome = normalizeName(funcionarioNome);
+  const regra = getRegraRecepcao({
+    lojaId: cidade,
+    funcionarioNome,
+  });
 
-  if (cidade === "1" || cidade === "2") {
+  if (!regra) {
     return {
-      valorVenda: 1.5,
+      valorVenda: 0,
       valorEntrada: 0,
     };
   }
 
-  if (cidade === "3") {
-    return {
-      valorVenda: 5,
-      valorEntrada: 0.5,
-    };
-  }
-
-  if (cidade === "4") {
-    if (nome.includes("IZABELA")) {
-      return {
-        valorVenda: 2,
-        valorEntrada: 0.5,
-      };
-    }
-
-    return {
-      valorVenda: 3,
-      valorEntrada: 0.5,
-    };
-  }
-
   return {
-    valorVenda: 0,
-    valorEntrada: 0,
+    valorVenda: Number(regra.valorVenda || 0),
+    valorEntrada: Number(regra.valorEntrada || 0),
   };
 }
 
@@ -858,11 +841,7 @@ if (funcao === "gerente" && String(cidade) === "4") {
     const boleto =
       totalComissao +
       premiacaoManual -
-      vale -
-      aluguel -
-      inss -
-      adiant -
-      holerite;
+      vale;
 
     return {
       perc1: config.valorVenda,

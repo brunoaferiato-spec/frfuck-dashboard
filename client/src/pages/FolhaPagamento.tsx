@@ -97,7 +97,7 @@ function calcularBoletoAjustado(args: {
   }
 
   if (args.quadrante === "recepcao") {
-  return 0;
+  return totalComissao + premiacao - vale;
 }
 
 if (args.quadrante === "consultor_vendas") {

@@ -2,6 +2,7 @@ import type {
   RegrasVendedorMecanico,
   RegraAlinhador,
   RegrasConsultor,
+  RegrasRecepcao,
 } from "./types";
 
 // =========================
@@ -76,5 +77,16 @@ export const regrasConsultorJoinville: RegrasConsultor = {
       { carros: 350, valor: 350 },
       { carros: 400, valor: 400 },
     ],
+  },
+};
+
+// =========================
+// RECEPÇÃO
+// =========================
+
+export const regrasRecepcaoJoinville: RegrasRecepcao = {
+  regraPadrao: {
+    valorVenda: 1.5,
+    valorEntrada: 0,
   },
 };
