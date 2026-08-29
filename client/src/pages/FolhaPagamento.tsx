@@ -5,8 +5,13 @@ import { trpc } from "@/lib/trpc";
 
 import {
   calcularPremiacaoSupervisorGrupo,
+  calcularPremiacaoSupervisorLoja,
+  regraSupervisor,
   getSalarioFixoSupervisor,
   calcularPremiacaoEspecialFuncionario,
+  getRegraVendedorMecanico,
+  getRegraAlinhador,
+  getRegraGerente,
 } from "@/lib/regrasComissao";
 
 import { Button } from "@/components/ui/button";
@@ -990,9 +995,13 @@ const regraClassName = manual
                        </td>
 
                       <td className="p-2 text-right">
-                         <span className="whitespace-nowrap text-yellow-300 font-semibold">
-                           R$ {money(linha.totalComissao)}
-                         </span>
+                        <button
+                          type="button"
+                          onClick={() => onOpenRegraSemanaEditor(linha, 1)}
+                          className="whitespace-nowrap text-yellow-300 font-semibold hover:underline underline-offset-4"
+                        >
+                          R$ {money(linha.totalComissao)}
+                        </button>
                       </td>
 
                       <td className="p-2 text-right">
@@ -2355,6 +2364,126 @@ if (detalhesPremiacaoEspecial.length > 0) {
     return linhas.find((l) => l.funcionarioId === valeEditor.funcionarioId) || null;
   }, [valeEditor.funcionarioId, linhas]);
 
+  function formatarFaixasMeta(
+  faixas: Array<{
+    minimo: number;
+    percentual: number;
+  }>
+) {
+  return faixas
+    .map((faixa, index) => {
+      const proximaFaixa = faixas[index + 1];
+
+      const percentual = Number(faixa.percentual || 0)
+        .toFixed(2)
+        .replace(".", ",");
+
+      if (index === 0 && proximaFaixa) {
+        const limite =
+          Number(proximaFaixa.minimo || 0) - 0.01;
+
+        return `Até R$ ${money(limite)} = ${percentual}%`;
+      }
+
+      if (proximaFaixa) {
+        const limite =
+          Number(proximaFaixa.minimo || 0) - 0.01;
+
+        return `R$ ${money(faixa.minimo)} até R$ ${money(
+          limite
+        )} = ${percentual}%`;
+      }
+
+      return `R$ ${money(
+        faixa.minimo
+      )} ou mais = ${percentual}%`;
+    })
+    .join("\n");
+}
+
+function getMetaFuncaoTexto(
+  linha: LinhaComQuadrante,
+  semana: number
+) {
+  const funcao = String(linha.funcao || "")
+    .trim()
+    .toLowerCase();
+
+  // VENDEDOR E MECÂNICO
+  if (
+    funcao === "vendedor" ||
+    funcao === "mecanico"
+  ) {
+    const regra = getRegraVendedorMecanico({
+      lojaId: linha.loja_id,
+      funcao,
+    });
+
+    if (regra) {
+      return formatarFaixasMeta(regra.faixas);
+    }
+  }
+
+  // ALINHADOR
+  if (funcao === "alinhador") {
+    const regra = getRegraAlinhador({
+      lojaId: linha.loja_id,
+      funcionarioNome: linha.nome,
+    });
+
+    if (regra) {
+      return formatarFaixasMeta(regra.faixas);
+    }
+  }
+
+  // GERENTE
+if (funcao === "gerente") {
+  // São José:
+  // SEM1 a SEM4 = comissão normal de vendedor
+  // SEM5 = comissão de gerente sobre a loja
+  const gerenteSaoJoseVenda =
+    linha.loja_id === 3 &&
+    semana >= 1 &&
+    semana <= 4;
+
+  // Florianópolis:
+  // SEM1 = liquidez de venda
+  // SEM2 = liquidez da loja
+  const gerenteFlorianopolisVenda =
+    linha.loja_id === 4 &&
+    semana === 1;
+
+  if (
+    gerenteSaoJoseVenda ||
+    gerenteFlorianopolisVenda
+  ) {
+    const regraVendedor =
+      getRegraVendedorMecanico({
+        lojaId: linha.loja_id,
+        funcao: "vendedor",
+      });
+
+    if (regraVendedor) {
+      return formatarFaixasMeta(
+        regraVendedor.faixas
+      );
+    }
+  }
+
+  const regraGerente = getRegraGerente({
+    lojaId: linha.loja_id,
+  });
+
+  if (regraGerente) {
+    return formatarFaixasMeta(
+      regraGerente.faixas
+    );
+  }
+}
+
+  return linha.regraMeta || "Sem meta cadastrada";
+}
+
   const detalheSemanaAtual = useMemo(() => {
     const linha = regraSemanaEditor.linha;
     const semana = regraSemanaEditor.semana;
@@ -2365,22 +2494,29 @@ if (detalhesPremiacaoEspecial.length > 0) {
     const isSupervisor = linha.funcao === "supervisor";
 
     if (isSupervisor) {
-      const labels = ["Joinville", "Blumenau", "São José", "Florianópolis"];
-      const base =
-        semana === 1 ? linha.sem1 : semana === 2 ? linha.sem2 : semana === 3 ? linha.sem3 : linha.sem4;
-      const premio =
-        semana === 1 ? linha.com1 : semana === 2 ? linha.com2 : semana === 3 ? linha.com3 : linha.com4;
+      const lojaIdSupervisor = Number(linha.loja_id);
 
-      const supervisor = computeSupervisor({
-        cidade: linha.loja_id.toString(),
-        sem1: linha.sem1,
-        sem2: linha.sem2,
-        sem3: linha.sem3,
-        sem4: linha.sem4,
-        premiacoesManuais: linha.premiacoesManuais || [],
-        vales: linha.vales || [],
-        aluguel: linha.aluguel || 0,
-        adiant: linha.adiant || 0,
+      const regraLoja = regraSupervisor.lojas.find(
+        (loja) => loja.lojaId === lojaIdSupervisor
+      );
+
+      const liquidezLoja = Number(linha.sem1 || 0);
+
+      const calculoLoja = calcularPremiacaoSupervisorLoja({
+        lojaId: lojaIdSupervisor,
+        liquidezLoja,
+      });
+
+      const resumo = resumoSupervisorQuery.data as any;
+
+      const totalGrupo =
+        Number(resumo?.joinville || 0) +
+        Number(resumo?.blumenau || 0) +
+        Number(resumo?.saoJose || 0) +
+        Number(resumo?.florianopolis || 0);
+
+      const calculoGrupo = calcularPremiacaoSupervisorGrupo({
+        liquidezTotalGrupo: totalGrupo,
       });
 
       return {
@@ -2389,17 +2525,28 @@ if (detalhesPremiacaoEspecial.length > 0) {
         isConsultor: false,
         isRecepcao: false,
         isSupervisor: true,
-        base,
-        regraTexto: `R$ ${money(premio)}`,
-        comissao: premio,
-        metaTitulo: `Meta da loja - ${labels[semana - 1]}`,
-        baseLabel: `Liquidez ${labels[semana - 1]}`,
-        extra:
-          semana === 4
-            ? `Grupo: R$ ${money(supervisor.total)} | Recorde atual: R$ ${money(
-                SUPERVISOR_RECORDE_GRUPO
-              )}`
-            : "",
+
+        base: liquidezLoja,
+        percentual: 0,
+        comissao: Number(linha.totalComissao || 0),
+        regraTexto: "",
+
+        metaTitulo: `Metas do Supervisor - ${
+          regraLoja?.nomeLoja || "Loja"
+        }`,
+        baseLabel: "Liquidez da loja",
+        extra: "",
+
+        supervisorMetasLoja: regraLoja?.metas || [],
+        supervisorMetasGrupo: regraSupervisor.metasGrupo || [],
+        supervisorLiquidezLoja: liquidezLoja,
+        supervisorTotalGrupo: totalGrupo,
+        supervisorTotalPremioLoja: Number(calculoLoja.total || 0),
+        supervisorTotalPremioGrupo: Number(calculoGrupo.totalPorLoja || 0),
+        supervisorRecorde: Number(regraSupervisor.recordeGrupoAtual || 0),
+        supervisorPercentualRecorde: Number(
+          regraSupervisor.percentualPremioRecorde || 0
+        ),
       };
     }
 
@@ -2448,19 +2595,17 @@ return {
   base,
   percentual,
   comissao,
-  regraTexto:
-  semana === 5
-    ? "Até 359999 = 1,5% | 360000 a 459999 = 2% | 460000 a 559999 = 2,5% | 560000 ou mais = 3%"
-    : `${percentual.toFixed(2)}%`,
+  regraTexto: `${percentual.toFixed(2)}%`,
   metaTitulo:
     semana === 5
-      ? "Meta gerente loja"
-      : "Meta de vendas",
+      ? "Meta - Gerente"
+      : "Meta - Vendedor",
+  metaDescricao: getMetaFuncaoTexto(linha, semana),
   baseLabel:
     semana === 5
       ? "Liquidez Loja"
       : `Liquidez SEM${semana}`,
-    extra: "",
+  extra: "",
 };
 
 }
@@ -2525,30 +2670,55 @@ return {
         : linha.com4;
 
     return {
-      linha,
-      semana,
-      isConsultor,
-      isRecepcao: false,
-      isSupervisor: false,
-      base,
-      percentual,
-      comissao,
-      regraTexto: isConsultor
-        ? getConsultorRegraTexto({
-            cidade: linha.loja_id.toString(),
-            tipoMeta: linha.tipoMeta,
-            carrosSemana: base,
-          })
-        : `${percentual.toFixed(2)}%`,
-      metaTitulo: isConsultor
-        ? linha.tipoMeta === "meta2"
-          ? "Meta 2 (nova)"
-          : "Meta 1 (antiga)"
-        : "Meta da função",
-      baseLabel: isConsultor ? "Quantidade lançada" : "Liquidez lançada",
-      extra: "",
-    };
-  }, [regraSemanaEditor]);
+  linha,
+  semana,
+  isConsultor,
+  isRecepcao: false,
+  isSupervisor: false,
+  base,
+  percentual,
+  comissao,
+
+  regraTexto: isConsultor
+    ? getConsultorRegraTexto({
+        cidade: linha.loja_id.toString(),
+        tipoMeta: linha.tipoMeta,
+        carrosSemana: base,
+      })
+    : `${percentual.toFixed(2)}%`,
+
+  metaTitulo: isConsultor
+    ? linha.tipoMeta === "meta2"
+      ? "Meta 2"
+      : "Meta 1"
+    : linha.funcao === "gerente"
+    ? (
+        (linha.loja_id === 3 && semana >= 1 && semana <= 4) ||
+        (linha.loja_id === 4 && semana === 1)
+      )
+      ? "Meta - Vendedor"
+      : "Meta - Gerente"
+    : `Meta - ${
+        linha.funcao === "mecanico"
+          ? "Mecânico"
+          : linha.funcao === "vendedor"
+          ? "Vendedor"
+          : linha.funcao === "alinhador"
+          ? "Alinhador"
+          : linha.funcao
+      }`,
+
+  metaDescricao: isConsultor
+    ? linha.regraMeta || ""
+    : getMetaFuncaoTexto(linha, semana),
+
+  baseLabel: isConsultor
+    ? "Quantidade lançada"
+    : "Liquidez lançada",
+
+  extra: "",
+};
+  }, [regraSemanaEditor, resumoSupervisorQuery.data]);
 
   const supervisorAtual = linhas.find((l) => l.funcao === "supervisor");
 
@@ -3518,26 +3688,193 @@ if (
                 </p>
 
                 {detalheSemanaAtual.isSupervisor ? (
-                  <div className="space-y-2 text-gray-300">
+                  <div className="space-y-5">
                     <div>
-                      Recorde atual do grupo: R$ {money(SUPERVISOR_RECORDE_GRUPO)}
+                      <p className="mb-3 font-semibold text-primary">
+                        Meta da loja
+                      </p>
+
+                      <div className="space-y-2">
+                        {(
+                          (detalheSemanaAtual as any)
+                            .supervisorMetasLoja || []
+                        ).map(
+                          (
+                            meta: {
+                              meta: number;
+                              premio: number;
+                            },
+                            index: number
+                          ) => {
+                            const atingida =
+                              Number(
+                                (detalheSemanaAtual as any)
+                                  .supervisorLiquidezLoja || 0
+                              ) >= meta.meta;
+
+                            return (
+                              <div
+                                key={`loja-${index}`}
+                                className="flex items-center justify-between"
+                              >
+                                <span
+                                  className={
+                                    atingida
+                                      ? "text-green-400 font-semibold"
+                                      : "text-gray-300"
+                                  }
+                                >
+                                  R$ {money(meta.meta)}
+                                </span>
+
+                                <span className="text-yellow-300">
+                                  + R$ {money(meta.premio)}
+                                </span>
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+
+                      <div className="mt-3 border-t border-primary/20 pt-3 flex items-center justify-between">
+                        <span className="text-gray-300">
+                          Liquidez atual da loja
+                        </span>
+
+                        <span className="font-bold text-white">
+                          R${" "}
+                          {money(
+                            (detalheSemanaAtual as any)
+                              .supervisorLiquidezLoja || 0
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-gray-300">
+                          Premiação acumulada da loja
+                        </span>
+
+                        <span className="font-bold text-green-400">
+                          R${" "}
+                          {money(
+                            (detalheSemanaAtual as any)
+                              .supervisorTotalPremioLoja || 0
+                          )}
+                        </span>
+                      </div>
                     </div>
-                    <div>Total do grupo acima de 1.420.000 = + R$ 1.000,00</div>
-                    <div>Total do grupo acima de 1.540.000 = + R$ 1.000,00</div>
-                    <div>Total do grupo acima de 1.600.000 = + R$ 1.000,00</div>
-                    <div>Se passar o recorde = + 0,1% sobre o total do grupo</div>
-                    {detalheSemanaAtual.extra && (
-                      <div>{detalheSemanaAtual.extra}</div>
-                    )}
+
+                    <div className="border-t border-primary/20 pt-4">
+                      <p className="mb-3 font-semibold text-primary">
+                        Meta do grupo
+                      </p>
+
+                      <div className="space-y-2">
+                        {(
+                          (detalheSemanaAtual as any)
+                            .supervisorMetasGrupo || []
+                        ).map(
+                          (
+                            meta: {
+                              meta: number;
+                              premioTotalGrupo: number;
+                            },
+                            index: number
+                          ) => {
+                            const atingida =
+                              Number(
+                                (detalheSemanaAtual as any)
+                                  .supervisorTotalGrupo || 0
+                              ) >= meta.meta;
+
+                            return (
+                              <div
+                                key={`grupo-${index}`}
+                                className="flex items-center justify-between"
+                              >
+                                <span
+                                  className={
+                                    atingida
+                                      ? "text-green-400 font-semibold"
+                                      : "text-gray-300"
+                                  }
+                                >
+                                  R$ {money(meta.meta)}
+                                </span>
+
+                                <span className="text-yellow-300">
+                                  + R$ {money(meta.premioTotalGrupo)}
+                                </span>
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between">
+                        <span className="text-gray-300">
+                          Recorde atual
+                        </span>
+
+                        <span className="text-yellow-300">
+                          R${" "}
+                          {money(
+                            (detalheSemanaAtual as any)
+                              .supervisorRecorde || 0
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-gray-300">
+                          Prêmio ao superar o recorde
+                        </span>
+
+                        <span className="text-yellow-300">
+                          0,1%
+                        </span>
+                      </div>
+
+                      <div className="mt-3 border-t border-primary/20 pt-3 flex items-center justify-between">
+                        <span className="text-gray-300">
+                          Liquidez atual do grupo
+                        </span>
+
+                        <span className="font-bold text-white">
+                          R${" "}
+                          {money(
+                            (detalheSemanaAtual as any)
+                              .supervisorTotalGrupo || 0
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-gray-300">
+                          Premiação do grupo por loja
+                        </span>
+
+                        <span className="font-bold text-green-400">
+                          R${" "}
+                          {money(
+                            (detalheSemanaAtual as any)
+                              .supervisorTotalPremioGrupo || 0
+                          )}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <p className="text-gray-300 whitespace-pre-wrap break-words">
-                    {detalheSemanaAtual.linha.regraMeta ||
+                    {(detalheSemanaAtual as any).metaDescricao ||
+                      detalheSemanaAtual.linha.regraMeta ||
                       "Sem meta cadastrada"}
                   </p>
                 )}
               </div>
 
+              {!detalheSemanaAtual.isSupervisor && (
               <div className="rounded-md border border-primary/20 bg-gray-900 p-4 space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-300">
@@ -3716,6 +4053,7 @@ if (
                   </span>
                 </div>
               </div>
+              )}
             </div>
           )}
 
