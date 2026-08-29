@@ -67,6 +67,7 @@ const LOJAS = [
 const ROTA_GESTAO_FUNCIONARIOS = "/gestao-funcionarios";
 const IMPORT_ALIAS_STORAGE_KEY = "folha-importacao-aliases-v1";
 const IMPORT_PENDENTE_STORAGE_KEY = "folha-importacao-pendente-v1";
+const IMPORT_ADIANT_PENDENTE_STORAGE_KEY = "folha-importacao-adiant-pendente-v1";
 
 type SemanaImportacao = 1 | 2 | 3 | 4;
 type FuncaoImportacao = "vendedor" | "mecanico";
@@ -112,6 +113,265 @@ function criarImportacaoInicial(semana: SemanaImportacao): ImportacaoSemanaState
     itens: [],
     mensagem: "",
     erro: "",
+  };
+}
+
+
+type StatusItemAdiantamento = "ok" | "possivel" | "nao_cadastrado" | "ignorado";
+
+type ItemAdiantamentoPdf = {
+  id: string;
+  pagina: number;
+  nomePdf: string;
+  valorLiquido: number;
+  funcionarioId: number | null;
+  funcionarioNome: string | null;
+  status: StatusItemAdiantamento;
+  candidatoId: number | null;
+  candidatoNome: string | null;
+  scoreCandidato: number;
+};
+
+type ImportacaoAdiantamentoState = {
+  open: boolean;
+  etapa: "arquivo" | "lendo" | "conferencia" | "importando" | "sucesso";
+  arquivoNome: string;
+  competencia: string;
+  competenciaMes: number | null;
+  competenciaAno: number | null;
+  cidadeRelatorio: string;
+  itens: ItemAdiantamentoPdf[];
+  mensagem: string;
+  erro: string;
+};
+
+function criarImportacaoAdiantamentoInicial(): ImportacaoAdiantamentoState {
+  return {
+    open: true,
+    etapa: "arquivo",
+    arquivoNome: "",
+    competencia: "",
+    competenciaMes: null,
+    competenciaAno: null,
+    cidadeRelatorio: "",
+    itens: [],
+    mensagem: "",
+    erro: "",
+  };
+}
+
+const MESES_PDF: Record<string, number> = {
+  JANEIRO: 1,
+  FEVEREIRO: 2,
+  MARCO: 3,
+  ABRIL: 4,
+  MAIO: 5,
+  JUNHO: 6,
+  JULHO: 7,
+  AGOSTO: 8,
+  SETEMBRO: 9,
+  OUTUBRO: 10,
+  NOVEMBRO: 11,
+  DEZEMBRO: 12,
+};
+
+function identificarCidadePdf(texto: string) {
+  const normalizado = normalizarTextoImportacao(texto);
+
+  if (normalizado.includes("SAO JOSE")) return "São José";
+  if (normalizado.includes("JOINVILLE")) return "Joinville";
+  if (normalizado.includes("BLUMENAU")) return "Blumenau";
+  if (normalizado.includes("FLORIANOPOLIS")) return "Florianópolis";
+  if (normalizado.includes("ACI PROMOCAO") || normalizado.includes("ACI PROMOCOES")) {
+    return "ACI Promoções";
+  }
+  if (normalizado.includes("CONTRATO PJ")) return "Contrato PJ";
+
+  return "";
+}
+
+function identificarCompetenciaPdf(texto: string) {
+  const normalizado = normalizarTextoImportacao(texto);
+  const match = normalizado.match(
+    /\b(JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO)\s+DE\s+(\d{4})\b/
+  );
+
+  if (!match) {
+    return { label: "", mes: null as number | null, ano: null as number | null };
+  }
+
+  const mes = MESES_PDF[match[1]] || null;
+  const ano = Number(match[2]) || null;
+  const nomeMes = match[1].charAt(0) + match[1].slice(1).toLowerCase();
+
+  return {
+    label: `${nomeMes} de ${match[2]}`,
+    mes,
+    ano,
+  };
+}
+
+function extrairValoresDinheiroLinha(linha: string) {
+  return (linha.match(/\d{1,3}(?:\.\d{3})*,\d{2}/g) || [])
+    .map((valor) => parseValorBR(valor))
+    .filter((valor) => Number.isFinite(valor));
+}
+
+function encontrarNomeFuncionarioPdf(linhas: string[]) {
+  for (const linha of linhas) {
+    const match = linha.match(/^\s*\d+\s+(.+?)\s+\d{6}\s+\d+\s+\d+\s*$/);
+    if (match?.[1]) {
+      const nome = match[1].trim();
+      if (nome && !/NOME DO FUNCIONARIO/i.test(nome)) return nome;
+    }
+  }
+
+  const indiceCabecalho = linhas.findIndex((linha) =>
+    normalizarTextoImportacao(linha).includes("NOME DO FUNCIONARIO")
+  );
+
+  if (indiceCabecalho >= 0) {
+    for (let i = indiceCabecalho + 1; i <= indiceCabecalho + 4 && i < linhas.length; i += 1) {
+      const match = linhas[i].match(/^\s*\d+\s+(.+?)\s+\d{6}(?:\s+.*)?$/);
+      if (match?.[1]) return match[1].trim();
+    }
+  }
+
+  return "";
+}
+
+function encontrarValorLiquidoPdf(linhas: string[]) {
+  for (let i = 0; i < linhas.length; i += 1) {
+    if (!normalizarTextoImportacao(linhas[i]).includes("VALOR LIQUIDO")) continue;
+
+    for (let j = i; j <= i + 3 && j < linhas.length; j += 1) {
+      const valores = extrairValoresDinheiroLinha(linhas[j]);
+      if (valores.length > 0) {
+        // Na linha do Valor Líquido o valor pago aparece à direita.
+        return Number(valores[valores.length - 1] || 0);
+      }
+    }
+  }
+
+  // Fallback: Total de Vencimentos - Total de Descontos.
+  for (let i = 0; i < linhas.length; i += 1) {
+    const normalizada = normalizarTextoImportacao(linhas[i]);
+    if (
+      !normalizada.includes("TOTAL DE VENCIMENTOS") ||
+      !normalizada.includes("TOTAL DE DESCONTOS")
+    ) {
+      continue;
+    }
+
+    for (let j = i + 1; j <= i + 3 && j < linhas.length; j += 1) {
+      const valores = extrairValoresDinheiroLinha(linhas[j]);
+      if (valores.length >= 2) {
+        return Math.max(0, Number(valores[0] || 0) - Number(valores[1] || 0));
+      }
+    }
+  }
+
+  return null;
+}
+
+function agruparItensTextoPdf(items: any[]) {
+  const palavras = items
+    .filter((item: any) => item && typeof item.str === "string" && item.str.trim())
+    .map((item: any) => ({
+      texto: String(item.str).trim(),
+      x: Number(item.transform?.[4] || 0),
+      y: Number(item.transform?.[5] || 0),
+    }))
+    .sort((a: any, b: any) => {
+      const diferencaY = b.y - a.y;
+      return Math.abs(diferencaY) > 2.5 ? diferencaY : a.x - b.x;
+    });
+
+  const grupos: Array<{ y: number; palavras: Array<{ texto: string; x: number }> }> = [];
+
+  for (const palavra of palavras) {
+    let grupo = grupos.find((item) => Math.abs(item.y - palavra.y) <= 2.5);
+
+    if (!grupo) {
+      grupo = { y: palavra.y, palavras: [] };
+      grupos.push(grupo);
+    }
+
+    grupo.palavras.push({ texto: palavra.texto, x: palavra.x });
+  }
+
+  return grupos
+    .sort((a, b) => b.y - a.y)
+    .map((grupo) =>
+      grupo.palavras
+        .sort((a, b) => a.x - b.x)
+        .map((palavra) => palavra.texto)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim()
+    )
+    .filter(Boolean);
+}
+
+async function lerPdfAdiantamento(file: File) {
+  const pdfjs = await import("pdfjs-dist");
+  const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const documento = await pdfjs.getDocument({ data: bytes }).promise;
+
+  const itensBrutos: Array<{
+    pagina: number;
+    nomePdf: string;
+    valorLiquido: number;
+  }> = [];
+
+  let cidadeRelatorio = "";
+  let competencia = "";
+  let competenciaMes: number | null = null;
+  let competenciaAno: number | null = null;
+
+  for (let paginaNumero = 1; paginaNumero <= documento.numPages; paginaNumero += 1) {
+    const pagina = await documento.getPage(paginaNumero);
+    const conteudo = await pagina.getTextContent();
+    const linhas = agruparItensTextoPdf(conteudo.items as any[]);
+    const textoPagina = linhas.join("\n");
+
+    if (!cidadeRelatorio) cidadeRelatorio = identificarCidadePdf(textoPagina);
+
+    if (!competencia) {
+      const encontrada = identificarCompetenciaPdf(textoPagina);
+      competencia = encontrada.label;
+      competenciaMes = encontrada.mes;
+      competenciaAno = encontrada.ano;
+    }
+
+    const nomePdf = encontrarNomeFuncionarioPdf(linhas);
+    const valorLiquido = encontrarValorLiquidoPdf(linhas);
+
+    if (nomePdf && valorLiquido !== null && Number.isFinite(valorLiquido)) {
+      itensBrutos.push({
+        pagina: paginaNumero,
+        nomePdf,
+        valorLiquido: Number(valorLiquido || 0),
+      });
+    }
+  }
+
+  // Algumas folhas podem trazer a mesma pessoa mais de uma vez. Mantemos uma só.
+  const unicos = new Map<string, (typeof itensBrutos)[number]>();
+  for (const item of itensBrutos) {
+    const chave = normalizarNomeImportacao(item.nomePdf);
+    if (!unicos.has(chave)) unicos.set(chave, item);
+  }
+
+  return {
+    cidadeRelatorio,
+    competencia,
+    competenciaMes,
+    competenciaAno,
+    itens: Array.from(unicos.values()),
   };
 }
 
@@ -677,6 +937,7 @@ function TabelaQuadrante({
   onOpenRegraSemanaEditor,
   onOpenFuncionarioDetalhe,
   onOpenImportacaoSemana,
+  onOpenImportacaoAdiantamento,
 }: {
   titulo: string;
   descricao: string;
@@ -698,6 +959,7 @@ function TabelaQuadrante({
     semana: 1 | 2 | 3 | 4 | 5
   ) => void;
   onOpenImportacaoSemana: (semana: SemanaImportacao) => void;
+  onOpenImportacaoAdiantamento: () => void;
 }) {
   if (linhas.length === 0) return null;
 
@@ -1097,7 +1359,17 @@ const regraClassName = manual
                 <th className="text-right p-2">Vale</th>
                 <th className="text-right p-2">Aluguel</th>
                 {!isSupervisor && <th className="text-right p-2">INSS</th>}
-                <th className="text-right p-2">Adiant.</th>
+                <th className="text-right p-2">
+                  <button
+                    type="button"
+                    onClick={onOpenImportacaoAdiantamento}
+                    className="inline-flex items-center gap-1 text-primary hover:text-yellow-300 hover:underline underline-offset-4"
+                    title="Importar PDF de adiantamento"
+                  >
+                    Adiant.
+                    <span className="text-[10px] font-normal text-gray-400">PDF</span>
+                  </button>
+                </th>
                 {!isSupervisor && <th className="text-right p-2">Holerite</th>}
                 <th className="text-right p-2">Boleto</th>
                 <th className="text-right p-2">Observação</th>
@@ -1512,6 +1784,14 @@ export default function FolhaPagamento() {
   );
   const [importacaoRestaurada, setImportacaoRestaurada] = useState(false);
 
+  const [importacaoAdiantamento, setImportacaoAdiantamento] =
+    useState<ImportacaoAdiantamentoState>({
+      ...criarImportacaoAdiantamentoInicial(),
+      open: false,
+    });
+  const [importacaoAdiantamentoRestaurada, setImportacaoAdiantamentoRestaurada] =
+    useState(false);
+
   const [funcionarioDetalheId, setFuncionarioDetalheId] = useState<number | null>(null);
 
   const lojaId = parseInt(selectedLoja, 10);
@@ -1545,6 +1825,7 @@ const upsertFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation({
 
 
 const importFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation();
+const importDescontoMutation = trpc.folhaExtras.saveDesconto.useMutation();
 
 const folhaExtrasQuery = trpc.folhaExtras.getByLojaAnoMes.useQuery(
   { lojaId, ano, mes },
@@ -2191,6 +2472,29 @@ return {
     );
   }, [importacaoSemana.etapa, importacaoSemana.itens, funcionariosImportaveis]);
 
+  const funcionariosAusentesNoPdfAdiantamento = useMemo(() => {
+    if (importacaoAdiantamento.etapa !== "conferencia") return [] as LinhaComQuadrante[];
+
+    const idsEncontrados = new Set(
+      importacaoAdiantamento.itens
+        .filter((item) => item.status === "ok" && item.funcionarioId)
+        .map((item) => Number(item.funcionarioId))
+    );
+
+    // Supervisor já é um quadrante explicitamente PJ e não deve gerar alerta
+    // por não constar no recibo de adiantamento. Demais casos PJ podem ser
+    // simplesmente mantidos como estão até adicionarmos o campo CLT/PJ no cadastro.
+    return linhas.filter(
+      (linha) =>
+        linha.quadrante !== "supervisor_pj" &&
+        !idsEncontrados.has(Number(linha.funcionarioId))
+    );
+  }, [
+    importacaoAdiantamento.etapa,
+    importacaoAdiantamento.itens,
+    linhas,
+  ]);
+
   useEffect(() => {
     if (importacaoRestaurada || typeof window === "undefined") return;
 
@@ -2217,6 +2521,35 @@ return {
       console.error("Erro ao restaurar importação pendente:", err);
     }
   }, [importacaoRestaurada]);
+
+  useEffect(() => {
+    if (importacaoAdiantamentoRestaurada || typeof window === "undefined") return;
+
+    setImportacaoAdiantamentoRestaurada(true);
+
+    try {
+      const raw = window.sessionStorage.getItem(
+        IMPORT_ADIANT_PENDENTE_STORAGE_KEY
+      );
+      if (!raw) return;
+
+      const pendente = JSON.parse(raw);
+      window.sessionStorage.removeItem(IMPORT_ADIANT_PENDENTE_STORAGE_KEY);
+
+      if (pendente?.selectedLoja) setSelectedLoja(String(pendente.selectedLoja));
+      if (pendente?.ano) setAno(Number(pendente.ano));
+      if (pendente?.mes) setMes(Number(pendente.mes));
+      if (pendente?.importacao) {
+        setImportacaoAdiantamento({
+          ...pendente.importacao,
+          open: true,
+          etapa: "conferencia",
+        });
+      }
+    } catch (err) {
+      console.error("Erro ao restaurar importação de adiantamento:", err);
+    }
+  }, [importacaoAdiantamentoRestaurada]);
 
   function openImportacaoSemana(semana: SemanaImportacao) {
     if (!usaMetaSemanal(lojaId, ano, mes)) return;
@@ -2570,6 +2903,355 @@ return {
         ...prev,
         etapa: "conferencia",
         erro: err?.message || "Erro ao salvar a importação.",
+      }));
+    }
+  }
+
+
+  function openImportacaoAdiantamento() {
+    setImportacaoAdiantamento(criarImportacaoAdiantamentoInicial());
+  }
+
+  function fecharImportacaoAdiantamento() {
+    setImportacaoAdiantamento((prev) => ({ ...prev, open: false }));
+  }
+
+  async function processarPdfAdiantamento(file: File | null) {
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setImportacaoAdiantamento((prev) => ({
+        ...prev,
+        erro: "Selecione um arquivo PDF.",
+      }));
+      return;
+    }
+
+    setImportacaoAdiantamento((prev) => ({
+      ...prev,
+      etapa: "lendo",
+      arquivoNome: file.name,
+      erro: "",
+      mensagem: "",
+    }));
+
+    try {
+      const extraido = await lerPdfAdiantamento(file);
+
+      if (extraido.itens.length === 0) {
+        throw new Error(
+          "Não encontrei funcionários com Valor Líquido no PDF de adiantamento."
+        );
+      }
+
+      const aliases = lerAliasesImportacao();
+      const candidatos = linhas.map((linha) => ({
+        id: Number(linha.funcionarioId),
+        nome: linha.nome,
+      }));
+
+      const itens: ItemAdiantamentoPdf[] = extraido.itens.map((item, index) => {
+        const chaveAlias = `${lojaId}:${normalizarTextoImportacao(item.nomePdf)}`;
+        const aliasId = aliases[chaveAlias];
+
+        const porAlias = aliasId
+          ? candidatos.find((funcionario) => Number(funcionario.id) === Number(aliasId))
+          : null;
+
+        const nomeCanonico = normalizarNomeImportacao(item.nomePdf);
+        const exato = candidatos.find(
+          (funcionario) => normalizarNomeImportacao(funcionario.nome) === nomeCanonico
+        );
+
+        const escolhido = porAlias || exato;
+
+        if (escolhido) {
+          return {
+            id: `adiant-${index}-${normalizarTextoImportacao(item.nomePdf)}`,
+            pagina: item.pagina,
+            nomePdf: item.nomePdf,
+            valorLiquido: item.valorLiquido,
+            funcionarioId: Number(escolhido.id),
+            funcionarioNome: escolhido.nome,
+            status: "ok" as const,
+            candidatoId: null,
+            candidatoNome: null,
+            scoreCandidato: 1,
+          };
+        }
+
+        const candidatosOrdenados = candidatos
+          .map((funcionario) => ({
+            funcionario,
+            score: scoreNomesImportacao(item.nomePdf, funcionario.nome),
+          }))
+          .sort((a, b) => b.score - a.score);
+
+        const melhor = candidatosOrdenados[0];
+        const ehPossivel = !!melhor && melhor.score >= 0.55;
+
+        return {
+          id: `adiant-${index}-${normalizarTextoImportacao(item.nomePdf)}`,
+          pagina: item.pagina,
+          nomePdf: item.nomePdf,
+          valorLiquido: item.valorLiquido,
+          funcionarioId: null,
+          funcionarioNome: null,
+          status: ehPossivel ? "possivel" : "nao_cadastrado",
+          candidatoId: ehPossivel ? Number(melhor.funcionario.id) : null,
+          candidatoNome: ehPossivel ? melhor.funcionario.nome : null,
+          scoreCandidato: ehPossivel ? melhor.score : 0,
+        };
+      });
+
+      setImportacaoAdiantamento((prev) => ({
+        ...prev,
+        etapa: "conferencia",
+        competencia: extraido.competencia,
+        competenciaMes: extraido.competenciaMes,
+        competenciaAno: extraido.competenciaAno,
+        cidadeRelatorio: extraido.cidadeRelatorio,
+        itens,
+        erro: "",
+      }));
+    } catch (err: any) {
+      console.error("Erro ao ler PDF de adiantamento:", err);
+      setImportacaoAdiantamento((prev) => ({
+        ...prev,
+        etapa: "arquivo",
+        erro: err?.message || "Não foi possível ler o PDF de adiantamento.",
+      }));
+    }
+  }
+
+  function vincularItemAdiantamento(itemId: string, funcionarioId: number) {
+    const funcionario = linhas.find(
+      (linha) => Number(linha.funcionarioId) === Number(funcionarioId)
+    );
+    if (!funcionario) return;
+
+    setImportacaoAdiantamento((prev) => ({
+      ...prev,
+      itens: prev.itens.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              status: "ok",
+              funcionarioId: Number(funcionario.funcionarioId),
+              funcionarioNome: funcionario.nome,
+              candidatoId: null,
+              candidatoNome: null,
+              scoreCandidato: 1,
+            }
+          : item
+      ),
+    }));
+
+    const item = importacaoAdiantamento.itens.find((row) => row.id === itemId);
+    if (item) {
+      salvarAliasImportacao(lojaId, item.nomePdf, Number(funcionario.funcionarioId));
+    }
+  }
+
+  function ignorarItemAdiantamento(itemId: string) {
+    setImportacaoAdiantamento((prev) => ({
+      ...prev,
+      itens: prev.itens.map((item) =>
+        item.id === itemId ? { ...item, status: "ignorado" } : item
+      ),
+    }));
+  }
+
+  function salvarImportacaoAdiantamentoPendente() {
+    if (typeof window === "undefined") return;
+
+    window.sessionStorage.setItem(
+      IMPORT_ADIANT_PENDENTE_STORAGE_KEY,
+      JSON.stringify({
+        selectedLoja,
+        ano,
+        mes,
+        importacao: importacaoAdiantamento,
+      })
+    );
+  }
+
+  function irParaCadastrarFuncionarioAdiantamento(item: ItemAdiantamentoPdf) {
+    if (typeof window !== "undefined") {
+      salvarImportacaoAdiantamentoPendente();
+      window.sessionStorage.setItem(
+        "folha-cadastro-sugerido",
+        JSON.stringify({
+          nome: item.nomePdf,
+          lojaId,
+        })
+      );
+    }
+
+    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+  }
+
+  function irParaCadastroExistenteAdiantamento(funcionario: LinhaComQuadrante) {
+    if (typeof window !== "undefined") {
+      salvarImportacaoAdiantamentoPendente();
+      window.sessionStorage.setItem(
+        "folha-funcionario-abrir-id",
+        String(funcionario.funcionarioId)
+      );
+    }
+
+    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+  }
+
+  async function confirmarImportacaoAdiantamento() {
+    const itensValidos = importacaoAdiantamento.itens.filter(
+      (item) => item.status === "ok" && item.funcionarioId
+    );
+
+    if (itensValidos.length === 0) {
+      setImportacaoAdiantamento((prev) => ({
+        ...prev,
+        erro: "Nenhum funcionário está pronto para importar.",
+      }));
+      return;
+    }
+
+    setImportacaoAdiantamento((prev) => ({
+      ...prev,
+      etapa: "importando",
+      erro: "",
+    }));
+
+    try {
+      const atualizacoes = itensValidos.map((item) => {
+        const currentLine = linhas.find(
+          (linha) => Number(linha.funcionarioId) === Number(item.funcionarioId)
+        );
+
+        if (!currentLine) {
+          throw new Error(`Funcionário ${item.funcionarioNome || item.nomePdf} não encontrado na folha.`);
+        }
+
+        const updatedLine = {
+          ...currentLine,
+          adiant: Number(item.valorLiquido || 0),
+        } as LinhaComQuadrante;
+
+        const funcaoMetaAtualizacao =
+          updatedLine.funcao === "gerente" && lojaId === 3
+            ? "vendedor"
+            : updatedLine.funcao;
+
+        const ignorarPercentualManual =
+          updatedLine.funcao === "vendedor" ||
+          updatedLine.funcao === "mecanico" ||
+          (updatedLine.funcao === "gerente" && lojaId === 3);
+
+        const metaAtualizacao = findMetaForFuncionario({
+          funcionarioNome: updatedLine.nome,
+          funcao: funcaoMetaAtualizacao,
+          cidade: selectedLoja,
+          tipoMeta: updatedLine.tipoMeta,
+        });
+
+        const recalculado = computeFolhaLinha({
+          meta: metaAtualizacao,
+          funcao: funcaoMetaAtualizacao,
+          cidade: selectedLoja,
+          funcionarioNome: updatedLine.nome,
+          tipoMeta: updatedLine.tipoMeta,
+          sem1: Number(updatedLine.sem1 || 0),
+          sem2: Number(updatedLine.sem2 || 0),
+          sem3: Number(updatedLine.sem3 || 0),
+          sem4: Number(updatedLine.sem4 || 0),
+          percManual1: ignorarPercentualManual ? null : updatedLine.percManual1,
+          percManual2: ignorarPercentualManual ? null : updatedLine.percManual2,
+          percManual3: ignorarPercentualManual ? null : updatedLine.percManual3,
+          percManual4: ignorarPercentualManual ? null : updatedLine.percManual4,
+          premiacoesManuais: updatedLine.premiacoesManuais || [],
+          vales: updatedLine.vales || [],
+          aluguel: Number(updatedLine.aluguel || 0),
+          inss: Number(updatedLine.inss || 0),
+          adiant: Number(item.valorLiquido || 0),
+          holerite: Number(updatedLine.holerite || 0),
+        });
+
+        const boleto = calcularBoletoAjustado({
+          quadrante: updatedLine.quadrante,
+          funcao: updatedLine.funcao,
+          lojaId,
+          funcionarioNome: updatedLine.nome,
+          totalComissao: Number(recalculado.totalComissao || 0),
+          premiacao: Number(recalculado.premiacao || 0),
+          vale: Number(recalculado.vale || updatedLine.vale || 0),
+          aluguel: Number(updatedLine.aluguel || 0),
+          inss: Number(updatedLine.inss || 0),
+          adiant: Number(item.valorLiquido || 0),
+          holerite: Number(updatedLine.holerite || 0),
+          boletoOriginal: Number(recalculado.boleto || 0),
+        });
+
+        return {
+          mergedLine: {
+            ...updatedLine,
+            ...recalculado,
+            adiant: Number(item.valorLiquido || 0),
+            boleto,
+          } as LinhaComQuadrante,
+          payload: {
+            funcionarioId: Number(item.funcionarioId),
+            lojaId,
+            ano,
+            mes,
+            tipo: "adiantamento" as const,
+            valor: Number(item.valorLiquido || 0),
+            ultimaAlteracaoPor: usuarioLogado,
+            ultimaAlteracaoEm: new Date(),
+          },
+        };
+      });
+
+      // Atualiza a tela imediatamente; o banco é salvo em paralelo.
+      setFolhas((prev) => {
+        let next = [...prev];
+
+        for (const atualizacao of atualizacoes) {
+          const linha = atualizacao.mergedLine;
+          const index = next.findIndex(
+            (f) =>
+              Number(f.funcionarioId) === Number(linha.funcionarioId) &&
+              Number(f.loja_id) === Number(lojaId) &&
+              Number(f.ano) === Number(ano) &&
+              Number(f.mes) === Number(mes)
+          );
+
+          if (index >= 0) next[index] = linha;
+          else next.push(linha);
+        }
+
+        return next;
+      });
+
+      await Promise.all(
+        atualizacoes.map((atualizacao) =>
+          importDescontoMutation.mutateAsync(atualizacao.payload)
+        )
+      );
+
+      void folhaExtrasQuery.refetch();
+      void folhaBaseQuery.refetch();
+
+      setImportacaoAdiantamento((prev) => ({
+        ...prev,
+        etapa: "sucesso",
+        mensagem: `${itensValidos.length} adiantamento(s) importado(s) pelo Valor Líquido do PDF.`,
+      }));
+    } catch (err: any) {
+      console.error("Erro ao importar adiantamentos:", err);
+      setImportacaoAdiantamento((prev) => ({
+        ...prev,
+        etapa: "conferencia",
+        erro: err?.message || "Erro ao salvar os adiantamentos.",
       }));
     }
   }
@@ -3833,6 +4515,7 @@ if (
                 setFuncionarioDetalheId(Number(linha.funcionarioId))
               }
               onOpenImportacaoSemana={openImportacaoSemana}
+              onOpenImportacaoAdiantamento={openImportacaoAdiantamento}
             />
           ))
         )}
@@ -4105,6 +4788,345 @@ if (
                   type="button"
                   className="bg-primary text-black hover:bg-yellow-300"
                   onClick={fecharImportacaoSemana}
+                >
+                  Concluir
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={importacaoAdiantamento.open}
+        onOpenChange={(open) => {
+          if (!open && importacaoAdiantamento.etapa !== "importando") {
+            fecharImportacaoAdiantamento();
+          }
+        }}
+      >
+        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-primary text-xl">
+              Importar adiantamentos — PDF
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              O sistema usa o Valor Líquido do recibo de adiantamento — exatamente o valor que o funcionário recebeu. Esta importação altera somente a coluna Adiant.
+            </DialogDescription>
+          </DialogHeader>
+
+          {importacaoAdiantamento.etapa === "arquivo" && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-primary/20 bg-gray-900 p-5">
+                <Label className="text-gray-300 block mb-3">Arquivo de adiantamento (.pdf)</Label>
+                <Input
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="bg-gray-800 border-primary/30 text-white"
+                  onChange={(e) => processarPdfAdiantamento(e.target.files?.[0] || null)}
+                />
+                <div className="mt-3 space-y-1 text-xs text-gray-500">
+                  <p>• Usa o Valor Líquido do recibo, não o adiantamento bruto.</p>
+                  <p>• Provisão de empréstimo CLT já fica refletida no líquido recebido.</p>
+                  <p>• INSS, Holerite e Vale não são alterados por esta importação.</p>
+                  <p>• Funcionários que não estiverem no PDF permanecem como estão e serão mostrados para conferência.</p>
+                  <p>• Funcionário encontrado no PDF e não cadastrado poderá ser enviado direto para o cadastro.</p>
+                </div>
+              </div>
+
+              {importacaoAdiantamento.erro && (
+                <div className="rounded-md border border-red-500/30 bg-red-950/30 p-4 text-red-300">
+                  {importacaoAdiantamento.erro}
+                </div>
+              )}
+            </div>
+          )}
+
+          {importacaoAdiantamento.etapa === "lendo" && (
+            <div className="py-10 text-center text-gray-300">
+              Lendo o PDF e localizando os valores líquidos...
+            </div>
+          )}
+
+          {(importacaoAdiantamento.etapa === "conferencia" ||
+            importacaoAdiantamento.etapa === "importando") && (() => {
+            const cidadeSelecionada = LOJAS.find((loja) => loja.id === lojaId)?.nome || "";
+            const cidadeRelatorioNormalizada = normalizarTextoImportacao(
+              importacaoAdiantamento.cidadeRelatorio
+            );
+            const cidadeSelecionadaNormalizada = normalizarTextoImportacao(cidadeSelecionada);
+            const cidadeDiferente =
+              !!cidadeRelatorioNormalizada &&
+              !cidadeSelecionadaNormalizada.includes(cidadeRelatorioNormalizada) &&
+              !cidadeRelatorioNormalizada.includes(cidadeSelecionadaNormalizada);
+
+            const competenciaDiferente =
+              (importacaoAdiantamento.competenciaMes !== null &&
+                Number(importacaoAdiantamento.competenciaMes) !== Number(mes)) ||
+              (importacaoAdiantamento.competenciaAno !== null &&
+                Number(importacaoAdiantamento.competenciaAno) !== Number(ano));
+
+            const prontos = importacaoAdiantamento.itens.filter(
+              (item) => item.status === "ok"
+            );
+            const divergencias = importacaoAdiantamento.itens.filter(
+              (item) => item.status === "possivel" || item.status === "nao_cadastrado"
+            );
+            const ignorados = importacaoAdiantamento.itens.filter(
+              (item) => item.status === "ignorado"
+            );
+            const existentesComValor = prontos.filter((item) => {
+              const linha = linhas.find(
+                (l) => Number(l.funcionarioId) === Number(item.funcionarioId)
+              );
+              return Number(linha?.adiant || 0) > 0;
+            });
+
+            return (
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Arquivo</p>
+                    <p className="font-semibold break-all">{importacaoAdiantamento.arquivoNome}</p>
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Competência</p>
+                    <p className={competenciaDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
+                      {importacaoAdiantamento.competencia || "Não identificada"}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Loja do PDF</p>
+                    <p className={cidadeDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
+                      {importacaoAdiantamento.cidadeRelatorio || "Não identificada"}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Prontos</p>
+                    <p className="font-semibold text-green-400">{prontos.length}</p>
+                  </div>
+                </div>
+
+                {cidadeDiferente && (
+                  <div className="rounded-md border border-red-500/40 bg-red-950/30 p-4 text-red-300">
+                    O PDF parece ser de <strong>{importacaoAdiantamento.cidadeRelatorio}</strong>, mas a folha aberta é <strong>{cidadeSelecionada}</strong>. A importação foi bloqueada para evitar lançamento na loja errada.
+                  </div>
+                )}
+
+                {competenciaDiferente && (
+                  <div className="rounded-md border border-red-500/40 bg-red-950/30 p-4 text-red-300">
+                    O PDF é da competência <strong>{importacaoAdiantamento.competencia}</strong>, mas a folha aberta está em <strong>{String(mes).padStart(2, "0")}/{ano}</strong>. A importação foi bloqueada.
+                  </div>
+                )}
+
+                {existentesComValor.length > 0 && (
+                  <div className="rounded-md border border-yellow-500/30 bg-yellow-950/20 p-4 text-yellow-200">
+                    {existentesComValor.length} funcionário(s) já possuem Adiant. preenchido. Ao confirmar, somente os funcionários encontrados no PDF terão esse campo substituído.
+                  </div>
+                )}
+
+                <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <p className="font-semibold text-primary">Valores encontrados</p>
+                    <span className="text-xs text-gray-400">Valor Líquido recebido</span>
+                  </div>
+                  <div className="space-y-2">
+                    {prontos.length === 0 ? (
+                      <p className="text-sm text-gray-400">Nenhum funcionário pronto ainda.</p>
+                    ) : (
+                      prontos.map((item) => (
+                        <div
+                          key={item.id}
+                          className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border-b border-primary/10 pb-2"
+                        >
+                          <div>
+                            <p className="font-semibold text-white">{item.funcionarioNome}</p>
+                            {normalizarTextoImportacao(item.nomePdf) !==
+                              normalizarTextoImportacao(item.funcionarioNome) && (
+                              <p className="text-xs text-gray-500">PDF: {item.nomePdf}</p>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500">pág. {item.pagina}</span>
+                          <span className="font-bold text-green-400">R$ {money(item.valorLiquido)}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {divergencias.length > 0 && (
+                  <div className="rounded-md border border-yellow-500/30 bg-gray-900 p-4">
+                    <p className="font-semibold text-yellow-300 mb-3">Divergências de nomes</p>
+                    <div className="space-y-4">
+                      {divergencias.map((item) => (
+                        <div key={item.id} className="rounded-md border border-yellow-500/20 bg-gray-950 p-3">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div>
+                              <p className="font-semibold">{item.nomePdf}</p>
+                              <p className="text-sm text-green-400">R$ {money(item.valorLiquido)}</p>
+                              {item.status === "possivel" && item.candidatoNome ? (
+                                <p className="text-xs text-yellow-200 mt-1">
+                                  Possível correspondência: {item.candidatoNome}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-red-300 mt-1">Não encontrado na folha atual.</p>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {item.candidatoId && (
+                                <Button
+                                  type="button"
+                                  className="bg-primary text-black hover:bg-yellow-300"
+                                  onClick={() => vincularItemAdiantamento(item.id, Number(item.candidatoId))}
+                                >
+                                  Vincular a {item.candidatoNome}
+                                </Button>
+                              )}
+
+                              <Select
+                                onValueChange={(value) =>
+                                  vincularItemAdiantamento(item.id, Number(value))
+                                }
+                              >
+                                <SelectTrigger className="w-[220px] bg-gray-800 border-primary/30 text-white">
+                                  <SelectValue placeholder="Escolher funcionário" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-gray-900 border-primary/30 max-h-72">
+                                  {linhas.map((linha) => (
+                                    <SelectItem
+                                      key={linha.funcionarioId}
+                                      value={String(linha.funcionarioId)}
+                                      className="text-white"
+                                    >
+                                      {linha.nome}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="border-primary/30 text-primary"
+                                onClick={() => irParaCadastrarFuncionarioAdiantamento(item)}
+                              >
+                                Cadastrar funcionário
+                              </Button>
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => ignorarItemAdiantamento(item.id)}
+                              >
+                                Ignorar
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {funcionariosAusentesNoPdfAdiantamento.length > 0 && (
+                  <div className="rounded-md border border-orange-500/30 bg-gray-900 p-4">
+                    <p className="font-semibold text-orange-300 mb-2">
+                      Cadastrados que não aparecem no PDF de adiantamento
+                    </p>
+                    <p className="text-xs text-gray-400 mb-3">
+                      Nenhum valor será alterado para essas pessoas. Se for funcionário PJ, pode
+                      continuar normalmente. Se for CLT e deveria estar no arquivo, revise o cadastro
+                      ou confirme se o PDF está completo.
+                    </p>
+
+                    <div className="space-y-2">
+                      {funcionariosAusentesNoPdfAdiantamento.map((funcionario) => (
+                        <div
+                          key={funcionario.funcionarioId}
+                          className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-orange-500/10 pb-2"
+                        >
+                          <div>
+                            <p className="font-semibold">{funcionario.nome}</p>
+                            <p className="text-xs text-gray-400">{funcionario.funcao}</p>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-400">
+                              Manter como está
+                            </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="border-orange-500/30 text-orange-300"
+                              onClick={() =>
+                                irParaCadastroExistenteAdiantamento(funcionario)
+                              }
+                            >
+                              Ver cadastro / inativar
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {ignorados.length > 0 && (
+                  <div className="text-xs text-gray-500">
+                    {ignorados.length} funcionário(s) do PDF serão ignorados nesta importação.
+                  </div>
+                )}
+
+                {importacaoAdiantamento.erro && (
+                  <div className="rounded-md border border-red-500/30 bg-red-950/30 p-4 text-red-300">
+                    {importacaoAdiantamento.erro}
+                  </div>
+                )}
+
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={importacaoAdiantamento.etapa === "importando"}
+                    onClick={() => setImportacaoAdiantamento(criarImportacaoAdiantamentoInicial())}
+                  >
+                    Escolher outro PDF
+                  </Button>
+                  <Button
+                    type="button"
+                    className="bg-primary text-black hover:bg-yellow-300"
+                    disabled={
+                      cidadeDiferente ||
+                      competenciaDiferente ||
+                      prontos.length === 0 ||
+                      importacaoAdiantamento.etapa === "importando"
+                    }
+                    onClick={confirmarImportacaoAdiantamento}
+                  >
+                    {importacaoAdiantamento.etapa === "importando"
+                      ? "Importando..."
+                      : `Importar Adiant. (${prontos.length})`}
+                  </Button>
+                </DialogFooter>
+              </div>
+            );
+          })()}
+
+          {importacaoAdiantamento.etapa === "sucesso" && (
+            <div className="space-y-5">
+              <div className="rounded-md border border-green-500/30 bg-green-950/20 p-6 text-center">
+                <p className="text-green-400 font-bold text-lg">Adiantamentos importados</p>
+                <p className="text-gray-300 mt-2">{importacaoAdiantamento.mensagem}</p>
+                <p className="text-xs text-gray-500 mt-3">
+                  Somente a coluna Adiant. foi alterada. Uma futura importação da folha mensal não deverá sobrescrever esses valores.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  className="bg-primary text-black hover:bg-yellow-300"
+                  onClick={fecharImportacaoAdiantamento}
                 >
                   Concluir
                 </Button>
