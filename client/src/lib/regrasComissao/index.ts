@@ -18,6 +18,7 @@ import {
   regraAlinhadorSaoJose,
   regrasConsultorSaoJose,
   regrasRecepcaoSaoJose,
+  regraGerenteSaoJose,
 } from "./saoJose";
 
 import {
@@ -25,6 +26,7 @@ import {
   regraAlinhadorFlorianopolis,
   regrasConsultorFlorianopolis,
   regrasRecepcaoFlorianopolis,
+  regraGerenteFlorianopolis,
 } from "./florianopolis";
 
 import type {
@@ -34,6 +36,7 @@ import type {
   RegrasConsultor,
   RegrasRecepcao,
   RegraRecepcaoFuncionario,
+  RegraGerente,
 } from "./types";
 
 // ======================================================
@@ -66,7 +69,7 @@ const REGRAS_RECEPCAO_POR_LOJA: Record<number, RegrasRecepcao> = {
 // ======================================================
 
 function calcularPercentualPorFaixas(
-  regra: RegraPercentual | RegraAlinhador,
+  regra: RegraPercentual | RegraAlinhador | RegraGerente,
   valorBruto: number
 ): number {
   const valor = Number(valorBruto || 0);
@@ -405,6 +408,44 @@ export function calcularRecepcao(args: {
 }
 
 // ======================================================
+// GERENTE
+// ======================================================
+
+export function getRegraGerente(args: {
+  lojaId: number | string;
+}): RegraGerente | null {
+  const lojaId = Number(args.lojaId);
+
+  if (lojaId === 3) {
+    return regraGerenteSaoJose;
+  }
+
+  if (lojaId === 4) {
+    return regraGerenteFlorianopolis;
+  }
+
+  return null;
+}
+
+export function calcularPercentualGerente(args: {
+  lojaId: number | string;
+  liquidezLoja: number;
+}): number | null {
+  const regra = getRegraGerente({
+    lojaId: args.lojaId,
+  });
+
+  if (!regra) {
+    return null;
+  }
+
+  return calcularPercentualPorFaixas(
+    regra,
+    Number(args.liquidezLoja || 0)
+  );
+}
+
+// ======================================================
 // EXPORTS
 // ======================================================
 
@@ -429,6 +470,9 @@ export {
   regrasRecepcaoBlumenau,
   regrasRecepcaoSaoJose,
   regrasRecepcaoFlorianopolis,
+
+  regraGerenteSaoJose,
+  regraGerenteFlorianopolis,
 };
 
 export type {
@@ -446,4 +490,6 @@ export type {
 
   RegraRecepcaoFuncionario,
   RegrasRecepcao,
+
+  RegraGerente,
 } from "./types";

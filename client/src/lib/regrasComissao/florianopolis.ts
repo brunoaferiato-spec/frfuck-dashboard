@@ -3,7 +3,9 @@ import type {
   RegraAlinhador,
   RegrasConsultor,
   RegrasRecepcao,
+  RegraGerente,
 } from "./types";
+
 // =========================
 // VENDEDOR E MECÂNICO
 // =========================
@@ -95,5 +97,19 @@ export const regrasRecepcaoFlorianopolis: RegrasRecepcao = {
       valorVenda: 2,
       valorEntrada: 0.5,
     },
+  ],
+};
+
+// =========================
+// GERENTE
+// =========================
+
+export const regraGerenteFlorianopolis: RegraGerente = {
+  periodicidade: "mensal",
+  faixas: [
+    { minimo: 0, percentual: 1.5 },
+    { minimo: 360000, percentual: 2 },
+    { minimo: 460000, percentual: 2.5 },
+    { minimo: 560000, percentual: 3 },
   ],
 };

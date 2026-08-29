@@ -68,3 +68,12 @@ export type RegrasRecepcao = {
   regraPadrao?: RegraRecepcaoFuncionario;
   regrasEspecificas?: RegraRecepcaoFuncionario[];
 };
+
+// =========================
+// GERENTE
+// =========================
+
+export type RegraGerente = {
+  periodicidade: "mensal";
+  faixas: FaixaPercentual[];
+};

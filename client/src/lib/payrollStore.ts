@@ -5,6 +5,7 @@ import {
   calcularConsultorMeta2Mensal,
   getRegrasConsultor,
   getRegraRecepcao,
+  calcularPercentualGerente,
 } from "./regrasComissao";
 
 // =========================
@@ -780,19 +781,22 @@ if (funcao === "gerente" && String(cidade) === "4") {
   const liquidezVenda = Number(sem1 || 0);
   const liquidezLoja = Number(sem2 || 0);
 
-  const metas = getMetas();
+  // Florianópolis:
+  // gerente também recebe a comissão normal de vendedor
+  // sobre a liquidez de venda e a comissão mensal de gerente
+  // sobre a liquidez da loja.
+  const percentualVenda =
+    calcularPercentualVendedorMecanico({
+      lojaId: cidade,
+      funcao: "vendedor",
+      valor: liquidezVenda,
+    }) ?? 0;
 
-  const metaVenda = metas.find((m) =>
-    String(m.cidade) === String(cidade) &&
-    String(m.funcao).toLowerCase() === "vendedor" &&
-    !m.funcionarioNome &&
-    !m.funcionario
-  );
-
-  const metaGerente = meta;
-
-  const percentualVenda = getPercentualFromRegra(metaVenda || null, liquidezVenda);
-  const percentualLoja = getPercentualFromRegra(metaGerente || null, liquidezLoja);
+  const percentualLoja =
+    calcularPercentualGerente({
+      lojaId: cidade,
+      liquidezLoja,
+    }) ?? 0;
 
   const comVenda = liquidezVenda * (percentualVenda / 100);
   const comLoja = liquidezLoja * (percentualLoja / 100);
@@ -1018,6 +1022,20 @@ function calcularPercentual(
 
   if (percentualVendedorMecanico !== null) {
     return percentualVendedorMecanico;
+  }
+
+  // Gerente: regra oficial mensal isolada por cidade.
+  // São José usa esta regra para a liquidez da loja,
+  // enquanto a comissão de vendedor continua semanal.
+  if (funcaoNormalizada === "gerente") {
+    const percentualGerente = calcularPercentualGerente({
+      lojaId: cidadeNormalizada,
+      liquidezLoja: valor,
+    });
+
+    if (percentualGerente !== null) {
+      return percentualGerente;
+    }
   }
 
   // Demais funções continuam respeitando percentual manual válido.

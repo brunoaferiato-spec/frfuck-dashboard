@@ -3,6 +3,7 @@ import type {
   RegraAlinhador,
   RegrasConsultor,
   RegrasRecepcao,
+  RegraGerente,
 } from "./types";
 
 // =========================
@@ -96,5 +97,19 @@ export const regrasRecepcaoSaoJose: RegrasRecepcao = {
       valorVenda: 1.5,
       valorEntrada: 0,
     },
+  ],
+};
+
+// =========================
+// GERENTE
+// =========================
+
+export const regraGerenteSaoJose: RegraGerente = {
+  periodicidade: "mensal",
+  faixas: [
+    { minimo: 0, percentual: 0.5 },
+    { minimo: 360000, percentual: 1 },
+    { minimo: 440000, percentual: 1.5 },
+    { minimo: 480000, percentual: 2 },
   ],
 };
