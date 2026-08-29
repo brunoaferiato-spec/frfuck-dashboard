@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { readSheet } from "read-excel-file/browser";
 
 import {
   calcularPremiacaoSupervisorGrupo,
@@ -61,6 +62,199 @@ const LOJAS = [
   { id: 5, nome: "ACI Promoções" },
   { id: 6, nome: "Contrato PJ" },
 ];
+
+
+const ROTA_GESTAO_FUNCIONARIOS = "/gestao-funcionarios";
+const IMPORT_ALIAS_STORAGE_KEY = "folha-importacao-aliases-v1";
+const IMPORT_PENDENTE_STORAGE_KEY = "folha-importacao-pendente-v1";
+
+type SemanaImportacao = 1 | 2 | 3 | 4;
+type FuncaoImportacao = "vendedor" | "mecanico";
+type StatusItemImportacao =
+  | "ok"
+  | "possivel"
+  | "nao_cadastrado"
+  | "ignorado";
+
+type ItemRelatorioImportacao = {
+  id: string;
+  nomeRelatorio: string;
+  funcaoRelatorio: FuncaoImportacao;
+  valor: number;
+  funcionarioId: number | null;
+  funcionarioNome: string | null;
+  status: StatusItemImportacao;
+  candidatoId: number | null;
+  candidatoNome: string | null;
+  scoreCandidato: number;
+};
+
+type ImportacaoSemanaState = {
+  open: boolean;
+  semana: SemanaImportacao;
+  etapa: "arquivo" | "lendo" | "conferencia" | "importando" | "sucesso";
+  arquivoNome: string;
+  periodo: string;
+  cidadeRelatorio: string;
+  itens: ItemRelatorioImportacao[];
+  mensagem: string;
+  erro: string;
+};
+
+function criarImportacaoInicial(semana: SemanaImportacao): ImportacaoSemanaState {
+  return {
+    open: true,
+    semana,
+    etapa: "arquivo",
+    arquivoNome: "",
+    periodo: "",
+    cidadeRelatorio: "",
+    itens: [],
+    mensagem: "",
+    erro: "",
+  };
+}
+
+function normalizarTextoImportacao(value: unknown) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+}
+
+function normalizarNomeImportacao(value: unknown) {
+  const ignorar = new Set(["DE", "DA", "DO", "DAS", "DOS", "E"]);
+
+  return normalizarTextoImportacao(value)
+    .replace(/[^A-Z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token && !ignorar.has(token))
+    .join(" ");
+}
+
+function scoreNomesImportacao(a: string, b: string) {
+  const aa = new Set(normalizarNomeImportacao(a).split(/\s+/).filter(Boolean));
+  const bb = new Set(normalizarNomeImportacao(b).split(/\s+/).filter(Boolean));
+
+  if (aa.size === 0 || bb.size === 0) return 0;
+
+  let intersecao = 0;
+  for (const token of aa) {
+    if (bb.has(token)) intersecao += 1;
+  }
+
+  const uniao = new Set([...aa, ...bb]).size;
+  return uniao > 0 ? intersecao / uniao : 0;
+}
+
+function lerAliasesImportacao(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const raw = window.localStorage.getItem(IMPORT_ALIAS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function salvarAliasImportacao(lojaId: number, nomeRelatorio: string, funcionarioId: number) {
+  if (typeof window === "undefined") return;
+
+  const aliases = lerAliasesImportacao();
+  aliases[`${lojaId}:${normalizarTextoImportacao(nomeRelatorio)}`] = funcionarioId;
+  window.localStorage.setItem(IMPORT_ALIAS_STORAGE_KEY, JSON.stringify(aliases));
+}
+
+function extrairDadosRelatorioSemanal(rows: unknown[][]) {
+  const itens: Array<{
+    nomeRelatorio: string;
+    funcaoRelatorio: FuncaoImportacao;
+    valor: number;
+  }> = [];
+
+  let cidadeRelatorio = "";
+  let periodo = "";
+
+  for (const row of rows.slice(0, 10)) {
+    for (const cell of row) {
+      const texto = String(cell ?? "").trim();
+      if (!texto) continue;
+
+      if (!cidadeRelatorio && /METAS POR COLABORADOR/i.test(texto)) {
+        const match = texto.match(/^F\.\s*(.*?)\s*-\s*METAS POR COLABORADOR/i);
+        if (match?.[1]) cidadeRelatorio = match[1].trim();
+      }
+
+      if (!periodo && /\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/.test(texto)) {
+        periodo = texto.match(/\d{2}\/\d{2}\/\d{4}\s*-\s*\d{2}\/\d{2}\/\d{4}/)?.[0] || "";
+      }
+    }
+  }
+
+  let bloco: FuncaoImportacao | "ignorar" | null = null;
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const row = rows[i] || [];
+    const textos = row.map((cell) => normalizarTextoImportacao(cell));
+    const primeiroTexto = textos.find(Boolean) || "";
+
+    if (primeiroTexto === "VENDA") {
+      bloco = "vendedor";
+      continue;
+    }
+
+    if (primeiroTexto === "MECANICA") {
+      bloco = "mecanico";
+      continue;
+    }
+
+    if (primeiroTexto === "ALINHAMENTO") {
+      bloco = "ignorar";
+      continue;
+    }
+
+    if (bloco !== "vendedor" && bloco !== "mecanico") continue;
+
+    const indiceColaborador = textos.findIndex((texto) => texto === "COLABORADOR");
+    const indiceLiquidezSemPneu = textos.findIndex((texto) => {
+      const limpo = texto.replace(/[^A-Z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+      return limpo === "LIQ S PNEUS" || limpo.includes("LIQ S PNEUS");
+    });
+
+    if (indiceColaborador < 0 || indiceLiquidezSemPneu < 0) continue;
+
+    for (let j = i + 1; j < rows.length; j += 1) {
+      const dataRow = rows[j] || [];
+      const nome = String(dataRow[indiceColaborador] ?? "").trim();
+      const nomeNormalizado = normalizarTextoImportacao(nome);
+
+      if (!nomeNormalizado) break;
+      if (nomeNormalizado.startsWith("TOTAIS")) break;
+      if (["VENDA", "MECANICA", "ALINHAMENTO"].includes(nomeNormalizado)) break;
+
+      const valorRaw = dataRow[indiceLiquidezSemPneu];
+      const valor = typeof valorRaw === "number"
+        ? valorRaw
+        : parseValorBR(String(valorRaw ?? "0"));
+
+      if (!nome || !Number.isFinite(Number(valor))) continue;
+
+      itens.push({
+        nomeRelatorio: nome,
+        funcaoRelatorio: bloco,
+        valor: Number(valor || 0),
+      });
+    }
+  }
+
+  return {
+    cidadeRelatorio,
+    periodo,
+    itens,
+  };
+}
 
 function money(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -482,6 +676,7 @@ function TabelaQuadrante({
   onOpenNegativoEditor,
   onOpenRegraSemanaEditor,
   onOpenFuncionarioDetalhe,
+  onOpenImportacaoSemana,
 }: {
   titulo: string;
   descricao: string;
@@ -502,6 +697,7 @@ function TabelaQuadrante({
     linha: LinhaComQuadrante,
     semana: 1 | 2 | 3 | 4 | 5
   ) => void;
+  onOpenImportacaoSemana: (semana: SemanaImportacao) => void;
 }) {
   if (linhas.length === 0) return null;
 
@@ -752,13 +948,65 @@ const regraClassName = manual
 
                 {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && !isConsultorMeta2 && !isGerente && (
                   <>
-                    <th className="text-right p-2">SEM1</th>
+                    <th className="text-right p-2">
+                      {quadrante === "comissao_semanal" ? (
+                        <button
+                          type="button"
+                          onClick={() => onOpenImportacaoSemana(1)}
+                          className="font-bold text-primary hover:underline underline-offset-4"
+                          title="Importar relatório da SEM1"
+                        >
+                          SEM1
+                        </button>
+                      ) : (
+                        "SEM1"
+                      )}
+                    </th>
                     <th className="text-right p-2">{isConsultor ? "Regra" : "%"}</th>
-                    <th className="text-right p-2">SEM2</th>
+                    <th className="text-right p-2">
+                      {quadrante === "comissao_semanal" ? (
+                        <button
+                          type="button"
+                          onClick={() => onOpenImportacaoSemana(2)}
+                          className="font-bold text-primary hover:underline underline-offset-4"
+                          title="Importar relatório da SEM2"
+                        >
+                          SEM2
+                        </button>
+                      ) : (
+                        "SEM2"
+                      )}
+                    </th>
                     <th className="text-right p-2">{isConsultor ? "Regra" : "%"}</th>
-                    <th className="text-right p-2">SEM3</th>
+                    <th className="text-right p-2">
+                      {quadrante === "comissao_semanal" ? (
+                        <button
+                          type="button"
+                          onClick={() => onOpenImportacaoSemana(3)}
+                          className="font-bold text-primary hover:underline underline-offset-4"
+                          title="Importar relatório da SEM3"
+                        >
+                          SEM3
+                        </button>
+                      ) : (
+                        "SEM3"
+                      )}
+                    </th>
                     <th className="text-right p-2">{isConsultor ? "Regra" : "%"}</th>
-                    <th className="text-right p-2">SEM4</th>
+                    <th className="text-right p-2">
+                      {quadrante === "comissao_semanal" ? (
+                        <button
+                          type="button"
+                          onClick={() => onOpenImportacaoSemana(4)}
+                          className="font-bold text-primary hover:underline underline-offset-4"
+                          title="Importar relatório da SEM4"
+                        >
+                          SEM4
+                        </button>
+                      ) : (
+                        "SEM4"
+                      )}
+                    </th>
                     <th className="text-right p-2">{isConsultor ? "Regra" : "%"}</th>
                   </>
                 )}
@@ -1258,6 +1506,12 @@ export default function FolhaPagamento() {
     semana: null,
   });
 
+
+  const [importacaoSemana, setImportacaoSemana] = useState<ImportacaoSemanaState>(
+    { ...criarImportacaoInicial(1), open: false }
+  );
+  const [importacaoRestaurada, setImportacaoRestaurada] = useState(false);
+
   const [funcionarioDetalheId, setFuncionarioDetalheId] = useState<number | null>(null);
 
   const lojaId = parseInt(selectedLoja, 10);
@@ -1288,6 +1542,9 @@ const upsertFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation({
     void folhaBaseQuery.refetch();
   },
 });
+
+
+const importFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation();
 
 const folhaExtrasQuery = trpc.folhaExtras.getByLojaAnoMes.useQuery(
   { lojaId, ano, mes },
@@ -1912,6 +2169,411 @@ return {
   folhaExtrasQuery.data,
   resumoSupervisorQuery.data,
 ]);
+
+  const funcionariosImportaveis = useMemo(() => {
+    return funcionariosDaCidade.filter(
+      (funcionario: any) =>
+        funcionario.funcao === "vendedor" || funcionario.funcao === "mecanico"
+    );
+  }, [funcionariosDaCidade]);
+
+  const funcionariosAusentesNoRelatorio = useMemo(() => {
+    if (importacaoSemana.etapa !== "conferencia") return [] as any[];
+
+    const idsEncontrados = new Set(
+      importacaoSemana.itens
+        .filter((item) => item.status === "ok" && item.funcionarioId)
+        .map((item) => Number(item.funcionarioId))
+    );
+
+    return funcionariosImportaveis.filter(
+      (funcionario: any) => !idsEncontrados.has(Number(funcionario.id))
+    );
+  }, [importacaoSemana.etapa, importacaoSemana.itens, funcionariosImportaveis]);
+
+  useEffect(() => {
+    if (importacaoRestaurada || typeof window === "undefined") return;
+
+    setImportacaoRestaurada(true);
+
+    try {
+      const raw = window.sessionStorage.getItem(IMPORT_PENDENTE_STORAGE_KEY);
+      if (!raw) return;
+
+      const pendente = JSON.parse(raw);
+      window.sessionStorage.removeItem(IMPORT_PENDENTE_STORAGE_KEY);
+
+      if (pendente?.selectedLoja) setSelectedLoja(String(pendente.selectedLoja));
+      if (pendente?.ano) setAno(Number(pendente.ano));
+      if (pendente?.mes) setMes(Number(pendente.mes));
+      if (pendente?.importacao) {
+        setImportacaoSemana({
+          ...pendente.importacao,
+          open: true,
+          etapa: "conferencia",
+        });
+      }
+    } catch (err) {
+      console.error("Erro ao restaurar importação pendente:", err);
+    }
+  }, [importacaoRestaurada]);
+
+  function openImportacaoSemana(semana: SemanaImportacao) {
+    if (!usaMetaSemanal(lojaId, ano, mes)) return;
+    setImportacaoSemana(criarImportacaoInicial(semana));
+  }
+
+  function fecharImportacaoSemana() {
+    setImportacaoSemana((prev) => ({ ...prev, open: false }));
+  }
+
+  async function processarArquivoImportacao(file: File | null) {
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      setImportacaoSemana((prev) => ({
+        ...prev,
+        erro: "Selecione um arquivo Excel no formato .xlsx.",
+      }));
+      return;
+    }
+
+    setImportacaoSemana((prev) => ({
+      ...prev,
+      etapa: "lendo",
+      arquivoNome: file.name,
+      erro: "",
+      mensagem: "",
+    }));
+
+    try {
+      const rows = (await readSheet(file)) as unknown[][];
+      const extraido = extrairDadosRelatorioSemanal(rows);
+
+      if (extraido.itens.length === 0) {
+        throw new Error(
+          "Não encontrei os blocos VENDA/MECÂNICA com a coluna LIQ. S/ PNEUS."
+        );
+      }
+
+      const aliases = lerAliasesImportacao();
+      const itens: ItemRelatorioImportacao[] = extraido.itens.map((item, index) => {
+        const chaveAlias = `${lojaId}:${normalizarTextoImportacao(item.nomeRelatorio)}`;
+        const aliasId = aliases[chaveAlias];
+
+        const candidatosFuncao = funcionariosImportaveis.filter(
+          (funcionario: any) => funcionario.funcao === item.funcaoRelatorio
+        );
+
+        const porAlias = aliasId
+          ? candidatosFuncao.find((f: any) => Number(f.id) === Number(aliasId))
+          : null;
+
+        const nomeCanonico = normalizarNomeImportacao(item.nomeRelatorio);
+        const exato = candidatosFuncao.find(
+          (funcionario: any) =>
+            normalizarNomeImportacao(funcionario.nome) === nomeCanonico
+        );
+
+        const escolhido = porAlias || exato;
+
+        if (escolhido) {
+          return {
+            id: `${item.funcaoRelatorio}-${index}-${normalizarTextoImportacao(item.nomeRelatorio)}`,
+            nomeRelatorio: item.nomeRelatorio,
+            funcaoRelatorio: item.funcaoRelatorio,
+            valor: item.valor,
+            funcionarioId: Number(escolhido.id),
+            funcionarioNome: escolhido.nome,
+            status: "ok" as const,
+            candidatoId: null,
+            candidatoNome: null,
+            scoreCandidato: 1,
+          };
+        }
+
+        const candidatosOrdenados = candidatosFuncao
+          .map((funcionario: any) => ({
+            funcionario,
+            score: scoreNomesImportacao(item.nomeRelatorio, funcionario.nome),
+          }))
+          .sort((a, b) => b.score - a.score);
+
+        const melhor = candidatosOrdenados[0];
+        const ehPossivel = !!melhor && melhor.score >= 0.55;
+
+        return {
+          id: `${item.funcaoRelatorio}-${index}-${normalizarTextoImportacao(item.nomeRelatorio)}`,
+          nomeRelatorio: item.nomeRelatorio,
+          funcaoRelatorio: item.funcaoRelatorio,
+          valor: item.valor,
+          funcionarioId: null,
+          funcionarioNome: null,
+          status: ehPossivel ? "possivel" : "nao_cadastrado",
+          candidatoId: ehPossivel ? Number(melhor.funcionario.id) : null,
+          candidatoNome: ehPossivel ? melhor.funcionario.nome : null,
+          scoreCandidato: ehPossivel ? melhor.score : 0,
+        };
+      });
+
+      setImportacaoSemana((prev) => ({
+        ...prev,
+        etapa: "conferencia",
+        periodo: extraido.periodo,
+        cidadeRelatorio: extraido.cidadeRelatorio,
+        itens,
+        erro: "",
+      }));
+    } catch (err: any) {
+      setImportacaoSemana((prev) => ({
+        ...prev,
+        etapa: "arquivo",
+        erro: err?.message || "Não foi possível ler o relatório.",
+      }));
+    }
+  }
+
+  function vincularItemImportacao(itemId: string, funcionarioId: number) {
+    const funcionario = funcionariosImportaveis.find(
+      (f: any) => Number(f.id) === Number(funcionarioId)
+    );
+    if (!funcionario) return;
+
+    setImportacaoSemana((prev) => ({
+      ...prev,
+      itens: prev.itens.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              status: "ok",
+              funcionarioId: Number(funcionario.id),
+              funcionarioNome: funcionario.nome,
+              candidatoId: null,
+              candidatoNome: null,
+              scoreCandidato: 1,
+            }
+          : item
+      ),
+    }));
+
+    const item = importacaoSemana.itens.find((row) => row.id === itemId);
+    if (item) {
+      salvarAliasImportacao(lojaId, item.nomeRelatorio, Number(funcionario.id));
+    }
+  }
+
+  function ignorarItemImportacao(itemId: string) {
+    setImportacaoSemana((prev) => ({
+      ...prev,
+      itens: prev.itens.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              status: "ignorado",
+              funcionarioId: null,
+              funcionarioNome: null,
+            }
+          : item
+      ),
+    }));
+  }
+
+  function salvarImportacaoPendente() {
+    if (typeof window === "undefined") return;
+
+    window.sessionStorage.setItem(
+      IMPORT_PENDENTE_STORAGE_KEY,
+      JSON.stringify({
+        selectedLoja,
+        ano,
+        mes,
+        importacao: importacaoSemana,
+      })
+    );
+  }
+
+  function irParaCadastrarFuncionario(item: ItemRelatorioImportacao) {
+    if (typeof window !== "undefined") {
+      salvarImportacaoPendente();
+      window.sessionStorage.setItem(
+        "folha-cadastro-sugerido",
+        JSON.stringify({
+          nome: item.nomeRelatorio,
+          funcao: item.funcaoRelatorio,
+          lojaId,
+        })
+      );
+    }
+
+    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+  }
+
+  function irParaCadastroExistente(funcionario: any) {
+    if (typeof window !== "undefined") {
+      salvarImportacaoPendente();
+      window.sessionStorage.setItem(
+        "folha-funcionario-abrir-id",
+        String(funcionario.id)
+      );
+    }
+
+    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+  }
+
+  async function confirmarImportacaoSemana() {
+    const itensValidos = importacaoSemana.itens.filter(
+      (item) => item.status === "ok" && item.funcionarioId
+    );
+
+    if (itensValidos.length === 0) {
+      setImportacaoSemana((prev) => ({
+        ...prev,
+        erro: "Nenhum funcionário está pronto para importar.",
+      }));
+      return;
+    }
+
+    setImportacaoSemana((prev) => ({
+      ...prev,
+      etapa: "importando",
+      erro: "",
+    }));
+
+    const semana = importacaoSemana.semana;
+    const campoSemana = `sem${semana}` as "sem1" | "sem2" | "sem3" | "sem4";
+
+    try {
+      const atualizacoes = itensValidos.map((item) => {
+        const currentLine = linhas.find(
+          (linha) => Number(linha.funcionarioId) === Number(item.funcionarioId)
+        );
+
+        if (!currentLine) {
+          throw new Error(`Funcionário ${item.funcionarioNome || item.nomeRelatorio} não encontrado na folha.`);
+        }
+
+        const updatedLine = {
+          ...currentLine,
+          [campoSemana]: Number(item.valor || 0),
+        } as LinhaComQuadrante;
+
+        const metaAtualizacao = findMetaForFuncionario({
+          funcionarioNome: updatedLine.nome,
+          funcao: updatedLine.funcao,
+          cidade: selectedLoja,
+          tipoMeta: updatedLine.tipoMeta,
+        });
+
+        const recalculado = computeFolhaLinha({
+          meta: metaAtualizacao,
+          funcao: updatedLine.funcao,
+          cidade: selectedLoja,
+          funcionarioNome: updatedLine.nome,
+          tipoMeta: updatedLine.tipoMeta,
+          sem1: Number(updatedLine.sem1 || 0),
+          sem2: Number(updatedLine.sem2 || 0),
+          sem3: Number(updatedLine.sem3 || 0),
+          sem4: Number(updatedLine.sem4 || 0),
+          percManual1: null,
+          percManual2: null,
+          percManual3: null,
+          percManual4: null,
+          premiacoesManuais: updatedLine.premiacoesManuais || [],
+          vales: updatedLine.vales || [],
+          aluguel: Number(updatedLine.aluguel || 0),
+          inss: Number(updatedLine.inss || 0),
+          adiant: Number(updatedLine.adiant || 0),
+          holerite: Number(updatedLine.holerite || 0),
+        });
+
+        const mergedLine = {
+          ...updatedLine,
+          ...recalculado,
+        } as LinhaComQuadrante;
+
+        const percentual =
+          semana === 1
+            ? mergedLine.perc1
+            : semana === 2
+            ? mergedLine.perc2
+            : semana === 3
+            ? mergedLine.perc3
+            : mergedLine.perc4;
+
+        const comissao =
+          semana === 1
+            ? mergedLine.com1
+            : semana === 2
+            ? mergedLine.com2
+            : semana === 3
+            ? mergedLine.com3
+            : mergedLine.com4;
+
+        return {
+          mergedLine,
+          payload: {
+            funcionarioId: Number(item.funcionarioId),
+            lojaId,
+            ano,
+            mes,
+            semana,
+            liquidez: Number(item.valor || 0),
+            percentualComissao: Number(percentual || 0),
+            valorComissao: Number(comissao || 0),
+            ultimaAlteracaoPor: usuarioLogado,
+            ultimaAlteracaoEm: new Date(),
+          },
+        };
+      });
+
+      // Atualiza a tela imediatamente.
+      setFolhas((prev) => {
+        let next = [...prev];
+
+        for (const atualizacao of atualizacoes) {
+          const linha = atualizacao.mergedLine;
+          const index = next.findIndex(
+            (f) =>
+              Number(f.funcionarioId) === Number(linha.funcionarioId) &&
+              Number(f.loja_id) === Number(lojaId) &&
+              Number(f.ano) === Number(ano) &&
+              Number(f.mes) === Number(mes)
+          );
+
+          if (index >= 0) {
+            next[index] = linha;
+          } else {
+            next.push(linha);
+          }
+        }
+
+        return next;
+      });
+
+      await Promise.all(
+        atualizacoes.map((atualizacao) =>
+          importFolhaBaseMutation.mutateAsync(atualizacao.payload)
+        )
+      );
+
+      void folhaBaseQuery.refetch();
+      void resumoSupervisorQuery.refetch();
+
+      setImportacaoSemana((prev) => ({
+        ...prev,
+        etapa: "sucesso",
+        mensagem: `${itensValidos.length} valor(es) importado(s) para a SEM${semana}.`,
+      }));
+    } catch (err: any) {
+      console.error("Erro ao importar relatório semanal:", err);
+      setImportacaoSemana((prev) => ({
+        ...prev,
+        etapa: "conferencia",
+        erro: err?.message || "Erro ao salvar a importação.",
+      }));
+    }
+  }
+
   async function updateLinha(
   funcionarioId: number,
   campo: keyof FolhaMensal,
@@ -3170,10 +3832,287 @@ if (
               onOpenFuncionarioDetalhe={(linha) =>
                 setFuncionarioDetalheId(Number(linha.funcionarioId))
               }
+              onOpenImportacaoSemana={openImportacaoSemana}
             />
           ))
         )}
       </div>
+
+      <Dialog
+        open={importacaoSemana.open}
+        onOpenChange={(open) => {
+          if (!open && importacaoSemana.etapa !== "importando") {
+            fecharImportacaoSemana();
+          }
+        }}
+      >
+        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-primary text-xl">
+              Importar relatório — SEM{importacaoSemana.semana}
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              O sistema importa somente VENDA e MECÂNICA usando a coluna LIQ. S/ PNEUS. Alinhamento continua manual.
+            </DialogDescription>
+          </DialogHeader>
+
+          {importacaoSemana.etapa === "arquivo" && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-primary/20 bg-gray-900 p-5">
+                <Label className="text-gray-300 block mb-3">Arquivo Excel (.xlsx)</Label>
+                <Input
+                  type="file"
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  className="bg-gray-800 border-primary/30 text-white"
+                  onChange={(e) => processarArquivoImportacao(e.target.files?.[0] || null)}
+                />
+                <p className="text-xs text-gray-500 mt-3">
+                  Se a semana já tiver valores, a confirmação substituirá somente os funcionários encontrados no relatório.
+                </p>
+              </div>
+
+              {importacaoSemana.erro && (
+                <div className="rounded-md border border-red-500/30 bg-red-950/30 p-4 text-red-300">
+                  {importacaoSemana.erro}
+                </div>
+              )}
+            </div>
+          )}
+
+          {importacaoSemana.etapa === "lendo" && (
+            <div className="py-10 text-center text-gray-300">
+              Lendo e conferindo o relatório...
+            </div>
+          )}
+
+          {(importacaoSemana.etapa === "conferencia" || importacaoSemana.etapa === "importando") && (() => {
+            const cidadeSelecionada = LOJAS.find((loja) => loja.id === lojaId)?.nome || "";
+            const cidadeRelatorioNormalizada = normalizarTextoImportacao(importacaoSemana.cidadeRelatorio);
+            const cidadeSelecionadaNormalizada = normalizarTextoImportacao(cidadeSelecionada);
+            const cidadeDiferente =
+              !!cidadeRelatorioNormalizada &&
+              !cidadeSelecionadaNormalizada.includes(cidadeRelatorioNormalizada) &&
+              !cidadeRelatorioNormalizada.includes(cidadeSelecionadaNormalizada);
+
+            const prontos = importacaoSemana.itens.filter((item) => item.status === "ok");
+            const divergencias = importacaoSemana.itens.filter(
+              (item) => item.status === "possivel" || item.status === "nao_cadastrado"
+            );
+            const ignorados = importacaoSemana.itens.filter((item) => item.status === "ignorado");
+            const campoSemana = `sem${importacaoSemana.semana}` as keyof LinhaComQuadrante;
+            const existentesComValor = prontos.filter((item) => {
+              const linha = linhas.find(
+                (l) => Number(l.funcionarioId) === Number(item.funcionarioId)
+              );
+              return Number(linha?.[campoSemana] || 0) > 0;
+            });
+
+            return (
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Arquivo</p>
+                    <p className="font-semibold break-all">{importacaoSemana.arquivoNome}</p>
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Período</p>
+                    <p className="font-semibold">{importacaoSemana.periodo || "Não identificado"}</p>
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Loja do relatório</p>
+                    <p className={cidadeDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
+                      {importacaoSemana.cidadeRelatorio || "Não identificada"}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Prontos</p>
+                    <p className="font-semibold text-green-400">{prontos.length}</p>
+                  </div>
+                </div>
+
+                {cidadeDiferente && (
+                  <div className="rounded-md border border-red-500/40 bg-red-950/30 p-4 text-red-300">
+                    Atenção: o relatório parece ser de <strong>{importacaoSemana.cidadeRelatorio}</strong>, mas a folha aberta é <strong>{cidadeSelecionada}</strong>. A importação fica bloqueada para evitar lançamento na loja errada.
+                  </div>
+                )}
+
+                {existentesComValor.length > 0 && (
+                  <div className="rounded-md border border-yellow-500/30 bg-yellow-950/20 p-4 text-yellow-200">
+                    {existentesComValor.length} funcionário(s) já possuem valor na SEM{importacaoSemana.semana}. Ao confirmar, somente esses valores encontrados no relatório serão substituídos.
+                  </div>
+                )}
+
+                <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <p className="font-semibold text-primary">Funcionários encontrados</p>
+                    <span className="text-xs text-gray-400">LIQ. S/ PNEUS</span>
+                  </div>
+                  <div className="space-y-2">
+                    {prontos.length === 0 ? (
+                      <p className="text-sm text-gray-400">Nenhum funcionário pronto ainda.</p>
+                    ) : (
+                      prontos.map((item) => (
+                        <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border-b border-primary/10 pb-2">
+                          <div>
+                            <p className="font-semibold text-white">{item.funcionarioNome}</p>
+                            {normalizarTextoImportacao(item.nomeRelatorio) !== normalizarTextoImportacao(item.funcionarioNome) && (
+                              <p className="text-xs text-gray-500">Relatório: {item.nomeRelatorio}</p>
+                            )}
+                          </div>
+                          <span className="text-xs uppercase text-gray-400">{item.funcaoRelatorio}</span>
+                          <span className="font-bold text-green-400">R$ {money(item.valor)}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {divergencias.length > 0 && (
+                  <div className="rounded-md border border-yellow-500/30 bg-gray-900 p-4">
+                    <p className="font-semibold text-yellow-300 mb-3">Divergências do relatório</p>
+                    <div className="space-y-3">
+                      {divergencias.map((item) => (
+                        <div key={item.id} className="rounded-md border border-yellow-500/20 bg-gray-950 p-3">
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-white">{item.nomeRelatorio}</p>
+                              <p className="text-xs text-gray-400">
+                                {item.funcaoRelatorio === "vendedor" ? "VENDA" : "MECÂNICA"} • R$ {money(item.valor)}
+                              </p>
+                              {item.status === "possivel" && item.candidatoNome && (
+                                <p className="text-sm text-yellow-200 mt-1">
+                                  Possível correspondência: <strong>{item.candidatoNome}</strong>
+                                </p>
+                              )}
+                              {item.status === "nao_cadastrado" && (
+                                <p className="text-sm text-yellow-200 mt-1">Não encontrei este funcionário no cadastro da loja.</p>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {item.status === "possivel" && item.candidatoId && (
+                                <Button
+                                  type="button"
+                                  className="bg-primary text-black hover:bg-yellow-300"
+                                  onClick={() => vincularItemImportacao(item.id, Number(item.candidatoId))}
+                                >
+                                  Sim, vincular
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="border-primary/30 text-primary"
+                                onClick={() => irParaCadastrarFuncionario(item)}
+                              >
+                                Cadastrar funcionário
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => ignorarItemImportacao(item.id)}
+                              >
+                                Ignorar
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {funcionariosAusentesNoRelatorio.length > 0 && (
+                  <div className="rounded-md border border-orange-500/30 bg-gray-900 p-4">
+                    <p className="font-semibold text-orange-300 mb-2">Cadastrados que não aparecem no relatório</p>
+                    <p className="text-xs text-gray-400 mb-3">
+                      Eles continuarão com R$ 0,00 nesta semana se você prosseguir. Se alguém não deveria mais estar ativo, abra o cadastro para revisar/inativar.
+                    </p>
+                    <div className="space-y-2">
+                      {funcionariosAusentesNoRelatorio.map((funcionario: any) => (
+                        <div key={funcionario.id} className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-orange-500/10 pb-2">
+                          <div>
+                            <p className="font-semibold">{funcionario.nome}</p>
+                            <p className="text-xs text-gray-400">{funcionario.funcao}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-400">Manter R$ 0,00</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="border-orange-500/30 text-orange-300"
+                              onClick={() => irParaCadastroExistente(funcionario)}
+                            >
+                              Ver cadastro / inativar
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {ignorados.length > 0 && (
+                  <div className="text-xs text-gray-500">
+                    {ignorados.length} linha(s) do relatório serão ignoradas nesta importação.
+                  </div>
+                )}
+
+                {importacaoSemana.erro && (
+                  <div className="rounded-md border border-red-500/30 bg-red-950/30 p-4 text-red-300">
+                    {importacaoSemana.erro}
+                  </div>
+                )}
+
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={importacaoSemana.etapa === "importando"}
+                    onClick={() => setImportacaoSemana(criarImportacaoInicial(importacaoSemana.semana))}
+                  >
+                    Escolher outro arquivo
+                  </Button>
+                  <Button
+                    type="button"
+                    className="bg-primary text-black hover:bg-yellow-300"
+                    disabled={
+                      cidadeDiferente ||
+                      prontos.length === 0 ||
+                      importacaoSemana.etapa === "importando"
+                    }
+                    onClick={confirmarImportacaoSemana}
+                  >
+                    {importacaoSemana.etapa === "importando"
+                      ? "Importando..."
+                      : `Importar SEM${importacaoSemana.semana} (${prontos.length})`}
+                  </Button>
+                </DialogFooter>
+              </div>
+            );
+          })()}
+
+          {importacaoSemana.etapa === "sucesso" && (
+            <div className="space-y-5">
+              <div className="rounded-md border border-green-500/30 bg-green-950/20 p-6 text-center">
+                <p className="text-green-400 font-bold text-lg">Importação concluída</p>
+                <p className="text-gray-300 mt-2">{importacaoSemana.mensagem}</p>
+                <p className="text-xs text-gray-500 mt-3">
+                  Vendedores e mecânicos foram recalculados automaticamente. Alinhadores permanecem com lançamento mensal manual.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  className="bg-primary text-black hover:bg-yellow-300"
+                  onClick={fecharImportacaoSemana}
+                >
+                  Concluir
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={!!funcionarioDetalheAtual}
