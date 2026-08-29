@@ -83,9 +83,43 @@ function parseValorBR(value: string) {
   return Number(cleaned);
 }
 
+function formatarDataBR(value: unknown) {
+  if (!value) return "Não informado";
+
+  const raw = String(value).trim();
+  if (!raw) return "Não informado";
+
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  }
+
+  const data = new Date(raw);
+  if (Number.isNaN(data.getTime())) return raw;
+
+  return data.toLocaleDateString("pt-BR");
+}
+
+function formatarCpf(value: unknown) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length !== 11) return String(value || "Não informado");
+
+  return digits.replace(
+    /^(\d{3})(\d{3})(\d{3})(\d{2})$/,
+    "$1.$2.$3-$4"
+  );
+}
+
+function textoOuNaoInformado(value: unknown) {
+  const texto = String(value ?? "").trim();
+  return texto || "Não informado";
+}
+
 function calcularBoletoAjustado(args: {
   quadrante: QuadranteKey;
   funcao: string;
+  lojaId: number;
+  funcionarioNome: string;
   totalComissao: number;
   premiacao: number;
   vale: number;
@@ -108,16 +142,46 @@ function calcularBoletoAjustado(args: {
 }
 
   if (args.quadrante === "recepcao") {
-  return totalComissao + premiacao - vale;
-}
+    // JOINVILLE:
+    // Recepção vai para boleto somente com PREMIAÇÃO - VALE.
+    // A comissão da recepção fica registrada na folha, mas não compõe o boleto.
+    if (Number(args.lojaId) === 1) {
+      return premiacao - vale;
+    }
 
-if (args.quadrante === "consultor_vendas") {
-  return totalComissao + premiacao - vale - aluguel;
-}
+    // Demais lojas mantêm a regra já validada.
+    return totalComissao + premiacao - vale;
+  }
 
-if (args.quadrante === "alinhador") {
-  return totalComissao + premiacao - vale - aluguel;
-}
+  if (args.quadrante === "consultor_vendas") {
+    return totalComissao + premiacao - vale - aluguel;
+  }
+
+  if (args.quadrante === "alinhador") {
+    const nomeNormalizado = String(args.funcionarioNome || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toUpperCase();
+
+    const ehMiltonBlumenau =
+      Number(args.lojaId) === 2 &&
+      nomeNormalizado.includes("MILTON");
+
+    // BLUMENAU - MILTON:
+    // além de vale e aluguel, também desconta adiantamento.
+    if (ehMiltonBlumenau) {
+      return (
+        totalComissao +
+        premiacao -
+        vale -
+        aluguel -
+        adiant
+      );
+    }
+
+    return totalComissao + premiacao - vale - aluguel;
+  }
 
 if (
   args.quadrante === "consultor_vendas_mensal"
@@ -417,6 +481,7 @@ function TabelaQuadrante({
   onOpenValeEditor,
   onOpenNegativoEditor,
   onOpenRegraSemanaEditor,
+  onOpenFuncionarioDetalhe,
 }: {
   titulo: string;
   descricao: string;
@@ -432,6 +497,7 @@ function TabelaQuadrante({
   onOpenObsEditor: (linha: LinhaComQuadrante) => void;
   onOpenValeEditor: (linha: LinhaComQuadrante) => void;
   onOpenNegativoEditor: (linha: LinhaComQuadrante) => void;
+  onOpenFuncionarioDetalhe: (linha: LinhaComQuadrante) => void;
   onOpenRegraSemanaEditor: (
     linha: LinhaComQuadrante,
     semana: 1 | 2 | 3 | 4 | 5
@@ -797,7 +863,14 @@ const regraClassName = manual
                   className="border-b border-primary/10 hover:bg-gray-800"
                 >
                   <td className="p-2 text-white font-semibold sticky left-0 z-10 bg-gray-900 min-w-[260px]">
-                    {linha.nome}
+                    <button
+                      type="button"
+                      onClick={() => onOpenFuncionarioDetalhe(linha)}
+                      className="text-left text-white font-semibold hover:text-primary hover:underline underline-offset-4 transition-colors"
+                      title="Ver dados do funcionário"
+                    >
+                      {linha.nome}
+                    </button>
                   </td>
                   <td className="p-2 text-gray-300">{linha.funcao}</td>
                   {isSalarioFixo && (
@@ -1185,6 +1258,8 @@ export default function FolhaPagamento() {
     semana: null,
   });
 
+  const [funcionarioDetalheId, setFuncionarioDetalheId] = useState<number | null>(null);
+
   const lojaId = parseInt(selectedLoja, 10);
   const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(   
   { lojaId },
@@ -1209,8 +1284,8 @@ const folhaBaseQuery = trpc.folhaPagamento.getBaseByLojaAnoMes.useQuery(
 const usuarioLogado = "Bruno";
 
 const upsertFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation({
-  onSuccess: async () => {
-    await folhaBaseQuery.refetch();
+  onSuccess: () => {
+    void folhaBaseQuery.refetch();
   },
 });
 
@@ -1236,46 +1311,46 @@ const resumoSupervisorQuery =
   );
 
 const addPremiacaoMutation = trpc.folhaExtras.addPremiacao.useMutation({
-  onSuccess: async () => {
-    await folhaExtrasQuery.refetch();
+  onSuccess: () => {
+    void folhaExtrasQuery.refetch();
   },
 });
 
 const removePremiacaoMutation = trpc.folhaExtras.removePremiacao.useMutation({
-  onSuccess: async () => {
-    await folhaExtrasQuery.refetch();
+  onSuccess: () => {
+    void folhaExtrasQuery.refetch();
   },
 });
 
 const addObservacaoMutation = trpc.folhaExtras.addObservacao.useMutation({
-  onSuccess: async () => {
-    await folhaExtrasQuery.refetch();
+  onSuccess: () => {
+    void folhaExtrasQuery.refetch();
   },
 });
 
 const removeObservacaoMutation = trpc.folhaExtras.removeObservacao.useMutation({
-  onSuccess: async () => {
-    await folhaExtrasQuery.refetch();
+  onSuccess: () => {
+    void folhaExtrasQuery.refetch();
   },
 });
 
 const saveDescontoMutation = trpc.folhaExtras.saveDesconto.useMutation({
-  onSuccess: async () => {
-    await folhaExtrasQuery.refetch();
-    await folhaBaseQuery.refetch();
+  onSuccess: () => {
+    void folhaExtrasQuery.refetch();
+    void folhaBaseQuery.refetch();
   },
 });
 
 const addValesMutation = trpc.folhaExtras.addVales.useMutation({
-  onSuccess: async () => {
-    await folhaExtrasQuery.refetch();
+  onSuccess: () => {
+    void folhaExtrasQuery.refetch();
   },
 });
 
 const removeValesMutation =
   trpc.folhaExtras.removeValesFromCurrentForward.useMutation({
-    onSuccess: async () => {
-      await folhaExtrasQuery.refetch();
+    onSuccess: () => {
+      void folhaExtrasQuery.refetch();
     },
   });
   
@@ -1283,29 +1358,61 @@ const todosFuncionarios = useMemo(() => {
   const rows = (funcionariosQuery.data ?? []) as any[];
 
   return rows.map((f) => ({
+    ...f,
     id: f.id,
     nome: f.nome,
-    cpf: f.cpf || "",
-    pix: f.pix || "",
-    dataNascimento: "",
+    cpf: f.cpf || f.documento || "",
+    pix: f.pix || f.chavePix || f.chave_pix || "",
+    dataNascimento:
+      f.dataNascimento || f.data_nascimento || f.nascimento || "",
     funcao: f.funcao,
     loja_id: f.loja_id ?? f.lojaId,
-    dataAdmissao: f.dataAdmissao || "",
-    dataDesligamento: f.dataDesligamento || null,
-    dataReativacao: f.dataReativacao || null,
-    dataExperiencia45: "",
-    dataExperiencia90: "",
+    dataAdmissao: f.dataAdmissao || f.data_admissao || "",
+    dataDesligamento:
+      f.dataDesligamento || f.data_desligamento || null,
+    dataReativacao:
+      f.dataReativacao || f.data_reativacao || null,
+    dataExperiencia45:
+      f.dataExperiencia45 || f.data_experiencia_45 || "",
+    dataExperiencia90:
+      f.dataExperiencia90 || f.data_experiencia_90 || "",
     status: (f.status || "ativo") as "ativo" | "inativo" | "experiencia",
-    tipoMeta: (f.tipoMeta || "") as "meta1" | "meta2" | "",
-    dataDemissao: "",
-    debitoPendente: 0,
-    dataFeedbackProxima: "",
-    dataFeriasInicio: "",
-    dataFeriasFim: "",
-    dataFerias2Inicio: "",
-    dataFerias2Fim: "",
+    tipoMeta: (f.tipoMeta || f.tipo_meta || "") as "meta1" | "meta2" | "",
+    dataDemissao: f.dataDemissao || f.data_demissao || "",
+    debitoPendente: Number(f.debitoPendente || f.debito_pendente || 0),
+    dataFeedbackProxima:
+      f.dataFeedbackProxima || f.data_feedback_proxima || "",
+    dataFeriasInicio: f.dataFeriasInicio || f.data_ferias_inicio || "",
+    dataFeriasFim: f.dataFeriasFim || f.data_ferias_fim || "",
+    dataFerias2Inicio: f.dataFerias2Inicio || f.data_ferias_2_inicio || "",
+    dataFerias2Fim: f.dataFerias2Fim || f.data_ferias_2_fim || "",
+    telefone: f.telefone || f.celular || f.whatsapp || "",
+    email: f.email || "",
+    rg: f.rg || "",
+    pis: f.pis || f.pisPasep || f.pis_pasep || "",
+    banco: f.banco || "",
+    agencia: f.agencia || "",
+    conta: f.conta || f.contaBancaria || f.conta_bancaria || "",
+    tipoConta: f.tipoConta || f.tipo_conta || "",
+    endereco: f.endereco || f.logradouro || "",
+    numeroEndereco: f.numeroEndereco || f.numero_endereco || f.numero || "",
+    complemento: f.complemento || "",
+    bairro: f.bairro || "",
+    cidade: f.cidade || "",
+    estado: f.estado || f.uf || "",
+    cep: f.cep || "",
   }));
 }, [funcionariosQuery.data]);
+
+const funcionarioDetalheAtual = useMemo(() => {
+  if (!funcionarioDetalheId) return null;
+
+  return (
+    todosFuncionarios.find(
+      (funcionario: any) => Number(funcionario.id) === Number(funcionarioDetalheId)
+    ) || null
+  );
+}, [funcionarioDetalheId, todosFuncionarios]);
 
 const funcionariosDaCidade = useMemo(() => {
   const dataReferencia = new Date(ano, mes - 1, 1);
@@ -1773,6 +1880,8 @@ if (premiacaoEspecial.total > 0) {
 const boletoAjustado = calcularBoletoAjustado({
   quadrante,
   funcao: func.funcao,
+  lojaId,
+  funcionarioNome: func.nome,
   totalComissao: calculadoAjustado.totalComissao,
   premiacao: calculadoAjustado.premiacao,
   vale: calculadoAjustado.vale,
@@ -1911,53 +2020,59 @@ if (String(campo) === "sem5") {
     valorComissao: 0,
   });
 
-  await folhaBaseQuery.refetch();
   return;
 }
 
 if (camposBase.includes(campo as (typeof camposBase)[number])) {
-    const semanas = [
-      {
-        semana: 1,
-        liquidez: mergedLine.sem1,
-        percentual: mergedLine.perc1,
-        comissao: mergedLine.com1,
-      },
-      {
-        semana: 2,
-        liquidez: mergedLine.sem2,
-        percentual: mergedLine.perc2,
-        comissao: mergedLine.com2,
-      },
-      {
-        semana: 3,
-        liquidez: mergedLine.sem3,
-        percentual: mergedLine.perc3,
-        comissao: mergedLine.com3,
-      },
-      {
-        semana: 4,
-        liquidez: mergedLine.sem4,
-        percentual: mergedLine.perc4,
-        comissao: mergedLine.com4,
-      },
-    ];
+    const semanaAlterada =
+      campo === "sem1"
+        ? 1
+        : campo === "sem2"
+        ? 2
+        : campo === "sem3"
+        ? 3
+        : 4;
 
-    for (const item of semanas) {
-      await upsertFolhaBaseMutation.mutateAsync({
-        funcionarioId,
-        lojaId,
-        ano,
-        mes,
-        semana: item.semana,
-        liquidez: Number(item.liquidez || 0),
-        percentualComissao: Number(item.percentual || 0),
-        valorComissao: Number(item.comissao || 0),
+    const liquidez =
+      semanaAlterada === 1
+        ? mergedLine.sem1
+        : semanaAlterada === 2
+        ? mergedLine.sem2
+        : semanaAlterada === 3
+        ? mergedLine.sem3
+        : mergedLine.sem4;
 
-        ultimaAlteracaoPor: usuarioLogado,
-        ultimaAlteracaoEm: new Date(),
-      });
-    }
+    const percentual =
+      semanaAlterada === 1
+        ? mergedLine.perc1
+        : semanaAlterada === 2
+        ? mergedLine.perc2
+        : semanaAlterada === 3
+        ? mergedLine.perc3
+        : mergedLine.perc4;
+
+    const comissao =
+      semanaAlterada === 1
+        ? mergedLine.com1
+        : semanaAlterada === 2
+        ? mergedLine.com2
+        : semanaAlterada === 3
+        ? mergedLine.com3
+        : mergedLine.com4;
+
+    await upsertFolhaBaseMutation.mutateAsync({
+      funcionarioId,
+      lojaId,
+      ano,
+      mes,
+      semana: semanaAlterada,
+      liquidez: Number(liquidez || 0),
+      percentualComissao: Number(percentual || 0),
+      valorComissao: Number(comissao || 0),
+
+      ultimaAlteracaoPor: usuarioLogado,
+      ultimaAlteracaoEm: new Date(),
+    });
   }
 
   if (camposDesconto.includes(campo as (typeof camposDesconto)[number])) {
@@ -1980,8 +2095,6 @@ if (camposBase.includes(campo as (typeof camposBase)[number])) {
       ultimaAlteracaoEm: new Date(),
     });
 
-    await folhaBaseQuery.refetch();
-    await folhaExtrasQuery.refetch();
   }
 }
 
@@ -2004,12 +2117,14 @@ function openCellEditor(
 async function saveCellEditor() {
   if (!cellEditor.funcionarioId || !cellEditor.campo) return;
 
+  const funcionarioId = cellEditor.funcionarioId;
+  const campo = cellEditor.campo;
   const valor =
     cellEditor.mode === "money"
       ? parseValorBR(cellEditor.value)
       : Number(cellEditor.value || 0);
-  await updateLinha(cellEditor.funcionarioId, cellEditor.campo, valor);
 
+  // Fecha imediatamente para a interface responder sem esperar a rede.
   setCellEditor({
     open: false,
     funcionarioId: null,
@@ -2018,13 +2133,21 @@ async function saveCellEditor() {
     mode: "money",
     value: "",
   });
+
+  try {
+    await updateLinha(funcionarioId, campo, valor);
+  } catch (err) {
+    console.error("Erro ao salvar campo da folha:", err);
+  }
 }
 
 async function clearCellEditor() {
   if (!cellEditor.funcionarioId || !cellEditor.campo) return;
 
-  await updateLinha(cellEditor.funcionarioId, cellEditor.campo, 0);
+  const funcionarioId = cellEditor.funcionarioId;
+  const campo = cellEditor.campo;
 
+  // Fecha imediatamente para a interface responder sem esperar a rede.
   setCellEditor({
     open: false,
     funcionarioId: null,
@@ -2033,6 +2156,12 @@ async function clearCellEditor() {
     mode: "money",
     value: "",
   });
+
+  try {
+    await updateLinha(funcionarioId, campo, 0);
+  } catch (err) {
+    console.error("Erro ao limpar campo da folha:", err);
+  }
 }
 
 function openPremioEditor(linha: LinhaComQuadrante) {
@@ -2063,8 +2192,6 @@ async function addPremiacaoManual() {
   ultimaAlteracaoPor: usuarioLogado,
   ultimaAlteracaoEm: new Date(),
 });
-
-  await folhaExtrasQuery.refetch();
 
   setPremioEditor((prev) => ({
     ...prev,
@@ -3040,10 +3167,104 @@ if (
               onOpenValeEditor={openValeEditor}
               onOpenNegativoEditor={(linha) => setNegativoEditor({ open: true, linha })}
               onOpenRegraSemanaEditor={openRegraSemanaEditor}
+              onOpenFuncionarioDetalhe={(linha) =>
+                setFuncionarioDetalheId(Number(linha.funcionarioId))
+              }
             />
           ))
         )}
       </div>
+
+      <Dialog
+        open={!!funcionarioDetalheAtual}
+        onOpenChange={(open) => {
+          if (!open) setFuncionarioDetalheId(null);
+        }}
+      >
+        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-primary text-xl">
+              Dados do funcionário
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Informações cadastradas no sistema.
+            </DialogDescription>
+          </DialogHeader>
+
+          {funcionarioDetalheAtual && (() => {
+            const funcionario = funcionarioDetalheAtual as any;
+
+            const Campo = ({ label, valor }: { label: string; valor: any }) => (
+              <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
+                <p className="text-xs text-gray-400 mb-1">{label}</p>
+                <p className="text-white font-semibold break-words">{valor}</p>
+              </div>
+            );
+
+            return (
+              <div className="space-y-4">
+                <div className="rounded-md border border-primary/30 bg-gray-900 p-4">
+                  <p className="text-lg font-bold text-white">
+                    {funcionario.nome}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Campo
+                    label="Nome completo"
+                    valor={textoOuNaoInformado(funcionario.nome)}
+                  />
+
+                  <Campo
+                    label="CPF"
+                    valor={formatarCpf(funcionario.cpf)}
+                  />
+
+                  <Campo
+                    label="PIX"
+                    valor={textoOuNaoInformado(
+                      funcionario.pix ||
+                        funcionario.chavePix ||
+                        funcionario.chave_pix
+                    )}
+                  />
+
+                  <Campo
+                    label="Data de aniversário"
+                    valor={formatarDataBR(
+                      funcionario.dataNascimento ||
+                        funcionario.data_nascimento ||
+                        funcionario.nascimento
+                    )}
+                  />
+
+                  <Campo
+                    label="Função"
+                    valor={textoOuNaoInformado(funcionario.funcao)}
+                  />
+
+                  <Campo
+                    label="Data de admissão"
+                    valor={formatarDataBR(
+                      funcionario.dataAdmissao ||
+                        funcionario.data_admissao
+                    )}
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setFuncionarioDetalheId(null)}
+            >
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={cellEditor.open}
@@ -3954,7 +4175,6 @@ if (
     ultimaAlteracaoEm: new Date(),
   });
 
-  await folhaBaseQuery.refetch();
   return;
 }
 
@@ -4034,7 +4254,6 @@ if (
         ultimaAlteracaoEm: new Date(),
       });
 
-      await folhaBaseQuery.refetch();
     } catch (err) {
       console.error(err);
     }
