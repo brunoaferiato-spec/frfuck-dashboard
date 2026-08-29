@@ -99,8 +99,8 @@ function calcularBoletoAjustado(args: {
   const holerite = Number(args.holerite || 0);
 
   if (args.quadrante === "salario_fixo") {
-    return premiacao;
-  }
+  return premiacao - vale;
+}
 
   if (args.quadrante === "recepcao") {
   return totalComissao + premiacao - vale;
@@ -675,6 +675,9 @@ const regraClassName = manual
               <tr className="border-b border-primary/30 text-primary">
                 <th className="text-left p-2 sticky left-0 z-20 bg-gray-900">Nome</th>
                 <th className="text-left p-2">Função</th>
+                {isSalarioFixo && (
+  <th className="text-right p-2">Salário</th>
+)}
 
                 {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && !isConsultorMeta2 && !isGerente && (
                   <>
@@ -792,6 +795,16 @@ const regraClassName = manual
                     {linha.nome}
                   </td>
                   <td className="p-2 text-gray-300">{linha.funcao}</td>
+                  {isSalarioFixo && (
+  <td className="p-2">
+    {renderEditButton(
+      linha,
+      "sem1",
+      "Salário",
+      "money"
+    )}
+  </td>
+)}
 
                   {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && !isConsultorMeta2 && !isGerente && (
                     <>

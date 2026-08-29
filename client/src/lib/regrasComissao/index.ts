@@ -611,24 +611,16 @@ export function getRegraPremiacaoEspecial(args: {
   const nome = normalizarNome(args.funcionarioNome);
 
   const regra = regrasPremiacoesEspeciais.find((item) => {
-    const nomeRegra = normalizarNome(item.funcionarioNome);
+  const nomeRegra = normalizarNome(item.funcionarioNome);
 
-    const primeiroNomeRegra = nomeRegra.split(/\s+/)[0] || "";
-    const primeiroNomeFuncionario = nome.split(/\s+/)[0] || "";
-
-    return (
-      item.lojaId === lojaId &&
-      (
-        nome === nomeRegra ||
-        nome.includes(nomeRegra) ||
-        nomeRegra.includes(nome) ||
-        (
-          primeiroNomeRegra.length >= 4 &&
-          primeiroNomeRegra === primeiroNomeFuncionario
-        )
-      )
-    );
-  });
+  return (
+    item.lojaId === lojaId &&
+    (
+      nome === nomeRegra ||
+      nome.includes(nomeRegra)
+    )
+  );
+});
 
   return regra || null;
 }
