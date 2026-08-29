@@ -30,6 +30,7 @@ import {
 } from "./florianopolis";
 
 import { regraSupervisor } from "./supervisor";
+import { regrasPremiacoesEspeciais } from "./premiacoesEspeciais";
 
 import type {
   RegraPercentual,
@@ -40,6 +41,7 @@ import type {
   RegraRecepcaoFuncionario,
   RegraGerente,
   RegraSupervisor,
+  RegraPremiacaoEspecialFuncionario,
 } from "./types";
 
 // ======================================================
@@ -100,6 +102,14 @@ function normalizarNome(nome: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toUpperCase();
+}
+
+function normalizarFuncao(funcao: string) {
+  return String(funcao || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
 }
 
 // ======================================================
@@ -570,6 +580,8 @@ export function calcularPremiacaoSupervisorGrupo(args: {
   };
 }
 
+// Na folha o supervisor aparece dividido entre 4 lojas.
+// R$ 6.000 total / 4 = R$ 1.500 por loja.
 export function getSalarioFixoSupervisor() {
   return (
     regraSupervisor.salarioFixo /
@@ -579,6 +591,187 @@ export function getSalarioFixoSupervisor() {
 
 export function getRecordeAtualSupervisor() {
   return regraSupervisor.recordeGrupoAtual;
+}
+
+// ======================================================
+// PREMIAÇÕES ESPECIAIS
+// ======================================================
+
+export type FuncionarioResumoPremiacaoEspecial = {
+  nome: string;
+  funcao: string;
+  totalLiquidez: number;
+};
+
+export function getRegraPremiacaoEspecial(args: {
+  lojaId: number | string;
+  funcionarioNome: string;
+}): RegraPremiacaoEspecialFuncionario | null {
+  const lojaId = Number(args.lojaId);
+  const nome = normalizarNome(args.funcionarioNome);
+
+  const regra = regrasPremiacoesEspeciais.find((item) => {
+    const nomeRegra = normalizarNome(item.funcionarioNome);
+
+    const primeiroNomeRegra = nomeRegra.split(/\s+/)[0] || "";
+    const primeiroNomeFuncionario = nome.split(/\s+/)[0] || "";
+
+    return (
+      item.lojaId === lojaId &&
+      (
+        nome === nomeRegra ||
+        nome.includes(nomeRegra) ||
+        nomeRegra.includes(nome) ||
+        (
+          primeiroNomeRegra.length >= 4 &&
+          primeiroNomeRegra === primeiroNomeFuncionario
+        )
+      )
+    );
+  });
+
+  return regra || null;
+}
+
+export function calcularPremiacaoEspecialFuncionario(args: {
+  lojaId: number | string;
+  funcionarioNome: string;
+  funcionariosDaLoja: FuncionarioResumoPremiacaoEspecial[];
+}) {
+  const regra = getRegraPremiacaoEspecial({
+    lojaId: args.lojaId,
+    funcionarioNome: args.funcionarioNome,
+  });
+
+  if (!regra) {
+    return {
+      total: 0,
+      detalhes: [] as Array<{
+        descricao: string;
+        valor: number;
+      }>,
+    };
+  }
+
+  const detalhes: Array<{
+    descricao: string;
+    valor: number;
+  }> = [];
+
+  const lojaId = Number(args.lojaId);
+  const nomeTitular = normalizarNome(args.funcionarioNome);
+
+  // ====================================================
+  // PRÊMIO FIXO
+  // ====================================================
+  if (Number(regra.premioFixo || 0) > 0) {
+    const descricaoFixo =
+      lojaId === 1
+        ? "CHEFE DE PÁTIO"
+        : "PREMIAÇÃO FIXA";
+
+    detalhes.push({
+      descricao: descricaoFixo,
+      valor: Number(regra.premioFixo || 0),
+    });
+  }
+
+  // ====================================================
+  // MECÂNICOS QUE ATINGIRAM A META
+  // ====================================================
+  if (regra.premiacaoMecanicos) {
+    const mecanicosElegiveis = args.funcionariosDaLoja.filter(
+      (funcionario) => {
+        const ehMecanico =
+          normalizarFuncao(funcionario.funcao) === "mecanico";
+
+        if (!ehMecanico) {
+          return false;
+        }
+
+        if (
+          Number(funcionario.totalLiquidez || 0) <
+          regra.premiacaoMecanicos!.metaLiquidezMecanico
+        ) {
+          return false;
+        }
+
+        if (
+          regra.premiacaoMecanicos!.excluirProprioFuncionario &&
+          normalizarNome(funcionario.nome) === nomeTitular
+        ) {
+          return false;
+        }
+
+        return true;
+      }
+    );
+
+    if (mecanicosElegiveis.length > 0) {
+      const valorMecanicos =
+        mecanicosElegiveis.length *
+        Number(regra.premiacaoMecanicos.valorPorMecanico || 0);
+
+      detalhes.push({
+        descricao:
+          mecanicosElegiveis.length === 1
+            ? "MECÂNICO"
+            : `MECÂNICOS (${mecanicosElegiveis.length})`,
+        valor: valorMecanicos,
+      });
+    }
+  }
+
+  // ====================================================
+  // RAMPA / ALINHADOR
+  // ====================================================
+  if (regra.premiacaoAlinhador) {
+    const nomeAlinhadorEspecifico = normalizarNome(
+      regra.premiacaoAlinhador.funcionarioAlinhador || ""
+    );
+
+    const alinhadorElegivel = args.funcionariosDaLoja.find(
+      (funcionario) => {
+        const ehAlinhador =
+          normalizarFuncao(funcionario.funcao) === "alinhador";
+
+        if (!ehAlinhador) {
+          return false;
+        }
+
+        if (
+          nomeAlinhadorEspecifico &&
+          !normalizarNome(funcionario.nome).includes(
+            nomeAlinhadorEspecifico
+          )
+        ) {
+          return false;
+        }
+
+        return (
+          Number(funcionario.totalLiquidez || 0) >=
+          regra.premiacaoAlinhador!.metaLiquidezAlinhador
+        );
+      }
+    );
+
+    if (alinhadorElegivel) {
+      detalhes.push({
+        descricao: "RAMPA",
+        valor: Number(regra.premiacaoAlinhador.valorPremio || 0),
+      });
+    }
+  }
+
+  const total = detalhes.reduce(
+    (acc, item) => acc + Number(item.valor || 0),
+    0
+  );
+
+  return {
+    total,
+    detalhes,
+  };
 }
 
 // ======================================================
@@ -611,6 +804,7 @@ export {
   regraGerenteFlorianopolis,
 
   regraSupervisor,
+  regrasPremiacoesEspeciais,
 };
 
 export type {
@@ -631,4 +825,8 @@ export type {
 
   RegraGerente,
   RegraSupervisor,
+
+  RegraPremiacaoMecanicos,
+  RegraPremiacaoAlinhador,
+  RegraPremiacaoEspecialFuncionario,
 } from "./types";

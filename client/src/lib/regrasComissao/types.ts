@@ -111,3 +111,32 @@ export type RegraSupervisor = {
 
   percentualPremioRecorde: number;
 };
+
+// =========================
+// PREMIAÇÕES ESPECIAIS
+// =========================
+
+export type RegraPremiacaoMecanicos = {
+  valorPorMecanico: number;
+  metaLiquidezMecanico: number;
+  excluirProprioFuncionario?: boolean;
+};
+
+export type RegraPremiacaoAlinhador = {
+  valorPremio: number;
+  metaLiquidezAlinhador: number;
+  funcionarioAlinhador?: string;
+};
+
+export type RegraPremiacaoEspecialFuncionario = {
+  lojaId: number;
+  funcionarioNome: string;
+
+  funcaoBase: "vendedor" | "mecanico";
+
+  premioFixo: number;
+
+  premiacaoMecanicos?: RegraPremiacaoMecanicos;
+
+  premiacaoAlinhador?: RegraPremiacaoAlinhador;
+};

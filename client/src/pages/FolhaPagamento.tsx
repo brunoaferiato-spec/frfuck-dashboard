@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import {
   calcularPremiacaoSupervisorGrupo,
   getSalarioFixoSupervisor,
+  calcularPremiacaoEspecialFuncionario,
 } from "@/lib/regrasComissao";
 
 import { Button } from "@/components/ui/button";
@@ -1457,6 +1458,27 @@ if (row.semana === 5) {
 setFolhas(Array.from(agrupado.values()));
 }, [folhaBaseQuery.data, todosFuncionarios]);
   const linhas = useMemo<LinhaComQuadrante[]>(() => {
+    const resumoFuncionariosLoja = funcionariosDaCidade.map((funcionario) => {
+  const folhaFuncionario = folhas.find(
+    (f) =>
+      f.loja_id === lojaId &&
+      f.ano === ano &&
+      f.mes === mes &&
+      f.funcionarioId === funcionario.id
+  );
+
+  const totalLiquidez =
+    Number(folhaFuncionario?.sem1 || 0) +
+    Number(folhaFuncionario?.sem2 || 0) +
+    Number(folhaFuncionario?.sem3 || 0) +
+    Number(folhaFuncionario?.sem4 || 0);
+
+  return {
+    nome: funcionario.nome,
+    funcao: funcionario.funcao,
+    totalLiquidez,
+  };
+});
     return [...funcionariosDaCidade]
   .sort((a, b) => {
     const ordemFuncao: Record<string, number> = {
@@ -1708,6 +1730,22 @@ if (func.funcao === "gerente" && lojaId === 3) {
     Number(calculadoAjustado.com3 || 0) +
     Number(calculadoAjustado.com4 || 0) +
     Number(calculoLoja.com1 || 0);
+}
+
+const premiacaoEspecial =
+  calcularPremiacaoEspecialFuncionario({
+    lojaId,
+    funcionarioNome: func.nome,
+    funcionariosDaLoja: resumoFuncionariosLoja,
+  });
+
+if (premiacaoEspecial.total > 0) {
+  calculadoAjustado.premiacao =
+    Number(calculadoAjustado.premiacao || 0) +
+    Number(premiacaoEspecial.total || 0);
+
+  (calculadoAjustado as any).detalhesPremiacaoEspecial =
+    premiacaoEspecial.detalhes;
 }
 
 const boletoAjustado = calcularBoletoAjustado({
@@ -2227,6 +2265,21 @@ async function lançarNegativoNoPróximoMês() {
 
   const premioAutomaticoAtual = useMemo(() => {
     if (!linhaPremioAtual) return { detalhes: [], total: 0 };
+    const detalhesPremiacaoEspecial =
+  ((linhaPremioAtual as any).detalhesPremiacaoEspecial || []) as Array<{
+    descricao: string;
+    valor: number;
+  }>;
+
+if (detalhesPremiacaoEspecial.length > 0) {
+  return {
+    detalhes: detalhesPremiacaoEspecial,
+    total: detalhesPremiacaoEspecial.reduce(
+      (acc, item) => acc + Number(item.valor || 0),
+      0
+    ),
+  };
+}
 
   if (linhaPremioAtual.funcao === "supervisor") {
   const resumo = resumoSupervisorQuery.data as any;
@@ -2912,8 +2965,11 @@ if (
           </DialogHeader>
 
           <div className="space-y-4">
-            {(linhaPremioAtual?.funcao === "consultor_vendas" ||
-               linhaPremioAtual?.funcao === "supervisor") && (
+            {(
+  premioAutomaticoAtual.detalhes.length > 0 ||
+  linhaPremioAtual?.funcao === "consultor_vendas" ||
+  linhaPremioAtual?.funcao === "supervisor"
+) && (
               <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
                 <p className="mb-3 text-sm font-semibold text-primary">
                   Discriminação automática
