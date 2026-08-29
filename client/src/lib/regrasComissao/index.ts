@@ -29,6 +29,8 @@ import {
   regraGerenteFlorianopolis,
 } from "./florianopolis";
 
+import { regraSupervisor } from "./supervisor";
+
 import type {
   RegraPercentual,
   RegrasVendedorMecanico,
@@ -37,6 +39,7 @@ import type {
   RegrasRecepcao,
   RegraRecepcaoFuncionario,
   RegraGerente,
+  RegraSupervisor,
 } from "./types";
 
 // ======================================================
@@ -446,6 +449,139 @@ export function calcularPercentualGerente(args: {
 }
 
 // ======================================================
+// SUPERVISOR
+// ======================================================
+
+export function calcularPremiacaoSupervisorLoja(args: {
+  lojaId: number | string;
+  liquidezLoja: number;
+}) {
+  const lojaId = Number(args.lojaId);
+  const liquidez = Number(args.liquidezLoja || 0);
+
+  const regraLoja = regraSupervisor.lojas.find(
+    (loja) => loja.lojaId === lojaId
+  );
+
+  if (!regraLoja) {
+    return {
+      total: 0,
+      detalhes: [] as Array<{
+        descricao: string;
+        valor: number;
+      }>,
+    };
+  }
+
+  const detalhes = regraLoja.metas
+    .filter((meta) => liquidez >= meta.meta)
+    .map((meta) => ({
+      descricao: `${regraLoja.nomeLoja} - Meta R$ ${meta.meta.toLocaleString(
+        "pt-BR",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }
+      )}`,
+      valor: meta.premio,
+    }));
+
+  const total = detalhes.reduce(
+    (acc, item) => acc + Number(item.valor || 0),
+    0
+  );
+
+  return {
+    total,
+    detalhes,
+  };
+}
+
+export function calcularPremiacaoSupervisorGrupo(args: {
+  liquidezTotalGrupo: number;
+}) {
+  const liquidezGrupo = Number(
+    args.liquidezTotalGrupo || 0
+  );
+
+  const detalhes: Array<{
+    descricao: string;
+    valorTotalGrupo: number;
+    valorPorLoja: number;
+  }> = [];
+
+  for (const meta of regraSupervisor.metasGrupo) {
+    if (liquidezGrupo >= meta.meta) {
+      detalhes.push({
+        descricao: `Meta Grupo R$ ${meta.meta.toLocaleString(
+          "pt-BR",
+          {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }
+        )}`,
+        valorTotalGrupo: meta.premioTotalGrupo,
+        valorPorLoja:
+          meta.premioTotalGrupo /
+          regraSupervisor.divisorPremiacaoGrupo,
+      });
+    }
+  }
+
+  if (
+    liquidezGrupo >
+    regraSupervisor.recordeGrupoAtual
+  ) {
+    const premioRecordeTotal =
+      liquidezGrupo *
+      regraSupervisor.percentualPremioRecorde;
+
+    detalhes.push({
+      descricao: `Recorde do Grupo acima de R$ ${regraSupervisor.recordeGrupoAtual.toLocaleString(
+        "pt-BR",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }
+      )}`,
+      valorTotalGrupo: premioRecordeTotal,
+      valorPorLoja:
+        premioRecordeTotal /
+        regraSupervisor.divisorPremiacaoGrupo,
+    });
+  }
+
+  const totalGrupo = detalhes.reduce(
+    (acc, item) =>
+      acc + Number(item.valorTotalGrupo || 0),
+    0
+  );
+
+  const totalPorLoja = detalhes.reduce(
+    (acc, item) =>
+      acc + Number(item.valorPorLoja || 0),
+    0
+  );
+
+  return {
+    totalGrupo,
+    totalPorLoja,
+    detalhes,
+  };
+}
+
+export function getSalarioFixoSupervisor() {
+  return (
+    regraSupervisor.salarioFixo /
+    regraSupervisor.divisorPremiacaoGrupo
+  );
+}
+
+export function getRecordeAtualSupervisor() {
+  return regraSupervisor.recordeGrupoAtual;
+}
+
+// ======================================================
 // EXPORTS
 // ======================================================
 
@@ -473,6 +609,8 @@ export {
 
   regraGerenteSaoJose,
   regraGerenteFlorianopolis,
+
+  regraSupervisor,
 };
 
 export type {
@@ -492,4 +630,5 @@ export type {
   RegrasRecepcao,
 
   RegraGerente,
+  RegraSupervisor,
 } from "./types";

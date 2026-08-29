@@ -3,6 +3,11 @@ import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
+import {
+  calcularPremiacaoSupervisorGrupo,
+  getSalarioFixoSupervisor,
+} from "@/lib/regrasComissao";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -121,7 +126,7 @@ if (
 
 if (args.quadrante === "supervisor_pj") {
   return (
-    1500 +
+    getSalarioFixoSupervisor() +
     totalComissao +
     premiacao -
     vale -
@@ -963,7 +968,7 @@ const regraClassName = manual
                   {isSupervisor && (
                     <>
                       <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
-                        R$ {money(1500)}
+                        R$ {money(getSalarioFixoSupervisor())}
                       </td>
 
                       <td className="p-2">
@@ -978,7 +983,7 @@ const regraClassName = manual
 
                       <td className="p-2 text-right">
                         <span className="whitespace-nowrap text-green-400 font-bold">
-                          R$ {money(1500 + linha.totalComissao)}
+                          R$ {money(getSalarioFixoSupervisor() + linha.totalComissao)}
                         </span>
                       </td>
                   </>
@@ -1656,18 +1661,14 @@ if (func.funcao === "supervisor") {
     Number(resumo?.saoJose || 0) +
     Number(resumo?.florianopolis || 0);
 
-  let premiacaoGrupoSupervisor = 0;
+  const calculoGrupoSupervisor =
+  calcularPremiacaoSupervisorGrupo({
+    liquidezTotalGrupo: totalGrupo,
+  });
 
-  if (totalGrupo >= 1420000) premiacaoGrupoSupervisor += 250;
-  if (totalGrupo >= 1540000) premiacaoGrupoSupervisor += 250;
-  if (totalGrupo >= 1600000) premiacaoGrupoSupervisor += 250;
-
-  if (totalGrupo > SUPERVISOR_RECORDE_GRUPO) {
-    premiacaoGrupoSupervisor += (totalGrupo * 0.001) / 4;
-  }
-
-  calculadoAjustado.premiacao =
-    Number(calculadoAjustado.premiacao || 0) + premiacaoGrupoSupervisor;
+calculadoAjustado.premiacao =
+  Number(calculadoAjustado.premiacao || 0) +
+  Number(calculoGrupoSupervisor.totalPorLoja || 0);
 }
 
 if (func.funcao === "gerente" && lojaId === 3) {

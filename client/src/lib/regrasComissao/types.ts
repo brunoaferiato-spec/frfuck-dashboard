@@ -77,3 +77,37 @@ export type RegraGerente = {
   periodicidade: "mensal";
   faixas: FaixaPercentual[];
 };
+
+// =========================
+// SUPERVISOR
+// =========================
+
+export type MetaPremiacaoSupervisor = {
+  meta: number;
+  premio: number;
+};
+
+export type RegrasSupervisorPorLoja = {
+  lojaId: number;
+  nomeLoja: string;
+  metas: MetaPremiacaoSupervisor[];
+};
+
+export type MetaGrupoSupervisor = {
+  meta: number;
+  premioTotalGrupo: number;
+};
+
+export type RegraSupervisor = {
+  salarioFixo: number;
+
+  lojas: RegrasSupervisorPorLoja[];
+
+  metasGrupo: MetaGrupoSupervisor[];
+
+  divisorPremiacaoGrupo: number;
+
+  recordeGrupoAtual: number;
+
+  percentualPremioRecorde: number;
+};

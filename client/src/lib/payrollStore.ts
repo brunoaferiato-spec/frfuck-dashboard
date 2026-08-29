@@ -6,6 +6,8 @@ import {
   getRegrasConsultor,
   getRegraRecepcao,
   calcularPercentualGerente,
+  calcularPremiacaoSupervisorLoja,
+  getSalarioFixoSupervisor,
 } from "./regrasComissao";
 
 // =========================
@@ -390,135 +392,49 @@ export function computeSupervisor(args: {
   aluguel: number;
   adiant: number;
 }) {
-const totalLiquidez = 
-  Number(args.sem1 || 0) +
-  Number(args.sem2 || 0) +
-  Number(args.sem3 || 0) +
-  Number(args.sem4 || 0);
+  const totalLiquidez =
+    Number(args.sem1 || 0) +
+    Number(args.sem2 || 0) +
+    Number(args.sem3 || 0) +
+    Number(args.sem4 || 0);
 
-  let premiacaoAutomatica = 0;
+  // Premiação acumulativa da loja conforme a cidade.
+  const premiacaoLoja = calcularPremiacaoSupervisorLoja({
+    lojaId: args.cidade,
+    liquidezLoja: totalLiquidez,
+  });
 
-const regrasPorCidade: Record<string, Array<{ meta: number; premio: number }>> = {
-  "1": [
-    { meta: 300000, premio: 1000 },
-    { meta: 360000, premio: 2000 },
-    { meta: 400000, premio: 2000 },
-    { meta: 440000, premio: 2000 },
-    { meta: 480000, premio: 2000 },
-    { meta: 520000, premio: 2000 },
-    { meta: 560000, premio: 2000 },
-  ],
-  "2": [
-    { meta: 300000, premio: 1000 },
-    { meta: 360000, premio: 2000 },
-    { meta: 400000, premio: 3000 },
-    { meta: 440000, premio: 3000 },
-    { meta: 480000, premio: 3000 },
-    { meta: 520000, premio: 3000 },
-    { meta: 560000, premio: 3000 },
-  ],
-  "3": [
-    { meta: 300000, premio: 1000 },
-    { meta: 360000, premio: 2000 },
-    { meta: 400000, premio: 3000 },
-    { meta: 440000, premio: 3000 },
-    { meta: 480000, premio: 3000 },
-    { meta: 520000, premio: 3000 },
-    { meta: 560000, premio: 3000 },
-  ],
-  "4": [
-    { meta: 300000, premio: 1000 },
-    { meta: 360000, premio: 1000 },
-    { meta: 400000, premio: 1000 },
-    { meta: 440000, premio: 1000 },
-    { meta: 480000, premio: 1000 },
-    { meta: 520000, premio: 1000 },
-    { meta: 560000, premio: 1000 },
-  ],
-};
-
-const regras = regrasPorCidade[String(args.cidade)] || [];
-
-for (const regra of regras) {
-  if (totalLiquidez >= regra.meta) {
-    premiacaoAutomatica += regra.premio;
-  }
-}
-
-const premioGrupo =
-  totalLiquidez >= 1600000
-    ? 3000
-    : totalLiquidez >= 1540000
-    ? 2000
-    : totalLiquidez >= 1420000
-    ? 1000
-    : 0;
-
-const premioRecordeGrupo =
-  totalLiquidez > SUPERVISOR_RECORDE_GRUPO
-    ? totalLiquidez * 0.001
-    : 0;
-
-const premiacaoGrupo = (premioGrupo + premioRecordeGrupo) / 4;
-
-  const salarioFixo = 1500;
+  const salarioFixo = getSalarioFixoSupervisor();
   const premiacaoManual = sumPremiacoesManuais(args.premiacoesManuais);
   const vale = sumVales(args.vales);
 
-  const totalPremiacao = premiacaoManual + premiacaoGrupo;
-  
-  const totalComissao = premiacaoAutomatica;
+  // No quadrante do supervisor, "Total Comissão" representa
+  // a premiação acumulativa atingida pela loja.
+  const totalComissao = Number(premiacaoLoja.total || 0);
 
-const total = salarioFixo + totalComissao;
+  const total = salarioFixo + totalComissao;
 
-const boleto =
-  total +
-  totalPremiacao -
-  vale -
-  args.aluguel -
-  args.adiant;
-
-  const detalhesGrupo = [];
-
-if (totalLiquidez >= 1420000) {
-  detalhesGrupo.push({
-    descricao: "Meta Grupo R$ 1.420.000,00",
-    valor: 250,
-  });
-}
-
-if (totalLiquidez >= 1540000) {
-  detalhesGrupo.push({
-    descricao: "Meta Grupo R$ 1.540.000,00",
-    valor: 250,
-  });
-}
-
-if (totalLiquidez >= 1600000) {
-  detalhesGrupo.push({
-    descricao: "Meta Grupo R$ 1.600.000,00",
-    valor: 250,
-  });
-}
-
-if (premioRecordeGrupo > 0) {
-  detalhesGrupo.push({
-    descricao: "Recorde Grupo",
-    valor: premioRecordeGrupo / 4,
-  });
-}
+  // A premiação de grupo será adicionada na FolhaPagamento,
+  // pois ali temos o resumo das quatro lojas.
+  const boleto =
+    total +
+    premiacaoManual -
+    vale -
+    Number(args.aluguel || 0) -
+    Number(args.adiant || 0);
 
   return {
-  salarioFixo,
-  totalComissao,
-  premiacaoAutomatica,
-  premiacaoManual: totalPremiacao,
-  detalhesGrupo,
-  total,
-  vale,
-  boleto,
-};
- }
+    salarioFixo,
+    totalComissao,
+    premiacaoAutomatica: totalComissao,
+    premiacaoManual,
+    detalhesLoja: premiacaoLoja.detalhes,
+    detalhesGrupo: [],
+    total,
+    vale,
+    boleto,
+  };
+}
 
 // =========================
 // VALE PARCELADO
