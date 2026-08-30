@@ -68,6 +68,7 @@ const ROTA_GESTAO_FUNCIONARIOS = "/gestao-funcionarios";
 const IMPORT_ALIAS_STORAGE_KEY = "folha-importacao-aliases-v1";
 const IMPORT_PENDENTE_STORAGE_KEY = "folha-importacao-pendente-v1";
 const IMPORT_ADIANT_PENDENTE_STORAGE_KEY = "folha-importacao-adiant-pendente-v1";
+const IMPORT_HOLERITE_PENDENTE_STORAGE_KEY = "folha-importacao-holerite-pendente-v1";
 
 type SemanaImportacao = 1 | 2 | 3 | 4;
 type FuncaoImportacao = "vendedor" | "mecanico";
@@ -146,6 +147,56 @@ type ImportacaoAdiantamentoState = {
 };
 
 function criarImportacaoAdiantamentoInicial(): ImportacaoAdiantamentoState {
+  return {
+    open: true,
+    etapa: "arquivo",
+    arquivoNome: "",
+    competencia: "",
+    competenciaMes: null,
+    competenciaAno: null,
+    cidadeRelatorio: "",
+    itens: [],
+    mensagem: "",
+    erro: "",
+  };
+}
+
+
+type EmprestimoCltPdf = {
+  contrato: string;
+  valor: number;
+  descricaoOriginal: string;
+};
+
+type ItemHoleritePdf = {
+  id: string;
+  pagina: number;
+  nomePdf: string;
+  inss: number;
+  valorLiquido: number;
+  emprestimos: EmprestimoCltPdf[];
+  funcionarioId: number | null;
+  funcionarioNome: string | null;
+  status: StatusItemAdiantamento;
+  candidatoId: number | null;
+  candidatoNome: string | null;
+  scoreCandidato: number;
+};
+
+type ImportacaoHoleriteState = {
+  open: boolean;
+  etapa: "arquivo" | "lendo" | "conferencia" | "importando" | "sucesso";
+  arquivoNome: string;
+  competencia: string;
+  competenciaMes: number | null;
+  competenciaAno: number | null;
+  cidadeRelatorio: string;
+  itens: ItemHoleritePdf[];
+  mensagem: string;
+  erro: string;
+};
+
+function criarImportacaoHoleriteInicial(): ImportacaoHoleriteState {
   return {
     open: true,
     etapa: "arquivo",
@@ -331,12 +382,17 @@ async function lerPdfAdiantamento(file: File) {
   let competencia = "";
   let competenciaMes: number | null = null;
   let competenciaAno: number | null = null;
+  let encontrouTipoAdiantamento = false;
 
   for (let paginaNumero = 1; paginaNumero <= documento.numPages; paginaNumero += 1) {
     const pagina = await documento.getPage(paginaNumero);
     const conteudo = await pagina.getTextContent();
     const linhas = agruparItensTextoPdf(conteudo.items as any[]);
     const textoPagina = linhas.join("\n");
+    const textoPaginaNormalizado = normalizarTextoImportacao(textoPagina);
+    if (textoPaginaNormalizado.includes("ADIANTAMENTO")) {
+      encontrouTipoAdiantamento = true;
+    }
 
     if (!cidadeRelatorio) cidadeRelatorio = identificarCidadePdf(textoPagina);
 
@@ -359,11 +415,192 @@ async function lerPdfAdiantamento(file: File) {
     }
   }
 
+  if (!encontrouTipoAdiantamento) {
+    throw new Error("Este PDF não parece ser um recibo de adiantamento.");
+  }
+
   // Algumas folhas podem trazer a mesma pessoa mais de uma vez. Mantemos uma só.
   const unicos = new Map<string, (typeof itensBrutos)[number]>();
   for (const item of itensBrutos) {
     const chave = normalizarNomeImportacao(item.nomePdf);
     if (!unicos.has(chave)) unicos.set(chave, item);
+  }
+
+  return {
+    cidadeRelatorio,
+    competencia,
+    competenciaMes,
+    competenciaAno,
+    itens: Array.from(unicos.values()),
+  };
+}
+
+
+function encontrarInssHoleritePdf(linhas: string[]) {
+  for (const linha of linhas) {
+    const normalizada = normalizarTextoImportacao(linha);
+
+    // O INSS principal do holerite usa o código 998.
+    // Não somamos "INSS DIFERENÇA 13o SALARIO" nem outras rubricas.
+    if (!/^\s*998\b/.test(normalizada)) continue;
+    if (!normalizada.includes("I.N.S.S") && !normalizada.includes("INSS")) continue;
+
+    const valores = extrairValoresDinheiroLinha(linha);
+    if (valores.length > 0) {
+      return Number(valores[valores.length - 1] || 0);
+    }
+  }
+
+  return 0;
+}
+
+function encontrarEmprestimosCltPdf(linhas: string[]): EmprestimoCltPdf[] {
+  const encontrados: EmprestimoCltPdf[] = [];
+
+  for (const linha of linhas) {
+    const normalizada = normalizarTextoImportacao(linha)
+      .replace(/[º°]/g, " ")
+      .replace(/\s+/g, " ");
+
+    // Importar SOMENTE o desconto real do empréstimo.
+    // Ignorar PROVISAO e ESTORNO.
+    if (!normalizada.includes("DESC")) continue;
+    if (!normalizada.includes("EMP")) continue;
+    if (!normalizada.includes("CRED")) continue;
+    if (!normalizada.includes("TRAB")) continue;
+    if (normalizada.includes("PROVISAO") || normalizada.includes("ESTORNO")) continue;
+
+    const valores = extrairValoresDinheiroLinha(linha);
+    if (valores.length === 0) continue;
+
+    const valor = Number(valores[valores.length - 1] || 0);
+    if (!(valor > 0)) continue;
+
+    const depoisTrabalho = normalizada.split("TRAB").slice(1).join("TRAB").trim();
+    const semPrefixoNumero = depoisTrabalho
+      .replace(/^(?:N|NO|NUMERO)\b[\s.:#-]*/i, "")
+      .trim();
+
+    const contratoMatch = semPrefixoNumero.match(/\b[A-Z0-9]{5,}\b/);
+    const contrato = contratoMatch?.[0] || `PAG${encontrados.length + 1}`;
+
+    encontrados.push({
+      contrato,
+      valor,
+      descricaoOriginal: linha,
+    });
+  }
+
+  // Evita duplicidade caso duas vias apareçam no mesmo agrupamento.
+  const unicos = new Map<string, EmprestimoCltPdf>();
+  for (const item of encontrados) {
+    const chave = `${item.contrato}:${item.valor.toFixed(2)}`;
+    if (!unicos.has(chave)) unicos.set(chave, item);
+  }
+
+  return Array.from(unicos.values());
+}
+
+function grupoIdEmprestimoCltPdf(args: {
+  lojaId: number;
+  funcionarioId: number;
+  ano: number;
+  mes: number;
+  contrato: string;
+}) {
+  const contratoSeguro = normalizarTextoImportacao(args.contrato)
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 40) || "SEMCONTRATO";
+
+  return `emprestimo-clt-pdf-${args.lojaId}-${args.funcionarioId}-${args.ano}-${args.mes}-${contratoSeguro}`;
+}
+
+async function lerPdfHoleriteMensal(file: File) {
+  const pdfjs = await import("pdfjs-dist");
+  const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const documento = await pdfjs.getDocument({ data: bytes }).promise;
+
+  const itensBrutos: Array<{
+    pagina: number;
+    nomePdf: string;
+    inss: number;
+    valorLiquido: number;
+    emprestimos: EmprestimoCltPdf[];
+  }> = [];
+
+  let cidadeRelatorio = "";
+  let competencia = "";
+  let competenciaMes: number | null = null;
+  let competenciaAno: number | null = null;
+  let encontrouFolhaMensal = false;
+
+  for (let paginaNumero = 1; paginaNumero <= documento.numPages; paginaNumero += 1) {
+    const pagina = await documento.getPage(paginaNumero);
+    const conteudo = await pagina.getTextContent();
+    const linhas = agruparItensTextoPdf(conteudo.items as any[]);
+    const textoPagina = linhas.join("\n");
+    const textoPaginaNormalizado = normalizarTextoImportacao(textoPagina);
+
+    if (textoPaginaNormalizado.includes("FOLHA MENSAL")) {
+      encontrouFolhaMensal = true;
+    }
+
+    if (!cidadeRelatorio) cidadeRelatorio = identificarCidadePdf(textoPagina);
+
+    if (!competencia) {
+      const encontrada = identificarCompetenciaPdf(textoPagina);
+      competencia = encontrada.label;
+      competenciaMes = encontrada.mes;
+      competenciaAno = encontrada.ano;
+    }
+
+    const nomePdf = encontrarNomeFuncionarioPdf(linhas);
+    const valorLiquido = encontrarValorLiquidoPdf(linhas);
+    const inss = encontrarInssHoleritePdf(linhas);
+    const emprestimos = encontrarEmprestimosCltPdf(linhas);
+
+    if (nomePdf && valorLiquido !== null && Number.isFinite(valorLiquido)) {
+      itensBrutos.push({
+        pagina: paginaNumero,
+        nomePdf,
+        inss: Number(inss || 0),
+        valorLiquido: Number(valorLiquido || 0),
+        emprestimos,
+      });
+    }
+  }
+
+  if (!encontrouFolhaMensal) {
+    throw new Error(
+      "Este PDF não parece ser uma Folha Mensal. Se for o recibo do dia 20, use a coluna Adiant."
+    );
+  }
+
+  const unicos = new Map<string, (typeof itensBrutos)[number]>();
+
+  for (const item of itensBrutos) {
+    const chave = normalizarNomeImportacao(item.nomePdf);
+
+    if (!unicos.has(chave)) {
+      unicos.set(chave, item);
+      continue;
+    }
+
+    // Caso uma segunda via traga algum detalhe que a primeira não trouxe,
+    // preservamos a versão mais completa sem somar valores duplicados.
+    const atual = unicos.get(chave)!;
+    unicos.set(chave, {
+      ...atual,
+      inss: atual.inss || item.inss,
+      valorLiquido: atual.valorLiquido || item.valorLiquido,
+      emprestimos:
+        atual.emprestimos.length >= item.emprestimos.length
+          ? atual.emprestimos
+          : item.emprestimos,
+    });
   }
 
   return {
@@ -521,6 +758,10 @@ function money(value: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function formatarMoeda(value: number) {
+  return `R$ ${money(Number(value || 0))}`;
 }
 
 function parseValorBR(value: string) {
@@ -938,6 +1179,7 @@ function TabelaQuadrante({
   onOpenFuncionarioDetalhe,
   onOpenImportacaoSemana,
   onOpenImportacaoAdiantamento,
+  onOpenImportacaoHolerite,
 }: {
   titulo: string;
   descricao: string;
@@ -960,6 +1202,7 @@ function TabelaQuadrante({
   ) => void;
   onOpenImportacaoSemana: (semana: SemanaImportacao) => void;
   onOpenImportacaoAdiantamento: () => void;
+  onOpenImportacaoHolerite: () => void;
 }) {
   if (linhas.length === 0) return null;
 
@@ -1317,7 +1560,20 @@ const regraClassName = manual
   !isConsultorMeta2 &&
   !isGerente && (
     <>
-      <th className="text-right p-2">Liquidez</th>
+      <th className="text-right p-2">
+        {quadrante === "comissao_mensal" && linhas[0]?.loja_id === 4 ? (
+          <button
+            type="button"
+            onClick={() => onOpenImportacaoSemana(1)}
+            className="font-bold text-primary hover:underline underline-offset-4"
+            title="Importar relatório mensal de VENDA/MECÂNICA"
+          >
+            Liquidez Venda
+          </button>
+        ) : (
+          "Liquidez"
+        )}
+      </th>
       <th className="text-right p-2">%</th>
     </>
 )}
@@ -1370,7 +1626,19 @@ const regraClassName = manual
                     <span className="text-[10px] font-normal text-gray-400">PDF</span>
                   </button>
                 </th>
-                {!isSupervisor && <th className="text-right p-2">Holerite</th>}
+                {!isSupervisor && (
+                  <th className="text-right p-2">
+                    <button
+                      type="button"
+                      onClick={onOpenImportacaoHolerite}
+                      className="inline-flex items-center gap-1 text-primary hover:text-yellow-300 hover:underline underline-offset-4"
+                      title="Importar PDF da folha mensal"
+                    >
+                      Holerite
+                      <span className="text-[10px] font-normal text-gray-400">PDF</span>
+                    </button>
+                  </th>
+                )}
                 <th className="text-right p-2">Boleto</th>
                 <th className="text-right p-2">Observação</th>
               </tr>
@@ -1790,6 +2058,14 @@ export default function FolhaPagamento() {
       open: false,
     });
   const [importacaoAdiantamentoRestaurada, setImportacaoAdiantamentoRestaurada] =
+    useState(false);
+
+  const [importacaoHolerite, setImportacaoHolerite] =
+    useState<ImportacaoHoleriteState>({
+      ...criarImportacaoHoleriteInicial(),
+      open: false,
+    });
+  const [importacaoHoleriteRestaurada, setImportacaoHoleriteRestaurada] =
     useState(false);
 
   const [funcionarioDetalheId, setFuncionarioDetalheId] = useState<number | null>(null);
@@ -2452,11 +2728,23 @@ return {
 ]);
 
   const funcionariosImportaveis = useMemo(() => {
-    return funcionariosDaCidade.filter(
-      (funcionario: any) =>
-        funcionario.funcao === "vendedor" || funcionario.funcao === "mecanico"
-    );
-  }, [funcionariosDaCidade]);
+    return funcionariosDaCidade.filter((funcionario: any) => {
+      if (funcionario.funcao === "vendedor" || funcionario.funcao === "mecanico") {
+        return true;
+      }
+
+      // O gerente de São José e Florianópolis também participa do bloco VENDA
+      // para preencher a liquidez de venda.
+      if (
+        funcionario.funcao === "gerente" &&
+        (Number(lojaId) === 3 || Number(lojaId) === 4)
+      ) {
+        return true;
+      }
+
+      return false;
+    });
+  }, [funcionariosDaCidade, lojaId]);
 
   const funcionariosAusentesNoRelatorio = useMemo(() => {
     if (importacaoSemana.etapa !== "conferencia") return [] as any[];
@@ -2492,6 +2780,29 @@ return {
   }, [
     importacaoAdiantamento.etapa,
     importacaoAdiantamento.itens,
+    linhas,
+  ]);
+
+
+  const funcionariosAusentesNoPdfHolerite = useMemo(() => {
+    if (importacaoHolerite.etapa !== "conferencia") return [] as LinhaComQuadrante[];
+
+    const idsEncontrados = new Set(
+      importacaoHolerite.itens
+        .filter((item) => item.status === "ok" && item.funcionarioId)
+        .map((item) => Number(item.funcionarioId))
+    );
+
+    // Supervisor PJ não recebe folha CLT. Demais vínculos PJ podem ser mantidos
+    // sem alteração até adicionarmos o campo CLT/PJ no cadastro.
+    return linhas.filter(
+      (linha) =>
+        linha.quadrante !== "supervisor_pj" &&
+        !idsEncontrados.has(Number(linha.funcionarioId))
+    );
+  }, [
+    importacaoHolerite.etapa,
+    importacaoHolerite.itens,
     linhas,
   ]);
 
@@ -2551,9 +2862,46 @@ return {
     }
   }, [importacaoAdiantamentoRestaurada]);
 
+  useEffect(() => {
+    if (importacaoHoleriteRestaurada || typeof window === "undefined") return;
+
+    setImportacaoHoleriteRestaurada(true);
+
+    try {
+      const raw = window.sessionStorage.getItem(
+        IMPORT_HOLERITE_PENDENTE_STORAGE_KEY
+      );
+      if (!raw) return;
+
+      const pendente = JSON.parse(raw);
+      window.sessionStorage.removeItem(IMPORT_HOLERITE_PENDENTE_STORAGE_KEY);
+
+      if (pendente?.selectedLoja) setSelectedLoja(String(pendente.selectedLoja));
+      if (pendente?.ano) setAno(Number(pendente.ano));
+      if (pendente?.mes) setMes(Number(pendente.mes));
+      if (pendente?.importacao) {
+        setImportacaoHolerite({
+          ...pendente.importacao,
+          open: true,
+          etapa: "conferencia",
+        });
+      }
+    } catch (err) {
+      console.error("Erro ao restaurar importação de holerite:", err);
+    }
+  }, [importacaoHoleriteRestaurada]);
+
   function openImportacaoSemana(semana: SemanaImportacao) {
-    if (!usaMetaSemanal(lojaId, ano, mes)) return;
-    setImportacaoSemana(criarImportacaoInicial(semana));
+    const importacaoSemanalPermitida = usaMetaSemanal(lojaId, ano, mes);
+    const importacaoMensalFlorianopolis = lojaId === 4 && usaMetaMensal(lojaId, ano, mes);
+
+    if (!importacaoSemanalPermitida && !importacaoMensalFlorianopolis) return;
+
+    // Florianópolis usa um único campo mensal. Internamente ele continua
+    // armazenado em sem1, então a importação mensal grava nesse campo.
+    setImportacaoSemana(
+      criarImportacaoInicial(importacaoMensalFlorianopolis ? 1 : semana)
+    );
   }
 
   function fecharImportacaoSemana() {
@@ -2595,7 +2943,25 @@ return {
         const aliasId = aliases[chaveAlias];
 
         const candidatosFuncao = funcionariosImportaveis.filter(
-          (funcionario: any) => funcionario.funcao === item.funcaoRelatorio
+          (funcionario: any) => {
+            if (item.funcaoRelatorio === "mecanico") {
+              return funcionario.funcao === "mecanico";
+            }
+
+            if (item.funcaoRelatorio === "vendedor") {
+              if (funcionario.funcao === "vendedor") return true;
+
+              // No relatório, gerente aparece dentro do bloco VENDA.
+              if (
+                funcionario.funcao === "gerente" &&
+                (Number(lojaId) === 3 || Number(lojaId) === 4)
+              ) {
+                return true;
+              }
+            }
+
+            return false;
+          }
         );
 
         const porAlias = aliasId
@@ -2895,7 +3261,10 @@ return {
       setImportacaoSemana((prev) => ({
         ...prev,
         etapa: "sucesso",
-        mensagem: `${itensValidos.length} valor(es) importado(s) para a SEM${semana}.`,
+        mensagem:
+          lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
+            ? `${itensValidos.length} valor(es) importado(s) para a Liquidez mensal de Florianópolis.`
+            : `${itensValidos.length} valor(es) importado(s) para a SEM${semana}.`,
       }));
     } catch (err: any) {
       console.error("Erro ao importar relatório semanal:", err);
@@ -3252,6 +3621,376 @@ return {
         ...prev,
         etapa: "conferencia",
         erro: err?.message || "Erro ao salvar os adiantamentos.",
+      }));
+    }
+  }
+
+
+  function openImportacaoHolerite() {
+    setImportacaoHolerite(criarImportacaoHoleriteInicial());
+  }
+
+  function fecharImportacaoHolerite() {
+    setImportacaoHolerite((prev) => ({ ...prev, open: false }));
+  }
+
+  async function processarPdfHolerite(file: File | null) {
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setImportacaoHolerite((prev) => ({
+        ...prev,
+        erro: "Selecione um arquivo PDF.",
+      }));
+      return;
+    }
+
+    setImportacaoHolerite((prev) => ({
+      ...prev,
+      etapa: "lendo",
+      arquivoNome: file.name,
+      erro: "",
+      mensagem: "",
+    }));
+
+    try {
+      const extraido = await lerPdfHoleriteMensal(file);
+
+      if (extraido.itens.length === 0) {
+        throw new Error(
+          "Não encontrei funcionários com Valor Líquido no PDF da Folha Mensal."
+        );
+      }
+
+      const aliases = lerAliasesImportacao();
+      const candidatos = linhas
+        .filter((linha) => linha.quadrante !== "supervisor_pj")
+        .map((linha) => ({
+          id: Number(linha.funcionarioId),
+          nome: linha.nome,
+        }));
+
+      const itens: ItemHoleritePdf[] = extraido.itens.map((item, index) => {
+        const chaveAlias = `${lojaId}:${normalizarTextoImportacao(item.nomePdf)}`;
+        const aliasId = aliases[chaveAlias];
+
+        const porAlias = aliasId
+          ? candidatos.find((funcionario) => Number(funcionario.id) === Number(aliasId))
+          : null;
+
+        const nomeCanonico = normalizarNomeImportacao(item.nomePdf);
+        const exato = candidatos.find(
+          (funcionario) => normalizarNomeImportacao(funcionario.nome) === nomeCanonico
+        );
+
+        const escolhido = porAlias || exato;
+
+        if (escolhido) {
+          return {
+            id: `holerite-${index}-${normalizarTextoImportacao(item.nomePdf)}`,
+            pagina: item.pagina,
+            nomePdf: item.nomePdf,
+            inss: item.inss,
+            valorLiquido: item.valorLiquido,
+            emprestimos: item.emprestimos,
+            funcionarioId: Number(escolhido.id),
+            funcionarioNome: escolhido.nome,
+            status: "ok" as const,
+            candidatoId: null,
+            candidatoNome: null,
+            scoreCandidato: 1,
+          };
+        }
+
+        const candidatosOrdenados = candidatos
+          .map((funcionario) => ({
+            funcionario,
+            score: scoreNomesImportacao(item.nomePdf, funcionario.nome),
+          }))
+          .sort((a, b) => b.score - a.score);
+
+        const melhor = candidatosOrdenados[0];
+        const ehPossivel = !!melhor && melhor.score >= 0.55;
+
+        return {
+          id: `holerite-${index}-${normalizarTextoImportacao(item.nomePdf)}`,
+          pagina: item.pagina,
+          nomePdf: item.nomePdf,
+          inss: item.inss,
+          valorLiquido: item.valorLiquido,
+          emprestimos: item.emprestimos,
+          funcionarioId: null,
+          funcionarioNome: null,
+          status: ehPossivel ? "possivel" : "nao_cadastrado",
+          candidatoId: ehPossivel ? Number(melhor.funcionario.id) : null,
+          candidatoNome: ehPossivel ? melhor.funcionario.nome : null,
+          scoreCandidato: ehPossivel ? melhor.score : 0,
+        };
+      });
+
+      setImportacaoHolerite((prev) => ({
+        ...prev,
+        etapa: "conferencia",
+        competencia: extraido.competencia,
+        competenciaMes: extraido.competenciaMes,
+        competenciaAno: extraido.competenciaAno,
+        cidadeRelatorio: extraido.cidadeRelatorio,
+        itens,
+        erro: "",
+      }));
+    } catch (err: any) {
+      console.error("Erro ao ler PDF da Folha Mensal:", err);
+      setImportacaoHolerite((prev) => ({
+        ...prev,
+        etapa: "arquivo",
+        erro: err?.message || "Não foi possível ler o PDF da Folha Mensal.",
+      }));
+    }
+  }
+
+  function vincularItemHolerite(itemId: string, funcionarioId: number) {
+    const funcionario = linhas.find(
+      (linha) => Number(linha.funcionarioId) === Number(funcionarioId)
+    );
+    if (!funcionario || funcionario.quadrante === "supervisor_pj") return;
+
+    setImportacaoHolerite((prev) => ({
+      ...prev,
+      itens: prev.itens.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              status: "ok",
+              funcionarioId: Number(funcionario.funcionarioId),
+              funcionarioNome: funcionario.nome,
+              candidatoId: null,
+              candidatoNome: null,
+              scoreCandidato: 1,
+            }
+          : item
+      ),
+    }));
+
+    const item = importacaoHolerite.itens.find((row) => row.id === itemId);
+    if (item) {
+      salvarAliasImportacao(lojaId, item.nomePdf, Number(funcionario.funcionarioId));
+    }
+  }
+
+  function ignorarItemHolerite(itemId: string) {
+    setImportacaoHolerite((prev) => ({
+      ...prev,
+      itens: prev.itens.map((item) =>
+        item.id === itemId ? { ...item, status: "ignorado" } : item
+      ),
+    }));
+  }
+
+  function salvarImportacaoHoleritePendente() {
+    if (typeof window === "undefined") return;
+
+    window.sessionStorage.setItem(
+      IMPORT_HOLERITE_PENDENTE_STORAGE_KEY,
+      JSON.stringify({
+        selectedLoja,
+        ano,
+        mes,
+        importacao: importacaoHolerite,
+      })
+    );
+  }
+
+  function irParaCadastrarFuncionarioHolerite(item: ItemHoleritePdf) {
+    if (typeof window !== "undefined") {
+      salvarImportacaoHoleritePendente();
+      window.sessionStorage.setItem(
+        "folha-cadastro-sugerido",
+        JSON.stringify({
+          nome: item.nomePdf,
+          lojaId,
+        })
+      );
+    }
+
+    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+  }
+
+  function irParaCadastroExistenteHolerite(funcionario: LinhaComQuadrante) {
+    if (typeof window !== "undefined") {
+      salvarImportacaoHoleritePendente();
+      window.sessionStorage.setItem(
+        "folha-funcionario-abrir-id",
+        String(funcionario.funcionarioId)
+      );
+    }
+
+    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+  }
+
+  async function confirmarImportacaoHolerite() {
+    const itensValidos = importacaoHolerite.itens.filter(
+      (item) => item.status === "ok" && item.funcionarioId
+    );
+
+    if (itensValidos.length === 0) {
+      setImportacaoHolerite((prev) => ({
+        ...prev,
+        erro: "Nenhum funcionário está pronto para importar.",
+      }));
+      return;
+    }
+
+    setImportacaoHolerite((prev) => ({
+      ...prev,
+      etapa: "importando",
+      erro: "",
+    }));
+
+    try {
+      for (const item of itensValidos) {
+        const funcionarioId = Number(item.funcionarioId);
+        const currentLine = linhas.find(
+          (linha) => Number(linha.funcionarioId) === funcionarioId
+        );
+
+        if (!currentLine) {
+          throw new Error(
+            `Funcionário ${item.funcionarioNome || item.nomePdf} não encontrado na folha.`
+          );
+        }
+
+        // IMPORTANTE:
+        // A Folha Mensal atualiza somente INSS, HOLERITE e Empréstimos CLT.
+        // O ADIANTAMENTO permanece exatamente como veio do PDF do dia 20.
+        await Promise.all([
+          importDescontoMutation.mutateAsync({
+            funcionarioId,
+            lojaId,
+            ano,
+            mes,
+            tipo: "inss" as const,
+            valor: Number(item.inss || 0),
+            ultimaAlteracaoPor: usuarioLogado,
+            ultimaAlteracaoEm: new Date(),
+          }),
+          importDescontoMutation.mutateAsync({
+            funcionarioId,
+            lojaId,
+            ano,
+            mes,
+            tipo: "holerite" as const,
+            valor: Number(item.valorLiquido || 0),
+            ultimaAlteracaoPor: usuarioLogado,
+            ultimaAlteracaoEm: new Date(),
+          }),
+        ]);
+
+        const prefixoGrupo = `emprestimo-clt-pdf-${lojaId}-${funcionarioId}-${ano}-${mes}-`;
+
+        // Remove/cancela somente empréstimos que foram criados por importação de PDF
+        // nesta competência. Vales manuais são preservados.
+        const gruposImportadosExistentes = Array.from(
+          new Set(
+            (currentLine.vales || [])
+              .map((vale: any) => String(vale?.grupoId || ""))
+              .filter((grupoId: string) => grupoId.startsWith(prefixoGrupo))
+          )
+        );
+
+        for (const grupoId of gruposImportadosExistentes) {
+          await removeValesMutation.mutateAsync({
+            funcionarioId,
+            lojaId,
+            grupoId,
+            ano,
+            mes,
+          });
+        }
+
+        if (item.emprestimos.length > 0) {
+          await addValesMutation.mutateAsync({
+            funcionarioId,
+            lojaId,
+            items: item.emprestimos.map((emprestimo) => ({
+              grupoId: grupoIdEmprestimoCltPdf({
+                lojaId,
+                funcionarioId,
+                ano,
+                mes,
+                contrato: emprestimo.contrato,
+              }),
+              descricao: `Empréstimo CLT • ${emprestimo.contrato}`,
+              valorTotal: Number(emprestimo.valor || 0),
+              valorParcela: Number(emprestimo.valor || 0),
+              parcelas: 1,
+              parcelaAtual: 1,
+              ano,
+              mes,
+              mesOrigem: mes,
+              tipo: "simples" as const,
+            })),
+            ultimaAlteracaoPor: usuarioLogado,
+            ultimaAlteracaoEm: new Date(),
+          });
+        }
+      }
+
+      // Atualiza INSS e Holerite na tela imediatamente.
+      setFolhas((prev) => {
+        let next = [...prev];
+
+        for (const item of itensValidos) {
+          const funcionarioId = Number(item.funcionarioId);
+          const currentLine = linhas.find(
+            (linha) => Number(linha.funcionarioId) === funcionarioId
+          );
+          if (!currentLine) continue;
+
+          const updatedLine = {
+            ...currentLine,
+            inss: Number(item.inss || 0),
+            holerite: Number(item.valorLiquido || 0),
+            // adiant NÃO é alterado.
+          } as LinhaComQuadrante;
+
+          const index = next.findIndex(
+            (f) =>
+              Number(f.funcionarioId) === funcionarioId &&
+              Number(f.loja_id) === Number(lojaId) &&
+              Number(f.ano) === Number(ano) &&
+              Number(f.mes) === Number(mes)
+          );
+
+          if (index >= 0) next[index] = updatedLine;
+          else next.push(updatedLine);
+        }
+
+        return next;
+      });
+
+      await folhaExtrasQuery.refetch();
+      void folhaBaseQuery.refetch();
+      void resumoSupervisorQuery.refetch();
+
+      const totalEmprestimos = itensValidos.reduce(
+        (acc, item) => acc + item.emprestimos.length,
+        0
+      );
+
+      setImportacaoHolerite((prev) => ({
+        ...prev,
+        etapa: "sucesso",
+        mensagem:
+          `${itensValidos.length} holerite(s) importado(s). ` +
+          `INSS e Valor Líquido atualizados; ${totalEmprestimos} empréstimo(s) CLT lançado(s) no Vale. ` +
+          `Adiantamento preservado.`,
+      }));
+    } catch (err: any) {
+      console.error("Erro ao importar Folha Mensal:", err);
+      setImportacaoHolerite((prev) => ({
+        ...prev,
+        etapa: "conferencia",
+        erro: err?.message || "Erro ao salvar a Folha Mensal.",
       }));
     }
   }
@@ -4516,6 +5255,7 @@ if (
               }
               onOpenImportacaoSemana={openImportacaoSemana}
               onOpenImportacaoAdiantamento={openImportacaoAdiantamento}
+              onOpenImportacaoHolerite={openImportacaoHolerite}
             />
           ))
         )}
@@ -4532,10 +5272,15 @@ if (
         <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-primary text-xl">
-              Importar relatório — SEM{importacaoSemana.semana}
+              {lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
+                ? "Importar relatório — Liquidez Venda"
+                : `Importar relatório — SEM${importacaoSemana.semana}`}
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              O sistema importa somente VENDA e MECÂNICA usando a coluna LIQ. S/ PNEUS. Alinhamento continua manual.
+              O sistema importa VENDA e MECÂNICA usando a coluna LIQ. S/ PNEUS. Em São José e Florianópolis, se o gerente estiver no bloco VENDA, a Liquidez Venda dele também é preenchida. Alinhamento continua manual.
+              {lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
+                ? " Em Florianópolis, o valor é gravado na liquidez mensal."
+                : ""}
             </DialogDescription>
           </DialogHeader>
 
@@ -4550,7 +5295,9 @@ if (
                   onChange={(e) => processarArquivoImportacao(e.target.files?.[0] || null)}
                 />
                 <p className="text-xs text-gray-500 mt-3">
-                  Se a semana já tiver valores, a confirmação substituirá somente os funcionários encontrados no relatório.
+                  {lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
+                    ? "Se a liquidez mensal já tiver valores, a confirmação substituirá somente os funcionários encontrados no relatório."
+                    : "Se a semana já tiver valores, a confirmação substituirá somente os funcionários encontrados no relatório."}
                 </p>
               </div>
 
@@ -4621,7 +5368,7 @@ if (
 
                 {existentesComValor.length > 0 && (
                   <div className="rounded-md border border-yellow-500/30 bg-yellow-950/20 p-4 text-yellow-200">
-                    {existentesComValor.length} funcionário(s) já possuem valor na SEM{importacaoSemana.semana}. Ao confirmar, somente esses valores encontrados no relatório serão substituídos.
+                    {existentesComValor.length} funcionário(s) já possuem valor {lojaId === 4 && usaMetaMensal(lojaId, ano, mes) ? "na liquidez mensal" : `na SEM${importacaoSemana.semana}`}. Ao confirmar, somente esses valores encontrados no relatório serão substituídos.
                   </div>
                 )}
 
@@ -4642,7 +5389,14 @@ if (
                               <p className="text-xs text-gray-500">Relatório: {item.nomeRelatorio}</p>
                             )}
                           </div>
-                          <span className="text-xs uppercase text-gray-400">{item.funcaoRelatorio}</span>
+                          <span className="text-xs uppercase text-gray-400">
+                            {linhas.find(
+                              (linha) =>
+                                Number(linha.funcionarioId) === Number(item.funcionarioId)
+                            )?.funcao === "gerente"
+                              ? "gerente • VENDA"
+                              : item.funcaoRelatorio}
+                          </span>
                           <span className="font-bold text-green-400">R$ {money(item.valor)}</span>
                         </div>
                       ))
@@ -4708,7 +5462,7 @@ if (
                   <div className="rounded-md border border-orange-500/30 bg-gray-900 p-4">
                     <p className="font-semibold text-orange-300 mb-2">Cadastrados que não aparecem no relatório</p>
                     <p className="text-xs text-gray-400 mb-3">
-                      Eles continuarão com R$ 0,00 nesta semana se você prosseguir. Se alguém não deveria mais estar ativo, abra o cadastro para revisar/inativar.
+                      Eles continuarão com R$ 0,00 {lojaId === 4 && usaMetaMensal(lojaId, ano, mes) ? "na liquidez mensal" : "nesta semana"} se você prosseguir. Se alguém não deveria mais estar ativo, abra o cadastro para revisar/inativar.
                     </p>
                     <div className="space-y-2">
                       {funcionariosAusentesNoRelatorio.map((funcionario: any) => (
@@ -4767,7 +5521,9 @@ if (
                   >
                     {importacaoSemana.etapa === "importando"
                       ? "Importando..."
-                      : `Importar SEM${importacaoSemana.semana} (${prontos.length})`}
+                      : lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
+                        ? `Importar Liquidez (${prontos.length})`
+                        : `Importar SEM${importacaoSemana.semana} (${prontos.length})`}
                   </Button>
                 </DialogFooter>
               </div>
@@ -5134,6 +5890,439 @@ if (
             </div>
           )}
         </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={importacaoHolerite.open}
+        onOpenChange={(open) => {
+          if (!open && importacaoHolerite.etapa !== "importando") {
+            fecharImportacaoHolerite();
+          }
+        }}
+      >
+        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-5xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-primary text-xl">
+              Importar Folha Mensal — PDF
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Preenche INSS e Holerite pelo PDF e lança os descontos reais de Empréstimo CLT no Vale. O Adiant. do dia 20 nunca é alterado por esta importação.
+            </DialogDescription>
+          </DialogHeader>
+
+          {importacaoHolerite.etapa === "arquivo" && (
+            <div className="space-y-4">
+              <div className="rounded-md border border-primary/20 bg-gray-900 p-5">
+                <Label className="text-gray-300 block mb-3">Folha Mensal (.pdf)</Label>
+                <Input
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="bg-gray-800 border-primary/30 text-white"
+                  onChange={(e) => processarPdfHolerite(e.target.files?.[0] || null)}
+                />
+                <div className="mt-3 space-y-1 text-xs text-gray-500">
+                  <p>• INSS: usa somente a rubrica principal código 998 — I.N.S.S.</p>
+                  <p>• Holerite: usa o Valor Líquido efetivamente recebido.</p>
+                  <p>• Vale: importa somente DESC. EMP. CRED. TRAB Nº ...</p>
+                  <p>• PROVISÃO e ESTORNO de empréstimo são ignorados.</p>
+                  <p>• DESC.ADIANT.SALARIAL é ignorado: o Adiant. já veio do recibo do dia 20.</p>
+                  <p>• Reimportar o mesmo mês substitui apenas empréstimos criados pelo PDF; vales manuais permanecem.</p>
+                </div>
+              </div>
+
+              {importacaoHolerite.erro && (
+                <div className="rounded-md border border-red-500/30 bg-red-950/30 p-4 text-red-300">
+                  {importacaoHolerite.erro}
+                </div>
+              )}
+            </div>
+          )}
+
+          {importacaoHolerite.etapa === "lendo" && (
+            <div className="py-10 text-center text-gray-300">
+              Lendo a Folha Mensal e conferindo INSS, líquido e empréstimos CLT...
+            </div>
+          )}
+
+          {(importacaoHolerite.etapa === "conferencia" ||
+            importacaoHolerite.etapa === "importando") && (() => {
+            const cidadeSelecionada = LOJAS.find((loja) => loja.id === lojaId)?.nome || "";
+            const cidadeRelatorioNormalizada = normalizarTextoImportacao(
+              importacaoHolerite.cidadeRelatorio
+            );
+            const cidadeSelecionadaNormalizada = normalizarTextoImportacao(cidadeSelecionada);
+            const cidadeDiferente =
+              !!cidadeRelatorioNormalizada &&
+              !cidadeSelecionadaNormalizada.includes(cidadeRelatorioNormalizada) &&
+              !cidadeRelatorioNormalizada.includes(cidadeSelecionadaNormalizada);
+
+            const competenciaDiferente =
+              (importacaoHolerite.competenciaMes !== null &&
+                Number(importacaoHolerite.competenciaMes) !== Number(mes)) ||
+              (importacaoHolerite.competenciaAno !== null &&
+                Number(importacaoHolerite.competenciaAno) !== Number(ano));
+
+            const prontos = importacaoHolerite.itens.filter(
+              (item) => item.status === "ok"
+            );
+            const divergencias = importacaoHolerite.itens.filter(
+              (item) => item.status === "possivel" || item.status === "nao_cadastrado"
+            );
+            const ignorados = importacaoHolerite.itens.filter(
+              (item) => item.status === "ignorado"
+            );
+            const totalEmprestimos = prontos.reduce(
+              (acc, item) => acc + item.emprestimos.length,
+              0
+            );
+            const existentesComValor = prontos.filter((item) => {
+              const linha = linhas.find(
+                (l) => Number(l.funcionarioId) === Number(item.funcionarioId)
+              );
+              return Number(linha?.inss || 0) > 0 || Number(linha?.holerite || 0) > 0;
+            });
+
+            return (
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Arquivo</p>
+                    <p className="font-semibold break-all">{importacaoHolerite.arquivoNome}</p>
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Competência</p>
+                    <p className={competenciaDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
+                      {importacaoHolerite.competencia || "Não identificada"}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Loja do PDF</p>
+                    <p className={cidadeDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
+                      {importacaoHolerite.cidadeRelatorio || "Não identificada"}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Funcionários prontos</p>
+                    <p className="font-semibold text-green-400">{prontos.length}</p>
+                  </div>
+                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                    <p className="text-xs text-gray-400">Empréstimos CLT</p>
+                    <p className="font-semibold text-yellow-300">{totalEmprestimos}</p>
+                  </div>
+                </div>
+
+                {cidadeDiferente && (
+                  <div className="rounded-md border border-red-500/40 bg-red-950/30 p-4 text-red-300">
+                    O PDF parece ser de <strong>{importacaoHolerite.cidadeRelatorio}</strong>, mas a folha aberta é <strong>{cidadeSelecionada}</strong>. A importação foi bloqueada.
+                  </div>
+                )}
+
+                {competenciaDiferente && (
+                  <div className="rounded-md border border-red-500/40 bg-red-950/30 p-4 text-red-300">
+                    O PDF é da competência <strong>{importacaoHolerite.competencia}</strong>, mas a folha aberta está em <strong>{String(mes).padStart(2, "0")}/{ano}</strong>. A importação foi bloqueada.
+                  </div>
+                )}
+
+                {existentesComValor.length > 0 && (
+                  <div className="rounded-md border border-yellow-500/30 bg-yellow-950/20 p-4 text-yellow-200">
+                    {existentesComValor.length} funcionário(s) já possuem INSS ou Holerite preenchido. Ao confirmar, esses dois campos serão atualizados pelo PDF. O Adiant. não será tocado.
+                  </div>
+                )}
+
+                <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <p className="font-semibold text-primary">Valores encontrados</p>
+                    <span className="text-xs text-gray-400">
+                      INSS + Valor Líquido + Empréstimos CLT
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {prontos.length === 0 ? (
+                      <p className="text-sm text-gray-400">Nenhum funcionário pronto ainda.</p>
+                    ) : (
+                      prontos.map((item) => {
+                        const totalEmprestimoItem = item.emprestimos.reduce(
+                          (acc, emprestimo) => acc + Number(emprestimo.valor || 0),
+                          0
+                        );
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="rounded border border-green-500/20 bg-green-950/10 p-3"
+                          >
+                            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                              <div>
+                                <p className="font-semibold text-white">
+                                  {item.funcionarioNome}
+                                </p>
+                                {normalizarNomeImportacao(item.nomePdf) !==
+                                  normalizarNomeImportacao(item.funcionarioNome || "") && (
+                                  <p className="text-xs text-gray-500">
+                                    PDF: {item.nomePdf}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500">
+                                  Página {item.pagina}
+                                </p>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm min-w-[420px]">
+                                <div className="rounded bg-gray-950/60 px-3 py-2">
+                                  <p className="text-xs text-gray-500">INSS</p>
+                                  <p className="font-bold text-red-300">
+                                    {formatarMoeda(item.inss)}
+                                  </p>
+                                </div>
+                                <div className="rounded bg-gray-950/60 px-3 py-2">
+                                  <p className="text-xs text-gray-500">Holerite líquido</p>
+                                  <p className="font-bold text-green-400">
+                                    {formatarMoeda(item.valorLiquido)}
+                                  </p>
+                                </div>
+                                <div className="rounded bg-gray-950/60 px-3 py-2">
+                                  <p className="text-xs text-gray-500">Empréstimo CLT</p>
+                                  <p className="font-bold text-yellow-300">
+                                    {item.emprestimos.length} • {formatarMoeda(totalEmprestimoItem)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {item.emprestimos.length > 0 && (
+                              <div className="mt-3 rounded border border-yellow-500/20 bg-yellow-950/10 p-3">
+                                <p className="text-xs font-semibold text-yellow-300 mb-2">
+                                  Discriminação dos empréstimos
+                                </p>
+                                <div className="space-y-1">
+                                  {item.emprestimos.map((emprestimo, index) => (
+                                    <div
+                                      key={`${item.id}-${emprestimo.contrato}-${index}`}
+                                      className="flex items-center justify-between gap-3 text-xs"
+                                    >
+                                      <span className="text-gray-300">
+                                        Empréstimo CLT • {emprestimo.contrato}
+                                      </span>
+                                      <span className="font-semibold text-yellow-200">
+                                        {formatarMoeda(emprestimo.valor)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {divergencias.length > 0 && (
+                  <div className="rounded-md border border-yellow-500/30 bg-yellow-950/10 p-4">
+                    <p className="font-semibold text-yellow-300 mb-3">
+                      Funcionários do PDF que precisam de conferência ({divergencias.length})
+                    </p>
+
+                    <div className="space-y-3">
+                      {divergencias.map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded border border-yellow-500/20 bg-gray-950/50 p-3"
+                        >
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-white">{item.nomePdf}</p>
+                              <p className="text-xs text-gray-400">
+                                INSS {formatarMoeda(item.inss)} • Holerite {formatarMoeda(item.valorLiquido)}
+                              </p>
+                              {item.status === "possivel" && item.candidatoNome ? (
+                                <p className="text-xs text-yellow-300 mt-1">
+                                  Possível cadastro: {item.candidatoNome}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-red-300 mt-1">
+                                  Não encontrei este funcionário no cadastro da folha.
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {item.status === "possivel" && item.candidatoId && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="bg-primary text-black hover:bg-yellow-300"
+                                  onClick={() =>
+                                    vincularItemHolerite(item.id, Number(item.candidatoId))
+                                  }
+                                >
+                                  Sim, vincular
+                                </Button>
+                              )}
+
+                              <Select
+                                onValueChange={(value) =>
+                                  vincularItemHolerite(item.id, Number(value))
+                                }
+                              >
+                                <SelectTrigger className="w-[220px] border-primary/30 bg-gray-800 text-white">
+                                  <SelectValue placeholder="Escolher funcionário" />
+                                </SelectTrigger>
+                                <SelectContent className="border-primary/30 bg-gray-900">
+                                  {linhas
+                                    .filter((linha) => linha.quadrante !== "supervisor_pj")
+                                    .map((linha) => (
+                                      <SelectItem
+                                        key={linha.funcionarioId}
+                                        value={String(linha.funcionarioId)}
+                                        className="text-white"
+                                      >
+                                        {linha.nome}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => irParaCadastrarFuncionarioHolerite(item)}
+                              >
+                                Cadastrar funcionário
+                              </Button>
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => ignorarItemHolerite(item.id)}
+                              >
+                                Ignorar
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {funcionariosAusentesNoPdfHolerite.length > 0 && (
+                  <div className="rounded-md border border-orange-500/30 bg-orange-950/10 p-4">
+                    <p className="font-semibold text-orange-300 mb-2">
+                      Cadastrados que não aparecem na Folha Mensal ({funcionariosAusentesNoPdfHolerite.length})
+                    </p>
+                    <p className="text-xs text-gray-400 mb-3">
+                      Nada será zerado automaticamente. Pode ser PJ, admissão/saída no período ou PDF incompleto.
+                    </p>
+
+                    <div className="space-y-2">
+                      {funcionariosAusentesNoPdfHolerite.map((funcionario) => (
+                        <div
+                          key={funcionario.funcionarioId}
+                          className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded border border-orange-500/20 bg-gray-950/50 p-3"
+                        >
+                          <div>
+                            <p className="font-semibold text-white">{funcionario.nome}</p>
+                            <p className="text-xs text-gray-500">{funcionario.funcao}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="button" variant="ghost" size="sm">
+                              Manter como está
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                irParaCadastroExistenteHolerite(funcionario)
+                              }
+                            >
+                              Ver cadastro / inativar
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {ignorados.length > 0 && (
+                  <div className="text-xs text-gray-500">
+                    {ignorados.length} funcionário(s) do PDF serão ignorados nesta importação.
+                  </div>
+                )}
+
+                <div className="rounded-md border border-green-500/20 bg-green-950/10 p-4 text-sm">
+                  <p className="font-semibold text-green-300">Proteção do Adiantamento</p>
+                  <p className="text-gray-300 mt-1">
+                    Esta importação não grava nem recalcula a coluna Adiant. O valor líquido importado anteriormente pelo recibo do dia 20 permanece intacto.
+                  </p>
+                </div>
+
+                {importacaoHolerite.erro && (
+                  <div className="rounded-md border border-red-500/30 bg-red-950/30 p-4 text-red-300">
+                    {importacaoHolerite.erro}
+                  </div>
+                )}
+
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={importacaoHolerite.etapa === "importando"}
+                    onClick={() => setImportacaoHolerite(criarImportacaoHoleriteInicial())}
+                  >
+                    Escolher outro arquivo
+                  </Button>
+                  <Button
+                    type="button"
+                    className="bg-primary text-black hover:bg-yellow-300"
+                    disabled={
+                      cidadeDiferente ||
+                      competenciaDiferente ||
+                      prontos.length === 0 ||
+                      importacaoHolerite.etapa === "importando"
+                    }
+                    onClick={confirmarImportacaoHolerite}
+                  >
+                    {importacaoHolerite.etapa === "importando"
+                      ? "Importando..."
+                      : `Importar Folha (${prontos.length})`}
+                  </Button>
+                </DialogFooter>
+              </div>
+            );
+          })()}
+
+          {importacaoHolerite.etapa === "sucesso" && (
+            <div className="space-y-5">
+              <div className="rounded-md border border-green-500/30 bg-green-950/20 p-6 text-center">
+                <p className="text-green-400 font-bold text-lg">
+                  Folha Mensal importada
+                </p>
+                <p className="text-gray-300 mt-2">{importacaoHolerite.mensagem}</p>
+                <p className="text-xs text-gray-500 mt-3">
+                  INSS e Holerite foram atualizados; empréstimos CLT foram lançados no Vale. Adiantamento preservado.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  className="bg-primary text-black hover:bg-yellow-300"
+                  onClick={fecharImportacaoHolerite}
+                >
+                  Concluir
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+
+
       </Dialog>
 
       <Dialog
