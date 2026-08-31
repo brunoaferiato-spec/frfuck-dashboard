@@ -405,6 +405,8 @@ function agruparFolhaBase(rows: any[], funcionarios: any[]) {
         sem2: 0,
         sem3: 0,
         sem4: 0,
+        sem5Extra: 0,
+        com5Extra: 0,
         sem5: 0,
         sem6: 0,
         percManual1: null,
@@ -457,6 +459,11 @@ function agruparFolhaBase(rows: any[], funcionarios: any[]) {
       } catch {
         item[`composicaoSemana${semana}`] = null;
       }
+    }
+
+    if (semana === 7) {
+      item.sem5Extra = Number(row.liquidez || 0);
+      item.com5Extra = Number(row.valorComissao || 0);
     }
 
     if (semana === 5) {
@@ -512,7 +519,8 @@ function calcularResumoLoja(args: {
         Number(base?.sem1 || 0) +
         Number(base?.sem2 || 0) +
         Number(base?.sem3 || 0) +
-        Number(base?.sem4 || 0),
+        Number(base?.sem4 || 0) +
+        Number(base?.sem5Extra || 0),
     };
   });
 
@@ -554,6 +562,8 @@ function calcularResumoLoja(args: {
       sem2: Number(existente.sem2 || 0),
       sem3: Number(existente.sem3 || 0),
       sem4: Number(existente.sem4 || 0),
+      sem5Extra: Number(existente.sem5Extra || 0),
+      com5Extra: Number(existente.com5Extra || 0),
       sem5: Number(existente.sem5 || 0),
       sem6: Number(existente.sem6 || 0),
       liquidezLojaGerente: Number(existente.liquidezLojaGerente || 0),
@@ -620,6 +630,8 @@ function calcularResumoLoja(args: {
     } as any) as any;
 
     const ajustado: any = { ...calculado };
+    ajustado.sem5Extra = Number(base.sem5Extra || 0);
+    ajustado.com5Extra = Number(base.com5Extra || 0);
 
     for (const semana of [1, 2, 3, 4] as const) {
       const composicao = (base as any)[`composicaoSemana${semana}`];
@@ -658,7 +670,10 @@ function calcularResumoLoja(args: {
         Number(ajustado.com1 || 0) +
         Number(ajustado.com2 || 0) +
         Number(ajustado.com3 || 0) +
-        Number(ajustado.com4 || 0);
+        Number(ajustado.com4 || 0) +
+        Number(base.com5Extra || 0);
+      ajustado.totalLiquidez =
+        Number(ajustado.totalLiquidez || 0) + Number(base.sem5Extra || 0);
     }
 
     if (funcionario.funcao === "supervisor" && args.lojaId !== 5) {
@@ -722,6 +737,7 @@ function calcularResumoLoja(args: {
         Number(ajustado.com2 || 0) +
         Number(ajustado.com3 || 0) +
         Number(ajustado.com4 || 0) +
+        Number(base.com5Extra || 0) +
         Number(calculoLoja.com1 || 0);
     }
 
@@ -816,6 +832,7 @@ function calcularResumoLoja(args: {
       sem2: base.sem2,
       sem3: base.sem3,
       sem4: base.sem4,
+      sem5Extra: base.sem5Extra,
       liquidezLojaGerente: base.liquidezLojaGerente,
       totalLiquidez: Number(ajustado.totalLiquidez || 0),
       totalComissao: Number(ajustado.totalComissao || 0),
@@ -851,7 +868,8 @@ function calcularResumoLoja(args: {
           Number(linha.sem1 || 0) +
           Number(linha.sem2 || 0) +
           Number(linha.sem3 || 0) +
-          Number(linha.sem4 || 0),
+          Number(linha.sem4 || 0) +
+          Number((linha as any).sem5Extra || 0),
         0
       );
   }

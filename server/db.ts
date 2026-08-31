@@ -32,42 +32,68 @@ import { ENV } from "./_core/env";
 let _pool: mysql.Pool | null = null;
 let _db: any | null = null;
 
+function criarPoolDb() {
+  const pool = mysql.createPool({
+    uri: process.env.DATABASE_URL!,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
+  });
+
+  const db = drizzle(pool, { schema, mode: "default" });
+  return { pool, db };
+}
+
 export async function getDb() {
   if (!process.env.DATABASE_URL) {
     console.error("❌ DATABASE_URL não encontrada no process.env");
     return null;
   }
 
-  try {
+  // O mysql2 já gerencia as conexões internas do pool. Não encerramos o pool
+  // durante uma requisição: várias queries da Folha rodam em paralelo e chamar
+  // pool.end() aqui pode fechar a conexão que outra query ainda está usando,
+  // gerando a sequência "Pool is closed" -> "Banco não conectado".
+  for (let tentativa = 1; tentativa <= 2; tentativa += 1) {
     if (!_pool || !_db) {
-      _pool = mysql.createPool({
-        uri: process.env.DATABASE_URL,
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0,
-        enableKeepAlive: true,
-        keepAliveInitialDelay: 0,
-      });
-
-      _db = drizzle(_pool, { schema, mode: "default" });
+      const conexao = criarPoolDb();
+      _pool = conexao.pool;
+      _db = conexao.db;
       console.log("✅ Pool do banco conectado");
     }
 
-    await _pool.query("SELECT 1");
-
-    return _db;
-  } catch (error) {
-    console.error("❌ Conexão do banco caiu. Recriando pool...", error);
+    const poolDaTentativa = _pool;
+    const dbDaTentativa = _db;
 
     try {
-      await _pool?.end();
-    } catch {}
+      await poolDaTentativa.query("SELECT 1");
+      return dbDaTentativa;
+    } catch (error: any) {
+      const mensagem = String(error?.message || error || "");
+      console.error(
+        `❌ Falha ao validar conexão do banco (tentativa ${tentativa}/2):`,
+        mensagem
+      );
 
-    _pool = null;
-    _db = null;
+      // Pool realmente encerrado: descarta apenas a referência global e cria
+      // outro na próxima tentativa. Não chamamos .end() no pool antigo porque
+      // ele pode ainda estar referenciado por uma query concorrente.
+      if (/pool is closed/i.test(mensagem) && _pool === poolDaTentativa) {
+        _pool = null;
+        _db = null;
+      }
 
-    return null;
+      if (tentativa === 2) return null;
+
+      // Pequena janela para o mysql2 recuperar uma conexão transitória antes
+      // da segunda tentativa, sem derrubar as demais consultas da aplicação.
+      await new Promise((resolve) => setTimeout(resolve, 120));
+    }
   }
+
+  return null;
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -1776,6 +1802,145 @@ async function ensureFuncaoSemanaColumn() {
   }
 
   _funcaoSemanaColumnReady = true;
+}
+
+let _folhaSem5ConfigReady = false;
+
+async function ensureFolhaSem5ConfigTable() {
+  if (_folhaSem5ConfigReady) return;
+
+  const db = await getDb();
+  if (!db || !_pool) throw new Error("Banco não conectado");
+
+  await _pool.query(`
+    CREATE TABLE IF NOT EXISTS folha_sem5_config (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      loja_id INT NOT NULL,
+      ano INT NOT NULL,
+      mes INT NOT NULL,
+      sem5_ativa TINYINT(1) NOT NULL DEFAULT 0,
+      ultima_alteracao_por VARCHAR(255) NULL,
+      ultima_alteracao_em DATETIME NULL,
+      criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_folha_sem5_competencia (loja_id, ano, mes)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  _folhaSem5ConfigReady = true;
+}
+
+export async function getFolhaSem5Status(lojaId: number, ano: number, mes: number) {
+  await ensureFolhaSem5ConfigTable();
+  if (!_pool) return { lojaId, ano, mes, ativa: false };
+
+  const [rows] = await _pool.query<any[]>(
+    `SELECT sem5_ativa AS ativa
+       FROM folha_sem5_config
+      WHERE loja_id = ? AND ano = ? AND mes = ?
+      LIMIT 1`,
+    [lojaId, ano, mes]
+  );
+
+  const [dadosSem5] = await _pool.query<any[]>(
+    `SELECT id
+       FROM folha_pagamento
+      WHERE lojaId = ? AND ano = ? AND mes = ? AND semana = 7
+      LIMIT 1`,
+    [lojaId, ano, mes]
+  );
+
+  return {
+    lojaId,
+    ano,
+    mes,
+    ativa: Boolean(Number(rows?.[0]?.ativa || 0)) || Boolean(dadosSem5?.[0]),
+  };
+}
+
+export async function ativarFolhaSem5(data: {
+  lojaId: number;
+  ano: number;
+  mes: number;
+  usuarioNome?: string | null;
+}) {
+  await ensureFolhaSem5ConfigTable();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
+
+  await _pool.query(
+    `INSERT INTO folha_sem5_config
+       (loja_id, ano, mes, sem5_ativa, ultima_alteracao_por, ultima_alteracao_em)
+     VALUES (?, ?, ?, 1, ?, NOW())
+     ON DUPLICATE KEY UPDATE
+       sem5_ativa = 1,
+       ultima_alteracao_por = VALUES(ultima_alteracao_por),
+       ultima_alteracao_em = NOW()`,
+    [data.lojaId, data.ano, data.mes, data.usuarioNome ?? null]
+  );
+
+  return getFolhaSem5Status(data.lojaId, data.ano, data.mes);
+}
+
+export async function desativarFolhaSem5(data: {
+  lojaId: number;
+  ano: number;
+  mes: number;
+  usuarioNome?: string | null;
+}) {
+  await ensureFolhaSem5ConfigTable();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
+
+  // A SEM5 real é armazenada como semana=7 para não conflitar com os campos
+  // especiais já existentes nas posições 5 e 6. Se houver qualquer lançamento
+  // financeiro ou composição de função, protegemos os dados e não removemos.
+  const [rowsComDados] = await _pool.query<any[]>(
+    `SELECT id
+       FROM folha_pagamento
+      WHERE lojaId = ?
+        AND ano = ?
+        AND mes = ?
+        AND semana = 7
+        AND (
+          COALESCE(liquidez, 0) <> 0
+          OR COALESCE(percentualComissao, 0) <> 0
+          OR COALESCE(valorComissao, 0) <> 0
+          OR percentualManual IS NOT NULL
+          OR (composicaoSemana IS NOT NULL AND JSON_LENGTH(composicaoSemana) > 0)
+        )
+      LIMIT 1`,
+    [data.lojaId, data.ano, data.mes]
+  );
+
+  if (rowsComDados?.[0]) {
+    throw new Error(
+      "A SEM5 possui lançamentos. Zere ou remova os dados da quinta semana antes de desativá-la."
+    );
+  }
+
+  // Linhas vazias não representam lançamento. Elas são removidas para evitar
+  // que o status da SEM5 seja reativado automaticamente.
+  await _pool.query(
+    `DELETE FROM folha_pagamento
+      WHERE lojaId = ? AND ano = ? AND mes = ? AND semana = 7`,
+    [data.lojaId, data.ano, data.mes]
+  );
+
+  await _pool.query(
+    `INSERT INTO folha_sem5_config
+       (loja_id, ano, mes, sem5_ativa, ultima_alteracao_por, ultima_alteracao_em)
+     VALUES (?, ?, ?, 0, ?, NOW())
+     ON DUPLICATE KEY UPDATE
+       sem5_ativa = 0,
+       ultima_alteracao_por = VALUES(ultima_alteracao_por),
+       ultima_alteracao_em = NOW()`,
+    [data.lojaId, data.ano, data.mes, data.usuarioNome ?? null]
+  );
+
+  return getFolhaSem5Status(data.lojaId, data.ano, data.mes);
 }
 
 export async function getFolhaBaseByLojaAnoMes(lojaId: number, ano: number, mes: number) {

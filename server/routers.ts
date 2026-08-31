@@ -38,6 +38,9 @@ import {
   trocarFuncaoFuncionario,
   getTrocasFuncaoByLojaCompetencia,
   upsertFolhaTransicaoFuncao,
+  getFolhaSem5Status,
+  ativarFolhaSem5,
+  desativarFolhaSem5,
 } from "./db";
 
 import { signAuthToken, comparePassword, hashPassword } from "./auth";
@@ -549,6 +552,48 @@ export const appRouter = router({
           total: joinville + blumenau + saoJose + florianopolis,
         };
       }),
+
+    getSem5Status: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number().min(1).max(12),
+        })
+      )
+      .query(({ input }) =>
+        getFolhaSem5Status(input.lojaId, input.ano, input.mes)
+      ),
+
+    ativarSem5: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number().min(1).max(12),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        ativarFolhaSem5({
+          ...input,
+          usuarioNome: ctx.user.name || ctx.user.email || `Usuário ${ctx.user.id}`,
+        })
+      ),
+
+    desativarSem5: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number().min(1).max(12),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        desativarFolhaSem5({
+          ...input,
+          usuarioNome: ctx.user.name || ctx.user.email || `Usuário ${ctx.user.id}`,
+        })
+      ),
 
     upsertBaseItem: protectedProcedure
       .input(

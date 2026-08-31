@@ -188,7 +188,7 @@ const IMPORT_PENDENTE_STORAGE_KEY = "folha-importacao-pendente-v1";
 const IMPORT_ADIANT_PENDENTE_STORAGE_KEY = "folha-importacao-adiant-pendente-v1";
 const IMPORT_HOLERITE_PENDENTE_STORAGE_KEY = "folha-importacao-holerite-pendente-v1";
 
-type SemanaImportacao = 1 | 2 | 3 | 4;
+type SemanaImportacao = 1 | 2 | 3 | 4 | 5;
 type FuncaoImportacao = "vendedor" | "mecanico";
 type StatusItemImportacao =
   | "ok"
@@ -1090,16 +1090,24 @@ type TrocaFuncaoMes = {
   usuarioNome?: string | null;
 };
 
+type SemanaComissaoVisual = 1 | 2 | 3 | 4 | 5;
+
 type LinhaComQuadrante = FolhaMensal & {
   quadrante: QuadranteKey;
   funcaoSemana1?: FuncaoSemanaComissao | null;
   funcaoSemana2?: FuncaoSemanaComissao | null;
   funcaoSemana3?: FuncaoSemanaComissao | null;
   funcaoSemana4?: FuncaoSemanaComissao | null;
+  funcaoSemana5?: FuncaoSemanaComissao | null;
   composicaoSemana1?: ComponenteFuncaoSemana[] | null;
   composicaoSemana2?: ComponenteFuncaoSemana[] | null;
   composicaoSemana3?: ComponenteFuncaoSemana[] | null;
   composicaoSemana4?: ComponenteFuncaoSemana[] | null;
+  composicaoSemana5?: ComponenteFuncaoSemana[] | null;
+  sem5Extra?: number;
+  perc5Extra?: number;
+  com5Extra?: number;
+  percManual5Extra?: number | null;
   trocaFuncaoMes?: TrocaFuncaoMes | null;
   comissaoFuncaoAnterior?: number;
   descontoFolhaProporcional?: number | null;
@@ -1108,9 +1116,31 @@ type LinhaComQuadrante = FolhaMensal & {
   diasFuncaoNova?: number | null;
 };
 
+function campoLiquidezSemanaVisual(semana: SemanaComissaoVisual) {
+  return semana === 5 ? "sem5Extra" : `sem${semana}`;
+}
+
+function campoPercentualSemanaVisual(semana: SemanaComissaoVisual) {
+  return semana === 5 ? "perc5Extra" : `perc${semana}`;
+}
+
+function campoComissaoSemanaVisual(semana: SemanaComissaoVisual) {
+  return semana === 5 ? "com5Extra" : `com${semana}`;
+}
+
+function campoPercentualManualSemanaVisual(semana: SemanaComissaoVisual) {
+  return semana === 5 ? "percManual5Extra" : `percManual${semana}`;
+}
+
+function semanaPersistenciaVisual(semana: SemanaComissaoVisual) {
+  // semana=5 e semana=6 já são usadas internamente por gerente/ACI.
+  // A quinta semana real da folha é persistida como semana=7.
+  return semana === 5 ? 7 : semana;
+}
+
 function getComposicaoSemana(
   linha: LinhaComQuadrante | FolhaMensal,
-  semana: 1 | 2 | 3 | 4
+  semana: SemanaComissaoVisual
 ): ComponenteFuncaoSemana[] {
   const raw = (linha as any)[`composicaoSemana${semana}`];
   if (Array.isArray(raw) && raw.length > 0) {
@@ -1121,21 +1151,21 @@ function getComposicaoSemana(
     );
   }
 
-  const liquidez = Number((linha as any)[`sem${semana}`] || 0);
+  const liquidez = Number((linha as any)[campoLiquidezSemanaVisual(semana)] || 0);
   const funcao = getFuncaoSemanaEfetiva(linha, semana);
   if (!funcao || liquidez <= 0) return [];
 
   return [{
     funcao,
     liquidez,
-    percentual: Number((linha as any)[`perc${semana}`] || 0),
-    comissao: Number((linha as any)[`com${semana}`] || 0),
+    percentual: Number((linha as any)[campoPercentualSemanaVisual(semana)] || 0),
+    comissao: Number((linha as any)[campoComissaoSemanaVisual(semana)] || 0),
   }];
 }
 
 function getFuncaoSemanaEfetiva(
   linha: LinhaComQuadrante | FolhaMensal,
-  semana: 1 | 2 | 3 | 4
+  semana: SemanaComissaoVisual
 ): FuncaoSemanaComissao | null {
   const historica = (linha as any)[`funcaoSemana${semana}`];
   if (historica === "vendedor" || historica === "mecanico") return historica;
@@ -1151,7 +1181,7 @@ function getFuncaoSemanaEfetiva(
 function getFuncoesComissaoAtivasNoMes(
   linha: LinhaComQuadrante
 ): FuncaoSemanaComissao[] {
-  const funcoes = ([1, 2, 3, 4] as const).flatMap((semana) =>
+  const funcoes = ([1, 2, 3, 4, 5] as const).flatMap((semana) =>
     getComposicaoSemana(linha, semana).map((item) => item.funcao)
   );
 
@@ -1274,7 +1304,7 @@ type NegativoEditorState = {
 type RegraSemanaEditorState = {
   open: boolean;
   linha: LinhaComQuadrante | null;
-  semana: 1 | 2 | 3 | 4 | 5 | null;
+  semana: 1 | 2 | 3 | 4 | 5 | 7 | null;
 };
 
 type TransicaoFuncaoEditorState = {
@@ -1501,6 +1531,7 @@ function TabelaQuadrante({
   onOpenImportacaoAdiantamento,
   onOpenImportacaoHolerite,
   onUpdateComposicaoSemanaPercentual,
+  sem5Ativa,
 }: {
   titulo: string;
   descricao: string;
@@ -1520,27 +1551,28 @@ function TabelaQuadrante({
   onOpenTransicaoFuncao: (linha: LinhaComQuadrante) => void;
   onOpenRegraSemanaEditor: (
     linha: LinhaComQuadrante,
-    semana: 1 | 2 | 3 | 4 | 5
+    semana: 1 | 2 | 3 | 4 | 5 | 7
   ) => void;
   onOpenImportacaoSemana: (semana: SemanaImportacao) => void;
   onOpenImportacaoAdiantamento: () => void;
   onOpenImportacaoHolerite: () => void;
   onUpdateComposicaoSemanaPercentual: (
     linha: LinhaComQuadrante,
-    semana: 1 | 2 | 3 | 4,
+    semana: SemanaComissaoVisual,
     funcao: FuncaoSemanaComissao,
     percentualManual: number | null
   ) => Promise<LinhaComQuadrante | null>;
+  sem5Ativa: boolean;
 }) {
   const [semanaMistaDetalhe, setSemanaMistaDetalhe] = useState<{
     linha: LinhaComQuadrante;
-    semana: 1 | 2 | 3 | 4;
+    semana: SemanaComissaoVisual;
   } | null>(null);
   const semanaMistaAbertaRef = useRef(false);
 
   function abrirSemanaMistaDetalhe(
     linha: LinhaComQuadrante,
-    semana: 1 | 2 | 3 | 4
+    semana: SemanaComissaoVisual
   ) {
     semanaMistaAbertaRef.current = true;
     setSemanaMistaDetalhe({ linha, semana });
@@ -1601,10 +1633,14 @@ const isMensalUnico =
     const text =
       mode === "money" ? `R$ ${money(rawValue)}` : rawValue.toLocaleString("pt-BR");
 
-    const campoSemanaMatch = String(campo).match(/^sem([1-4])$/);
-    const semanaCampo = campoSemanaMatch
-      ? (Number(campoSemanaMatch[1]) as 1 | 2 | 3 | 4)
-      : null;
+    const campoTexto = String(campo);
+    const campoSemanaMatch = campoTexto.match(/^sem([1-4])$/);
+    const semanaCampo: SemanaComissaoVisual | null =
+      campoTexto === "sem5Extra"
+        ? 5
+        : campoSemanaMatch
+        ? (Number(campoSemanaMatch[1]) as 1 | 2 | 3 | 4)
+        : null;
     const composicaoSemana = semanaCampo
       ? getComposicaoSemana(linha, semanaCampo)
       : [];
@@ -1639,7 +1675,7 @@ const isMensalUnico =
         }
         className={`w-full flex min-h-[42px] flex-col items-end justify-center whitespace-nowrap rounded-xl border px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all duration-200 hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] hover:shadow-[0_0_20px_rgba(212,175,55,0.06)] ${classeMudanca} ${
   rawValue > 0
-    ? ["sem1", "sem2", "sem3", "sem4", "premiacao"].includes(String(campo))
+    ? ["sem1", "sem2", "sem3", "sem4", "sem5Extra", "premiacao"].includes(String(campo))
       ? "text-green-400"
       : ["vale", "aluguel", "inss", "adiant", "holerite"].includes(String(campo))
         ? "text-red-400"
@@ -1667,7 +1703,7 @@ const isMensalUnico =
 
   function renderRegraButton(
     linha: LinhaComQuadrante,
-    semana: 1 | 2 | 3 | 4
+    semana: SemanaComissaoVisual
   ) {
     const composicaoSemana = getComposicaoSemana(linha, semana);
     if (composicaoSemana.length > 1) {
@@ -1682,119 +1718,105 @@ const isMensalUnico =
         </button>
       );
     }
-   
-   if (isConsultorMeta2) {
-  return (
-    <span className="text-yellow-300 font-semibold whitespace-nowrap">
-      {getRegraConsultorTexto(linha, Number(linha.sem1 || 0))}
-    </span>
-  );
-}
-    const manualValue =
-  semana === 1
-    ? linha.percManual1
-    : semana === 2
-    ? linha.percManual2
-    : semana === 3
-    ? linha.percManual3
-    : linha.percManual4;
 
-const funcaoHistoricaSemana = getFuncaoSemanaEfetiva(linha, semana);
+    if (isConsultorMeta2) {
+      return (
+        <span className="text-yellow-300 font-semibold whitespace-nowrap">
+          {getRegraConsultorTexto(linha, Number(linha.sem1 || 0))}
+        </span>
+      );
+    }
 
-const funcaoRegra =
-  funcaoHistoricaSemana ||
-  (linha.funcao === "gerente" &&
-  (linha.loja_id === 3 || linha.loja_id === 6)
-    ? "vendedor"
-    : linha.funcao);
-
-const meta = findMetaForFuncionario({
-  funcionarioNome: linha.nome,
-  funcao: funcaoRegra,
-  cidade: linha.loja_id.toString(),
-  tipoMeta: linha.tipoMeta,
-});
-
-const calculadoOriginal = computeFolhaLinha({
-  meta,
-  funcao: funcaoRegra,
-  cidade: linha.loja_id.toString(),
-  funcionarioNome: linha.nome,
-  tipoMeta: linha.tipoMeta,
-
-  sem1: linha.sem1,
-  sem2: linha.sem2,
-  sem3: linha.sem3,
-  sem4: linha.sem4,
-
-  premiacoesManuais: [],
-  vales: [],
-  aluguel: 0,
-  inss: 0,
-  adiant: 0,
-  holerite: 0,
-});
-
-const percentualAutomatico =
-  semana === 1
-    ? calculadoOriginal.perc1
-    : semana === 2
-    ? calculadoOriginal.perc2
-    : semana === 3
-    ? calculadoOriginal.perc3
-    : calculadoOriginal.perc4;
-
- const manual =
-  !(
-    linha.funcao === "gerente" &&
-    (linha.loja_id === 3 || linha.loja_id === 6)
-  ) &&
-  Number(manualValue || 0) > 0 &&
-  Number(percentualAutomatico || 0) > 0 &&
-  Math.abs(Number(manualValue) - Number(percentualAutomatico)) > 0.001;
-const regraClassName = manual
-  ? "text-orange-400 font-bold hover:underline underline-offset-4"
-  : "text-yellow-300 font-semibold hover:underline underline-offset-4";
-    if (isConsultor) {
-      const carrosSemana =
-        semana === 1
-          ? linha.sem1
-          : semana === 2
-          ? linha.sem2
-          : semana === 3
-          ? linha.sem3
-          : linha.sem4;
-
-      const valorManual =
-        semana === 1
-          ? linha.perc1
-          : semana === 2
-          ? linha.perc2
-          : semana === 3
-          ? linha.perc3
-          : linha.perc4;
-
-  return (
-  <button
-    type="button"
-    onClick={() => onOpenRegraSemanaEditor(linha, semana)}
-    className={regraClassName}
-  >
-    {valorManual > 0
-      ? `R$ ${money(valorManual)} / carro`
-      : getRegraConsultorTexto(linha, carrosSemana)}
-  </button>
+    const manualValue = Number(
+      (linha as any)[campoPercentualManualSemanaVisual(semana)] || 0
     );
+    const funcaoHistoricaSemana = getFuncaoSemanaEfetiva(linha, semana);
+    const funcaoRegra =
+      funcaoHistoricaSemana ||
+      (linha.funcao === "gerente" &&
+      (linha.loja_id === 3 || linha.loja_id === 6)
+        ? "vendedor"
+        : linha.funcao);
+
+    const meta = findMetaForFuncionario({
+      funcionarioNome: linha.nome,
+      funcao: funcaoRegra,
+      cidade: linha.loja_id.toString(),
+      tipoMeta: linha.tipoMeta,
+    });
+
+    const liquidezSemana = Number(
+      (linha as any)[campoLiquidezSemanaVisual(semana)] || 0
+    );
+
+    const calculadoOriginal = computeFolhaLinha({
+      meta,
+      funcao: funcaoRegra,
+      cidade: linha.loja_id.toString(),
+      funcionarioNome: linha.nome,
+      tipoMeta: linha.tipoMeta,
+      sem1: semana === 5 ? liquidezSemana : linha.sem1,
+      sem2: semana === 5 ? 0 : linha.sem2,
+      sem3: semana === 5 ? 0 : linha.sem3,
+      sem4: semana === 5 ? 0 : linha.sem4,
+      premiacoesManuais: [],
+      vales: [],
+      aluguel: 0,
+      inss: 0,
+      adiant: 0,
+      holerite: 0,
+    });
+
+    const percentualAutomatico = Number(
+      semana === 5
+        ? calculadoOriginal.perc1
+        : semana === 1
+        ? calculadoOriginal.perc1
+        : semana === 2
+        ? calculadoOriginal.perc2
+        : semana === 3
+        ? calculadoOriginal.perc3
+        : calculadoOriginal.perc4
+    );
+
+    const manual =
+      !(
+        linha.funcao === "gerente" &&
+        (linha.loja_id === 3 || linha.loja_id === 6)
+      ) &&
+      manualValue > 0 &&
+      percentualAutomatico > 0 &&
+      Math.abs(manualValue - percentualAutomatico) > 0.001;
+    const regraClassName = manual
+      ? "text-orange-400 font-bold hover:underline underline-offset-4"
+      : "text-yellow-300 font-semibold hover:underline underline-offset-4";
+
+    const semanaEditor = semana === 5 ? 7 : semana;
+
+    if (isConsultor) {
+      const valorAplicado = Number(
+        (linha as any)[campoPercentualSemanaVisual(semana)] || 0
+      );
+      return (
+        <button
+          type="button"
+          onClick={() => onOpenRegraSemanaEditor(linha, semanaEditor)}
+          className={regraClassName}
+        >
+          {valorAplicado > 0
+            ? `R$ ${money(valorAplicado)} / carro`
+            : getRegraConsultorTexto(linha, liquidezSemana)}
+        </button>
+      );
     }
 
     if (isRecepcao) {
       const config = getRecepcaoConfig(linha.nome, linha.loja_id.toString());
       const valor = semana === 1 ? config.valorVenda : config.valorEntrada;
-
       return (
         <button
           type="button"
-          onClick={() => onOpenRegraSemanaEditor(linha, semana)}
+          onClick={() => onOpenRegraSemanaEditor(linha, semanaEditor)}
           className={regraClassName}
         >
           R$ {money(valor)}
@@ -1803,19 +1825,11 @@ const regraClassName = manual
     }
 
     if (isSupervisor) {
-      const premio =
-        semana === 1
-          ? linha.com1
-          : semana === 2
-          ? linha.com2
-          : semana === 3
-          ? linha.com3
-          : linha.com4;
-
+      const premio = Number((linha as any)[campoComissaoSemanaVisual(semana)] || 0);
       return (
         <button
           type="button"
-          onClick={() => onOpenRegraSemanaEditor(linha, semana)}
+          onClick={() => onOpenRegraSemanaEditor(linha, semanaEditor)}
           className={regraClassName}
         >
           R$ {money(premio)}
@@ -1824,27 +1838,21 @@ const regraClassName = manual
     }
 
     const percentual =
-  linha.funcao === "gerente" &&
-  (linha.loja_id === 3 || linha.loja_id === 6)
-    ? percentualAutomatico
-    : semana === 1
-    ? linha.perc1
-    : semana === 2
-    ? linha.perc2
-    : semana === 3
-    ? linha.perc3
-    : linha.perc4;
+      linha.funcao === "gerente" &&
+      (linha.loja_id === 3 || linha.loja_id === 6)
+        ? percentualAutomatico
+        : Number((linha as any)[campoPercentualSemanaVisual(semana)] || 0);
 
     return (
-  <button
-    type="button"
-    onClick={() => onOpenRegraSemanaEditor(linha, semana)}
-    className={regraClassName}
-  >
-    {percentual.toFixed(2)}%
-  </button>
-);
-}
+      <button
+        type="button"
+        onClick={() => onOpenRegraSemanaEditor(linha, semanaEditor)}
+        className={regraClassName}
+      >
+        {percentual.toFixed(2)}%
+      </button>
+    );
+  }
 
   return (
     <Card className="group overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] shadow-[0_18px_60px_rgba(0,0,0,0.32)]">
@@ -1862,7 +1870,7 @@ const regraClassName = manual
 
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1900px] text-sm">
+          <table className={`w-full ${sem5Ativa ? "min-w-[2150px]" : "min-w-[1900px]"} text-sm`}>
             <thead>
               <tr className="border-b border-[#D4AF37]/15 bg-[#D4AF37]/[0.025] text-[#D4AF37]">
                 <th className="sticky left-0 z-20 bg-[#0b0b0b] p-3 text-left text-[11px] font-bold uppercase tracking-[0.08em]">Nome</th>
@@ -1938,6 +1946,25 @@ const regraClassName = manual
                       )}
                     </th>
                     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">{isConsultor ? "Regra" : "%"}</th>
+                    {sem5Ativa && (
+                      <>
+                        <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
+                          {quadrante === "comissao_semanal" ? (
+                            <button
+                              type="button"
+                              onClick={() => onOpenImportacaoSemana(5)}
+                              className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
+                              title="Importar relatório da SEM5"
+                            >
+                              SEM5
+                            </button>
+                          ) : (
+                            "SEM5"
+                          )}
+                        </th>
+                        <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">{isConsultor ? "Regra" : "%"}</th>
+                      </>
+                    )}
                   </>
                 )}
                 
@@ -1963,6 +1990,12 @@ const regraClassName = manual
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">% SEM3</th>
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">SEM4</th>
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">% SEM4</th>
+    {sem5Ativa && (
+      <>
+        <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">SEM5</th>
+        <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">% SEM5</th>
+      </>
+    )}
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Liquidez Loja</th>
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">% Loja</th>
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Comissão</th>
@@ -2196,6 +2229,16 @@ const regraClassName = manual
                           : renderEditButton(linha, "sem4", "Liquidez SEM4", "money")}
                       </td>
                       <td className="p-2 text-right">{renderRegraButton(linha, 4)}</td>
+                      {sem5Ativa && (
+                        <>
+                          <td className="p-2">
+                            {isConsultor
+                              ? renderEditButton(linha, "sem5Extra" as any, "Quantidade SEM5", "number")
+                              : renderEditButton(linha, "sem5Extra" as any, "Liquidez SEM5", "money")}
+                          </td>
+                          <td className="p-2 text-right">{renderRegraButton(linha, 5)}</td>
+                        </>
+                      )}
                     </>
                   )}
 
@@ -2288,6 +2331,13 @@ const regraClassName = manual
 
     <td className="p-2">{renderEditButton(linha, "sem4", "Liquidez SEM4", "money")}</td>
     <td className="p-2 text-right">{renderRegraButton(linha, 4)}</td>
+
+    {sem5Ativa && (
+      <>
+        <td className="p-2">{renderEditButton(linha, "sem5Extra" as any, "Liquidez SEM5", "money")}</td>
+        <td className="p-2 text-right">{renderRegraButton(linha, 5)}</td>
+      </>
+    )}
 
     <td className="p-2">
       <button
@@ -2825,10 +2875,33 @@ const folhaBaseQuery = trpc.folhaPagamento.getBaseByLojaAnoMes.useQuery(
   }
 );
 
+const sem5StatusQuery = trpc.folhaPagamento.getSem5Status.useQuery(
+  { lojaId, ano, mes },
+  {
+    enabled: !!lojaId && !!ano && !!mes,
+    retry: false,
+    refetchOnWindowFocus: true,
+  }
+);
+const sem5Ativa = Boolean(sem5StatusQuery.data?.ativa);
+
 const usuarioLogado = meQuery.data?.name || meQuery.data?.email || "Usuário";
 
 const upsertFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation({
   onSuccess: () => {
+    void folhaBaseQuery.refetch();
+  },
+});
+
+const ativarSem5Mutation = trpc.folhaPagamento.ativarSem5.useMutation({
+  onSuccess: () => {
+    void sem5StatusQuery.refetch();
+  },
+});
+
+const desativarSem5Mutation = trpc.folhaPagamento.desativarSem5.useMutation({
+  onSuccess: () => {
+    void sem5StatusQuery.refetch();
     void folhaBaseQuery.refetch();
   },
 });
@@ -3158,6 +3231,11 @@ regraMeta: "",
         perc4: 0,
         com4: 0,
 
+        sem5Extra: 0,
+        perc5Extra: 0,
+        com5Extra: 0,
+        percManual5Extra: null,
+
         totalLiquidez: 0,
         totalComissao: 0,
 
@@ -3294,6 +3372,33 @@ if (row.semana === 4) {
   (item as any).ultimaAlteracaoEm4 = (row as any).ultimaAlteracaoEm || null;
 }
 
+if (row.semana === 7) {
+  (item as any).sem5Extra = Number(row.liquidez || 0);
+  (item as any).percManual5Extra =
+    row.percentualManual !== null && row.percentualManual !== undefined
+      ? Number(row.percentualManual)
+      : null;
+  (item as any).perc5Extra = Number(row.percentualComissao || 0);
+  (item as any).com5Extra = Number(row.valorComissao || 0);
+  (item as any).funcaoSemana5 =
+    row.funcaoSemana === "vendedor" || row.funcaoSemana === "mecanico"
+      ? row.funcaoSemana
+      : null;
+  try {
+    const rawComposicao = (row as any).composicaoSemana;
+    const composicao = Array.isArray(rawComposicao)
+      ? rawComposicao
+      : typeof rawComposicao === "string" && rawComposicao.trim()
+      ? JSON.parse(rawComposicao)
+      : null;
+    (item as any).composicaoSemana5 = Array.isArray(composicao) ? composicao : null;
+  } catch {
+    (item as any).composicaoSemana5 = null;
+  }
+  (item as any).ultimaAlteracaoPor5 = (row as any).ultimaAlteracaoPor || null;
+  (item as any).ultimaAlteracaoEm5 = (row as any).ultimaAlteracaoEm || null;
+}
+
 if (row.semana === 5) {
   const funcionarioLinha = todosFuncionarios.find(
     (f) => Number(f.id) === Number(row.funcionarioId)
@@ -3352,7 +3457,8 @@ setFolhas(Array.from(agrupado.values()));
     Number(folhaFuncionario?.sem1 || 0) +
     Number(folhaFuncionario?.sem2 || 0) +
     Number(folhaFuncionario?.sem3 || 0) +
-    Number(folhaFuncionario?.sem4 || 0);
+    Number(folhaFuncionario?.sem4 || 0) +
+    Number((folhaFuncionario as any)?.sem5Extra || 0);
 
   return {
     nome: funcionario.nome,
@@ -3501,6 +3607,59 @@ const calculadoAjustado = { ...calculado };
   );
 });
 
+// A quinta semana real usa semana=7 no banco para não conflitar com os
+// registros internos 5/6 já usados por gerente e ACI.
+const sem5Extra = Number((base as any).sem5Extra || 0);
+let perc5Extra = Number((base as any).perc5Extra || 0);
+let com5Extra = Number((base as any).com5Extra || 0);
+const composicaoSem5 = getComposicaoSemana(base as any, 5);
+const possuiHistoricoSem5 =
+  (base as any).funcaoSemana5 === "vendedor" ||
+  (base as any).funcaoSemana5 === "mecanico" ||
+  composicaoSem5.length > 0;
+
+if (sem5Extra > 0 && !possuiHistoricoSem5) {
+  const funcaoSem5Calculo =
+    func.funcao === "gerente" && (lojaId === 3 || lojaId === 6)
+      ? "vendedor"
+      : func.funcao;
+  const metaSem5 = findMetaForFuncionario({
+    funcionarioNome: func.nome,
+    funcao: funcaoSem5Calculo,
+    cidade: selectedLoja,
+    tipoMeta: tipoMetaEfetivo,
+  });
+  const calculoSem5 = computeFolhaLinha({
+    meta: metaSem5,
+    funcao: funcaoSem5Calculo,
+    cidade: selectedLoja,
+    funcionarioNome: func.nome,
+    tipoMeta: tipoMetaEfetivo,
+    sem1: sem5Extra,
+    sem2: 0,
+    sem3: 0,
+    sem4: 0,
+    percManual1: Number((base as any).percManual5Extra || 0) > 0
+      ? Number((base as any).percManual5Extra)
+      : null,
+    percManual2: null,
+    percManual3: null,
+    percManual4: null,
+    premiacoesManuais: [],
+    vales: [],
+    aluguel: 0,
+    inss: 0,
+    adiant: 0,
+    holerite: 0,
+  });
+  perc5Extra = Number(calculoSem5.perc1 || 0);
+  com5Extra = Number(calculoSem5.com1 || 0);
+}
+
+(calculadoAjustado as any).sem5Extra = sem5Extra;
+(calculadoAjustado as any).perc5Extra = perc5Extra;
+(calculadoAjustado as any).com5Extra = com5Extra;
+
 if (
   Number(base.percManual1 || 0) > 0 &&
   base.funcao !== "vendedor" &&
@@ -3574,7 +3733,11 @@ if (func.funcao !== "supervisor") {
     Number(calculadoAjustado.com1 || 0) +
     Number(calculadoAjustado.com2 || 0) +
     Number(calculadoAjustado.com3 || 0) +
-    Number(calculadoAjustado.com4 || 0);
+    Number(calculadoAjustado.com4 || 0) +
+    Number((calculadoAjustado as any).com5Extra || 0);
+
+  calculadoAjustado.totalLiquidez =
+    Number(calculadoAjustado.totalLiquidez || 0) + sem5Extra;
 }
 const quadrante = getQuadrante(
   lojaId,
@@ -3664,6 +3827,7 @@ if (
     Number(calculadoAjustado.com2 || 0) +
     Number(calculadoAjustado.com3 || 0) +
     Number(calculadoAjustado.com4 || 0) +
+    Number((calculadoAjustado as any).com5Extra || 0) +
     Number(calculoLoja.com1 || 0);
 }
 
@@ -4118,8 +4282,48 @@ return {
     }
   }
 
+  async function ativarSem5Competencia() {
+    if (!garantirCompetenciaAberta()) return;
+    if (!usaMetaSemanal(lojaId, ano, mes) || sem5Ativa) return;
+
+    const confirmar = window.confirm(
+      `Adicionar a SEM5 em ${String(mes).padStart(2, "0")}/${ano}?\n\nEla ficará disponível somente nesta competência e poderá receber o quinto relatório semanal.`
+    );
+    if (!confirmar) return;
+
+    try {
+      await ativarSem5Mutation.mutateAsync({ lojaId, ano, mes });
+    } catch (error: any) {
+      console.error("Erro ao ativar SEM5:", error);
+      alert(error?.message || "Não foi possível adicionar a SEM5.");
+    }
+  }
+
+  async function desativarSem5Competencia() {
+    if (!garantirCompetenciaAberta()) return;
+    if (!usaMetaSemanal(lojaId, ano, mes) || !sem5Ativa) return;
+
+    const confirmar = window.confirm(
+      `Remover a SEM5 de ${String(mes).padStart(2, "0")}/${ano}?
+
+A remoção só será permitida se a quinta semana estiver sem lançamentos.`
+    );
+    if (!confirmar) return;
+
+    try {
+      await desativarSem5Mutation.mutateAsync({ lojaId, ano, mes });
+    } catch (error: any) {
+      console.error("Erro ao desativar SEM5:", error);
+      alert(
+        error?.message ||
+          "Não foi possível remover a SEM5. Verifique se existem lançamentos na quinta semana."
+      );
+    }
+  }
+
   function openImportacaoSemana(semana: SemanaImportacao) {
     if (!garantirCompetenciaAberta()) return;
+    if (semana === 5 && !sem5Ativa) return;
 
     const importacaoSemanalPermitida = usaMetaSemanal(lojaId, ano, mes);
     const importacaoMensalFlorianopolis = lojaId === 4 && usaMetaMensal(lojaId, ano, mes);
@@ -4550,17 +4754,12 @@ return {
     }));
 
     const semana = importacaoSemana.semana;
-    const campoSemana = `sem${semana}` as "sem1" | "sem2" | "sem3" | "sem4";
-    const campoFuncaoSemana = `funcaoSemana${semana}` as
-      | "funcaoSemana1"
-      | "funcaoSemana2"
-      | "funcaoSemana3"
-      | "funcaoSemana4";
-    const campoComposicaoSemana = `composicaoSemana${semana}` as
-      | "composicaoSemana1"
-      | "composicaoSemana2"
-      | "composicaoSemana3"
-      | "composicaoSemana4";
+    const semanaPersistida = semanaPersistenciaVisual(semana);
+    const campoSemana = campoLiquidezSemanaVisual(semana);
+    const campoPercentualSemana = campoPercentualSemanaVisual(semana);
+    const campoComissaoSemana = campoComissaoSemanaVisual(semana);
+    const campoFuncaoSemana = `funcaoSemana${semana}`;
+    const campoComposicaoSemana = `composicaoSemana${semana}`;
 
     const gruposPorFuncionario = new Map<number, typeof itensValidos>();
     for (const item of itensValidos) {
@@ -4643,7 +4842,7 @@ return {
               cidade: selectedLoja,
               funcionarioNome: currentLine.nome,
               tipoMeta: currentLine.tipoMeta,
-              sem1: semana === 1 ? liquidezComponente : 0,
+              sem1: semana === 1 || semana === 5 ? liquidezComponente : 0,
               sem2: semana === 2 ? liquidezComponente : 0,
               sem3: semana === 3 ? liquidezComponente : 0,
               sem4: semana === 4 ? liquidezComponente : 0,
@@ -4660,7 +4859,7 @@ return {
             });
 
             const percentual = Number(
-              semana === 1
+              semana === 1 || semana === 5
                 ? calculoComponente.perc1
                 : semana === 2
                 ? calculoComponente.perc2
@@ -4670,7 +4869,7 @@ return {
             );
 
             const comissao = Number(
-              semana === 1
+              semana === 1 || semana === 5
                 ? calculoComponente.com1
                 : semana === 2
                 ? calculoComponente.com2
@@ -4720,8 +4919,8 @@ return {
             [campoSemana]: totalLiquidezSemana,
             [campoFuncaoSemana]: funcaoSemanaPersistida,
             [campoComposicaoSemana]: componentesOrdenados,
-            [`perc${semana}`]: percentualSemanaPersistido,
-            [`com${semana}`]: totalComissaoSemana,
+            [campoPercentualSemana]: percentualSemanaPersistido,
+            [campoComissaoSemana]: totalComissaoSemana,
           } as LinhaComQuadrante;
 
           for (const historico of backfillFuncoes) {
@@ -4734,13 +4933,15 @@ return {
             Number(updatedLine.sem1 || 0) +
             Number(updatedLine.sem2 || 0) +
             Number(updatedLine.sem3 || 0) +
-            Number(updatedLine.sem4 || 0);
+            Number(updatedLine.sem4 || 0) +
+            Number((updatedLine as any).sem5Extra || 0);
 
           updatedLine.totalComissao =
             Number(updatedLine.com1 || 0) +
             Number(updatedLine.com2 || 0) +
             Number(updatedLine.com3 || 0) +
-            Number(updatedLine.com4 || 0);
+            Number(updatedLine.com4 || 0) +
+            Number((updatedLine as any).com5Extra || 0);
 
           const boleto = calcularBoletoAjustado({
             quadrante: updatedLine.quadrante,
@@ -4777,7 +4978,7 @@ return {
               lojaId,
               ano,
               mes,
-              semana,
+              semana: semanaPersistida,
               funcaoSemana: funcaoSemanaPersistida,
               composicaoSemana: componentesOrdenados,
               liquidez: totalLiquidezSemana,
@@ -5586,7 +5787,7 @@ return {
 
   async function updateComposicaoSemanaPercentual(
     linha: LinhaComQuadrante,
-    semana: 1 | 2 | 3 | 4,
+    semana: SemanaComissaoVisual,
     funcaoComponente: FuncaoSemanaComissao,
     percentualManual: number | null
   ): Promise<LinhaComQuadrante | null> {
@@ -5618,7 +5819,7 @@ return {
         cidade: selectedLoja,
         funcionarioNome: linha.nome,
         tipoMeta: linha.tipoMeta,
-        sem1: semana === 1 ? liquidezComponente : 0,
+        sem1: semana === 1 || semana === 5 ? liquidezComponente : 0,
         sem2: semana === 2 ? liquidezComponente : 0,
         sem3: semana === 3 ? liquidezComponente : 0,
         sem4: semana === 4 ? liquidezComponente : 0,
@@ -5635,7 +5836,7 @@ return {
       });
 
       percentualFinal = Number(
-        semana === 1
+        semana === 1 || semana === 5
           ? calculoAutomatico.perc1
           : semana === 2
           ? calculoAutomatico.perc2
@@ -5677,9 +5878,9 @@ return {
 
     const linhaAtualizada = {
       ...linha,
-      [`sem${semana}`]: totalLiquidezSemana,
-      [`perc${semana}`]: 0,
-      [`com${semana}`]: totalComissaoSemana,
+      [campoLiquidezSemanaVisual(semana)]: totalLiquidezSemana,
+      [campoPercentualSemanaVisual(semana)]: 0,
+      [campoComissaoSemanaVisual(semana)]: totalComissaoSemana,
       [`funcaoSemana${semana}`]: null,
       [`composicaoSemana${semana}`]: novaComposicao,
       ultimaAlteracaoPor: usuarioLogado,
@@ -5690,13 +5891,15 @@ return {
       Number(linhaAtualizada.sem1 || 0) +
       Number(linhaAtualizada.sem2 || 0) +
       Number(linhaAtualizada.sem3 || 0) +
-      Number(linhaAtualizada.sem4 || 0);
+      Number(linhaAtualizada.sem4 || 0) +
+      Number((linhaAtualizada as any).sem5Extra || 0);
 
     linhaAtualizada.totalComissao =
       Number(linhaAtualizada.com1 || 0) +
       Number(linhaAtualizada.com2 || 0) +
       Number(linhaAtualizada.com3 || 0) +
-      Number(linhaAtualizada.com4 || 0);
+      Number(linhaAtualizada.com4 || 0) +
+      Number((linhaAtualizada as any).com5Extra || 0);
 
     linhaAtualizada.boleto = calcularBoletoAjustado({
       quadrante: linhaAtualizada.quadrante,
@@ -5732,7 +5935,7 @@ return {
         lojaId,
         ano,
         mes,
-        semana,
+        semana: semanaPersistenciaVisual(semana),
         funcaoSemana: null,
         composicaoSemana: novaComposicao,
         liquidez: totalLiquidezSemana,
@@ -5865,6 +6068,81 @@ const recalculado = computeFolhaLinha({
   });
 const camposBase = ["sem1", "sem2", "sem3", "sem4"] as const;
 const camposDesconto = ["aluguel", "inss", "adiant", "holerite"] as const;
+
+if (String(campo) === "sem5Extra") {
+  const liquidez = Number(valor || 0);
+  const funcaoSem5 =
+    updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6)
+      ? "vendedor"
+      : updatedLine.funcao;
+  const metaSem5 = findMetaForFuncionario({
+    funcionarioNome: updatedLine.nome,
+    funcao: funcaoSem5,
+    cidade: selectedLoja,
+    tipoMeta: updatedLine.tipoMeta,
+  });
+  const calcSem5 = computeFolhaLinha({
+    meta: metaSem5,
+    funcao: funcaoSem5,
+    cidade: selectedLoja,
+    funcionarioNome: updatedLine.nome,
+    tipoMeta: updatedLine.tipoMeta,
+    sem1: liquidez,
+    sem2: 0,
+    sem3: 0,
+    sem4: 0,
+    percManual1: null,
+    percManual2: null,
+    percManual3: null,
+    percManual4: null,
+    premiacoesManuais: [],
+    vales: [],
+    aluguel: 0,
+    inss: 0,
+    adiant: 0,
+    holerite: 0,
+  });
+  const percentual = Number(calcSem5.perc1 || 0);
+  const comissao = Number(calcSem5.com1 || 0);
+
+  setFolhas((prev) =>
+    prev.map((f) =>
+      f.funcionarioId === funcionarioId &&
+      f.loja_id === lojaId &&
+      f.ano === ano &&
+      f.mes === mes
+        ? {
+            ...f,
+            sem5Extra: liquidez,
+            perc5Extra: percentual,
+            com5Extra: comissao,
+          } as any
+        : f
+    )
+  );
+
+  await upsertFolhaBaseMutation.mutateAsync({
+    funcionarioId,
+    lojaId,
+    ano,
+    mes,
+    semana: 7,
+    funcaoSemana:
+      funcaoSem5 === "vendedor" || funcaoSem5 === "mecanico"
+        ? (funcaoSem5 as FuncaoSemanaComissao)
+        : undefined,
+    composicaoSemana:
+      funcaoSem5 === "vendedor" || funcaoSem5 === "mecanico"
+        ? [{ funcao: funcaoSem5 as FuncaoSemanaComissao, liquidez, percentual, comissao }]
+        : undefined,
+    liquidez,
+    percentualComissao: percentual,
+    valorComissao: comissao,
+    ultimaAlteracaoPor: usuarioLogado,
+    ultimaAlteracaoEm: new Date(),
+  });
+  return;
+}
 
 if (String(campo) === "sem5" || String(campo) === "sem6") {
   const semanaEspecial = String(campo) === "sem5" ? 5 : 6;
@@ -6328,7 +6606,7 @@ async function lançarNegativoNoPróximoMês() {
 
   function openRegraSemanaEditor(
   linha: LinhaComQuadrante,
-  semana: 1 | 2 | 3 | 4 | 5
+  semana: 1 | 2 | 3 | 4 | 5 | 7
   ) {
     if (!garantirCompetenciaAberta()) return;
     setRegraSemanaEditor({
@@ -6466,8 +6744,9 @@ function getMetaFuncaoTexto(
   linha: LinhaComQuadrante,
   semana: number
 ) {
+  const semanaVisual: SemanaComissaoVisual = semana === 7 ? 5 : (semana as SemanaComissaoVisual);
   const funcao = String(
-    getFuncaoSemanaEfetiva(linha, semana as 1 | 2 | 3 | 4) || linha.funcao || ""
+    getFuncaoSemanaEfetiva(linha, semanaVisual) || linha.funcao || ""
   )
     .trim()
     .toLowerCase();
@@ -6506,8 +6785,7 @@ if (funcao === "gerente") {
   // SEM5 = comissão de gerente sobre a loja
   const gerenteSaoJoseVenda =
     (linha.loja_id === 3 || linha.loja_id === 6) &&
-    semana >= 1 &&
-    semana <= 4;
+    ((semana >= 1 && semana <= 4) || semana === 7);
 
   // Florianópolis:
   // SEM1 = liquidez de venda
@@ -6622,6 +6900,8 @@ if (funcao === "gerente") {
   const base =
   semana === 5
     ? Number((linha as any).liquidezLojaGerente || 0)
+    : semana === 7
+    ? Number((linha as any).sem5Extra || 0)
     : semana === 1
     ? linha.sem1
     : semana === 2
@@ -6633,6 +6913,8 @@ if (funcao === "gerente") {
   const percentual =
   semana === 5
     ? Number((linha as any).percLojaGerente || 0)
+    : semana === 7
+    ? Number((linha as any).perc5Extra || 0)
     : semana === 1
     ? linha.perc1
     : semana === 2
@@ -6644,6 +6926,8 @@ if (funcao === "gerente") {
   const comissao =
   semana === 5
     ? Number((linha as any).comLojaGerente || 0)
+    : semana === 7
+    ? Number((linha as any).com5Extra || 0)
     : semana === 1
     ? linha.com1
     : semana === 2
@@ -6670,6 +6954,8 @@ return {
   baseLabel:
     semana === 5
       ? "Liquidez Loja"
+      : semana === 7
+      ? "Liquidez SEM5"
       : `Liquidez SEM${semana}`,
   extra: "",
 };
@@ -6711,7 +6997,9 @@ return {
     }
 
     const base =
-      semana === 1
+      semana === 7
+        ? Number((linha as any).sem5Extra || 0)
+        : semana === 1
         ? linha.sem1
         : semana === 2
         ? linha.sem2
@@ -6719,7 +7007,9 @@ return {
         ? linha.sem3
         : linha.sem4;
     const percentual =
-      semana === 1
+      semana === 7
+        ? Number((linha as any).perc5Extra || 0)
+        : semana === 1
         ? linha.perc1
         : semana === 2
         ? linha.perc2
@@ -6727,7 +7017,9 @@ return {
         ? linha.perc3
         : linha.perc4;
     const comissao =
-      semana === 1
+      semana === 7
+        ? Number((linha as any).com5Extra || 0)
+        : semana === 1
         ? linha.com1
         : semana === 2
         ? linha.com2
@@ -6759,7 +7051,7 @@ return {
       : "Meta 1"
     : linha.funcao === "gerente"
     ? (
-        ((linha.loja_id === 3 || linha.loja_id === 6) && semana >= 1 && semana <= 4) ||
+        ((linha.loja_id === 3 || linha.loja_id === 6) && ((semana >= 1 && semana <= 4) || semana === 7)) ||
         (linha.loja_id === 4 && semana === 1)
       )
       ? "Meta - Vendedor"
@@ -7142,6 +7434,44 @@ if (
           </div>
         )}
 
+        {usaMetaSemanal(lojaId, ano, mes) && (
+          <div className="rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-r from-[#111111] via-[#0b0b0b] to-[#080808] px-5 py-4 shadow-[0_16px_45px_rgba(0,0,0,0.22)]">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-bold text-[#F2D675]">Semanas da competência</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  SEM1 a SEM4 ficam disponíveis normalmente. Abra a SEM5 somente nos meses que tiverem uma quinta semana de produção.
+                </p>
+              </div>
+              {sem5Ativa ? (
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <span className="inline-flex items-center justify-center rounded-xl border border-green-500/25 bg-green-500/[0.08] px-4 py-2 text-sm font-bold text-green-300">
+                    ✓ SEM5 ATIVA
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={desativarSem5Competencia}
+                    disabled={mesFechado || desativarSem5Mutation.isPending}
+                    className="border-red-500/30 bg-red-500/[0.04] text-red-300 hover:border-red-400/50 hover:bg-red-500/[0.10] hover:text-red-200 disabled:opacity-50"
+                  >
+                    {desativarSem5Mutation.isPending ? "Removendo..." : "Remover SEM5"}
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={ativarSem5Competencia}
+                  disabled={mesFechado || ativarSem5Mutation.isPending}
+                  className="bg-[#D4AF37] text-black hover:bg-[#F2D675] disabled:opacity-50"
+                >
+                  {ativarSem5Mutation.isPending ? "Adicionando..." : "+ Adicionar SEM5"}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
         {linhas.length === 0 ? (
           <Card className="rounded-2xl border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] to-[#080808] text-white shadow-[0_16px_45px_rgba(0,0,0,0.25)]">
             <CardContent className="py-10 text-center text-gray-400">
@@ -7170,6 +7500,7 @@ if (
               onOpenImportacaoAdiantamento={openImportacaoAdiantamento}
               onOpenImportacaoHolerite={openImportacaoHolerite}
               onUpdateComposicaoSemanaPercentual={updateComposicaoSemanaPercentual}
+              sem5Ativa={sem5Ativa}
             />
           ))
         )}
@@ -7529,7 +7860,7 @@ if (
               );
             });
             const ignorados = importacaoSemana.itens.filter((item) => item.status === "ignorado");
-            const campoSemana = `sem${importacaoSemana.semana}` as keyof LinhaComQuadrante;
+            const campoSemana = campoLiquidezSemanaVisual(importacaoSemana.semana) as keyof LinhaComQuadrante;
             const existentesComValor = prontos.filter((item) => {
               const linha = linhas.find(
                 (l) => Number(l.funcionarioId) === Number(item.funcionarioId)
@@ -9855,6 +10186,61 @@ if (
     const linha = regraSemanaEditor.linha;
 
     if (!linha || !semana) return;
+
+if (semana === 7) {
+  const liquidez = Number((linha as any).sem5Extra || 0);
+  const percentualAutomatico = Number((linha as any).perc5Extra || 0);
+  const percentualFinal = valor ?? percentualAutomatico;
+  const valorComissao = Number(
+    (linha.funcao === "consultor_vendas"
+      ? liquidez * percentualFinal
+      : liquidez * (percentualFinal / 100)
+    ).toFixed(2)
+  );
+  const patch = {
+    perc5Extra: percentualFinal,
+    com5Extra: valorComissao,
+    percManual5Extra: valor,
+  };
+
+  const linhaAtualizada = { ...linha, ...patch } as any;
+  linhaAtualizada.totalComissao =
+    Number(linhaAtualizada.com1 || 0) +
+    Number(linhaAtualizada.com2 || 0) +
+    Number(linhaAtualizada.com3 || 0) +
+    Number(linhaAtualizada.com4 || 0) +
+    Number(linhaAtualizada.com5Extra || 0) +
+    Number(linhaAtualizada.comissaoFuncaoAnterior || 0);
+
+  setRegraSemanaEditor((prev) => ({ ...prev, linha: linhaAtualizada }));
+  setFolhas((prev) =>
+    prev.map((f) =>
+      f.funcionarioId === linha.funcionarioId &&
+      f.loja_id === lojaId &&
+      f.ano === ano &&
+      f.mes === mes
+        ? { ...f, ...patch }
+        : f
+    )
+  );
+
+  await upsertFolhaBaseMutation.mutateAsync({
+    funcionarioId: linha.funcionarioId,
+    lojaId,
+    ano,
+    mes,
+    semana: 7,
+    funcaoSemana: (linha as any).funcaoSemana5 ?? undefined,
+    composicaoSemana: (linha as any).composicaoSemana5 ?? undefined,
+    liquidez,
+    percentualComissao: percentualFinal,
+    percentualManual: valor,
+    valorComissao,
+    ultimaAlteracaoPor: usuarioLogado,
+    ultimaAlteracaoEm: new Date(),
+  });
+  return;
+}
 
 if (
   linha.funcao === "gerente" &&
