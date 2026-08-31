@@ -3,11 +3,18 @@ import { useLocation } from "wouter";
 import {
   ArrowLeft,
   ArrowRightLeft,
+  Building2,
+  CalendarDays,
   Loader2,
   Pencil,
+  Plus,
   RotateCcw,
   Search,
   Trash2,
+  UserCheck,
+  Users,
+  UserX,
+  X,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -314,10 +321,10 @@ export default function GestaoFuncionarios() {
   const formValido = !Object.values(camposInvalidos).some(Boolean);
 
   const classeCampo = (invalido: boolean) =>
-    `w-full rounded-md border bg-gray-900 px-3 py-2 text-white outline-none transition ${
+    `h-11 w-full rounded-xl border bg-[#0b0b0b] px-3 text-sm text-white outline-none transition-all duration-200 placeholder:text-white/25 ${
       tentouSalvar && invalido
-        ? "border-red-500 focus:border-red-400"
-        : "border-yellow-500/30 focus:border-yellow-400"
+        ? "border-red-500/70 ring-1 ring-red-500/15 focus:border-red-400"
+        : "border-white/[0.08] hover:border-[#D4AF37]/25 focus:border-[#D4AF37]/55 focus:ring-2 focus:ring-[#D4AF37]/10"
     }`;
 
   const handleOpenCreate = () => {
@@ -616,44 +623,114 @@ export default function GestaoFuncionarios() {
   const salvando =
     createFuncionario.isPending || updateFuncionario.isPending || trocarFuncaoMutation.isPending;
 
+  const totalFuncionarios = funcionariosBase.length;
+  const totalAtivos = funcionariosBase.filter((func) => func.status === "ativo").length;
+  const totalInativos = funcionariosBase.filter((func) => func.status !== "ativo").length;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-black p-6 text-white">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="mb-8 flex items-center gap-4">
-          <Button
-            onClick={() => navigate("/")}
-            variant="ghost"
-            className="text-yellow-400 hover:bg-yellow-500/10 hover:text-yellow-300"
-          >
-            <ArrowLeft className="mr-2 h-5 w-5" />
-            Voltar
-          </Button>
+    <div className="min-h-screen bg-[#050505] text-white">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-48 -top-48 h-[520px] w-[520px] rounded-full bg-[#D4AF37]/[0.035] blur-3xl" />
+        <div className="absolute -right-52 top-1/3 h-[460px] w-[460px] rounded-full bg-[#D4AF37]/[0.025] blur-3xl" />
+      </div>
 
-          <div>
-            <h1 className="mb-2 text-3xl font-bold text-yellow-400">
-              Gestão de Funcionários
-            </h1>
-            <p className="text-gray-400">
-              Admissão, edição e histórico de funcionários
-            </p>
+      <main className="relative mx-auto max-w-[1680px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+        <header className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="flex items-start gap-4">
+            <Button
+              onClick={() => navigate("/")}
+              variant="outline"
+              className="mt-1 h-11 rounded-xl border-white/[0.08] bg-[#0d0d0d] px-4 text-white/75 shadow-lg shadow-black/20 hover:border-[#D4AF37]/35 hover:bg-[#D4AF37]/[0.055] hover:text-[#F2D675]"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar
+            </Button>
+
+            <div>
+              <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#D4AF37]">
+                <span className="h-px w-8 bg-[#D4AF37]/70" />
+                Pessoas • RH
+              </div>
+              <h1 className="text-3xl font-semibold tracking-[-0.03em] text-white sm:text-4xl">
+                Gestão de <span className="text-[#F2D675]">Funcionários</span>
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-white/40">
+                Cadastro, vínculo, movimentações e histórico funcional em um único lugar.
+              </p>
+            </div>
           </div>
-        </div>
 
-        <Card className="border-yellow-500/30 bg-gray-900 text-white">
-          <CardHeader>
-            <CardTitle className="text-yellow-400">Seleção de Loja</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto] md:items-end">
+          <Button
+            onClick={handleOpenCreate}
+            className="h-12 rounded-xl bg-[#D4AF37] px-5 font-bold text-black shadow-[0_10px_34px_rgba(212,175,55,0.16)] hover:bg-[#E7C553]"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Novo funcionário
+          </Button>
+        </header>
+
+        <section className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#14120b] to-[#090909] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)]">
+            <div className="flex items-center justify-between">
               <div>
-                <label className="mb-2 block text-sm text-gray-300">Loja</label>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Loja selecionada</p>
+                <p className="mt-2 text-lg font-semibold text-[#F2D675]">{lojaNome}</p>
+              </div>
+              <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 p-2.5 text-[#D4AF37]">
+                <Building2 className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0d0d0d] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Cadastrados</p>
+                <p className="mt-2 text-2xl font-semibold text-white">{totalFuncionarios}</p>
+              </div>
+              <div className="rounded-xl border border-white/[0.07] bg-white/[0.035] p-2.5 text-white/55">
+                <Users className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-400/10 bg-[#0d0d0d] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Ativos</p>
+                <p className="mt-2 text-2xl font-semibold text-emerald-400">{totalAtivos}</p>
+              </div>
+              <div className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.06] p-2.5 text-emerald-400">
+                <UserCheck className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-red-400/10 bg-[#0d0d0d] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Inativos</p>
+                <p className="mt-2 text-2xl font-semibold text-red-400">{totalInativos}</p>
+              </div>
+              <div className="rounded-xl border border-red-400/10 bg-red-400/[0.06] p-2.5 text-red-400">
+                <UserX className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <Card className="mb-5 overflow-hidden rounded-3xl border border-[#D4AF37]/15 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#080808] text-white shadow-[0_22px_70px_rgba(0,0,0,0.30)]">
+          <CardContent className="p-4 sm:p-5">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(250px,0.75fr)_minmax(320px,1.25fr)_auto] lg:items-end">
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">Loja</label>
                 <select
                   value={selectedLoja}
                   onChange={(e) => {
                     setSelectedLoja(e.target.value);
                     setBuscaFuncionario("");
                   }}
-                  className="w-full rounded-md border border-yellow-500/30 bg-gray-800 px-3 py-2 text-white outline-none"
+                  className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#0a0a0a] px-4 text-sm font-medium text-white outline-none transition-all hover:border-[#D4AF37]/25 focus:border-[#D4AF37]/55 focus:ring-2 focus:ring-[#D4AF37]/10"
                 >
                   {LOJAS.map((loja) => (
                     <option key={loja.id} value={loja.id}>
@@ -663,515 +740,189 @@ export default function GestaoFuncionarios() {
                 </select>
               </div>
 
-              <Button
-                onClick={handleOpenCreate}
-                className="bg-yellow-400 text-black hover:bg-yellow-300"
-              >
-                + Novo Funcionário
-              </Button>
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">Buscar funcionário</label>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/25" />
+                  <input
+                    type="text"
+                    placeholder="Digite nome, sobrenome..."
+                    value={buscaFuncionario}
+                    onChange={(e) => setBuscaFuncionario(e.target.value)}
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#0a0a0a] py-2 pl-11 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/20 hover:border-[#D4AF37]/25 focus:border-[#D4AF37]/55 focus:ring-2 focus:ring-[#D4AF37]/10"
+                  />
+                </div>
+              </div>
+
+              <div className="flex h-12 items-center rounded-xl border border-[#D4AF37]/12 bg-[#D4AF37]/[0.035] px-4 text-xs text-white/45">
+                Exibindo <strong className="mx-1 text-[#F2D675]">{funcionarios.length}</strong> de {totalFuncionarios}
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {isOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border border-yellow-500/30 bg-gray-950 p-6 shadow-2xl">
-              <div className="mb-5">
-                <h3 className="text-xl font-semibold text-yellow-400">
-                  {editingId ? "Editar Funcionário" : "Novo Funcionário"}
-                </h3>
-                <p className="mt-1 text-sm text-gray-400">
-                  Todos os campos marcados com * são obrigatórios.
-                </p>
+        <Card className="overflow-hidden rounded-3xl border border-white/[0.07] bg-[#090909] text-white shadow-[0_26px_90px_rgba(0,0,0,0.32)]">
+          <CardHeader className="border-b border-white/[0.055] px-5 py-5 sm:px-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-lg font-semibold tracking-[-0.02em] text-white">
+                  Equipe • {lojaNome}
+                </CardTitle>
+                <CardDescription className="mt-1 text-xs text-white/35">
+                  Dados cadastrais e ações de vínculo dos funcionários desta unidade.
+                </CardDescription>
               </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm text-gray-300">
-                    Nome Completo <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: João Silva"
-                    value={formData.nome}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, nome: e.target.value }))
-                    }
-                    className={classeCampo(camposInvalidos.nome)}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-gray-300">
-                    CPF <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="000.000.000-00"
-                    value={formData.cpf}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, cpf: e.target.value }))
-                    }
-                    className={classeCampo(camposInvalidos.cpf)}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-gray-300">
-                    PIX <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Chave PIX"
-                    value={formData.pix}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, pix: e.target.value }))
-                    }
-                    className={classeCampo(camposInvalidos.pix)}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-gray-300">
-                    Data de Aniversário <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.dataNascimento}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        dataNascimento: e.target.value,
-                      }))
-                    }
-                    className={classeCampo(camposInvalidos.dataNascimento)}
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-gray-300">
-                    Função <span className="text-red-400">*</span>
-                  </label>
-
-                  {editingId && funcionarioEmEdicao ? (
-                    <div className="space-y-2">
-                      <div className="w-full rounded-md border border-yellow-500/20 bg-gray-900 px-3 py-2 text-white">
-                        {labelFuncao(funcionarioEmEdicao.funcao, lojaId)}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => abrirTrocaFuncao(funcionarioEmEdicao)}
-                        className="w-full border-orange-400/30 bg-orange-500/5 text-orange-300 hover:bg-orange-500/10 hover:text-orange-200"
-                      >
-                        <ArrowRightLeft className="mr-2 h-4 w-4" />
-                        Trocar função
-                      </Button>
-                      <p className="text-xs text-gray-500">
-                        A função atual não é sobrescrita silenciosamente. Use “Trocar função” para registrar a data e preservar o histórico da folha.
-                      </p>
-                    </div>
-                  ) : (
-                    <select
-                      value={formData.funcao}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          funcao: e.target.value as FuncaoId,
-                          tipoMeta:
-                            e.target.value === "consultor_vendas"
-                              ? lojaId === 5
-                                ? "meta2"
-                                : prev.tipoMeta
-                              : "",
-                        }))
-                      }
-                      className={classeCampo(camposInvalidos.funcao)}
-                    >
-                      {funcoesDisponiveis.map((funcao) => (
-                        <option key={funcao.id} value={funcao.id}>
-                          {lojaId === 5 && funcao.id === "supervisor"
-                            ? "Supervisora de Consultor de Vendas - PJ"
-                            : lojaId === 5 && funcao.id === "consultor_vendas"
-                            ? "Consultor de Vendas - Meta 2"
-                            : funcao.nome}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {formData.funcao === "consultor_vendas" && (
-                  <div>
-                    <label className="mb-2 block text-sm text-gray-300">
-                      Tipo de Meta / Comissão <span className="text-red-400">*</span>
-                    </label>
-
-                    {lojaId === 5 ? (
-                      <div className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white">
-                        Meta 2 - Mensal
-                      </div>
-                    ) : (
-                      <select
-                        value={formData.tipoMeta}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            tipoMeta: e.target.value as TipoMeta,
-                          }))
-                        }
-                        className={classeCampo(camposInvalidos.tipoMeta)}
-                      >
-                        <option value="">Selecione</option>
-                        <option value="meta1">Meta 1</option>
-                        <option value="meta2">Meta 2</option>
-                      </select>
-                    )}
-                  </div>
-                )}
-
-                <div>
-                  <label className="mb-2 block text-sm text-gray-300">
-                    Data de Admissão <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.dataAdmissao}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        dataAdmissao: e.target.value,
-                      }))
-                    }
-                    className={classeCampo(camposInvalidos.dataAdmissao)}
-                  />
-                </div>
-              </div>
-
-              {editingId && funcionarioEmEdicao && trocaFuncaoOpen && (
-                <div className="mt-5 rounded-xl border border-orange-400/30 bg-orange-500/[0.06] p-4">
-                  <div className="mb-4 flex items-start gap-3">
-                    <ArrowRightLeft className="mt-0.5 h-5 w-5 text-orange-300" />
-                    <div>
-                      <p className="font-semibold text-orange-200">Troca de função</p>
-                      <p className="text-xs text-gray-400">
-                        Confirme a nova função e a data efetiva. O sistema mantém um único cadastro e preserva o histórico da competência.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-sm text-gray-300">Função atual</label>
-                      <div className="rounded-md border border-white/10 bg-black/30 px-3 py-2 text-gray-300">
-                        {labelFuncao(funcionarioEmEdicao.funcao, lojaId)}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm text-gray-300">Nova função *</label>
-                      <select
-                        value={trocaFuncaoForm.novaFuncao}
-                        onChange={(e) => {
-                          const novaFuncao = e.target.value as FuncaoId | "";
-                          setTrocaFuncaoForm((prev) => ({
-                            ...prev,
-                            novaFuncao,
-                            novoTipoMeta:
-                              novaFuncao === "consultor_vendas" && lojaId === 5
-                                ? "meta2"
-                                : novaFuncao === "consultor_vendas"
-                                ? prev.novoTipoMeta
-                                : "",
-                          }));
-                        }}
-                        className="w-full rounded-md border border-orange-400/30 bg-gray-900 px-3 py-2 text-white outline-none"
-                      >
-                        <option value="">Selecione</option>
-                        {funcoesDisponiveis
-                          .filter((funcao) => funcao.id !== funcionarioEmEdicao.funcao)
-                          .map((funcao) => (
-                            <option key={funcao.id} value={funcao.id}>
-                              {lojaId === 5 && funcao.id === "supervisor"
-                                ? "Supervisora de Consultor de Vendas - PJ"
-                                : lojaId === 5 && funcao.id === "consultor_vendas"
-                                ? "Consultor de Vendas - Meta 2"
-                                : funcao.nome}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm text-gray-300">Data efetiva da troca *</label>
-                      <input
-                        type="date"
-                        value={trocaFuncaoForm.dataMudanca}
-                        onChange={(e) =>
-                          setTrocaFuncaoForm((prev) => ({
-                            ...prev,
-                            dataMudanca: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-md border border-orange-400/30 bg-gray-900 px-3 py-2 text-white outline-none"
-                      />
-                    </div>
-
-                    {trocaFuncaoForm.novaFuncao === "consultor_vendas" && (
-                      <div>
-                        <label className="mb-2 block text-sm text-gray-300">Tipo de meta / comissão *</label>
-                        {lojaId === 5 ? (
-                          <div className="rounded-md border border-orange-400/30 bg-gray-900 px-3 py-2 text-white">
-                            Meta 2 - Mensal
-                          </div>
-                        ) : (
-                          <select
-                            value={trocaFuncaoForm.novoTipoMeta}
-                            onChange={(e) =>
-                              setTrocaFuncaoForm((prev) => ({
-                                ...prev,
-                                novoTipoMeta: e.target.value as TipoMeta,
-                              }))
-                            }
-                            className="w-full rounded-md border border-orange-400/30 bg-gray-900 px-3 py-2 text-white outline-none"
-                          >
-                            <option value="">Selecione</option>
-                            <option value="meta1">Meta 1</option>
-                            <option value="meta2">Meta 2</option>
-                          </select>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                    <Button
-                      type="button"
-                      onClick={confirmarTrocaFuncao}
-                      disabled={trocarFuncaoMutation.isPending}
-                      className="bg-orange-400 text-black hover:bg-orange-300"
-                    >
-                      {trocarFuncaoMutation.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <ArrowRightLeft className="mr-2 h-4 w-4" />
-                      )}
-                      Confirmar troca de função
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => setTrocaFuncaoOpen(false)}
-                      disabled={trocarFuncaoMutation.isPending}
-                    >
-                      Cancelar troca
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {tentouSalvar && !formValido && (
-                <div className="mt-4 rounded-md border border-red-500/30 bg-red-950/20 p-3 text-sm text-red-300">
-                  Preencha todos os campos obrigatórios destacados antes de salvar.
-                </div>
-              )}
-
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <Button
-                  onClick={handleSaveFuncionario}
-                  disabled={salvando}
-                  className="flex-1 bg-yellow-400 text-black hover:bg-yellow-300 disabled:opacity-50"
-                >
-                  {salvando
-                    ? "Salvando..."
-                    : editingId
-                    ? "Salvar alterações"
-                    : "Cadastrar funcionário"}
-                </Button>
-
-                {editingId && funcionarioEmEdicao && (
-                  funcionarioEmEdicao.status === "ativo" ? (
-                    <Button
-                      onClick={() => handleInativarFuncionario(funcionarioEmEdicao)}
-                      disabled={inativarFuncionario.isPending}
-                      variant="outline"
-                      className="flex-1 border-red-500/30 bg-transparent text-red-400 hover:bg-red-500/10"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Inativar funcionário
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => handleReativarFuncionario(funcionarioEmEdicao)}
-                      disabled={reativarFuncionario.isPending}
-                      variant="outline"
-                      className="flex-1 border-green-500/30 bg-transparent text-green-400 hover:bg-green-500/10"
-                    >
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      Reativar funcionário
-                    </Button>
-                  )
-                )}
-
-                <Button
-                  onClick={fecharFormulario}
-                  variant="outline"
-                  className="flex-1 border-yellow-500/30 bg-transparent text-yellow-400 hover:bg-yellow-500/10"
-                >
-                  Cancelar
-                </Button>
-              </div>
+              <span className="w-fit rounded-full border border-[#D4AF37]/18 bg-[#D4AF37]/[0.055] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.13em] text-[#F2D675]">
+                {funcionarios.length} funcionário(s)
+              </span>
             </div>
-          </div>
-        )}
-
-        <Card className="border-yellow-500/30 bg-gray-900 text-white">
-          <CardHeader>
-            <CardTitle className="text-yellow-400">
-              Funcionários - {lojaNome}
-            </CardTitle>
-            <CardDescription className="text-gray-400">
-              Total: {funcionarios.length} funcionário(s)
-            </CardDescription>
           </CardHeader>
 
-          <CardContent>
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Buscar funcionário pelo nome..."
-                value={buscaFuncionario}
-                onChange={(e) => setBuscaFuncionario(e.target.value)}
-                className="w-full rounded-md border border-yellow-500/30 bg-gray-800 py-2 pl-10 pr-3 text-white outline-none placeholder:text-gray-500"
-              />
-            </div>
-
+          <CardContent className="p-0">
             {funcionariosQuery.isLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <Loader2 className="h-6 w-6 animate-spin text-yellow-400" />
+              <div className="flex items-center justify-center py-20">
+                <div className="flex items-center gap-3 text-sm text-white/40">
+                  <Loader2 className="h-5 w-5 animate-spin text-[#D4AF37]" />
+                  Carregando equipe...
+                </div>
               </div>
             ) : funcionariosQuery.error ? (
-              <div className="py-8 text-center text-red-400">
+              <div className="m-5 rounded-2xl border border-red-500/20 bg-red-500/[0.05] p-5 text-center text-sm text-red-300">
                 {funcionariosQuery.error.message}
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
+                <table className="w-full min-w-[1180px] border-collapse">
                   <thead>
-                    <tr className="border-b border-yellow-500/30">
-                      <th className="p-3 text-left font-semibold text-yellow-400">Nome</th>
-                      <th className="p-3 text-left font-semibold text-yellow-400">CPF</th>
-                      <th className="p-3 text-left font-semibold text-yellow-400">PIX</th>
-                      <th className="p-3 text-left font-semibold text-yellow-400">Nascimento</th>
-                      <th className="p-3 text-left font-semibold text-yellow-400">Função</th>
-                      <th className="p-3 text-left font-semibold text-yellow-400">Tipo Meta</th>
-                      <th className="p-3 text-left font-semibold text-yellow-400">Data Admissão</th>
-                      <th className="p-3 text-left font-semibold text-yellow-400">Status</th>
-                      <th className="p-3 text-left font-semibold text-yellow-400">Ações</th>
+                    <tr className="border-b border-[#D4AF37]/12 bg-[#0c0c0c]">
+                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Funcionário</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">PIX</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Função</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Nascimento</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Admissão</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Status</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {funcionarios.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="p-8 text-center text-gray-400">
-                          Nenhum funcionário registrado
+                        <td colSpan={7} className="px-6 py-16 text-center">
+                          <Users className="mx-auto mb-3 h-8 w-8 text-white/15" />
+                          <p className="text-sm font-medium text-white/50">Nenhum funcionário encontrado</p>
+                          <p className="mt-1 text-xs text-white/25">Altere a busca ou cadastre um novo funcionário.</p>
                         </td>
                       </tr>
                     ) : (
                       funcionarios.map((func) => (
-                        <tr key={func.id} className="border-b border-yellow-500/20">
-                          <td className="p-3 font-medium text-white">{func.nome}</td>
-                          <td className="p-3 text-gray-300">{func.cpf || "-"}</td>
-                          <td className="p-3 text-gray-300">{func.pix || "-"}</td>
-                          <td className="p-3 text-gray-300">
-                            {formatDateBR(func.dataNascimento)}
+                        <tr
+                          key={func.id}
+                          className="group border-b border-white/[0.045] transition-colors hover:bg-[#D4AF37]/[0.028]"
+                        >
+                          <td className="px-5 py-4">
+                            <button
+                              type="button"
+                              onClick={() => handleEditFuncionario(func)}
+                              className="text-left"
+                              title="Abrir cadastro do funcionário"
+                            >
+                              <p className="font-semibold tracking-[0.01em] text-white transition-colors group-hover:text-[#F2D675]">{func.nome}</p>
+                              <p className="mt-1 text-[11px] text-white/28">CPF {func.cpf || "não informado"}</p>
+                            </button>
                           </td>
-                          <td className="p-3 text-gray-300">
-                            {labelFuncao(func.funcao, lojaId)}
+                          <td className="px-4 py-4 text-sm text-white/58">{func.pix || "—"}</td>
+                          <td className="px-4 py-4">
+                            <p className="text-sm font-medium text-white/75">{labelFuncao(func.funcao, lojaId)}</p>
+                            {func.funcao === "consultor_vendas" && (
+                              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#D4AF37]">
+                                {lojaId === 5
+                                  ? "Meta 2"
+                                  : func.tipoMeta === "meta1"
+                                  ? "Meta 1"
+                                  : func.tipoMeta === "meta2"
+                                  ? "Meta 2"
+                                  : "Meta não definida"}
+                              </p>
+                            )}
                           </td>
-                          <td className="p-3 text-gray-300">
-                            {func.funcao === "consultor_vendas"
-                              ? lojaId === 5
-                                ? "Meta 2"
-                                : func.tipoMeta === "meta1"
-                                ? "Meta 1"
-                                : func.tipoMeta === "meta2"
-                                ? "Meta 2"
-                                : "-"
-                              : "-"}
+                          <td className="px-4 py-4 text-sm text-white/55">{formatDateBR(func.dataNascimento)}</td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2 text-sm text-white/55">
+                              <CalendarDays className="h-3.5 w-3.5 text-white/22" />
+                              {formatDateBR(func.dataAdmissao)}
+                            </div>
                           </td>
-                          <td className="p-3 text-gray-300">
-                            {formatDateBR(func.dataAdmissao)}
-                          </td>
-                          <td className="p-3">
+                          <td className="px-4 py-4">
                             <span
                               className={
                                 func.status === "ativo"
-                                  ? "rounded bg-green-500/10 px-2 py-1 text-xs text-green-400"
-                                  : "rounded bg-red-500/10 px-2 py-1 text-xs text-red-400"
+                                  ? "inline-flex items-center rounded-full border border-emerald-400/15 bg-emerald-400/[0.07] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.10em] text-emerald-400"
+                                  : "inline-flex items-center rounded-full border border-red-400/15 bg-red-400/[0.07] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.10em] text-red-400"
                               }
                             >
                               {func.status === "ativo" ? "Ativo" : "Inativo"}
                             </span>
                           </td>
-                          <td className="p-3 whitespace-nowrap">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditFuncionario(func)}
-                              className="border-yellow-500/30 bg-transparent text-yellow-400 hover:bg-yellow-500/10"
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Editar
-                            </Button>
-
-                            {func.status === "ativo" ? (
+                          <td className="px-5 py-4">
+                            <div className="flex items-center justify-end gap-2">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleInativarFuncionario(func)}
-                                disabled={inativarFuncionario.isPending}
-                                className="ml-2 border-red-500/30 bg-transparent text-red-400 hover:bg-red-500/10"
+                                onClick={() => handleEditFuncionario(func)}
+                                className="h-9 rounded-lg border-[#D4AF37]/18 bg-[#D4AF37]/[0.035] px-3 text-[#F2D675] hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/[0.08] hover:text-[#FFE89A]"
                               >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Inativar
+                                <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                                Editar
                               </Button>
-                            ) : (
+
+                              {func.status === "ativo" ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleInativarFuncionario(func)}
+                                  disabled={inativarFuncionario.isPending}
+                                  className="h-9 rounded-lg border-red-400/14 bg-red-400/[0.025] px-3 text-red-400 hover:border-red-400/35 hover:bg-red-400/[0.07]"
+                                >
+                                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                                  Inativar
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleReativarFuncionario(func)}
+                                  disabled={reativarFuncionario.isPending}
+                                  className="h-9 rounded-lg border-emerald-400/14 bg-emerald-400/[0.025] px-3 text-emerald-400 hover:border-emerald-400/35 hover:bg-emerald-400/[0.07]"
+                                >
+                                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                                  Reativar
+                                </Button>
+                              )}
+
                               <Button
+                                variant="ghost"
                                 size="sm"
-                                variant="outline"
-                                onClick={() => handleReativarFuncionario(func)}
-                                disabled={reativarFuncionario.isPending}
-                                className="ml-2 border-green-500/30 bg-transparent text-green-400 hover:bg-green-500/10"
+                                disabled={excluirMutation.isPending}
+                                className="h-9 rounded-lg px-2.5 text-white/22 hover:bg-red-500/[0.06] hover:text-red-400"
+                                title="Excluir definitivamente"
+                                onClick={async () => {
+                                  const confirmar = confirm(
+                                    `Deseja realmente excluir ${func.nome}?`
+                                  );
+
+                                  if (!confirmar) return;
+
+                                  try {
+                                    await excluirMutation.mutateAsync({ id: func.id });
+                                  } catch (error: any) {
+                                    console.error(error);
+                                    alert(error?.message ?? "Erro ao excluir funcionário");
+                                  }
+                                }}
                               >
-                                <RotateCcw className="mr-2 h-4 w-4" />
-                                Reativar
+                                Excluir
                               </Button>
-                            )}
-
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              disabled={excluirMutation.isPending}
-                              className="ml-2"
-                              onClick={async () => {
-                                const confirmar = confirm(
-                                  `Deseja realmente excluir ${func.nome}?`
-                                );
-
-                                if (!confirmar) return;
-
-                                try {
-                                  await excluirMutation.mutateAsync({ id: func.id });
-                                } catch (error: any) {
-                                  console.error(error);
-                                  alert(error?.message ?? "Erro ao excluir funcionário");
-                                }
-                              }}
-                            >
-                              Excluir
-                            </Button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1182,7 +933,385 @@ export default function GestaoFuncionarios() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </main>
+
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 backdrop-blur-md sm:p-5">
+          <div className="relative max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-[#D4AF37]/20 bg-[#080808] shadow-[0_30px_120px_rgba(0,0,0,0.72)]">
+            <div className="sticky top-0 z-10 border-b border-white/[0.06] bg-[#080808]/95 px-5 py-5 backdrop-blur-xl sm:px-7">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/80 to-transparent" />
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]">
+                    {editingId ? "Cadastro funcional" : "Nova admissão"}
+                  </p>
+                  <h3 className="text-2xl font-semibold tracking-[-0.025em] text-white">
+                    {editingId ? formData.nome || "Editar funcionário" : "Novo funcionário"}
+                  </h3>
+                  <p className="mt-1 text-xs text-white/35">
+                    Campos com <span className="text-red-400">*</span> são obrigatórios.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={fecharFormulario}
+                  className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-2 text-white/40 transition hover:border-[#D4AF37]/25 hover:text-white"
+                  aria-label="Fechar"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-5 px-5 py-6 sm:px-7">
+              <section className="rounded-2xl border border-white/[0.065] bg-[#0c0c0c] p-4 sm:p-5">
+                <div className="mb-4">
+                  <p className="text-sm font-semibold text-white">Dados pessoais</p>
+                  <p className="mt-1 text-xs text-white/30">Identificação e informações de pagamento.</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="md:col-span-2">
+                    <label className="mb-2 block text-xs font-medium text-white/50">
+                      Nome completo <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: João Silva"
+                      value={formData.nome}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, nome: e.target.value }))}
+                      className={classeCampo(camposInvalidos.nome)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs font-medium text-white/50">
+                      CPF <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="000.000.000-00"
+                      value={formData.cpf}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, cpf: e.target.value }))}
+                      className={classeCampo(camposInvalidos.cpf)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs font-medium text-white/50">
+                      Chave PIX <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Chave PIX"
+                      value={formData.pix}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, pix: e.target.value }))}
+                      className={classeCampo(camposInvalidos.pix)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs font-medium text-white/50">
+                      Data de aniversário <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.dataNascimento}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, dataNascimento: e.target.value }))}
+                      className={classeCampo(camposInvalidos.dataNascimento)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs font-medium text-white/50">
+                      Data de admissão <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.dataAdmissao}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, dataAdmissao: e.target.value }))}
+                      className={classeCampo(camposInvalidos.dataAdmissao)}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-[#D4AF37]/12 bg-gradient-to-br from-[#111009] to-[#0a0a0a] p-4 sm:p-5">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Vínculo e função</p>
+                    <p className="mt-1 text-xs text-white/30">A função atual define o quadrante e as regras da folha.</p>
+                  </div>
+                  {editingId && funcionarioEmEdicao && (
+                    <span className="rounded-full border border-[#D4AF37]/18 bg-[#D4AF37]/[0.055] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[#F2D675]">
+                      Função atual
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className={editingId && funcionarioEmEdicao ? "md:col-span-2" : ""}>
+                    <label className="mb-2 block text-xs font-medium text-white/50">
+                      Função <span className="text-red-400">*</span>
+                    </label>
+
+                    {editingId && funcionarioEmEdicao ? (
+                      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                        <div className="flex h-11 items-center rounded-xl border border-white/[0.08] bg-[#0b0b0b] px-3 text-sm font-medium text-white">
+                          {labelFuncao(funcionarioEmEdicao.funcao, lojaId)}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => abrirTrocaFuncao(funcionarioEmEdicao)}
+                          className="h-11 rounded-xl border-orange-400/22 bg-orange-400/[0.045] px-4 text-orange-300 hover:border-orange-400/45 hover:bg-orange-400/[0.09] hover:text-orange-200"
+                        >
+                          <ArrowRightLeft className="mr-2 h-4 w-4" />
+                          Trocar função
+                        </Button>
+                      </div>
+                    ) : (
+                      <select
+                        value={formData.funcao}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            funcao: e.target.value as FuncaoId,
+                            tipoMeta:
+                              e.target.value === "consultor_vendas"
+                                ? lojaId === 5
+                                  ? "meta2"
+                                  : prev.tipoMeta
+                                : "",
+                          }))
+                        }
+                        className={classeCampo(camposInvalidos.funcao)}
+                      >
+                        {funcoesDisponiveis.map((funcao) => (
+                          <option key={funcao.id} value={funcao.id}>
+                            {lojaId === 5 && funcao.id === "supervisor"
+                              ? "Supervisora de Consultor de Vendas - PJ"
+                              : lojaId === 5 && funcao.id === "consultor_vendas"
+                              ? "Consultor de Vendas - Meta 2"
+                              : funcao.nome}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {editingId && funcionarioEmEdicao && (
+                      <p className="mt-2 text-[11px] leading-relaxed text-white/28">
+                        Para preservar o histórico da folha, a função atual não é sobrescrita diretamente. Use “Trocar função” e informe a data efetiva.
+                      </p>
+                    )}
+                  </div>
+
+                  {formData.funcao === "consultor_vendas" && (
+                    <div className={editingId ? "md:col-span-2" : ""}>
+                      <label className="mb-2 block text-xs font-medium text-white/50">
+                        Tipo de meta / comissão <span className="text-red-400">*</span>
+                      </label>
+                      {lojaId === 5 ? (
+                        <div className="flex h-11 items-center rounded-xl border border-white/[0.08] bg-[#0b0b0b] px-3 text-sm text-white">
+                          Meta 2 - Mensal
+                        </div>
+                      ) : (
+                        <select
+                          value={formData.tipoMeta}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, tipoMeta: e.target.value as TipoMeta }))}
+                          className={classeCampo(camposInvalidos.tipoMeta)}
+                        >
+                          <option value="">Selecione</option>
+                          <option value="meta1">Meta 1</option>
+                          <option value="meta2">Meta 2</option>
+                        </select>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {editingId && funcionarioEmEdicao && trocaFuncaoOpen && (
+                <section className="overflow-hidden rounded-2xl border border-orange-400/28 bg-gradient-to-br from-orange-500/[0.075] to-[#0b0908]">
+                  <div className="border-b border-orange-400/12 px-4 py-4 sm:px-5">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-xl border border-orange-400/18 bg-orange-400/[0.07] p-2 text-orange-300">
+                        <ArrowRightLeft className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-orange-200">Troca de função</p>
+                        <p className="mt-1 text-xs leading-relaxed text-white/35">
+                          Registre a nova função e a data efetiva. O sistema mantém um único cadastro e preserva a competência anterior.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 sm:p-5">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-white/50">Função atual</label>
+                        <div className="flex h-11 items-center rounded-xl border border-white/[0.08] bg-black/30 px-3 text-sm text-white/60">
+                          {labelFuncao(funcionarioEmEdicao.funcao, lojaId)}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-white/50">Nova função *</label>
+                        <select
+                          value={trocaFuncaoForm.novaFuncao}
+                          onChange={(e) => {
+                            const novaFuncao = e.target.value as FuncaoId | "";
+                            setTrocaFuncaoForm((prev) => ({
+                              ...prev,
+                              novaFuncao,
+                              novoTipoMeta:
+                                novaFuncao === "consultor_vendas" && lojaId === 5
+                                  ? "meta2"
+                                  : novaFuncao === "consultor_vendas"
+                                  ? prev.novoTipoMeta
+                                  : "",
+                            }));
+                          }}
+                          className="h-11 w-full rounded-xl border border-orange-400/24 bg-[#0b0b0b] px-3 text-sm text-white outline-none transition focus:border-orange-400/55 focus:ring-2 focus:ring-orange-400/10"
+                        >
+                          <option value="">Selecione</option>
+                          {funcoesDisponiveis
+                            .filter((funcao) => funcao.id !== funcionarioEmEdicao.funcao)
+                            .map((funcao) => (
+                              <option key={funcao.id} value={funcao.id}>
+                                {lojaId === 5 && funcao.id === "supervisor"
+                                  ? "Supervisora de Consultor de Vendas - PJ"
+                                  : lojaId === 5 && funcao.id === "consultor_vendas"
+                                  ? "Consultor de Vendas - Meta 2"
+                                  : funcao.nome}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-white/50">Data efetiva da troca *</label>
+                        <input
+                          type="date"
+                          value={trocaFuncaoForm.dataMudanca}
+                          onChange={(e) => setTrocaFuncaoForm((prev) => ({ ...prev, dataMudanca: e.target.value }))}
+                          className="h-11 w-full rounded-xl border border-orange-400/24 bg-[#0b0b0b] px-3 text-sm text-white outline-none transition focus:border-orange-400/55 focus:ring-2 focus:ring-orange-400/10"
+                        />
+                      </div>
+
+                      {trocaFuncaoForm.novaFuncao === "consultor_vendas" && (
+                        <div>
+                          <label className="mb-2 block text-xs font-medium text-white/50">Tipo de meta / comissão *</label>
+                          {lojaId === 5 ? (
+                            <div className="flex h-11 items-center rounded-xl border border-orange-400/24 bg-[#0b0b0b] px-3 text-sm text-white">
+                              Meta 2 - Mensal
+                            </div>
+                          ) : (
+                            <select
+                              value={trocaFuncaoForm.novoTipoMeta}
+                              onChange={(e) => setTrocaFuncaoForm((prev) => ({ ...prev, novoTipoMeta: e.target.value as TipoMeta }))}
+                              className="h-11 w-full rounded-xl border border-orange-400/24 bg-[#0b0b0b] px-3 text-sm text-white outline-none transition focus:border-orange-400/55 focus:ring-2 focus:ring-orange-400/10"
+                            >
+                              <option value="">Selecione</option>
+                              <option value="meta1">Meta 1</option>
+                              <option value="meta2">Meta 2</option>
+                            </select>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        type="button"
+                        onClick={confirmarTrocaFuncao}
+                        disabled={trocarFuncaoMutation.isPending}
+                        className="h-11 rounded-xl bg-orange-400 px-4 font-bold text-black hover:bg-orange-300"
+                      >
+                        {trocarFuncaoMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <ArrowRightLeft className="mr-2 h-4 w-4" />
+                        )}
+                        Confirmar troca de função
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setTrocaFuncaoOpen(false)}
+                        disabled={trocarFuncaoMutation.isPending}
+                        className="h-11 rounded-xl text-white/45 hover:bg-white/[0.04] hover:text-white"
+                      >
+                        Cancelar troca
+                      </Button>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {tentouSalvar && !formValido && (
+                <div className="rounded-xl border border-red-500/25 bg-red-500/[0.055] p-3 text-sm text-red-300">
+                  Preencha todos os campos obrigatórios destacados antes de salvar.
+                </div>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 border-t border-white/[0.06] bg-[#080808]/95 px-5 py-4 backdrop-blur-xl sm:px-7">
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  onClick={handleSaveFuncionario}
+                  disabled={salvando}
+                  className="h-11 flex-1 rounded-xl bg-[#D4AF37] font-bold text-black hover:bg-[#E7C553] disabled:opacity-50"
+                >
+                  {salvando ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : editingId ? (
+                    "Salvar alterações"
+                  ) : (
+                    "Cadastrar funcionário"
+                  )}
+                </Button>
+
+                {editingId && funcionarioEmEdicao && (
+                  funcionarioEmEdicao.status === "ativo" ? (
+                    <Button
+                      onClick={() => handleInativarFuncionario(funcionarioEmEdicao)}
+                      disabled={inativarFuncionario.isPending}
+                      variant="outline"
+                      className="h-11 rounded-xl border-red-400/18 bg-red-400/[0.025] px-4 text-red-400 hover:border-red-400/35 hover:bg-red-400/[0.07]"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Inativar
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => handleReativarFuncionario(funcionarioEmEdicao)}
+                      disabled={reativarFuncionario.isPending}
+                      variant="outline"
+                      className="h-11 rounded-xl border-emerald-400/18 bg-emerald-400/[0.025] px-4 text-emerald-400 hover:border-emerald-400/35 hover:bg-emerald-400/[0.07]"
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Reativar
+                    </Button>
+                  )
+                )}
+
+                <Button
+                  onClick={fecharFormulario}
+                  variant="outline"
+                  className="h-11 rounded-xl border-white/[0.08] bg-transparent px-4 text-white/55 hover:border-white/15 hover:bg-white/[0.035] hover:text-white"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
