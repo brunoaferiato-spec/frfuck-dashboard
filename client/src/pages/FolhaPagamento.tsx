@@ -60,8 +60,126 @@ const LOJAS = [
   { id: 3, nome: "São José" },
   { id: 4, nome: "Florianópolis" },
   { id: 5, nome: "ACI Promoções" },
-  { id: 6, nome: "Contrato PJ" },
+  { id: 6, nome: "São Leopoldo" },
+  { id: 7, nome: "Gravataí" },
 ];
+
+const ACI_SUPERVISORA_SALARIO_FIXO = 2400;
+
+function getValorPorCarroSupervisoraAci(totalCarrosBruto: number) {
+  const totalCarros = Number(totalCarrosBruto || 0);
+
+  if (totalCarros >= 4200) return 2;
+  if (totalCarros >= 3200) return 1.5;
+  if (totalCarros >= 3000) return 1.25;
+  if (totalCarros >= 2700) return 1;
+  if (totalCarros >= 2400) return 0.75;
+  return 0.5;
+}
+
+function calcularSupervisoraAci(args: {
+  joinville: number;
+  blumenau: number;
+  saoJose: number;
+  florianopolis: number;
+  gravatai: number;
+  saoLeopoldo: number;
+}) {
+  const totalCarros =
+    Number(args.joinville || 0) +
+    Number(args.blumenau || 0) +
+    Number(args.saoJose || 0) +
+    Number(args.florianopolis || 0) +
+    Number(args.gravatai || 0) +
+    Number(args.saoLeopoldo || 0);
+
+  const valorPorCarro = getValorPorCarroSupervisoraAci(totalCarros);
+  const comissao = Number((totalCarros * valorPorCarro).toFixed(2));
+
+  return {
+    totalCarros,
+    valorPorCarro,
+    comissao,
+    totalComFixo: Number((ACI_SUPERVISORA_SALARIO_FIXO + comissao).toFixed(2)),
+  };
+}
+
+const FUNCOES_FUNCIONARIO = [
+  { id: "mecanico", nome: "Mecânico" },
+  { id: "vendedor", nome: "Vendedor" },
+  { id: "consultor_vendas", nome: "Consultor de Vendas" },
+  { id: "alinhador", nome: "Alinhador" },
+  { id: "aux_alinhador", nome: "Aux. Alinhador" },
+  { id: "recepcionista", nome: "Recepcionista" },
+  { id: "auxiliar_estoque", nome: "Auxiliar de Estoque" },
+  { id: "lider_estoque", nome: "Líder de Estoque" },
+  { id: "auxiliar_mecanico", nome: "Auxiliar de Mecânico" },
+  { id: "auxiliar_limpeza", nome: "Auxiliar Limpeza" },
+  { id: "caixa", nome: "Caixa" },
+  { id: "caixa_lider", nome: "Caixa Líder" },
+  { id: "administrativo", nome: "Administrativo" },
+  { id: "gerente", nome: "Gerente" },
+  { id: "supervisor", nome: "Supervisor" },
+] as const;
+
+type FuncaoFuncionarioId = (typeof FUNCOES_FUNCIONARIO)[number]["id"];
+type TipoMetaFuncionario = "meta1" | "meta2" | "";
+
+type FormEdicaoFuncionario = {
+  nome: string;
+  cpf: string;
+  pix: string;
+  dataNascimento: string;
+  funcao: FuncaoFuncionarioId;
+  tipoMeta: TipoMetaFuncionario;
+  dataAdmissao: string;
+};
+
+function criarFormEdicaoFuncionarioVazio(): FormEdicaoFuncionario {
+  return {
+    nome: "",
+    cpf: "",
+    pix: "",
+    dataNascimento: "",
+    funcao: "mecanico",
+    tipoMeta: "",
+    dataAdmissao: "",
+  };
+}
+
+function formatarDataInputFuncionario(value: unknown) {
+  if (!value) return "";
+
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return "";
+    return value.toISOString().slice(0, 10);
+  }
+
+  const raw = String(value).trim();
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  const data = new Date(raw);
+  if (Number.isNaN(data.getTime())) return "";
+  return data.toISOString().slice(0, 10);
+}
+
+function dataFuncionarioParaApi(value: string) {
+  return new Date(`${value}T12:00:00.000Z`);
+}
+
+function labelFuncaoFuncionario(value: unknown, lojaId?: number) {
+  const funcao = String(value || "");
+
+  if (Number(lojaId) === 5 && funcao === "supervisor") {
+    return "Supervisora de Consultor de Vendas - PJ";
+  }
+
+  return (
+    FUNCOES_FUNCIONARIO.find((item) => item.id === funcao)?.nome ||
+    textoOuNaoInformado(funcao)
+  );
+}
 
 
 const ROTA_GESTAO_FUNCIONARIOS = "/gestao-funcionarios";
@@ -236,7 +354,8 @@ function identificarCidadePdf(texto: string) {
   if (normalizado.includes("ACI PROMOCAO") || normalizado.includes("ACI PROMOCOES")) {
     return "ACI Promoções";
   }
-  if (normalizado.includes("CONTRATO PJ")) return "Contrato PJ";
+  if (normalizado.includes("SAO LEOPOLDO")) return "São Leopoldo";
+  if (normalizado.includes("GRAVATAI")) return "Gravataí";
 
   return "";
 }
@@ -889,6 +1008,17 @@ if (
   );
 }
 
+if (args.quadrante === "supervisora_consultores_pj") {
+  return (
+    ACI_SUPERVISORA_SALARIO_FIXO +
+    totalComissao +
+    premiacao -
+    vale -
+    aluguel -
+    adiant
+  );
+}
+
 if (args.quadrante === "supervisor_pj") {
   return (
     getSalarioFixoSupervisor() +
@@ -928,6 +1058,7 @@ type QuadranteKey =
   | "alinhador"
   | "recepcao"
   | "supervisor_pj"
+  | "supervisora_consultores_pj"
   | "salario_fixo";
 
 type LinhaComQuadrante = FolhaMensal & {
@@ -976,8 +1107,8 @@ type RegraSemanaEditorState = {
 };
 
 function usaMetaSemanal(lojaId: number, ano: number, mes: number) {
-  // Joinville e Blumenau sempre semanal
-  if (lojaId === 1 || lojaId === 2) return true;
+  // Joinville, Blumenau, São Leopoldo e Gravataí sempre semanal
+  if ([1, 2, 6, 7].includes(lojaId)) return true;
 
   // São José semanal a partir de maio/2026
   if (lojaId === 3) {
@@ -1004,12 +1135,17 @@ function getQuadrante(
   const semanal = usaMetaSemanal(lojaId, ano, mes);
   const mensal = usaMetaMensal(lojaId, ano, mes);
 
+  if (funcao === "supervisor" && lojaId === 5) {
+    return "supervisora_consultores_pj";
+  }
+
   if (funcao === "supervisor") return "supervisor_pj";
   if (funcao === "gerente") {
   return "gerente";
 }
   if (funcao === "consultor_vendas") {
-  if (tipoMeta === "meta2") {
+  // Na ACI existe somente Consultor de Vendas Meta 2 (mensal).
+  if (lojaId === 5 || tipoMeta === "meta2") {
   return "consultor_vendas_mensal";
 }
 
@@ -1047,6 +1183,8 @@ function getQuadranteTitulo(key: QuadranteKey) {
   return "Consultor de Vendas Mensal";
     case "supervisor_pj":
       return "Supervisor - Contrato PJ";
+    case "supervisora_consultores_pj":
+      return "Supervisora de Consultor de Vendas - PJ";
     case "salario_fixo":
       return "Salário Fixo";
     default:
@@ -1072,6 +1210,8 @@ function getQuadranteDescricao(key: QuadranteKey) {
   return "Consultores por meta mensal";
     case "supervisor_pj":
       return "Supervisor com cálculo por liquidez das 4 lojas";
+    case "supervisora_consultores_pj":
+      return "Fixo de R$ 2.400,00 + comissão pelo total de carros das 6 cidades";
     case "salario_fixo":
       return "Funções sem quadrante específico";
     default:
@@ -1209,6 +1349,8 @@ function TabelaQuadrante({
   const isSalarioFixo = quadrante === "salario_fixo";
   const isRecepcao = quadrante === "recepcao";
   const isSupervisor = quadrante === "supervisor_pj";
+  const isSupervisoraAci = quadrante === "supervisora_consultores_pj";
+  const isPj = isSupervisor || isSupervisoraAci;
   const recepcaoCompleta =
     isRecepcao && (linhas[0]?.loja_id === 3 || linhas[0]?.loja_id === 4);
 
@@ -1224,7 +1366,7 @@ const isConsultorMeta2 =
 
 const isGerenteSaoJoseSemanal =
   isGerente &&
-  linhas[0]?.loja_id === 3;
+  (linhas[0]?.loja_id === 3 || linhas[0]?.loja_id === 6);
 
 const isMensalUnico =
   (quadrante === "comissao_mensal" && !isConsultorMeta2) ||
@@ -1290,7 +1432,8 @@ const isMensalUnico =
     : linha.percManual4;
 
 const funcaoRegra =
-  linha.funcao === "gerente" && linha.loja_id === 3
+  linha.funcao === "gerente" &&
+  (linha.loja_id === 3 || linha.loja_id === 6)
     ? "vendedor"
     : linha.funcao;
 
@@ -1333,7 +1476,7 @@ const percentualAutomatico =
  const manual =
   !(
     linha.funcao === "gerente" &&
-    linha.loja_id === 3
+    (linha.loja_id === 3 || linha.loja_id === 6)
   ) &&
   Number(manualValue || 0) > 0 &&
   Number(percentualAutomatico || 0) > 0 &&
@@ -1410,7 +1553,8 @@ const regraClassName = manual
     }
 
     const percentual =
-  linha.funcao === "gerente" && linha.loja_id === 3
+  linha.funcao === "gerente" &&
+  (linha.loja_id === 3 || linha.loja_id === 6)
     ? percentualAutomatico
     : semana === 1
     ? linha.perc1
@@ -1451,7 +1595,7 @@ const regraClassName = manual
   <th className="text-right p-2">Salário</th>
 )}
 
-                {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && !isConsultorMeta2 && !isGerente && (
+                {!isSalarioFixo && !isRecepcao && !isPj && !isMensalUnico && !isConsultorMeta2 && !isGerente && (
                   <>
                     <th className="text-right p-2">
                       {quadrante === "comissao_semanal" ? (
@@ -1555,7 +1699,7 @@ const regraClassName = manual
 
 {!isSalarioFixo &&
   !isRecepcao &&
-  !isSupervisor &&
+  !isPj &&
   isMensalUnico &&
   !isConsultorMeta2 &&
   !isGerente && (
@@ -1600,7 +1744,23 @@ const regraClassName = manual
                  </>
                 )}
 
-                {!isSalarioFixo && !isRecepcao && !isSupervisor && !isConsultorMeta2 && !isGerente && (
+                {isSupervisoraAci && (
+                  <>
+                    <th className="text-right p-2">Salário Fixo</th>
+                    <th className="text-right p-2">Joinville</th>
+                    <th className="text-right p-2">Blumenau</th>
+                    <th className="text-right p-2">São José</th>
+                    <th className="text-right p-2">Florianópolis</th>
+                    <th className="text-right p-2">Gravataí</th>
+                    <th className="text-right p-2">São Leopoldo</th>
+                    <th className="text-right p-2">Total Carros</th>
+                    <th className="text-right p-2">Valor / Carro</th>
+                    <th className="text-right p-2">Comissão</th>
+                    <th className="text-right p-2">Total</th>
+                  </>
+                )}
+
+                {!isSalarioFixo && !isRecepcao && !isPj && !isConsultorMeta2 && !isGerente && (
   <>
     <th className="text-right p-2">
       {isConsultor ? "Total Carros" : "Total Liquidez"}
@@ -1614,19 +1774,23 @@ const regraClassName = manual
                 <th className="text-right p-2">Premiação</th>
                 <th className="text-right p-2">Vale</th>
                 <th className="text-right p-2">Aluguel</th>
-                {!isSupervisor && <th className="text-right p-2">INSS</th>}
-                <th className="text-right p-2">
-                  <button
-                    type="button"
-                    onClick={onOpenImportacaoAdiantamento}
-                    className="inline-flex items-center gap-1 text-primary hover:text-yellow-300 hover:underline underline-offset-4"
-                    title="Importar PDF de adiantamento"
-                  >
-                    Adiant.
-                    <span className="text-[10px] font-normal text-gray-400">PDF</span>
-                  </button>
-                </th>
-                {!isSupervisor && (
+                {!isPj && <th className="text-right p-2">INSS</th>}
+                {isSupervisoraAci ? (
+                  <th className="text-right p-2">Adiant.</th>
+                ) : (
+                  <th className="text-right p-2">
+                    <button
+                      type="button"
+                      onClick={onOpenImportacaoAdiantamento}
+                      className="inline-flex items-center gap-1 text-primary hover:text-yellow-300 hover:underline underline-offset-4"
+                      title="Importar PDF de adiantamento"
+                    >
+                      Adiant.
+                      <span className="text-[10px] font-normal text-gray-400">PDF</span>
+                    </button>
+                  </th>
+                )}
+                {!isPj && (
                   <th className="text-right p-2">
                     <button
                       type="button"
@@ -1660,7 +1824,11 @@ const regraClassName = manual
                       {linha.nome}
                     </button>
                   </td>
-                  <td className="p-2 text-gray-300">{linha.funcao}</td>
+                  <td className="p-2 text-gray-300">
+                    {isSupervisoraAci
+                      ? "Supervisora de Consultor de Vendas - PJ"
+                      : linha.funcao}
+                  </td>
                   {isSalarioFixo && (
   <td className="p-2">
     {renderEditButton(
@@ -1672,7 +1840,7 @@ const regraClassName = manual
   </td>
 )}
 
-                  {!isSalarioFixo && !isRecepcao && !isSupervisor && !isMensalUnico && !isConsultorMeta2 && !isGerente && (
+                  {!isSalarioFixo && !isRecepcao && !isPj && !isMensalUnico && !isConsultorMeta2 && !isGerente && (
                     <>
                       <td className="p-2">
                         {isConsultor
@@ -1705,7 +1873,7 @@ const regraClassName = manual
                     </>
                   )}
 
-                  {!isSalarioFixo && !isRecepcao && !isSupervisor && isMensalUnico && !isConsultorMeta2 && !isGerente && (
+                  {!isSalarioFixo && !isRecepcao && !isPj && isMensalUnico && !isConsultorMeta2 && !isGerente && (
   <>
     <td className="p-2">
       {renderEditButton(
@@ -1873,7 +2041,50 @@ const regraClassName = manual
                   </>
                  )}
 
-                  {!isSalarioFixo && !isRecepcao && !isSupervisor && !isConsultorMeta2 && !isGerente && (
+                  {isSupervisoraAci && (() => {
+                    const calculoAci = calcularSupervisoraAci({
+                      joinville: Number(linha.sem1 || 0),
+                      blumenau: Number(linha.sem2 || 0),
+                      saoJose: Number(linha.sem3 || 0),
+                      florianopolis: Number(linha.sem4 || 0),
+                      gravatai: Number((linha as any).sem5 || 0),
+                      saoLeopoldo: Number((linha as any).sem6 || 0),
+                    });
+
+                    return (
+                      <>
+                        <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
+                          R$ {money(ACI_SUPERVISORA_SALARIO_FIXO)}
+                        </td>
+
+                        <td className="p-2">{renderEditButton(linha, "sem1", "Carros Joinville", "number")}</td>
+                        <td className="p-2">{renderEditButton(linha, "sem2", "Carros Blumenau", "number")}</td>
+                        <td className="p-2">{renderEditButton(linha, "sem3", "Carros São José", "number")}</td>
+                        <td className="p-2">{renderEditButton(linha, "sem4", "Carros Florianópolis", "number")}</td>
+                        <td className="p-2">
+                          {renderEditButton(linha, "sem5" as keyof FolhaMensal, "Carros Gravataí", "number")}
+                        </td>
+                        <td className="p-2">
+                          {renderEditButton(linha, "sem6" as keyof FolhaMensal, "Carros São Leopoldo", "number")}
+                        </td>
+
+                        <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
+                          {calculoAci.totalCarros.toLocaleString("pt-BR")}
+                        </td>
+                        <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
+                          R$ {money(calculoAci.valorPorCarro)}
+                        </td>
+                        <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
+                          R$ {money(calculoAci.comissao)}
+                        </td>
+                        <td className="p-2 text-right text-green-400 font-bold whitespace-nowrap">
+                          R$ {money(calculoAci.totalComFixo)}
+                        </td>
+                      </>
+                    );
+                  })()}
+
+                  {!isSalarioFixo && !isRecepcao && !isPj && !isConsultorMeta2 && !isGerente && (
                     <>
                       <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
                         {isConsultor
@@ -1933,17 +2144,17 @@ const regraClassName = manual
                     {renderEditButton(linha, "aluguel", "Aluguel", "money")}
                   </td>
 
-                  {!isSupervisor && (
+                  {!isPj && (
                     <td className="p-2">
                       {renderEditButton(linha, "inss", "INSS", "money")}
                     </td>
                   )}
 
                   <td className="p-2">
-                      {renderEditButton(linha, "adiant", "Adiantamento", "money")}
-                    </td>
+                    {renderEditButton(linha, "adiant", "Adiantamento", "money")}
+                  </td>
 
-                  {!isSupervisor && (
+                  {!isPj && (
                     <td className="p-2">
                       {renderEditButton(linha, "holerite", "Holerite", "money")}
                     </td>
@@ -2069,6 +2280,10 @@ export default function FolhaPagamento() {
     useState(false);
 
   const [funcionarioDetalheId, setFuncionarioDetalheId] = useState<number | null>(null);
+  const [editandoFuncionarioDetalhe, setEditandoFuncionarioDetalhe] = useState(false);
+  const [tentouSalvarFuncionarioDetalhe, setTentouSalvarFuncionarioDetalhe] = useState(false);
+  const [funcionarioEdicaoForm, setFuncionarioEdicaoForm] =
+    useState<FormEdicaoFuncionario>(criarFormEdicaoFuncionarioVazio());
 
   const lojaId = parseInt(selectedLoja, 10);
   const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(   
@@ -2080,6 +2295,14 @@ export default function FolhaPagamento() {
     refetchOnWindowFocus: true,
   }
 );
+
+const updateFuncionarioDetalheMutation = trpc.funcionarios.update.useMutation({
+  onSuccess: async () => {
+    await funcionariosQuery.refetch();
+    setEditandoFuncionarioDetalhe(false);
+    setTentouSalvarFuncionarioDetalhe(false);
+  },
+});
 
 const folhaBaseQuery = trpc.folhaPagamento.getBaseByLojaAnoMes.useQuery(
   { lojaId, ano, mes },
@@ -2227,6 +2450,107 @@ const funcionarioDetalheAtual = useMemo(() => {
     ) || null
   );
 }, [funcionarioDetalheId, todosFuncionarios]);
+
+const funcionarioEdicaoCamposInvalidos = {
+  nome: !funcionarioEdicaoForm.nome.trim(),
+  cpf: !funcionarioEdicaoForm.cpf.trim(),
+  pix: !funcionarioEdicaoForm.pix.trim(),
+  dataNascimento: !funcionarioEdicaoForm.dataNascimento,
+  funcao: !funcionarioEdicaoForm.funcao,
+  tipoMeta:
+    funcionarioEdicaoForm.funcao === "consultor_vendas" &&
+    !funcionarioEdicaoForm.tipoMeta,
+  dataAdmissao: !funcionarioEdicaoForm.dataAdmissao,
+};
+
+const funcionarioEdicaoValida = !Object.values(
+  funcionarioEdicaoCamposInvalidos
+).some(Boolean);
+
+function abrirEdicaoFuncionarioDetalhe() {
+  const funcionario = funcionarioDetalheAtual as any;
+  if (!funcionario) return;
+
+  setFuncionarioEdicaoForm({
+    nome: String(funcionario.nome || ""),
+    cpf: String(funcionario.cpf || ""),
+    pix: String(
+      funcionario.pix || funcionario.chavePix || funcionario.chave_pix || ""
+    ),
+    dataNascimento: formatarDataInputFuncionario(
+      funcionario.dataNascimento ||
+        funcionario.data_nascimento ||
+        funcionario.nascimento
+    ),
+    funcao: String(funcionario.funcao || "mecanico") as FuncaoFuncionarioId,
+    tipoMeta:
+      Number(funcionario.lojaId ?? funcionario.loja_id ?? lojaId) === 5 &&
+      String(funcionario.funcao || "") === "consultor_vendas"
+        ? "meta2"
+        : (String(
+            funcionario.tipoMeta || funcionario.tipo_meta || ""
+          ) as TipoMetaFuncionario),
+    dataAdmissao: formatarDataInputFuncionario(
+      funcionario.dataAdmissao || funcionario.data_admissao
+    ),
+  });
+  setTentouSalvarFuncionarioDetalhe(false);
+  setEditandoFuncionarioDetalhe(true);
+}
+
+async function salvarEdicaoFuncionarioDetalhe() {
+  const funcionario = funcionarioDetalheAtual as any;
+  if (!funcionario) return;
+
+  setTentouSalvarFuncionarioDetalhe(true);
+
+  if (!funcionarioEdicaoValida) {
+    const faltando: string[] = [];
+    if (funcionarioEdicaoCamposInvalidos.nome) faltando.push("Nome completo");
+    if (funcionarioEdicaoCamposInvalidos.cpf) faltando.push("CPF");
+    if (funcionarioEdicaoCamposInvalidos.pix) faltando.push("PIX");
+    if (funcionarioEdicaoCamposInvalidos.dataNascimento)
+      faltando.push("Data de aniversário");
+    if (funcionarioEdicaoCamposInvalidos.funcao) faltando.push("Função");
+    if (funcionarioEdicaoCamposInvalidos.tipoMeta)
+      faltando.push("Tipo de meta / comissão");
+    if (funcionarioEdicaoCamposInvalidos.dataAdmissao)
+      faltando.push("Data de admissão");
+
+    alert(
+      `Preencha todos os campos obrigatórios antes de salvar:
+
+- ${faltando.join(
+        "\n- "
+      )}`
+    );
+    return;
+  }
+
+  try {
+    await updateFuncionarioDetalheMutation.mutateAsync({
+      id: Number(funcionario.id),
+      lojaId: Number(funcionario.loja_id ?? funcionario.lojaId ?? lojaId),
+      nome: funcionarioEdicaoForm.nome.trim(),
+      cpf: funcionarioEdicaoForm.cpf.trim(),
+      pix: funcionarioEdicaoForm.pix.trim(),
+      dataNascimento: dataFuncionarioParaApi(
+        funcionarioEdicaoForm.dataNascimento
+      ),
+      funcao: funcionarioEdicaoForm.funcao,
+      tipoMeta:
+        funcionarioEdicaoForm.funcao === "consultor_vendas"
+          ? Number(funcionario.lojaId ?? funcionario.loja_id ?? lojaId) === 5
+            ? "meta2"
+            : (funcionarioEdicaoForm.tipoMeta as "meta1" | "meta2")
+          : null,
+      dataAdmissao: dataFuncionarioParaApi(funcionarioEdicaoForm.dataAdmissao),
+    });
+  } catch (error: any) {
+    console.error(error);
+    alert(error?.message ?? "Erro ao atualizar funcionário");
+  }
+}
 
 const funcionariosDaCidade = useMemo(() => {
   const dataReferencia = new Date(ano, mes - 1, 1);
@@ -2393,9 +2717,23 @@ if (row.semana === 4) {
 }
 
 if (row.semana === 5) {
-  (item as any).liquidezLojaGerente = Number(row.liquidez || 0);
-  (item as any).percLojaGerente = Number(row.percentualComissao || 0);
-  (item as any).comLojaGerente = Number(row.valorComissao || 0);
+  const funcionarioLinha = todosFuncionarios.find(
+    (f) => Number(f.id) === Number(row.funcionarioId)
+  );
+  const ehSupervisoraAci =
+    Number(row.lojaId) === 5 && funcionarioLinha?.funcao === "supervisor";
+
+  if (ehSupervisoraAci) {
+    (item as any).sem5 = Number(row.liquidez || 0);
+  } else {
+    (item as any).liquidezLojaGerente = Number(row.liquidez || 0);
+    (item as any).percLojaGerente = Number(row.percentualComissao || 0);
+    (item as any).comLojaGerente = Number(row.valorComissao || 0);
+  }
+}
+
+if (row.semana === 6) {
+  (item as any).sem6 = Number(row.liquidez || 0);
 }
 }
 setFolhas(Array.from(agrupado.values()));
@@ -2447,18 +2785,23 @@ setFolhas(Array.from(agrupado.values()));
       );
 
       const funcaoMetaCalculo =
-  func.funcao === "gerente" && lojaId === 3
+  func.funcao === "gerente" && (lojaId === 3 || lojaId === 6)
     ? "vendedor"
     : func.funcao;
 
       const isGerenteSaoJose =
-  func.funcao === "gerente" && lojaId === 3;
+  func.funcao === "gerente" && (lojaId === 3 || lojaId === 6);
+
+const tipoMetaEfetivo =
+  func.funcao === "consultor_vendas" && lojaId === 5
+    ? "meta2"
+    : func.tipoMeta;
 
 const meta = findMetaForFuncionario({
   funcionarioNome: func.nome,
   funcao: isGerenteSaoJose ? "vendedor" : func.funcao,
   cidade: selectedLoja,
-  tipoMeta: func.tipoMeta,
+  tipoMeta: tipoMetaEfetivo,
 });
 
       const baseLocal =
@@ -2470,7 +2813,7 @@ const meta = findMetaForFuncionario({
           funcionarioId: func.id,
           nome: func.nome,
           funcao: func.funcao,
-          tipoMeta: func.tipoMeta,
+          tipoMeta: tipoMetaEfetivo,
           regraMeta: meta?.regra || "Sem meta cadastrada",
         });
 
@@ -2500,7 +2843,7 @@ const meta = findMetaForFuncionario({
   funcao: funcaoMetaCalculo,
   cidade: selectedLoja,
   funcionarioNome: func.nome,
-  tipoMeta: func.tipoMeta,
+  tipoMeta: tipoMetaEfetivo,
   sem1: base.sem1,
   sem2: base.sem2,
   sem3: base.sem3,
@@ -2538,7 +2881,7 @@ if (
   Number(base.percManual1 || 0) > 0 &&
   base.funcao !== "vendedor" &&
   base.funcao !== "mecanico" &&
-  !(base.funcao === "gerente" && lojaId === 3)
+  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6))
 ) {
   calculadoAjustado.perc1 = Number(base.percManual1);
 
@@ -2555,7 +2898,7 @@ if (
   Number(base.percManual2 || 0) > 0 &&
   base.funcao !== "vendedor" &&
   base.funcao !== "mecanico" &&
-  !(base.funcao === "gerente" && lojaId === 3)
+  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6))
 ) {
   calculadoAjustado.perc2 = Number(base.percManual2);
 
@@ -2572,7 +2915,7 @@ if (
   Number(base.percManual3 || 0) > 0 &&
   base.funcao !== "vendedor" &&
   base.funcao !== "mecanico" &&
-  !(base.funcao === "gerente" && lojaId === 3)
+  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6))
 ) {
   calculadoAjustado.perc3 = Number(base.percManual3);
 
@@ -2589,7 +2932,7 @@ if (
   Number(base.percManual4 || 0) > 0 &&
   base.funcao !== "vendedor" &&
   base.funcao !== "mecanico" &&
-  !(base.funcao === "gerente" && lojaId === 3)
+  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6))
 ) {
   calculadoAjustado.perc4 = Number(base.percManual4);
 
@@ -2614,10 +2957,10 @@ const quadrante = getQuadrante(
   func.funcao,
   ano,
   mes,
-  func.tipoMeta
+  tipoMetaEfetivo
 );
 
-if (func.funcao === "supervisor") {
+if (func.funcao === "supervisor" && lojaId !== 5) {
   const resumo = resumoSupervisorQuery.data as any;
 
   const totalGrupo =
@@ -2636,7 +2979,32 @@ calculadoAjustado.premiacao =
   Number(calculoGrupoSupervisor.totalPorLoja || 0);
 }
 
-if (func.funcao === "gerente" && lojaId === 3) {
+if (func.funcao === "supervisor" && lojaId === 5) {
+  const calculoAci = calcularSupervisoraAci({
+    joinville: Number(base.sem1 || 0),
+    blumenau: Number(base.sem2 || 0),
+    saoJose: Number(base.sem3 || 0),
+    florianopolis: Number(base.sem4 || 0),
+    gravatai: Number((base as any).sem5 || 0),
+    saoLeopoldo: Number((base as any).sem6 || 0),
+  });
+
+  calculadoAjustado.com1 = 0;
+  calculadoAjustado.com2 = 0;
+  calculadoAjustado.com3 = 0;
+  calculadoAjustado.com4 = 0;
+  calculadoAjustado.totalLiquidez = calculoAci.totalCarros;
+  calculadoAjustado.totalComissao = calculoAci.comissao;
+
+  (calculadoAjustado as any).aciTotalCarros = calculoAci.totalCarros;
+  (calculadoAjustado as any).aciValorPorCarro = calculoAci.valorPorCarro;
+  (calculadoAjustado as any).aciTotalComFixo = calculoAci.totalComFixo;
+}
+
+if (
+  func.funcao === "gerente" &&
+  (lojaId === 3 || lojaId === 6)
+) {
   const liquidezLoja = Number((base as any).liquidezLojaGerente || 0);
 
   const metaGerente = findMetaForFuncionario({
@@ -2708,7 +3076,7 @@ const boletoAjustado = calcularBoletoAjustado({
 
 return {
   ...base,
-  tipoMeta: func.tipoMeta,
+  tipoMeta: tipoMetaEfetivo,
   regraMeta: meta?.regra || "Sem meta cadastrada",
   quadrante,
   ...calculadoAjustado,
@@ -2733,11 +3101,11 @@ return {
         return true;
       }
 
-      // O gerente de São José e Florianópolis também participa do bloco VENDA
+      // O gerente de São José, Florianópolis e São Leopoldo também participa do bloco VENDA
       // para preencher a liquidez de venda.
       if (
         funcionario.funcao === "gerente" &&
-        (Number(lojaId) === 3 || Number(lojaId) === 4)
+        (Number(lojaId) === 3 || Number(lojaId) === 4 || Number(lojaId) === 6)
       ) {
         return true;
       }
@@ -2775,6 +3143,7 @@ return {
     return linhas.filter(
       (linha) =>
         linha.quadrante !== "supervisor_pj" &&
+        linha.quadrante !== "supervisora_consultores_pj" &&
         !idsEncontrados.has(Number(linha.funcionarioId))
     );
   }, [
@@ -2798,6 +3167,7 @@ return {
     return linhas.filter(
       (linha) =>
         linha.quadrante !== "supervisor_pj" &&
+        linha.quadrante !== "supervisora_consultores_pj" &&
         !idsEncontrados.has(Number(linha.funcionarioId))
     );
   }, [
@@ -2954,7 +3324,7 @@ return {
               // No relatório, gerente aparece dentro do bloco VENDA.
               if (
                 funcionario.funcao === "gerente" &&
-                (Number(lojaId) === 3 || Number(lojaId) === 4)
+                (Number(lojaId) === 3 || Number(lojaId) === 4 || Number(lojaId) === 6)
               ) {
                 return true;
               }
@@ -3507,14 +3877,14 @@ return {
         } as LinhaComQuadrante;
 
         const funcaoMetaAtualizacao =
-          updatedLine.funcao === "gerente" && lojaId === 3
+          updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6)
             ? "vendedor"
             : updatedLine.funcao;
 
         const ignorarPercentualManual =
           updatedLine.funcao === "vendedor" ||
           updatedLine.funcao === "mecanico" ||
-          (updatedLine.funcao === "gerente" && lojaId === 3);
+          (updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6));
 
         const metaAtualizacao = findMetaForFuncionario({
           funcionarioNome: updatedLine.nome,
@@ -3664,7 +4034,11 @@ return {
 
       const aliases = lerAliasesImportacao();
       const candidatos = linhas
-        .filter((linha) => linha.quadrante !== "supervisor_pj")
+        .filter(
+          (linha) =>
+            linha.quadrante !== "supervisor_pj" &&
+            linha.quadrante !== "supervisora_consultores_pj"
+        )
         .map((linha) => ({
           id: Number(linha.funcionarioId),
           nome: linha.nome,
@@ -3752,7 +4126,12 @@ return {
     const funcionario = linhas.find(
       (linha) => Number(linha.funcionarioId) === Number(funcionarioId)
     );
-    if (!funcionario || funcionario.quadrante === "supervisor_pj") return;
+    if (
+      !funcionario ||
+      funcionario.quadrante === "supervisor_pj" ||
+      funcionario.quadrante === "supervisora_consultores_pj"
+    )
+      return;
 
     setImportacaoHolerite((prev) => ({
       ...prev,
@@ -4009,14 +4388,14 @@ return {
   };
 
   const funcaoMetaAtualizacao =
-  updatedLine.funcao === "gerente" && lojaId === 3
+  updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6)
     ? "vendedor"
     : updatedLine.funcao;
 
 const ignorarPercentualManual =
   updatedLine.funcao === "vendedor" ||
   updatedLine.funcao === "mecanico" ||
-  (updatedLine.funcao === "gerente" && lojaId === 3);
+  (updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6));
 
 const metaAtualizacao = findMetaForFuncionario({
   funcionarioNome: updatedLine.nome,
@@ -4066,6 +4445,22 @@ const recalculado = computeFolhaLinha({
     ...recalculado,
   };
 
+  if (updatedLine.funcao === "supervisor" && lojaId === 5) {
+    const calculoAci = calcularSupervisoraAci({
+      joinville: Number(updatedLine.sem1 || 0),
+      blumenau: Number(updatedLine.sem2 || 0),
+      saoJose: Number(updatedLine.sem3 || 0),
+      florianopolis: Number(updatedLine.sem4 || 0),
+      gravatai: Number((updatedLine as any).sem5 || 0),
+      saoLeopoldo: Number((updatedLine as any).sem6 || 0),
+    });
+
+    (mergedLine as any).sem5 = Number((updatedLine as any).sem5 || 0);
+    (mergedLine as any).sem6 = Number((updatedLine as any).sem6 || 0);
+    mergedLine.totalLiquidez = calculoAci.totalCarros;
+    mergedLine.totalComissao = calculoAci.comissao;
+  }
+
   setFolhas((prev) => {
     const exists = prev.some(
       (f) =>
@@ -4091,16 +4486,20 @@ const recalculado = computeFolhaLinha({
 const camposBase = ["sem1", "sem2", "sem3", "sem4"] as const;
 const camposDesconto = ["aluguel", "inss", "adiant", "holerite"] as const;
 
-if (String(campo) === "sem5") {
+if (String(campo) === "sem5" || String(campo) === "sem6") {
+  const semanaEspecial = String(campo) === "sem5" ? 5 : 6;
+
   await upsertFolhaBaseMutation.mutateAsync({
     funcionarioId,
     lojaId,
     ano,
     mes,
-    semana: 5,
+    semana: semanaEspecial,
     liquidez: Number(valor || 0),
     percentualComissao: 0,
     valorComissao: 0,
+    ultimaAlteracaoPor: usuarioLogado,
+    ultimaAlteracaoEm: new Date(),
   });
 
   return;
@@ -4648,11 +5047,11 @@ function getMetaFuncaoTexto(
 
   // GERENTE
 if (funcao === "gerente") {
-  // São José:
+  // São José e São Leopoldo:
   // SEM1 a SEM4 = comissão normal de vendedor
   // SEM5 = comissão de gerente sobre a loja
   const gerenteSaoJoseVenda =
-    linha.loja_id === 3 &&
+    (linha.loja_id === 3 || linha.loja_id === 6) &&
     semana >= 1 &&
     semana <= 4;
 
@@ -4760,7 +5159,10 @@ if (funcao === "gerente") {
       };
     }
 
-    if (linha.funcao === "gerente" && linha.loja_id === 3) {
+    if (
+      linha.funcao === "gerente" &&
+      (linha.loja_id === 3 || linha.loja_id === 6)
+    ) {
 
   // resto do código continua igual...
   const base =
@@ -4903,7 +5305,7 @@ return {
       : "Meta 1"
     : linha.funcao === "gerente"
     ? (
-        (linha.loja_id === 3 && semana >= 1 && semana <= 4) ||
+        ((linha.loja_id === 3 || linha.loja_id === 6) && semana >= 1 && semana <= 4) ||
         (linha.loja_id === 4 && semana === 1)
       )
       ? "Meta - Vendedor"
@@ -4956,6 +5358,7 @@ const totalFolhaGeral =
   "recepcao",
   "consultor_vendas",
   "consultor_vendas_mensal",
+  "supervisora_consultores_pj",
   "supervisor_pj",
   "salario_fixo",
 ];
@@ -5277,7 +5680,7 @@ if (
                 : `Importar relatório — SEM${importacaoSemana.semana}`}
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              O sistema importa VENDA e MECÂNICA usando a coluna LIQ. S/ PNEUS. Em São José e Florianópolis, se o gerente estiver no bloco VENDA, a Liquidez Venda dele também é preenchida. Alinhamento continua manual.
+              O sistema importa VENDA e MECÂNICA usando a coluna LIQ. S/ PNEUS. Em São José, Florianópolis e São Leopoldo, se o gerente estiver no bloco VENDA, a Liquidez Venda dele também é preenchida. Alinhamento continua manual.
               {lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
                 ? " Em Florianópolis, o valor é gravado na liquidez mensal."
                 : ""}
@@ -6172,7 +6575,11 @@ if (
                                 </SelectTrigger>
                                 <SelectContent className="border-primary/30 bg-gray-900">
                                   {linhas
-                                    .filter((linha) => linha.quadrante !== "supervisor_pj")
+                                    .filter(
+          (linha) =>
+            linha.quadrante !== "supervisor_pj" &&
+            linha.quadrante !== "supervisora_consultores_pj"
+        )
                                     .map((linha) => (
                                       <SelectItem
                                         key={linha.funcionarioId}
@@ -6328,16 +6735,25 @@ if (
       <Dialog
         open={!!funcionarioDetalheAtual}
         onOpenChange={(open) => {
-          if (!open) setFuncionarioDetalheId(null);
+          if (!open) {
+            setFuncionarioDetalheId(null);
+            setEditandoFuncionarioDetalhe(false);
+            setTentouSalvarFuncionarioDetalhe(false);
+            setFuncionarioEdicaoForm(criarFormEdicaoFuncionarioVazio());
+          }
         }}
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-2xl">
+        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-primary text-xl">
-              Dados do funcionário
+              {editandoFuncionarioDetalhe
+                ? "Editar funcionário"
+                : "Dados do funcionário"}
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Informações cadastradas no sistema.
+              {editandoFuncionarioDetalhe
+                ? "Todos os campos marcados com * são obrigatórios."
+                : "Informações cadastradas no sistema."}
             </DialogDescription>
           </DialogHeader>
 
@@ -6350,6 +6766,199 @@ if (
                 <p className="text-white font-semibold break-words">{valor}</p>
               </div>
             );
+
+            const classeCampo = (invalido: boolean) =>
+              `bg-gray-900 text-white ${
+                tentouSalvarFuncionarioDetalhe && invalido
+                  ? "border-red-500 focus-visible:ring-red-500/30"
+                  : "border-primary/30"
+              }`;
+
+            if (editandoFuncionarioDetalhe) {
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-gray-300">
+                        Nome completo <span className="text-red-400">*</span>
+                      </Label>
+                      <Input
+                        className={classeCampo(funcionarioEdicaoCamposInvalidos.nome)}
+                        value={funcionarioEdicaoForm.nome}
+                        onChange={(e) =>
+                          setFuncionarioEdicaoForm((prev) => ({
+                            ...prev,
+                            nome: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-gray-300">
+                        CPF <span className="text-red-400">*</span>
+                      </Label>
+                      <Input
+                        className={classeCampo(funcionarioEdicaoCamposInvalidos.cpf)}
+                        value={funcionarioEdicaoForm.cpf}
+                        onChange={(e) =>
+                          setFuncionarioEdicaoForm((prev) => ({
+                            ...prev,
+                            cpf: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-gray-300">
+                        PIX <span className="text-red-400">*</span>
+                      </Label>
+                      <Input
+                        className={classeCampo(funcionarioEdicaoCamposInvalidos.pix)}
+                        value={funcionarioEdicaoForm.pix}
+                        onChange={(e) =>
+                          setFuncionarioEdicaoForm((prev) => ({
+                            ...prev,
+                            pix: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-gray-300">
+                        Data de aniversário <span className="text-red-400">*</span>
+                      </Label>
+                      <Input
+                        type="date"
+                        className={classeCampo(
+                          funcionarioEdicaoCamposInvalidos.dataNascimento
+                        )}
+                        value={funcionarioEdicaoForm.dataNascimento}
+                        onChange={(e) =>
+                          setFuncionarioEdicaoForm((prev) => ({
+                            ...prev,
+                            dataNascimento: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-gray-300">
+                        Função <span className="text-red-400">*</span>
+                      </Label>
+                      <select
+                        className={`h-10 w-full rounded-md border px-3 py-2 text-sm ${classeCampo(
+                          funcionarioEdicaoCamposInvalidos.funcao
+                        )}`}
+                        value={funcionarioEdicaoForm.funcao}
+                        onChange={(e) =>
+                          setFuncionarioEdicaoForm((prev) => ({
+                            ...prev,
+                            funcao: e.target.value as FuncaoFuncionarioId,
+                            tipoMeta:
+                              e.target.value === "consultor_vendas"
+                                ? Number(
+                                    funcionario.lojaId ?? funcionario.loja_id ?? lojaId
+                                  ) === 5
+                                  ? "meta2"
+                                  : prev.tipoMeta
+                                : "",
+                          }))
+                        }
+                      >
+                        {FUNCOES_FUNCIONARIO
+                          .filter((item) => {
+                            const lojaFuncionario = Number(
+                              funcionario.lojaId ?? funcionario.loja_id ?? lojaId
+                            );
+
+                            if (lojaFuncionario !== 5) return true;
+
+                            return [
+                              "administrativo",
+                              "consultor_vendas",
+                              "supervisor",
+                            ].includes(item.id);
+                          })
+                          .map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {Number(
+                                funcionario.lojaId ?? funcionario.loja_id ?? lojaId
+                              ) === 5 && item.id === "supervisor"
+                                ? "Supervisora de Consultor de Vendas - PJ"
+                                : Number(
+                                    funcionario.lojaId ?? funcionario.loja_id ?? lojaId
+                                  ) === 5 && item.id === "consultor_vendas"
+                                ? "Consultor de Vendas - Meta 2"
+                                : item.nome}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {funcionarioEdicaoForm.funcao === "consultor_vendas" && (
+                      <div>
+                        <Label className="text-gray-300">
+                          Tipo de meta <span className="text-red-400">*</span>
+                        </Label>
+                        <select
+                          className={`h-10 w-full rounded-md border px-3 py-2 text-sm ${classeCampo(
+                            funcionarioEdicaoCamposInvalidos.tipoMeta
+                          )}`}
+                          value={funcionarioEdicaoForm.tipoMeta}
+                          onChange={(e) =>
+                            setFuncionarioEdicaoForm((prev) => ({
+                              ...prev,
+                              tipoMeta: e.target.value as TipoMetaFuncionario,
+                            }))
+                          }
+                        >
+                          {Number(
+                            funcionario.lojaId ?? funcionario.loja_id ?? lojaId
+                          ) === 5 ? (
+                            <option value="meta2">Meta 2 - Mensal</option>
+                          ) : (
+                            <>
+                              <option value="">Selecione</option>
+                              <option value="meta1">Meta 1</option>
+                              <option value="meta2">Meta 2</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label className="text-gray-300">
+                        Data de admissão <span className="text-red-400">*</span>
+                      </Label>
+                      <Input
+                        type="date"
+                        className={classeCampo(
+                          funcionarioEdicaoCamposInvalidos.dataAdmissao
+                        )}
+                        value={funcionarioEdicaoForm.dataAdmissao}
+                        onChange={(e) =>
+                          setFuncionarioEdicaoForm((prev) => ({
+                            ...prev,
+                            dataAdmissao: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {tentouSalvarFuncionarioDetalhe && !funcionarioEdicaoValida && (
+                    <div className="rounded-md border border-red-500/30 bg-red-950/20 p-3 text-sm text-red-300">
+                      Preencha todos os campos obrigatórios destacados antes de salvar.
+                    </div>
+                  )}
+                </div>
+              );
+            }
 
             return (
               <div className="space-y-4">
@@ -6390,14 +6999,32 @@ if (
 
                   <Campo
                     label="Função"
-                    valor={textoOuNaoInformado(funcionario.funcao)}
+                    valor={labelFuncaoFuncionario(
+                      funcionario.funcao,
+                      Number(funcionario.lojaId ?? funcionario.loja_id ?? lojaId)
+                    )}
                   />
+
+                  {String(funcionario.funcao || "") === "consultor_vendas" && (
+                    <Campo
+                      label="Tipo de meta"
+                      valor={
+                        String(funcionario.tipoMeta || funcionario.tipo_meta || "") ===
+                        "meta1"
+                          ? "Meta 1"
+                          : String(
+                              funcionario.tipoMeta || funcionario.tipo_meta || ""
+                            ) === "meta2"
+                          ? "Meta 2"
+                          : "Não informado"
+                      }
+                    />
+                  )}
 
                   <Campo
                     label="Data de admissão"
                     valor={formatarDataBR(
-                      funcionario.dataAdmissao ||
-                        funcionario.data_admissao
+                      funcionario.dataAdmissao || funcionario.data_admissao
                     )}
                   />
                 </div>
@@ -6405,13 +7032,45 @@ if (
             );
           })()}
 
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setFuncionarioDetalheId(null)}
-            >
-              Fechar
-            </Button>
+          <DialogFooter className="gap-2 sm:gap-0">
+            {editandoFuncionarioDetalhe ? (
+              <>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setEditandoFuncionarioDetalhe(false);
+                    setTentouSalvarFuncionarioDetalhe(false);
+                  }}
+                  disabled={updateFuncionarioDetalheMutation.isPending}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="bg-primary text-black hover:bg-yellow-300"
+                  onClick={salvarEdicaoFuncionarioDetalhe}
+                  disabled={updateFuncionarioDetalheMutation.isPending}
+                >
+                  {updateFuncionarioDetalheMutation.isPending
+                    ? "Salvando..."
+                    : "Salvar alterações"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  className="bg-primary text-black hover:bg-yellow-300"
+                  onClick={abrirEdicaoFuncionarioDetalhe}
+                >
+                  Editar
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setFuncionarioDetalheId(null)}
+                >
+                  Fechar
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -7283,7 +7942,7 @@ if (
 
 if (
   linha.funcao === "gerente" &&
-  linha.loja_id === 3 &&
+  (linha.loja_id === 3 || linha.loja_id === 6) &&
   semana === 5
 ) {
   const liquidez = Number((linha as any).liquidezLojaGerente || 0);

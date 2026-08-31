@@ -167,6 +167,23 @@ export async function getUserByEmail(email: string) {
 export async function getLojas() {
   const db = await getDb();
   if (!db) return [];
+
+  await db
+    .update(lojas)
+    .set({ nome: "São Leopoldo" })
+    .where(eq(lojas.id, 6));
+
+  await db
+    .insert(lojas)
+    .values({
+      id: 7,
+      nome: "Gravataí",
+      metaTotal: "0.00",
+    } as any)
+    .onDuplicateKeyUpdate({
+      set: { nome: "Gravataí" },
+    });
+
   return await db.select().from(lojas);
 }
 
@@ -175,6 +192,20 @@ export async function getLojaById(id: number) {
   if (!db) return null;
   const result = await db.select().from(lojas).where(eq(lojas.id, id)).limit(1);
   return result.length > 0 ? result[0] : null;
+}
+
+function formatarDataMySQL(value: Date) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    throw new Error("Data inválida");
+  }
+
+  const ano = value.getUTCFullYear();
+  const mes = String(value.getUTCMonth() + 1).padStart(2, "0");
+  const dia = String(value.getUTCDate()).padStart(2, "0");
+
+  // Aniversário é uma data civil; gravamos ao meio-dia para evitar
+  // qualquer deslocamento de fuso ao passar por TIMESTAMP.
+  return `${ano}-${mes}-${dia} 12:00:00`;
 }
 
 // ===== Funcionários =====
@@ -216,9 +247,9 @@ export async function getFuncionarioAtivo(lojaId: number, id: number) {
 export async function createFuncionario(data: {
   lojaId: number;
   nome: string;
-  cpf?: string | null;
-  pix?: string | null;
-  dataNascimento?: Date | null;
+  cpf: string;
+  pix: string;
+  dataNascimento: Date;
   funcao:
     | "mecanico"
     | "vendedor"
@@ -246,9 +277,9 @@ export async function createFuncionario(data: {
   const values: InsertFuncionario = {
     lojaId: data.lojaId,
     nome: data.nome,
-    cpf: data.cpf ?? null,
-    pix: data.pix ?? null,
-    dataNascimento: data.dataNascimento ?? null,
+    cpf: data.cpf,
+    pix: data.pix,
+    dataNascimento: data.dataNascimento,
     funcao: data.funcao,
     tipoMeta:
   data.tipoMeta === "meta1" || data.tipoMeta === "meta2"
@@ -260,6 +291,13 @@ export async function createFuncionario(data: {
 
   const result = await db.insert(funcionarios).values(values as any);
   const insertId = result?.[0]?.insertId ?? result?.insertId;
+
+  if (insertId && _pool) {
+    await _pool.execute(
+      "UPDATE funcionarios SET dataNascimento = ? WHERE id = ?",
+      [formatarDataMySQL(data.dataNascimento), insertId]
+    );
+  }
 
   if (!insertId) {
     const criado = await db
@@ -285,9 +323,9 @@ export async function updateFuncionario(data: {
   id: number;
   lojaId: number;
   nome: string;
-  cpf?: string | null;
-  pix?: string | null;
-  dataNascimento?: Date | null;
+  cpf: string;
+  pix: string;
+  dataNascimento: Date;
   funcao:
     | "mecanico"
     | "vendedor"
@@ -322,14 +360,25 @@ export async function updateFuncionario(data: {
     .set({
       lojaId: data.lojaId,
       nome: data.nome,
-      cpf: data.cpf ?? null,
-      pix: data.pix ?? null,
-      dataNascimento: data.dataNascimento ?? null,
+      cpf: data.cpf,
+      pix: data.pix,
       funcao: data.funcao,
       tipoMeta: tipoMetaNormalizado,
       dataAdmissao: data.dataAdmissao,
     } as any)
     .where(eq(funcionarios.id, data.id));
+
+  // Persistência explícita da data de nascimento no MySQL.
+  // Isso evita que a data seja descartada/normalizada de forma incorreta
+  // pela camada de serialização de datas.
+  if (!_pool) {
+    throw new Error("Pool do banco não disponível");
+  }
+
+  await _pool.execute(
+    "UPDATE funcionarios SET dataNascimento = ? WHERE id = ?",
+    [formatarDataMySQL(data.dataNascimento), data.id]
+  );
 
   const result = await db
     .select()
@@ -337,7 +386,13 @@ export async function updateFuncionario(data: {
     .where(eq(funcionarios.id, data.id))
     .limit(1);
 
-  return result[0] ?? null;
+  const atualizado = result[0] ?? null;
+
+  if (!atualizado || !(atualizado as any).dataNascimento) {
+    throw new Error("A data de aniversário não foi persistida no banco");
+  }
+
+  return atualizado;
 }
 
 export async function inativarFuncionarioById(id: number, dataDesligamento: Date) {

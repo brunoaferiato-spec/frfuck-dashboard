@@ -39,7 +39,8 @@ const LOJAS = [
   { id: 3, nome: "São José" },
   { id: 4, nome: "Florianópolis" },
   { id: 5, nome: "ACI Promoções" },
-  { id: 6, nome: "Contrato PJ" },
+  { id: 6, nome: "São Leopoldo" },
+  { id: 7, nome: "Gravataí" },
 ];
 
 const FUNCOES = [
@@ -71,6 +72,7 @@ function normalizeCidadeMeta(cidade: unknown) {
     "4": "4",
     "5": "5",
     "6": "6",
+    "7": "7",
     Joinville: "1",
     Blumenau: "2",
     "São José": "3",
@@ -79,7 +81,10 @@ function normalizeCidadeMeta(cidade: unknown) {
     Florianopolis: "4",
     "ACI Promoções": "5",
     "ACI Promocoes": "5",
-    "Contrato PJ": "6",
+    "São Leopoldo": "6",
+"Sao Leopoldo": "6",
+Gravataí: "7",
+Gravatai: "7",
   };
 
   return mapa[value] || value;

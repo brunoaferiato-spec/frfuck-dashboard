@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Loader2, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  Pencil,
+  RotateCcw,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +24,8 @@ const LOJAS = [
   { id: 3, nome: "São José" },
   { id: 4, nome: "Florianópolis" },
   { id: 5, nome: "ACI Promoções" },
-  { id: 6, nome: "Contrato PJ" },
+  { id: 6, nome: "São Leopoldo" },
+  { id: 7, nome: "Gravataí" },
 ];
 
 const FUNCOES = [
@@ -38,6 +46,12 @@ const FUNCOES = [
   { id: "supervisor", nome: "Supervisor" },
 ] as const;
 
+const FUNCOES_ACI_IDS = [
+  "administrativo",
+  "consultor_vendas",
+  "supervisor",
+] as const;
+
 type FuncaoId = (typeof FUNCOES)[number]["id"];
 type TipoMeta = "meta1" | "meta2" | "";
 
@@ -52,8 +66,85 @@ type FuncionarioItem = {
   tipoMeta?: TipoMeta | null;
   dataAdmissao?: string | Date | null;
   dataDesligamento?: string | Date | null;
+  dataReativacao?: string | Date | null;
   status?: string | null;
 };
+
+type FormFuncionario = {
+  nome: string;
+  cpf: string;
+  pix: string;
+  dataNascimento: string;
+  funcao: FuncaoId;
+  tipoMeta: TipoMeta;
+  dataAdmissao: string;
+};
+
+function hojeInput() {
+  const agora = new Date();
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, "0");
+  const dia = String(agora.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+function criarFormVazio(lojaId?: number): FormFuncionario {
+  const ehAci = Number(lojaId) === 5;
+
+  return {
+    nome: "",
+    cpf: "",
+    pix: "",
+    dataNascimento: "",
+    funcao: ehAci ? "administrativo" : "mecanico",
+    tipoMeta: "",
+    dataAdmissao: hojeInput(),
+  };
+}
+
+/**
+ * Lê a parte YYYY-MM-DD sem aplicar conversão de fuso horário.
+ * Isso evita aniversário/admissão mudarem um dia ao abrir a edição.
+ */
+function formatDateInput(value: string | Date | null | undefined) {
+  if (!value) return "";
+
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return "";
+    return value.toISOString().slice(0, 10);
+  }
+
+  const raw = String(value).trim();
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+
+function formatDateBR(value: string | Date | null | undefined) {
+  const input = formatDateInput(value);
+  if (!input) return "-";
+
+  const [ano, mes, dia] = input.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+/**
+ * Meio-dia UTC mantém a data civil estável durante serialização tRPC/Date.
+ */
+function dateFromInput(value: string) {
+  return new Date(`${value}T12:00:00.000Z`);
+}
+
+function labelFuncao(funcao: string, lojaId?: number) {
+  if (Number(lojaId) === 5 && funcao === "supervisor") {
+    return "Supervisora de Consultor de Vendas - PJ";
+  }
+
+  return FUNCOES.find((item) => item.id === funcao)?.nome ?? funcao;
+}
 
 export default function GestaoFuncionarios() {
   const [, navigate] = useLocation();
@@ -63,18 +154,8 @@ export default function GestaoFuncionarios() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [buscaFuncionario, setBuscaFuncionario] = useState("");
-
-  const emptyForm = {
-    nome: "",
-    cpf: "",
-    pix: "",
-    dataNascimento: "",
-    funcao: "mecanico" as FuncaoId,
-    tipoMeta: "" as TipoMeta,
-    dataAdmissao: new Date().toISOString().split("T")[0],
-  };
-
-  const [formData, setFormData] = useState(emptyForm);
+  const [tentouSalvar, setTentouSalvar] = useState(false);
+  const [formData, setFormData] = useState<FormFuncionario>(() => criarFormVazio(1));
 
   const lojaId = Number(selectedLoja);
 
@@ -88,21 +169,24 @@ export default function GestaoFuncionarios() {
     }
   );
 
+  const fecharFormulario = () => {
+    setIsOpen(false);
+    setEditingId(null);
+    setTentouSalvar(false);
+    setFormData(criarFormVazio(lojaId));
+  };
+
   const createFuncionario = trpc.funcionarios.create.useMutation({
     onSuccess: async () => {
       await utils.funcionarios.listByLoja.invalidate({ lojaId });
-      setFormData(emptyForm);
-      setEditingId(null);
-      setIsOpen(false);
+      fecharFormulario();
     },
   });
 
   const updateFuncionario = trpc.funcionarios.update.useMutation({
     onSuccess: async () => {
       await utils.funcionarios.listByLoja.invalidate({ lojaId });
-      setFormData(emptyForm);
-      setEditingId(null);
-      setIsOpen(false);
+      fecharFormulario();
     },
   });
 
@@ -113,13 +197,12 @@ export default function GestaoFuncionarios() {
   });
 
   const reativarFuncionario = trpc.funcionarios.reativar.useMutation({
-  onSuccess: async () => {
-    await utils.funcionarios.listByLoja.invalidate({ lojaId });
-  },
-});
+    onSuccess: async () => {
+      await utils.funcionarios.listByLoja.invalidate({ lojaId });
+    },
+  });
 
-const excluirMutation =
-  trpc.funcionarios.excluir.useMutation({
+  const excluirMutation = trpc.funcionarios.excluir.useMutation({
     onSuccess: async () => {
       await funcionariosQuery.refetch();
     },
@@ -129,31 +212,57 @@ const excluirMutation =
     return LOJAS.find((l) => l.id === lojaId)?.nome ?? "Loja";
   }, [lojaId]);
 
+  const funcoesDisponiveis = useMemo(() => {
+    if (lojaId !== 5) return FUNCOES;
+
+    return FUNCOES.filter((funcao) =>
+      (FUNCOES_ACI_IDS as readonly string[]).includes(funcao.id)
+    );
+  }, [lojaId]);
+
+  const camposInvalidos = useMemo(() => {
+    return {
+      nome: !formData.nome.trim(),
+      cpf: !formData.cpf.trim(),
+      pix: !formData.pix.trim(),
+      dataNascimento: !formData.dataNascimento,
+      funcao: !formData.funcao,
+      tipoMeta:
+        formData.funcao === "consultor_vendas" && !formData.tipoMeta,
+      dataAdmissao: !formData.dataAdmissao,
+    };
+  }, [formData]);
+
+  const formValido = !Object.values(camposInvalidos).some(Boolean);
+
+  const classeCampo = (invalido: boolean) =>
+    `w-full rounded-md border bg-gray-900 px-3 py-2 text-white outline-none transition ${
+      tentouSalvar && invalido
+        ? "border-red-500 focus:border-red-400"
+        : "border-yellow-500/30 focus:border-yellow-400"
+    }`;
+
   const handleOpenCreate = () => {
     setEditingId(null);
-    setFormData(emptyForm);
+    setTentouSalvar(false);
+    setFormData(criarFormVazio(lojaId));
     setIsOpen(true);
-  };
-
-  const formatDateInput = (value: string | Date | null | undefined) => {
-    if (!value) return "";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "";
-    return d.toISOString().split("T")[0];
   };
 
   const handleEditFuncionario = (func: FuncionarioItem) => {
     setEditingId(func.id);
+    setTentouSalvar(false);
     setFormData({
       nome: func.nome || "",
       cpf: func.cpf || "",
       pix: func.pix || "",
       dataNascimento: formatDateInput(func.dataNascimento),
       funcao: func.funcao,
-      tipoMeta: (func.tipoMeta as TipoMeta) || "",
-      dataAdmissao:
-        formatDateInput(func.dataAdmissao) ||
-        new Date().toISOString().split("T")[0],
+      tipoMeta:
+        lojaId === 5 && func.funcao === "consultor_vendas"
+          ? "meta2"
+          : (func.tipoMeta as TipoMeta) || "",
+      dataAdmissao: formatDateInput(func.dataAdmissao),
     });
     setIsOpen(true);
   };
@@ -161,7 +270,7 @@ const excluirMutation =
   const handleInativarFuncionario = async (func: FuncionarioItem) => {
     const data = prompt(
       `Digite a data de desligamento de ${func.nome}\nFormato: 2026-05-01`,
-      new Date().toISOString().split("T")[0]
+      hojeInput()
     );
 
     if (!data) return;
@@ -169,7 +278,7 @@ const excluirMutation =
     try {
       await inativarFuncionario.mutateAsync({
         id: func.id,
-        dataDesligamento: new Date(`${data}T00:00:00`),
+        dataDesligamento: dateFromInput(data),
       });
     } catch (error: any) {
       console.error(error);
@@ -178,67 +287,64 @@ const excluirMutation =
   };
 
   const handleReativarFuncionario = async (func: FuncionarioItem) => {
-  const data = prompt(
-    `Digite a data de reativação de ${func.nome}\nFormato: 2026-08-01`,
-    new Date().toISOString().split("T")[0]
-  );
+    const data = prompt(
+      `Digite a data de reativação de ${func.nome}\nFormato: 2026-08-01`,
+      hojeInput()
+    );
 
-  if (!data) return;
+    if (!data) return;
 
-  try {
-    await reativarFuncionario.mutateAsync({
-      id: func.id,
-      dataReativacao: new Date(`${data}T00:00:00`),
-    });
-  } catch (error: any) {
-    console.error(error);
-    alert(error?.message ?? "Erro ao reativar funcionário");
-  }
-};
+    try {
+      await reativarFuncionario.mutateAsync({
+        id: func.id,
+        dataReativacao: dateFromInput(data),
+      });
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message ?? "Erro ao reativar funcionário");
+    }
+  };
 
   const handleSaveFuncionario = async () => {
-    const camposFaltando: string[] = [];
+    setTentouSalvar(true);
 
-    if (!formData.nome.trim()) camposFaltando.push("Nome completo");
-    if (!formData.cpf.trim()) camposFaltando.push("CPF");
-    if (!formData.dataNascimento) camposFaltando.push("Data de aniversário");
-    if (!formData.funcao) camposFaltando.push("Função");
-    if (!formData.dataAdmissao) camposFaltando.push("Data de admissão");
+    if (!formValido) {
+      const faltando: string[] = [];
+      if (camposInvalidos.nome) faltando.push("Nome completo");
+      if (camposInvalidos.cpf) faltando.push("CPF");
+      if (camposInvalidos.pix) faltando.push("PIX");
+      if (camposInvalidos.dataNascimento) faltando.push("Data de aniversário");
+      if (camposInvalidos.funcao) faltando.push("Função");
+      if (camposInvalidos.tipoMeta) faltando.push("Tipo de meta / comissão");
+      if (camposInvalidos.dataAdmissao) faltando.push("Data de admissão");
 
-    if (formData.funcao === "consultor_vendas" && !formData.tipoMeta) {
-      camposFaltando.push("Tipo de meta / comissão");
+      alert(
+        `Preencha todos os campos obrigatórios antes de salvar:\n\n- ${faltando.join(
+          "\n- "
+        )}`
+      );
+      return;
     }
-
-   if (camposFaltando.length > 0) {
-  alert(
-    "Preencha todos os campos obrigatórios antes de salvar:\n\n- " +
-      camposFaltando.join("\n- ")
-  );
-  return;
-}
 
     try {
       const payload = {
         lojaId,
         nome: formData.nome.trim(),
         cpf: formData.cpf.trim(),
-        pix: formData.pix.trim() || null,
-        dataNascimento: formData.dataNascimento
-  ? new Date(`${formData.dataNascimento}T12:00:00`)
-  : null,
+        pix: formData.pix.trim(),
+        dataNascimento: dateFromInput(formData.dataNascimento),
         funcao: formData.funcao,
         tipoMeta:
-          formData.funcao === "consultor_vendas" && formData.tipoMeta
-            ? (formData.tipoMeta as "meta1" | "meta2")
+          formData.funcao === "consultor_vendas"
+            ? lojaId === 5
+              ? "meta2"
+              : (formData.tipoMeta as "meta1" | "meta2")
             : null,
-        dataAdmissao: new Date(`${formData.dataAdmissao}T00:00:00`),
+        dataAdmissao: dateFromInput(formData.dataAdmissao),
       };
 
       if (editingId) {
-        await updateFuncionario.mutateAsync({
-          id: editingId,
-          ...payload,
-        });
+        await updateFuncionario.mutateAsync({ id: editingId, ...payload });
       } else {
         await createFuncionario.mutateAsync(payload);
       }
@@ -251,8 +357,12 @@ const excluirMutation =
   const funcionariosBase = (funcionariosQuery.data ?? []) as FuncionarioItem[];
 
   const funcionarios = funcionariosBase.filter((func) =>
-    func.nome.toLowerCase().includes(buscaFuncionario.toLowerCase())
+    String(func.nome || "")
+      .toLowerCase()
+      .includes(buscaFuncionario.trim().toLowerCase())
   );
+
+  const salvando = createFuncionario.isPending || updateFuncionario.isPending;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-black p-6 text-white">
@@ -287,7 +397,10 @@ const excluirMutation =
                 <label className="mb-2 block text-sm text-gray-300">Loja</label>
                 <select
                   value={selectedLoja}
-                  onChange={(e) => setSelectedLoja(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedLoja(e.target.value);
+                    setBuscaFuncionario("");
+                  }}
                   className="w-full rounded-md border border-yellow-500/30 bg-gray-800 px-3 py-2 text-white outline-none"
                 >
                   {LOJAS.map((loja) => (
@@ -309,16 +422,21 @@ const excluirMutation =
         </Card>
 
         {isOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-            <div className="w-full max-w-2xl rounded-lg border border-yellow-500/30 bg-gray-950 p-6">
-              <h3 className="mb-4 text-lg font-semibold text-yellow-400">
-                {editingId ? "Editar Funcionário" : "Novo Funcionário"}
-              </h3>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-lg border border-yellow-500/30 bg-gray-950 p-6 shadow-2xl">
+              <div className="mb-5">
+                <h3 className="text-xl font-semibold text-yellow-400">
+                  {editingId ? "Editar Funcionário" : "Novo Funcionário"}
+                </h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  Todos os campos marcados com * são obrigatórios.
+                </p>
+              </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm text-gray-300">
-                    Nome Completo
+                    Nome Completo <span className="text-red-400">*</span>
                   </label>
                   <input
                     type="text"
@@ -327,25 +445,29 @@ const excluirMutation =
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, nome: e.target.value }))
                     }
-                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                    className={classeCampo(camposInvalidos.nome)}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-gray-300">CPF</label>
+                  <label className="mb-2 block text-sm text-gray-300">
+                    CPF <span className="text-red-400">*</span>
+                  </label>
                   <input
                     type="text"
-                    placeholder="Somente números ou formatado"
+                    placeholder="000.000.000-00"
                     value={formData.cpf}
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, cpf: e.target.value }))
                     }
-                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                    className={classeCampo(camposInvalidos.cpf)}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-gray-300">PIX</label>
+                  <label className="mb-2 block text-sm text-gray-300">
+                    PIX <span className="text-red-400">*</span>
+                  </label>
                   <input
                     type="text"
                     placeholder="Chave PIX"
@@ -353,13 +475,13 @@ const excluirMutation =
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, pix: e.target.value }))
                     }
-                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                    className={classeCampo(camposInvalidos.pix)}
                   />
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm text-gray-300">
-                    Data de Aniversário
+                    Data de Aniversário <span className="text-red-400">*</span>
                   </label>
                   <input
                     type="date"
@@ -370,12 +492,14 @@ const excluirMutation =
                         dataNascimento: e.target.value,
                       }))
                     }
-                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                    className={classeCampo(camposInvalidos.dataNascimento)}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-gray-300">Função</label>
+                  <label className="mb-2 block text-sm text-gray-300">
+                    Função <span className="text-red-400">*</span>
+                  </label>
                   <select
                     value={formData.funcao}
                     onChange={(e) =>
@@ -384,15 +508,21 @@ const excluirMutation =
                         funcao: e.target.value as FuncaoId,
                         tipoMeta:
                           e.target.value === "consultor_vendas"
-                            ? prev.tipoMeta
+                            ? lojaId === 5
+                              ? "meta2"
+                              : prev.tipoMeta
                             : "",
                       }))
                     }
-                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                    className={classeCampo(camposInvalidos.funcao)}
                   >
-                    {FUNCOES.map((funcao) => (
+                    {funcoesDisponiveis.map((funcao) => (
                       <option key={funcao.id} value={funcao.id}>
-                        {funcao.nome}
+                        {lojaId === 5 && funcao.id === "supervisor"
+                          ? "Supervisora de Consultor de Vendas - PJ"
+                          : lojaId === 5 && funcao.id === "consultor_vendas"
+                          ? "Consultor de Vendas - Meta 2"
+                          : funcao.nome}
                       </option>
                     ))}
                   </select>
@@ -401,28 +531,35 @@ const excluirMutation =
                 {formData.funcao === "consultor_vendas" && (
                   <div>
                     <label className="mb-2 block text-sm text-gray-300">
-                      Tipo de Meta / Comissão
+                      Tipo de Meta / Comissão <span className="text-red-400">*</span>
                     </label>
-                    <select
-                      value={formData.tipoMeta}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          tipoMeta: e.target.value as TipoMeta,
-                        }))
-                      }
-                      className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
-                    >
-                      <option value="">Selecione</option>
-                      <option value="meta1">Meta 1</option>
-                      <option value="meta2">Meta 2</option>
-                    </select>
+
+                    {lojaId === 5 ? (
+                      <div className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white">
+                        Meta 2 - Mensal
+                      </div>
+                    ) : (
+                      <select
+                        value={formData.tipoMeta}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            tipoMeta: e.target.value as TipoMeta,
+                          }))
+                        }
+                        className={classeCampo(camposInvalidos.tipoMeta)}
+                      >
+                        <option value="">Selecione</option>
+                        <option value="meta1">Meta 1</option>
+                        <option value="meta2">Meta 2</option>
+                      </select>
+                    )}
                   </div>
                 )}
 
                 <div>
                   <label className="mb-2 block text-sm text-gray-300">
-                    Data de Admissão
+                    Data de Admissão <span className="text-red-400">*</span>
                   </label>
                   <input
                     type="date"
@@ -433,30 +570,32 @@ const excluirMutation =
                         dataAdmissao: e.target.value,
                       }))
                     }
-                    className="w-full rounded-md border border-yellow-500/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                    className={classeCampo(camposInvalidos.dataAdmissao)}
                   />
                 </div>
               </div>
 
-              <div className="mt-6 flex gap-3">
+              {tentouSalvar && !formValido && (
+                <div className="mt-4 rounded-md border border-red-500/30 bg-red-950/20 p-3 text-sm text-red-300">
+                  Preencha todos os campos obrigatórios destacados antes de salvar.
+                </div>
+              )}
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Button
                   onClick={handleSaveFuncionario}
-                  disabled={createFuncionario.isPending || updateFuncionario.isPending}
-                  className="flex-1 bg-yellow-400 text-black hover:bg-yellow-300"
+                  disabled={salvando}
+                  className="flex-1 bg-yellow-400 text-black hover:bg-yellow-300 disabled:opacity-50"
                 >
-                  {createFuncionario.isPending || updateFuncionario.isPending
+                  {salvando
                     ? "Salvando..."
                     : editingId
-                    ? "Atualizar"
-                    : "Salvar"}
+                    ? "Salvar alterações"
+                    : "Cadastrar funcionário"}
                 </Button>
 
                 <Button
-                  onClick={() => {
-                    setIsOpen(false);
-                    setEditingId(null);
-                    setFormData(emptyForm);
-                  }}
+                  onClick={fecharFormulario}
                   variant="outline"
                   className="flex-1 border-yellow-500/30 bg-transparent text-yellow-400 hover:bg-yellow-500/10"
                 >
@@ -478,13 +617,14 @@ const excluirMutation =
           </CardHeader>
 
           <CardContent>
-            <div className="mb-4">
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
               <input
                 type="text"
                 placeholder="Buscar funcionário pelo nome..."
                 value={buscaFuncionario}
                 onChange={(e) => setBuscaFuncionario(e.target.value)}
-                className="w-full rounded-md border border-yellow-500/30 bg-gray-800 px-3 py-2 text-white outline-none placeholder:text-gray-500"
+                className="w-full rounded-md border border-yellow-500/30 bg-gray-800 py-2 pl-10 pr-3 text-white outline-none placeholder:text-gray-500"
               />
             </div>
 
@@ -526,25 +666,31 @@ const excluirMutation =
                           <td className="p-3 text-gray-300">{func.cpf || "-"}</td>
                           <td className="p-3 text-gray-300">{func.pix || "-"}</td>
                           <td className="p-3 text-gray-300">
-                            {func.dataNascimento
-                              ? new Date(func.dataNascimento).toLocaleDateString("pt-BR")
+                            {formatDateBR(func.dataNascimento)}
+                          </td>
+                          <td className="p-3 text-gray-300">
+                            {labelFuncao(func.funcao, lojaId)}
+                          </td>
+                          <td className="p-3 text-gray-300">
+                            {func.funcao === "consultor_vendas"
+                              ? lojaId === 5
+                                ? "Meta 2"
+                                : func.tipoMeta === "meta1"
+                                ? "Meta 1"
+                                : func.tipoMeta === "meta2"
+                                ? "Meta 2"
+                                : "-"
                               : "-"}
                           </td>
                           <td className="p-3 text-gray-300">
-                            {FUNCOES.find((f) => f.id === func.funcao)?.nome ?? func.funcao}
-                          </td>
-                          <td className="p-3 text-gray-300">{func.tipoMeta || "-"}</td>
-                          <td className="p-3 text-gray-300">
-                            {func.dataAdmissao
-                              ? new Date(func.dataAdmissao).toLocaleDateString("pt-BR")
-                              : "-"}
+                            {formatDateBR(func.dataAdmissao)}
                           </td>
                           <td className="p-3">
                             <span
                               className={
                                 func.status === "ativo"
-                                  ? "rounded px-2 py-1 text-xs text-green-400 bg-green-500/10"
-                                  : "rounded px-2 py-1 text-xs text-red-400 bg-red-500/10"
+                                  ? "rounded bg-green-500/10 px-2 py-1 text-xs text-green-400"
+                                  : "rounded bg-red-500/10 px-2 py-1 text-xs text-red-400"
                               }
                             >
                               {func.status === "ativo" ? "Ativo" : "Inativo"}
@@ -561,7 +707,7 @@ const excluirMutation =
                               Editar
                             </Button>
 
-                            {func.status === "ativo" && (
+                            {func.status === "ativo" ? (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -572,37 +718,41 @@ const excluirMutation =
                                 <Trash2 className="mr-2 h-4 w-4" />
                                 Inativar
                               </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleReativarFuncionario(func)}
+                                disabled={reativarFuncionario.isPending}
+                                className="ml-2 border-green-500/30 bg-transparent text-green-400 hover:bg-green-500/10"
+                              >
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                Reativar
+                              </Button>
                             )}
 
-                            {func.status === "inativo" && (
-                             <Button
-                               size="sm"
-                               variant="outline"
-                               onClick={() => handleReativarFuncionario(func)}
-                               className="ml-2 border-green-500/30 bg-transparent text-green-400 hover:bg-green-500/10"
-                              >
-                             Reativar
-                           </Button>
-                          )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={excluirMutation.isPending}
+                              className="ml-2"
+                              onClick={async () => {
+                                const confirmar = confirm(
+                                  `Deseja realmente excluir ${func.nome}?`
+                                );
 
-                        <Button
-                           variant="destructive"
-                           size="sm"
-                           onClick={async () => {
-                           const confirmar = confirm(
-                           "Deseja realmente excluir este funcionário?"
-                          );
+                                if (!confirmar) return;
 
-                           if (!confirmar) return;
-
-                           await excluirMutation.mutateAsync({
-                           id: func.id,
-                          });
-                        }}
-                      >
-                  Excluir
-                </Button>
-
+                                try {
+                                  await excluirMutation.mutateAsync({ id: func.id });
+                                } catch (error: any) {
+                                  console.error(error);
+                                  alert(error?.message ?? "Erro ao excluir funcionário");
+                                }
+                              }}
+                            >
+                              Excluir
+                            </Button>
                           </td>
                         </tr>
                       ))

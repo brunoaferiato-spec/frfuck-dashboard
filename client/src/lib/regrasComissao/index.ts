@@ -29,6 +29,21 @@ import {
   regraGerenteFlorianopolis,
 } from "./florianopolis";
 
+import {
+  regrasSaoLeopoldo,
+  regraAlinhadorSaoLeopoldo,
+  regrasConsultorSaoLeopoldo,
+  regrasRecepcaoSaoLeopoldo,
+  regraGerenteSaoLeopoldo,
+} from "./saoLeopoldo";
+
+import {
+  regrasGravatai,
+  regraAlinhadorGravatai,
+  regrasConsultorGravatai,
+  regrasRecepcaoGravatai,
+} from "./gravatai";
+
 import { regraSupervisor } from "./supervisor";
 import { regrasPremiacoesEspeciais } from "./premiacoesEspeciais";
 
@@ -53,6 +68,8 @@ const REGRAS_POR_LOJA: Record<number, RegrasVendedorMecanico> = {
   2: regrasBlumenau,
   3: regrasSaoJose,
   4: regrasFlorianopolis,
+  6: regrasSaoLeopoldo,
+  7: regrasGravatai,
 };
 
 const REGRAS_CONSULTOR_POR_LOJA: Record<number, RegrasConsultor> = {
@@ -60,6 +77,10 @@ const REGRAS_CONSULTOR_POR_LOJA: Record<number, RegrasConsultor> = {
   2: regrasConsultorBlumenau,
   3: regrasConsultorSaoJose,
   4: regrasConsultorFlorianopolis,
+  // ACI usa somente Consultor Meta 2 e segue a mesma regra mensal de Joinville.
+  5: regrasConsultorJoinville,
+  6: regrasConsultorSaoLeopoldo,
+  7: regrasConsultorGravatai,
 };
 
 const REGRAS_RECEPCAO_POR_LOJA: Record<number, RegrasRecepcao> = {
@@ -67,6 +88,8 @@ const REGRAS_RECEPCAO_POR_LOJA: Record<number, RegrasRecepcao> = {
   2: regrasRecepcaoBlumenau,
   3: regrasRecepcaoSaoJose,
   4: regrasRecepcaoFlorianopolis,
+  6: regrasRecepcaoSaoLeopoldo,
+  7: regrasRecepcaoGravatai,
 };
 
 // ======================================================
@@ -186,6 +209,14 @@ export function getRegraAlinhador(args: {
 
   if (lojaId === 4) {
     return regraAlinhadorFlorianopolis;
+  }
+
+  if (lojaId === 6) {
+    return regraAlinhadorSaoLeopoldo;
+  }
+
+  if (lojaId === 7) {
+    return regraAlinhadorGravatai;
   }
 
   return null;
@@ -437,6 +468,10 @@ export function getRegraGerente(args: {
     return regraGerenteFlorianopolis;
   }
 
+  if (lojaId === 6) {
+    return regraGerenteSaoLeopoldo;
+  }
+
   return null;
 }
 
@@ -611,16 +646,24 @@ export function getRegraPremiacaoEspecial(args: {
   const nome = normalizarNome(args.funcionarioNome);
 
   const regra = regrasPremiacoesEspeciais.find((item) => {
-  const nomeRegra = normalizarNome(item.funcionarioNome);
+    const nomeRegra = normalizarNome(item.funcionarioNome);
 
-  return (
-    item.lojaId === lojaId &&
-    (
-      nome === nomeRegra ||
-      nome.includes(nomeRegra)
-    )
-  );
-});
+    const primeiroNomeRegra = nomeRegra.split(/\s+/)[0] || "";
+    const primeiroNomeFuncionario = nome.split(/\s+/)[0] || "";
+
+    return (
+      item.lojaId === lojaId &&
+      (
+        nome === nomeRegra ||
+        nome.includes(nomeRegra) ||
+        nomeRegra.includes(nome) ||
+        (
+          primeiroNomeRegra.length >= 4 &&
+          primeiroNomeRegra === primeiroNomeFuncionario
+        )
+      )
+    );
+  });
 
   return regra || null;
 }
@@ -749,7 +792,10 @@ export function calcularPremiacaoEspecialFuncionario(args: {
 
     if (alinhadorElegivel) {
       detalhes.push({
-        descricao: "RAMPA",
+        descricao:
+          lojaId === 2
+            ? "RAMPA - MILTON"
+            : "RAMPA",
         valor: Number(regra.premiacaoAlinhador.valorPremio || 0),
       });
     }
@@ -775,25 +821,34 @@ export {
   regrasBlumenau,
   regrasSaoJose,
   regrasFlorianopolis,
+  regrasSaoLeopoldo,
+  regrasGravatai,
 
   regraAlinhadorJoinville,
   regraAlinhadorPadraoBlumenau,
   regraAlinhadorMiltonBlumenau,
   regraAlinhadorSaoJose,
   regraAlinhadorFlorianopolis,
+  regraAlinhadorSaoLeopoldo,
+  regraAlinhadorGravatai,
 
   regrasConsultorJoinville,
   regrasConsultorBlumenau,
   regrasConsultorSaoJose,
   regrasConsultorFlorianopolis,
+  regrasConsultorSaoLeopoldo,
+  regrasConsultorGravatai,
 
   regrasRecepcaoJoinville,
   regrasRecepcaoBlumenau,
   regrasRecepcaoSaoJose,
   regrasRecepcaoFlorianopolis,
+  regrasRecepcaoSaoLeopoldo,
+  regrasRecepcaoGravatai,
 
   regraGerenteSaoJose,
   regraGerenteFlorianopolis,
+  regraGerenteSaoLeopoldo,
 
   regraSupervisor,
   regrasPremiacoesEspeciais,
