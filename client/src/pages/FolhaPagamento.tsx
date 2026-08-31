@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, BadgeDollarSign, ReceiptText, Sparkles, TrendingUp, WalletCards } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { readSheet } from "read-excel-file/browser";
 
@@ -1395,7 +1395,7 @@ const isMensalUnico =
       <button
         type="button"
         onClick={() => onOpenCellEditor(linha, campo, label, mode)}
-        className={`w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 font-bold hover:border-primary/60 ${
+        className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all duration-200 hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] hover:shadow-[0_0_20px_rgba(212,175,55,0.06)] ${
   rawValue > 0
     ? ["sem1", "sem2", "sem3", "sem4", "premiacao"].includes(String(campo))
       ? "text-green-400"
@@ -1576,33 +1576,38 @@ const regraClassName = manual
 }
 
   return (
-    <Card className="bg-gray-900 border-primary/30">
-      <CardHeader>
-        <CardTitle className="text-primary">{titulo}</CardTitle>
-        <CardDescription className="text-gray-400">
-          {descricao}
-        </CardDescription>
+    <Card className="group overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] shadow-[0_18px_60px_rgba(0,0,0,0.32)]">
+      <CardHeader className="border-b border-[#D4AF37]/10 bg-gradient-to-r from-[#D4AF37]/[0.055] via-transparent to-transparent px-6 py-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-lg font-bold tracking-tight text-[#F2D675]">{titulo}</CardTitle>
+            <CardDescription className="mt-1 text-gray-500">
+              {descricao}
+            </CardDescription>
+          </div>
+          <div className="mt-1 h-2 w-2 rounded-full bg-[#D4AF37] shadow-[0_0_18px_rgba(212,175,55,0.55)]" />
+        </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="p-0">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1900px] text-sm">
             <thead>
-              <tr className="border-b border-primary/30 text-primary">
-                <th className="text-left p-2 sticky left-0 z-20 bg-gray-900">Nome</th>
-                <th className="text-left p-2">Função</th>
+              <tr className="border-b border-[#D4AF37]/15 bg-[#D4AF37]/[0.025] text-[#D4AF37]">
+                <th className="sticky left-0 z-20 bg-[#0b0b0b] p-3 text-left text-[11px] font-bold uppercase tracking-[0.08em]">Nome</th>
+                <th className="p-3 text-left text-[11px] font-bold uppercase tracking-[0.06em]">Função</th>
                 {isSalarioFixo && (
-  <th className="text-right p-2">Salário</th>
+  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Salário</th>
 )}
 
                 {!isSalarioFixo && !isRecepcao && !isPj && !isMensalUnico && !isConsultorMeta2 && !isGerente && (
                   <>
-                    <th className="text-right p-2">
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
                       {quadrante === "comissao_semanal" ? (
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(1)}
-                          className="font-bold text-primary hover:underline underline-offset-4"
+                          className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
                           title="Importar relatório da SEM1"
                         >
                           SEM1
@@ -1611,13 +1616,13 @@ const regraClassName = manual
                         "SEM1"
                       )}
                     </th>
-                    <th className="text-right p-2">{isConsultor ? "Regra" : "%"}</th>
-                    <th className="text-right p-2">
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">{isConsultor ? "Regra" : "%"}</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
                       {quadrante === "comissao_semanal" ? (
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(2)}
-                          className="font-bold text-primary hover:underline underline-offset-4"
+                          className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
                           title="Importar relatório da SEM2"
                         >
                           SEM2
@@ -1626,13 +1631,13 @@ const regraClassName = manual
                         "SEM2"
                       )}
                     </th>
-                    <th className="text-right p-2">{isConsultor ? "Regra" : "%"}</th>
-                    <th className="text-right p-2">
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">{isConsultor ? "Regra" : "%"}</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
                       {quadrante === "comissao_semanal" ? (
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(3)}
-                          className="font-bold text-primary hover:underline underline-offset-4"
+                          className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
                           title="Importar relatório da SEM3"
                         >
                           SEM3
@@ -1641,13 +1646,13 @@ const regraClassName = manual
                         "SEM3"
                       )}
                     </th>
-                    <th className="text-right p-2">{isConsultor ? "Regra" : "%"}</th>
-                    <th className="text-right p-2">
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">{isConsultor ? "Regra" : "%"}</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
                       {quadrante === "comissao_semanal" ? (
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(4)}
-                          className="font-bold text-primary hover:underline underline-offset-4"
+                          className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
                           title="Importar relatório da SEM4"
                         >
                           SEM4
@@ -1656,7 +1661,7 @@ const regraClassName = manual
                         "SEM4"
                       )}
                     </th>
-                    <th className="text-right p-2">{isConsultor ? "Regra" : "%"}</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">{isConsultor ? "Regra" : "%"}</th>
                   </>
                 )}
                 
@@ -1664,36 +1669,36 @@ const regraClassName = manual
  
 {isGerente && !isGerenteSaoJoseSemanal && (
   <>
-    <th className="text-right p-2">Liquidez Venda</th>
-    <th className="text-right p-2">% Venda</th>
-    <th className="text-right p-2">Liquidez Loja</th>
-    <th className="text-right p-2">% Loja</th>
-    <th className="text-right p-2">Total Comissão</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Liquidez Venda</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">% Venda</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Liquidez Loja</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">% Loja</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Comissão</th>
   </>
 )}
 
 {isGerenteSaoJoseSemanal && (
   <>
-    <th className="text-right p-2">SEM1</th>
-    <th className="text-right p-2">% SEM1</th>
-    <th className="text-right p-2">SEM2</th>
-    <th className="text-right p-2">% SEM2</th>
-    <th className="text-right p-2">SEM3</th>
-    <th className="text-right p-2">% SEM3</th>
-    <th className="text-right p-2">SEM4</th>
-    <th className="text-right p-2">% SEM4</th>
-    <th className="text-right p-2">Liquidez Loja</th>
-    <th className="text-right p-2">% Loja</th>
-    <th className="text-right p-2">Total Comissão</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">SEM1</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">% SEM1</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">SEM2</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">% SEM2</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">SEM3</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">% SEM3</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">SEM4</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">% SEM4</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Liquidez Loja</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">% Loja</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Comissão</th>
   </>
 )}
                  
                 {isConsultorMeta2 && (
   <>
-    <th className="text-right p-2">Quant. Carro</th>
-    <th className="text-right p-2">Regra</th>
-    <th className="text-right p-2">Total Carros</th>
-    <th className="text-right p-2">Total Comissão</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Quant. Carro</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Regra</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Carros</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Comissão</th>
   </>
 )}
 
@@ -1704,12 +1709,12 @@ const regraClassName = manual
   !isConsultorMeta2 &&
   !isGerente && (
     <>
-      <th className="text-right p-2">
+      <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
         {quadrante === "comissao_mensal" && linhas[0]?.loja_id === 4 ? (
           <button
             type="button"
             onClick={() => onOpenImportacaoSemana(1)}
-            className="font-bold text-primary hover:underline underline-offset-4"
+            className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
             title="Importar relatório mensal de VENDA/MECÂNICA"
           >
             Liquidez Venda
@@ -1718,18 +1723,18 @@ const regraClassName = manual
           "Liquidez"
         )}
       </th>
-      <th className="text-right p-2">%</th>
+      <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">%</th>
     </>
 )}
 
                 {isRecepcao && (
                   <>
-                    <th className="text-right p-2">Vendas fechadas</th>
-                    <th className="text-right p-2">Valor</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Vendas fechadas</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Valor</th>
                     {recepcaoCompleta && (
                       <>
-                        <th className="text-right p-2">Entradas</th>
-                        <th className="text-right p-2">Valor</th>
+                        <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Entradas</th>
+                        <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Valor</th>
                       </>
                     )}
                   </>
@@ -1737,52 +1742,52 @@ const regraClassName = manual
 
                 {isSupervisor && (
                   <>
-                   <th className="text-right p-2">Salário</th>
-                   <th className="text-right p-2">Liquidez</th>
-                   <th className="text-right p-2">Total comissão</th>
-                   <th className="text-right p-2">Total</th>
+                   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Salário</th>
+                   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Liquidez</th>
+                   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total comissão</th>
+                   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total</th>
                  </>
                 )}
 
                 {isSupervisoraAci && (
                   <>
-                    <th className="text-right p-2">Salário Fixo</th>
-                    <th className="text-right p-2">Joinville</th>
-                    <th className="text-right p-2">Blumenau</th>
-                    <th className="text-right p-2">São José</th>
-                    <th className="text-right p-2">Florianópolis</th>
-                    <th className="text-right p-2">Gravataí</th>
-                    <th className="text-right p-2">São Leopoldo</th>
-                    <th className="text-right p-2">Total Carros</th>
-                    <th className="text-right p-2">Valor / Carro</th>
-                    <th className="text-right p-2">Comissão</th>
-                    <th className="text-right p-2">Total</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Salário Fixo</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Joinville</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Blumenau</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">São José</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Florianópolis</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Gravataí</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">São Leopoldo</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Carros</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Valor / Carro</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Comissão</th>
+                    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total</th>
                   </>
                 )}
 
                 {!isSalarioFixo && !isRecepcao && !isPj && !isConsultorMeta2 && !isGerente && (
   <>
-    <th className="text-right p-2">
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
       {isConsultor ? "Total Carros" : "Total Liquidez"}
     </th>
-    <th className="text-right p-2">Total Comissão</th>
+    <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Comissão</th>
   </>
 )}
 
-                {isRecepcao && <th className="text-right p-2">Total Comissão</th>}
+                {isRecepcao && <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Comissão</th>}
 
-                <th className="text-right p-2">Premiação</th>
-                <th className="text-right p-2">Vale</th>
-                <th className="text-right p-2">Aluguel</th>
-                {!isPj && <th className="text-right p-2">INSS</th>}
+                <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Premiação</th>
+                <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Vale</th>
+                <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Aluguel</th>
+                {!isPj && <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">INSS</th>}
                 {isSupervisoraAci ? (
-                  <th className="text-right p-2">Adiant.</th>
+                  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Adiant.</th>
                 ) : (
-                  <th className="text-right p-2">
+                  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
                     <button
                       type="button"
                       onClick={onOpenImportacaoAdiantamento}
-                      className="inline-flex items-center gap-1 text-primary hover:text-yellow-300 hover:underline underline-offset-4"
+                      className="inline-flex items-center gap-1 text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
                       title="Importar PDF de adiantamento"
                     >
                       Adiant.
@@ -1791,11 +1796,11 @@ const regraClassName = manual
                   </th>
                 )}
                 {!isPj && (
-                  <th className="text-right p-2">
+                  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
                     <button
                       type="button"
                       onClick={onOpenImportacaoHolerite}
-                      className="inline-flex items-center gap-1 text-primary hover:text-yellow-300 hover:underline underline-offset-4"
+                      className="inline-flex items-center gap-1 text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
                       title="Importar PDF da folha mensal"
                     >
                       Holerite
@@ -1803,8 +1808,8 @@ const regraClassName = manual
                     </button>
                   </th>
                 )}
-                <th className="text-right p-2">Boleto</th>
-                <th className="text-right p-2">Observação</th>
+                <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Boleto</th>
+                <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Observação</th>
               </tr>
             </thead>
 
@@ -1812,13 +1817,13 @@ const regraClassName = manual
              {linhas.map((linha: LinhaComQuadrante) => (
                 <tr
                   key={linha.id}
-                  className="border-b border-primary/10 hover:bg-gray-800"
+                  className="border-b border-white/[0.045] transition-colors duration-200 hover:bg-[#D4AF37]/[0.028]"
                 >
-                  <td className="p-2 text-white font-semibold sticky left-0 z-10 bg-gray-900 min-w-[260px]">
+                  <td className="sticky left-0 z-10 min-w-[260px] bg-[#0b0b0b] p-3 font-semibold text-white">
                     <button
                       type="button"
                       onClick={() => onOpenFuncionarioDetalhe(linha)}
-                      className="text-left text-white font-semibold hover:text-primary hover:underline underline-offset-4 transition-colors"
+                      className="text-left font-semibold text-white transition-colors hover:text-[#F2D675] hover:underline underline-offset-4"
                       title="Ver dados do funcionário"
                     >
                       {linha.nome}
@@ -1974,7 +1979,7 @@ const regraClassName = manual
       "money"
     )
   }
-  className="w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 font-bold hover:border-primary/60 text-white"
+  className="w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold text-white shadow-inner shadow-black/30 transition-all hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045]"
 >
   R$ {money(Number((linha as any).liquidezLojaGerente || 0))}
 </button>
@@ -2108,7 +2113,7 @@ const regraClassName = manual
                     <button
                       type="button"
                       onClick={() => onOpenPremioEditor(linha)}
-                      className={`w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 hover:border-primary/60 font-bold ${
+                      className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] ${
                        (
   linha.premiacao +
   (((linha as any).detalhesGrupo || []).reduce(
@@ -2132,7 +2137,7 @@ const regraClassName = manual
                     <button
                       type="button"
                       onClick={() => onOpenValeEditor(linha)}
-                      className={`w-full flex items-center justify-end whitespace-nowrap rounded-md border border-primary/20 bg-gray-800 px-3 py-2 hover:border-primary/60 font-bold ${
+                      className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] ${
                         linha.vale > 0 ? "text-red-400" : "text-white"
                       }`}
                     >
@@ -2183,7 +2188,7 @@ const regraClassName = manual
                       className={
                         linha.observacoes && linha.observacoes.length > 0
                           ? "rounded-md bg-red-600 px-3 py-2 font-bold text-white hover:bg-red-500"
-                          : "rounded-md border border-primary/20 bg-gray-800 px-3 py-2 text-white hover:border-primary/60"
+                          : "rounded-md border border-[#D4AF37]/15 bg-[#111111] px-3 py-2 text-white hover:border-[#D4AF37]/45"
                       }
                     >
                       {linha.observacoes && linha.observacoes.length > 0 ? "OBS" : "—"}
@@ -5553,206 +5558,187 @@ if (
   );
 }
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-black p-6 text-white">
-      <div className="max-w-[1900px] mx-auto space-y-6">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-4 mb-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation("/")}
-                className="text-primary hover:bg-primary/20"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <h1 className="text-3xl font-bold text-primary">
-                Folha de Pagamento
+    <div className="relative min-h-screen overflow-x-hidden bg-[#050505] p-4 text-white md:p-6">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(212,175,55,0.11),transparent_27%),radial-gradient(circle_at_92%_8%,rgba(212,175,55,0.06),transparent_24%)]" />
+      <div className="relative mx-auto max-w-[1900px] space-y-6">
+        <section className="relative overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#090909] to-[#050505] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.42)] md:p-7">
+          <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[#D4AF37]/[0.08] blur-3xl" />
+          <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <div className="mb-3 flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocation("/")}
+                  className="h-10 w-10 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.045] p-0 text-[#D4AF37] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.055] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#D8C078]">
+                  <Sparkles className="h-3 w-3" /> Gestão financeira
+                </span>
+              </div>
+              <h1 className="text-3xl font-black tracking-tight text-white md:text-4xl">
+                Folha de <span className="text-[#D4AF37]">Pagamento</span>
               </h1>
+              <p className="mt-2 max-w-2xl text-sm text-gray-500">
+                Conferência de liquidez, comissões, descontos, boletos e fechamento por competência.
+              </p>
             </div>
-            <p className="text-gray-400">
-              Quadrantes organizados por tipo de remuneração
-            </p>
-          </div>
 
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <div
-                className={`rounded-md border px-3 py-2 text-xs font-semibold ${
-                  mesFechado
-                    ? "border-red-500/40 bg-red-950/30 text-red-300"
-                    : "border-green-500/30 bg-green-950/20 text-green-300"
-                }`}
-              >
-                {mesFechado ? "🔒 MÊS FECHADO" : "🟢 MÊS ABERTO"}
+            <div className="flex flex-col items-start gap-2 xl:items-end">
+              <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                <div
+                  className={`rounded-xl border px-3 py-2 text-xs font-bold tracking-wide ${
+                    mesFechado
+                      ? "border-red-500/30 bg-red-950/25 text-red-300"
+                      : "border-emerald-500/25 bg-emerald-950/20 text-emerald-300"
+                  }`}
+                >
+                  {mesFechado ? "🔒 MÊS FECHADO" : "● MÊS ABERTO"}
+                </div>
+
+                {podeGerenciarFechamento && !mesFechado && (
+                  <Button
+                    variant="outline"
+                    className="rounded-xl border-red-500/30 bg-black/20 text-red-300 hover:bg-red-950/30 hover:text-red-200"
+                    disabled={fecharMesMutation.isPending}
+                    onClick={fecharMesAtual}
+                  >
+                    {fecharMesMutation.isPending ? "Fechando..." : "Fechar mês"}
+                  </Button>
+                )}
+
+                {podeGerenciarFechamento && mesFechado && (
+                  <Button
+                    variant="outline"
+                    className="rounded-xl border-[#D4AF37]/30 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F7E5A7]"
+                    onClick={() => {
+                      setSenhaReabertura("");
+                      setErroFechamento("");
+                      setReabrirMesOpen(true);
+                    }}
+                  >
+                    Reabrir mês
+                  </Button>
+                )}
+
+                <Button
+                  className="rounded-xl bg-gradient-to-r from-[#C79C2C] via-[#D4AF37] to-[#E2C45F] font-bold text-black shadow-[0_10px_30px_rgba(212,175,55,0.16)] transition hover:brightness-110"
+                  onClick={exportarBoletos}
+                >
+                  <ReceiptText className="mr-2 h-4 w-4" />
+                  Exportar boletos
+                </Button>
               </div>
 
-              {podeGerenciarFechamento && !mesFechado && (
-                <Button
-                  variant="outline"
-                  className="border-red-500/40 text-red-300 hover:bg-red-950/30"
-                  disabled={fecharMesMutation.isPending}
-                  onClick={fecharMesAtual}
-                >
-                  {fecharMesMutation.isPending ? "Fechando..." : "Fechar mês"}
-                </Button>
+              {mesFechado && fechamentoQuery.data?.fechadoPorNome && (
+                <p className="text-xs text-gray-600">
+                  Fechado por {fechamentoQuery.data.fechadoPorNome}
+                  {fechamentoQuery.data.fechadoEm
+                    ? ` • ${new Date(fechamentoQuery.data.fechadoEm).toLocaleString("pt-BR")}`
+                    : ""}
+                </p>
               )}
 
-              {podeGerenciarFechamento && mesFechado && (
-                <Button
-                  variant="outline"
-                  className="border-primary/40 text-primary hover:bg-primary/10"
-                  onClick={() => {
-                    setSenhaReabertura("");
-                    setErroFechamento("");
-                    setReabrirMesOpen(true);
-                  }}
-                >
-                  Reabrir mês
-                </Button>
+              {erroFechamento && !reabrirMesOpen && (
+                <p className="max-w-xl text-right text-xs text-red-400">{erroFechamento}</p>
               )}
-
-              <Button
-                className="bg-primary text-black hover:bg-yellow-300 font-semibold"
-                onClick={exportarBoletos}
-              >
-                Exportar boletos
-              </Button>
             </div>
-
-            {mesFechado && fechamentoQuery.data?.fechadoPorNome && (
-              <p className="text-xs text-gray-500">
-                Fechado por {fechamentoQuery.data.fechadoPorNome}
-                {fechamentoQuery.data.fechadoEm
-                  ? ` • ${new Date(fechamentoQuery.data.fechadoEm).toLocaleString("pt-BR")}`
-                  : ""}
-              </p>
-            )}
-
-            {erroFechamento && !reabrirMesOpen && (
-              <p className="text-xs text-red-400 max-w-xl text-right">{erroFechamento}</p>
-            )}
           </div>
-        </div>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="bg-gray-900 border-primary/30">
-            <CardHeader>
-              <CardTitle className="text-primary text-sm">
-                Total Liquidez
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">R$ {money(totalLiquidezGeral)}</p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
+          <Card className="group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl" />
+            <CardContent className="relative p-5">
+              <div className="mb-6 flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-600">Total Liquidez</p>
+                  <div className="mt-2 h-px w-8 bg-gradient-to-r from-[#D4AF37] to-transparent" />
+                </div>
+                <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2.5">
+                  <TrendingUp className="h-4 w-4 text-[#D4AF37]" />
+                </div>
+              </div>
+              <p className="text-2xl font-black tracking-tight text-white md:text-3xl">R$ {money(totalLiquidezGeral)}</p>
+              <p className="mt-2 text-xs text-gray-600">Liquidez consolidada da competência</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-900 border-primary/30">
-            <CardHeader>
-              <CardTitle className="text-primary text-sm">
-                Total Comissão + Premiação
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-yellow-300">
-                R$ {money(totalComissaoGeral)}
-              </p>
+          <Card className="group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl" />
+            <CardContent className="relative p-5">
+              <div className="mb-6 flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-600">Comissão + Premiação</p>
+                  <div className="mt-2 h-px w-8 bg-gradient-to-r from-[#D4AF37] to-transparent" />
+                </div>
+                <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2.5">
+                  <BadgeDollarSign className="h-4 w-4 text-[#D4AF37]" />
+                </div>
+              </div>
+              <p className="text-2xl font-black tracking-tight text-[#F2D675] md:text-3xl">R$ {money(totalComissaoGeral)}</p>
+              <p className="mt-2 text-xs text-gray-600">Custo variável calculado na folha</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-900 border-primary/30">
-            <CardHeader>
-              <CardTitle className="text-primary text-sm">
-                Total Boleto
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p
-                className={`text-2xl font-bold ${
-                  totalBoletoGeral < 0 ? "text-red-500" : "text-green-400"
-                }`}
-              >
+          <Card className="group relative overflow-hidden rounded-2xl border border-emerald-500/15 bg-gradient-to-br from-[#101311] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/30">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-emerald-500/[0.07] blur-3xl" />
+            <CardContent className="relative p-5">
+              <div className="mb-6 flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-600">Total Boleto</p>
+                  <div className="mt-2 h-px w-8 bg-gradient-to-r from-emerald-400/70 to-transparent" />
+                </div>
+                <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.05] p-2.5">
+                  <ReceiptText className="h-4 w-4 text-emerald-400" />
+                </div>
+              </div>
+              <p className={`text-2xl font-black tracking-tight md:text-3xl ${totalBoletoGeral < 0 ? "text-red-400" : "text-emerald-400"}`}>
                 R$ {money(totalBoletoGeral)}
               </p>
+              <p className="mt-2 text-xs text-gray-600">Total previsto para exportação</p>
             </CardContent>
           </Card>
-          <Card className="bg-gray-900 border-primary/30">
-  <CardHeader>
-    <CardTitle className="text-primary text-sm">
-      Total Folha
-    </CardTitle>
-  </CardHeader>
-  <CardContent>
-    <p className="text-2xl font-bold text-green-400">
-      R$ {money(totalFolhaGeral)}
-    </p>
 
-    <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
-  <button
-    type="button"
-    onClick={() =>
-      setFolhaFiltros((prev) => ({ ...prev, inss: !prev.inss }))
-    }
-    className={`rounded-md px-2 py-1 text-center ${
-      folhaFiltros.inss ? "bg-gray-700" : "bg-gray-900 opacity-50"
-    }`}
-  >
-    <span className="block text-gray-400">INSS</span>
-    
-  </button>
+          <Card className="group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl" />
+            <CardContent className="relative p-5">
+              <div className="mb-4 flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-600">Total Folha</p>
+                  <div className="mt-2 h-px w-8 bg-gradient-to-r from-[#D4AF37] to-transparent" />
+                </div>
+                <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2.5">
+                  <WalletCards className="h-4 w-4 text-[#D4AF37]" />
+                </div>
+              </div>
+              <p className="text-2xl font-black tracking-tight text-emerald-400 md:text-3xl">R$ {money(totalFolhaGeral)}</p>
+              <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-semibold uppercase tracking-wide">
+                <button type="button" onClick={() => setFolhaFiltros((prev) => ({ ...prev, inss: !prev.inss }))} className={`rounded-lg border px-2 py-1.5 transition ${folhaFiltros.inss ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#F2D675]" : "border-white/[0.05] bg-white/[0.02] text-gray-700"}`}>INSS</button>
+                <button type="button" onClick={() => setFolhaFiltros((prev) => ({ ...prev, adiant: !prev.adiant }))} className={`rounded-lg border px-2 py-1.5 transition ${folhaFiltros.adiant ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#F2D675]" : "border-white/[0.05] bg-white/[0.02] text-gray-700"}`}>Adiant.</button>
+                <button type="button" onClick={() => setFolhaFiltros((prev) => ({ ...prev, holerite: !prev.holerite }))} className={`rounded-lg border px-2 py-1.5 transition ${folhaFiltros.holerite ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#F2D675]" : "border-white/[0.05] bg-white/[0.02] text-gray-700"}`}>Holerite</button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-  <button
-    type="button"
-    onClick={() =>
-      setFolhaFiltros((prev) => ({ ...prev, adiant: !prev.adiant }))
-    }
-    className={`rounded-md px-2 py-1 text-center ${
-      folhaFiltros.adiant ? "bg-gray-700" : "bg-gray-900 opacity-50"
-    }`}
-  >
-    <span className="block text-gray-400">Adiant.</span>
-    
-  </button>
-
-  <button
-    type="button"
-    onClick={() =>
-      setFolhaFiltros((prev) => ({
-        ...prev,
-        holerite: !prev.holerite,
-      }))
-    }
-    className={`rounded-md px-2 py-1 text-center ${
-      folhaFiltros.holerite
-        ? "bg-gray-700"
-        : "bg-gray-900 opacity-50"
-    }`}
-    >
-    <span className="block text-gray-400">Holerite</span>
-     
-  </button>
-</div>
-
-</CardContent>
-</Card>
-
-</div>
-
-<Card className="bg-gray-900 border-primary/30 py-1">
-  <CardContent className="py-3 px-4">
+<Card className="overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#070707] shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
+  <CardContent className="px-5 py-4">
     <div className="grid grid-cols-12 items-center gap-4">
       <div className="col-span-12 md:col-span-1">
-        <p className="text-primary font-semibold">Filtros</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#D4AF37]">Filtros</p>
       </div>
 
       <div className="col-span-12 md:col-span-2">
         <div className="flex items-center gap-3">
           <Label className="text-gray-300 whitespace-nowrap">Cidade</Label>
           <Select value={selectedLoja} onValueChange={setSelectedLoja}>
-            <SelectTrigger className="bg-gray-800 border-primary/30 text-white h-9">
+            <SelectTrigger className="h-10 rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-primary/30">
+            <SelectContent className="border-[#D4AF37]/20 bg-[#0b0b0b] text-white">
               {LOJAS.map((loja) => (
                 <SelectItem
                   key={loja.id}
@@ -5774,7 +5760,7 @@ if (
             type="number"
             value={ano}
             onChange={(e) => setAno(parseInt(e.target.value, 10) || 2026)}
-            className="bg-gray-800 border-primary/30 text-white h-9"
+            className="h-10 rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30"
           />
         </div>
       </div>
@@ -5786,10 +5772,10 @@ if (
             value={mes.toString()}
             onValueChange={(value) => setMes(parseInt(value, 10))}
           >
-            <SelectTrigger className="bg-gray-800 border-primary/30 text-white h-9">
+            <SelectTrigger className="h-10 rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-primary/30">
+            <SelectContent className="border-[#D4AF37]/20 bg-[#0b0b0b] text-white">
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                 <SelectItem
                   key={m}
@@ -5810,7 +5796,7 @@ if (
 </Card>
 
         {mesFechado && (
-          <div className="rounded-lg border border-red-500/30 bg-red-950/20 px-5 py-4">
+          <div className="rounded-2xl border border-red-500/25 bg-gradient-to-r from-red-950/25 via-red-950/10 to-transparent px-5 py-4 shadow-[0_16px_45px_rgba(0,0,0,0.25)]">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
                 <p className="font-bold text-red-300">🔒 Competência bloqueada para alterações</p>
@@ -5826,7 +5812,7 @@ if (
         )}
 
         {linhas.length === 0 ? (
-          <Card className="bg-gray-900 border-primary/30">
+          <Card className="rounded-2xl border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] to-[#080808] text-white shadow-[0_16px_45px_rgba(0,0,0,0.25)]">
             <CardContent className="py-10 text-center text-gray-400">
               Nenhum funcionário ativo cadastrado para esta cidade.
             </CardContent>
@@ -5864,9 +5850,9 @@ if (
           }
         }}
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-5xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-primary text-xl">
+            <DialogTitle className="text-xl font-bold text-[#F2D675]">
               {lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
                 ? "Importar relatório — Liquidez Venda"
                 : `Importar relatório — SEM${importacaoSemana.semana}`}
@@ -5881,12 +5867,12 @@ if (
 
           {importacaoSemana.etapa === "arquivo" && (
             <div className="space-y-4">
-              <div className="rounded-md border border-primary/20 bg-gray-900 p-5">
+              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-5">
                 <Label className="text-gray-300 block mb-3">Arquivo Excel (.xlsx)</Label>
                 <Input
                   type="file"
                   accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  className="bg-gray-800 border-primary/30 text-white"
+                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
                   onChange={(e) => processarArquivoImportacao(e.target.files?.[0] || null)}
                 />
                 <p className="text-xs text-gray-500 mt-3">
@@ -5935,21 +5921,21 @@ if (
             return (
               <div className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Arquivo</p>
                     <p className="font-semibold break-all">{importacaoSemana.arquivoNome}</p>
                   </div>
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Período</p>
                     <p className="font-semibold">{importacaoSemana.periodo || "Não identificado"}</p>
                   </div>
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Loja do relatório</p>
                     <p className={cidadeDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
                       {importacaoSemana.cidadeRelatorio || "Não identificada"}
                     </p>
                   </div>
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Prontos</p>
                     <p className="font-semibold text-green-400">{prontos.length}</p>
                   </div>
@@ -5967,9 +5953,9 @@ if (
                   </div>
                 )}
 
-                <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
+                <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <p className="font-semibold text-primary">Funcionários encontrados</p>
+                    <p className="font-semibold text-[#D4AF37]">Funcionários encontrados</p>
                     <span className="text-xs text-gray-400">LIQ. S/ PNEUS</span>
                   </div>
                   <div className="space-y-2">
@@ -5977,7 +5963,7 @@ if (
                       <p className="text-sm text-gray-400">Nenhum funcionário pronto ainda.</p>
                     ) : (
                       prontos.map((item) => (
-                        <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border-b border-primary/10 pb-2">
+                        <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border-b border-[#D4AF37]/10 pb-2">
                           <div>
                             <p className="font-semibold text-white">{item.funcionarioNome}</p>
                             {normalizarTextoImportacao(item.nomeRelatorio) !== normalizarTextoImportacao(item.funcionarioNome) && (
@@ -6000,7 +5986,7 @@ if (
                 </div>
 
                 {divergencias.length > 0 && (
-                  <div className="rounded-md border border-yellow-500/30 bg-gray-900 p-4">
+                  <div className="rounded-md border border-yellow-500/30 bg-[#0b0b0b] p-4">
                     <p className="font-semibold text-yellow-300 mb-3">Divergências do relatório</p>
                     <div className="space-y-3">
                       {divergencias.map((item) => (
@@ -6024,7 +6010,7 @@ if (
                               {item.status === "possivel" && item.candidatoId && (
                                 <Button
                                   type="button"
-                                  className="bg-primary text-black hover:bg-yellow-300"
+                                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                                   onClick={() => vincularItemImportacao(item.id, Number(item.candidatoId))}
                                 >
                                   Sim, vincular
@@ -6033,7 +6019,7 @@ if (
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="border-primary/30 text-primary"
+                                className="border-[#D4AF37]/20 text-[#D4AF37]"
                                 onClick={() => irParaCadastrarFuncionario(item)}
                               >
                                 Cadastrar funcionário
@@ -6054,7 +6040,7 @@ if (
                 )}
 
                 {funcionariosAusentesNoRelatorio.length > 0 && (
-                  <div className="rounded-md border border-orange-500/30 bg-gray-900 p-4">
+                  <div className="rounded-md border border-orange-500/30 bg-[#0b0b0b] p-4">
                     <p className="font-semibold text-orange-300 mb-2">Cadastrados que não aparecem no relatório</p>
                     <p className="text-xs text-gray-400 mb-3">
                       Eles continuarão com R$ 0,00 {lojaId === 4 && usaMetaMensal(lojaId, ano, mes) ? "na liquidez mensal" : "nesta semana"} se você prosseguir. Se alguém não deveria mais estar ativo, abra o cadastro para revisar/inativar.
@@ -6106,7 +6092,7 @@ if (
                   </Button>
                   <Button
                     type="button"
-                    className="bg-primary text-black hover:bg-yellow-300"
+                    className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                     disabled={
                       cidadeDiferente ||
                       prontos.length === 0 ||
@@ -6137,7 +6123,7 @@ if (
               <DialogFooter>
                 <Button
                   type="button"
-                  className="bg-primary text-black hover:bg-yellow-300"
+                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                   onClick={fecharImportacaoSemana}
                 >
                   Concluir
@@ -6156,9 +6142,9 @@ if (
           }
         }}
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-5xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-primary text-xl">
+            <DialogTitle className="text-xl font-bold text-[#F2D675]">
               Importar adiantamentos — PDF
             </DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -6168,12 +6154,12 @@ if (
 
           {importacaoAdiantamento.etapa === "arquivo" && (
             <div className="space-y-4">
-              <div className="rounded-md border border-primary/20 bg-gray-900 p-5">
+              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-5">
                 <Label className="text-gray-300 block mb-3">Arquivo de adiantamento (.pdf)</Label>
                 <Input
                   type="file"
                   accept=".pdf,application/pdf"
-                  className="bg-gray-800 border-primary/30 text-white"
+                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
                   onChange={(e) => processarPdfAdiantamento(e.target.files?.[0] || null)}
                 />
                 <div className="mt-3 space-y-1 text-xs text-gray-500">
@@ -6236,23 +6222,23 @@ if (
             return (
               <div className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Arquivo</p>
                     <p className="font-semibold break-all">{importacaoAdiantamento.arquivoNome}</p>
                   </div>
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Competência</p>
                     <p className={competenciaDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
                       {importacaoAdiantamento.competencia || "Não identificada"}
                     </p>
                   </div>
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Loja do PDF</p>
                     <p className={cidadeDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
                       {importacaoAdiantamento.cidadeRelatorio || "Não identificada"}
                     </p>
                   </div>
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Prontos</p>
                     <p className="font-semibold text-green-400">{prontos.length}</p>
                   </div>
@@ -6276,9 +6262,9 @@ if (
                   </div>
                 )}
 
-                <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
+                <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <p className="font-semibold text-primary">Valores encontrados</p>
+                    <p className="font-semibold text-[#D4AF37]">Valores encontrados</p>
                     <span className="text-xs text-gray-400">Valor Líquido recebido</span>
                   </div>
                   <div className="space-y-2">
@@ -6288,7 +6274,7 @@ if (
                       prontos.map((item) => (
                         <div
                           key={item.id}
-                          className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border-b border-primary/10 pb-2"
+                          className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border-b border-[#D4AF37]/10 pb-2"
                         >
                           <div>
                             <p className="font-semibold text-white">{item.funcionarioNome}</p>
@@ -6306,7 +6292,7 @@ if (
                 </div>
 
                 {divergencias.length > 0 && (
-                  <div className="rounded-md border border-yellow-500/30 bg-gray-900 p-4">
+                  <div className="rounded-md border border-yellow-500/30 bg-[#0b0b0b] p-4">
                     <p className="font-semibold text-yellow-300 mb-3">Divergências de nomes</p>
                     <div className="space-y-4">
                       {divergencias.map((item) => (
@@ -6328,7 +6314,7 @@ if (
                               {item.candidatoId && (
                                 <Button
                                   type="button"
-                                  className="bg-primary text-black hover:bg-yellow-300"
+                                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                                   onClick={() => vincularItemAdiantamento(item.id, Number(item.candidatoId))}
                                 >
                                   Vincular a {item.candidatoNome}
@@ -6340,10 +6326,10 @@ if (
                                   vincularItemAdiantamento(item.id, Number(value))
                                 }
                               >
-                                <SelectTrigger className="w-[220px] bg-gray-800 border-primary/30 text-white">
+                                <SelectTrigger className="w-[220px] bg-[#111111] border-[#D4AF37]/20 text-white">
                                   <SelectValue placeholder="Escolher funcionário" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-900 border-primary/30 max-h-72">
+                                <SelectContent className="bg-[#0b0b0b] border-[#D4AF37]/20 max-h-72">
                                   {linhas.map((linha) => (
                                     <SelectItem
                                       key={linha.funcionarioId}
@@ -6359,7 +6345,7 @@ if (
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="border-primary/30 text-primary"
+                                className="border-[#D4AF37]/20 text-[#D4AF37]"
                                 onClick={() => irParaCadastrarFuncionarioAdiantamento(item)}
                               >
                                 Cadastrar funcionário
@@ -6381,7 +6367,7 @@ if (
                 )}
 
                 {funcionariosAusentesNoPdfAdiantamento.length > 0 && (
-                  <div className="rounded-md border border-orange-500/30 bg-gray-900 p-4">
+                  <div className="rounded-md border border-orange-500/30 bg-[#0b0b0b] p-4">
                     <p className="font-semibold text-orange-300 mb-2">
                       Cadastrados que não aparecem no PDF de adiantamento
                     </p>
@@ -6446,7 +6432,7 @@ if (
                   </Button>
                   <Button
                     type="button"
-                    className="bg-primary text-black hover:bg-yellow-300"
+                    className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                     disabled={
                       cidadeDiferente ||
                       competenciaDiferente ||
@@ -6476,7 +6462,7 @@ if (
               <DialogFooter>
                 <Button
                   type="button"
-                  className="bg-primary text-black hover:bg-yellow-300"
+                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                   onClick={fecharImportacaoAdiantamento}
                 >
                   Concluir
@@ -6495,9 +6481,9 @@ if (
           }
         }}
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-5xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-primary text-xl">
+            <DialogTitle className="text-xl font-bold text-[#F2D675]">
               Importar Folha Mensal — PDF
             </DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -6507,12 +6493,12 @@ if (
 
           {importacaoHolerite.etapa === "arquivo" && (
             <div className="space-y-4">
-              <div className="rounded-md border border-primary/20 bg-gray-900 p-5">
+              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-5">
                 <Label className="text-gray-300 block mb-3">Folha Mensal (.pdf)</Label>
                 <Input
                   type="file"
                   accept=".pdf,application/pdf"
-                  className="bg-gray-800 border-primary/30 text-white"
+                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
                   onChange={(e) => processarPdfHolerite(e.target.files?.[0] || null)}
                 />
                 <div className="mt-3 space-y-1 text-xs text-gray-500">
@@ -6580,27 +6566,27 @@ if (
             return (
               <div className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Arquivo</p>
                     <p className="font-semibold break-all">{importacaoHolerite.arquivoNome}</p>
                   </div>
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Competência</p>
                     <p className={competenciaDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
                       {importacaoHolerite.competencia || "Não identificada"}
                     </p>
                   </div>
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Loja do PDF</p>
                     <p className={cidadeDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
                       {importacaoHolerite.cidadeRelatorio || "Não identificada"}
                     </p>
                   </div>
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Funcionários prontos</p>
                     <p className="font-semibold text-green-400">{prontos.length}</p>
                   </div>
-                  <div className="rounded-md border border-primary/20 bg-gray-900 p-3">
+                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Empréstimos CLT</p>
                     <p className="font-semibold text-yellow-300">{totalEmprestimos}</p>
                   </div>
@@ -6624,9 +6610,9 @@ if (
                   </div>
                 )}
 
-                <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
+                <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <p className="font-semibold text-primary">Valores encontrados</p>
+                    <p className="font-semibold text-[#D4AF37]">Valores encontrados</p>
                     <span className="text-xs text-gray-400">
                       INSS + Valor Líquido + Empréstimos CLT
                     </span>
@@ -6748,7 +6734,7 @@ if (
                                 <Button
                                   type="button"
                                   size="sm"
-                                  className="bg-primary text-black hover:bg-yellow-300"
+                                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                                   onClick={() =>
                                     vincularItemHolerite(item.id, Number(item.candidatoId))
                                   }
@@ -6762,10 +6748,10 @@ if (
                                   vincularItemHolerite(item.id, Number(value))
                                 }
                               >
-                                <SelectTrigger className="w-[220px] border-primary/30 bg-gray-800 text-white">
+                                <SelectTrigger className="w-[220px] border-[#D4AF37]/20 bg-[#111111] text-white">
                                   <SelectValue placeholder="Escolher funcionário" />
                                 </SelectTrigger>
-                                <SelectContent className="border-primary/30 bg-gray-900">
+                                <SelectContent className="border-[#D4AF37]/20 bg-[#0b0b0b]">
                                   {linhas
                                     .filter(
           (linha) =>
@@ -6879,7 +6865,7 @@ if (
                   </Button>
                   <Button
                     type="button"
-                    className="bg-primary text-black hover:bg-yellow-300"
+                    className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                     disabled={
                       cidadeDiferente ||
                       competenciaDiferente ||
@@ -6911,7 +6897,7 @@ if (
               <DialogFooter>
                 <Button
                   type="button"
-                  className="bg-primary text-black hover:bg-yellow-300"
+                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                   onClick={fecharImportacaoHolerite}
                 >
                   Concluir
@@ -6935,9 +6921,9 @@ if (
           }
         }}
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-primary text-xl">
+            <DialogTitle className="text-xl font-bold text-[#F2D675]">
               {editandoFuncionarioDetalhe
                 ? "Editar funcionário"
                 : "Dados do funcionário"}
@@ -6953,17 +6939,17 @@ if (
             const funcionario = funcionarioDetalheAtual as any;
 
             const Campo = ({ label, valor }: { label: string; valor: any }) => (
-              <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
+              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
                 <p className="text-xs text-gray-400 mb-1">{label}</p>
                 <p className="text-white font-semibold break-words">{valor}</p>
               </div>
             );
 
             const classeCampo = (invalido: boolean) =>
-              `bg-gray-900 text-white ${
+              `bg-[#0b0b0b] text-white ${
                 tentouSalvarFuncionarioDetalhe && invalido
                   ? "border-red-500 focus-visible:ring-red-500/30"
-                  : "border-primary/30"
+                  : "border-[#D4AF37]/20"
               }`;
 
             if (editandoFuncionarioDetalhe) {
@@ -7154,7 +7140,7 @@ if (
 
             return (
               <div className="space-y-4">
-                <div className="rounded-md border border-primary/30 bg-gray-900 p-4">
+                <div className="rounded-md border border-[#D4AF37]/20 bg-[#0b0b0b] p-4">
                   <p className="text-lg font-bold text-white">
                     {funcionario.nome}
                   </p>
@@ -7238,7 +7224,7 @@ if (
                   Cancelar
                 </Button>
                 <Button
-                  className="bg-primary text-black hover:bg-yellow-300"
+                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                   onClick={salvarEdicaoFuncionarioDetalhe}
                   disabled={updateFuncionarioDetalheMutation.isPending}
                 >
@@ -7250,7 +7236,7 @@ if (
             ) : (
               <>
                 <Button
-                  className="bg-primary text-black hover:bg-yellow-300"
+                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                   onClick={abrirEdicaoFuncionarioDetalhe}
                 >
                   Editar
@@ -7268,9 +7254,9 @@ if (
       </Dialog>
 
       <Dialog open={reabrirMesOpen} onOpenChange={setReabrirMesOpen}>
-        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-md">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-primary">Reabrir competência</DialogTitle>
+            <DialogTitle className="text-[#D4AF37]">Reabrir competência</DialogTitle>
             <DialogDescription className="text-gray-400">
               Informe a senha do seu usuário. Somente administrador ou gestor pode reabrir um mês fechado.
             </DialogDescription>
@@ -7291,7 +7277,7 @@ if (
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void confirmarReaberturaMes();
                 }}
-                className="mt-2 bg-gray-800 border-primary/30 text-white"
+                className="mt-2 bg-[#111111] border-[#D4AF37]/20 text-white"
                 placeholder="Digite sua senha"
               />
             </div>
@@ -7316,7 +7302,7 @@ if (
               Cancelar
             </Button>
             <Button
-              className="bg-primary text-black hover:bg-yellow-300"
+              className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
               disabled={reabrirMesMutation.isPending || !senhaReabertura.trim()}
               onClick={confirmarReaberturaMes}
             >
@@ -7338,7 +7324,7 @@ if (
             Para modificar qualquer valor de {String(mes).padStart(2, "0")}/{ano}, um administrador ou gestor precisa usar <strong>Reabrir mês</strong> e confirmar a própria senha.
           </div>
           <DialogFooter>
-            <Button className="bg-primary text-black" onClick={() => setBloqueioAvisoOpen(false)}>
+            <Button className="bg-[#D4AF37] text-black" onClick={() => setBloqueioAvisoOpen(false)}>
               Entendi
             </Button>
           </DialogFooter>
@@ -7349,9 +7335,9 @@ if (
         open={cellEditor.open}
         onOpenChange={(open) => setCellEditor((prev) => ({ ...prev, open }))}
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
   <DialogHeader>
-    <DialogTitle className="text-primary">
+    <DialogTitle className="text-[#D4AF37]">
       {cellEditor.label}
     </DialogTitle>
 
@@ -7429,7 +7415,7 @@ if (
 </Button>
 
 <Button
-  className="bg-primary text-black hover:bg-yellow-300"
+  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
   onClick={saveCellEditor}
 >
   Salvar
@@ -7442,9 +7428,9 @@ if (
         open={premioEditor.open}
         onOpenChange={(open) => setPremioEditor((prev) => ({ ...prev, open }))}
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-primary">Premiação</DialogTitle>
+            <DialogTitle className="text-[#D4AF37]">Premiação</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -7453,8 +7439,8 @@ if (
   linhaPremioAtual?.funcao === "consultor_vendas" ||
   linhaPremioAtual?.funcao === "supervisor"
 ) && (
-              <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
-                <p className="mb-3 text-sm font-semibold text-primary">
+              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
+                <p className="mb-3 text-sm font-semibold text-[#D4AF37]">
                   Discriminação automática
                 </p>
 
@@ -7495,8 +7481,8 @@ if (
     premioFlorianopolis;
 
   return (
-  <div className="rounded-md border border-primary/20 bg-gray-900 p-4 space-y-2 text-sm">
-    <p className="font-semibold text-primary">
+  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-2 text-sm">
+    <p className="font-semibold text-[#D4AF37]">
       Resumo automático do supervisor
     </p>
 
@@ -7528,7 +7514,7 @@ if (
       </span>
     </div>
 
-    <div className="flex items-center justify-between border-t border-primary/20 pt-2">
+    <div className="flex items-center justify-between border-t border-[#D4AF37]/15 pt-2">
       <span className="text-gray-300 font-semibold">Total</span>
       <span className="text-yellow-300 font-bold">
         R$ {money(total)}
@@ -7538,8 +7524,8 @@ if (
 );
 })()}
 
-            <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
-              <p className="mb-3 text-sm font-semibold text-primary">
+            <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
+              <p className="mb-3 text-sm font-semibold text-[#D4AF37]">
                 Discriminação manual
               </p>
 
@@ -7551,7 +7537,7 @@ if (
                   {linhaPremioAtual.premiacoesManuais.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between gap-4 rounded-md border border-primary/10 p-2"
+                      className="flex items-center justify-between gap-4 rounded-md border border-[#D4AF37]/10 p-2"
                     >
                       <div className="text-sm text-gray-300">
   <div>{item.descricao}</div>
@@ -7586,8 +7572,8 @@ if (
               )}
             </div>
 
-            <div className="rounded-md border border-primary/20 bg-gray-900 p-4 space-y-3">
-              <p className="text-sm font-semibold text-primary">
+            <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-3">
+              <p className="text-sm font-semibold text-[#D4AF37]">
                 Adicionar premiação manual
               </p>
 
@@ -7601,7 +7587,7 @@ if (
                       descricao: e.target.value,
                     }))
                   }
-                  className="bg-gray-800 border-primary/30 text-white"
+                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
                   placeholder="Ex.: bônus campanha"
                 />
               </div>
@@ -7617,12 +7603,12 @@ if (
                       valor: e.target.value,
                     }))
                   }
-                  className="bg-gray-800 border-primary/30 text-white"
+                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
                 />
               </div>
 
               <Button
-                className="bg-primary text-black hover:bg-yellow-300"
+                className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                 onClick={addPremiacaoManual}
               >
                 Adicionar
@@ -7652,9 +7638,9 @@ if (
         open={valeEditor.open}
         onOpenChange={(open) => setValeEditor((prev) => ({ ...prev, open }))}
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white max-h-[90vh] overflow-y-auto">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-primary">Vale</DialogTitle>
+            <DialogTitle className="text-[#D4AF37]">Vale</DialogTitle>
   {(linhaValeAtual?.vales?.[0] as any)?.ultimaAlteracaoPor || "Sistema"}{" "}
   •{" "}
   {(linhaValeAtual?.vales?.[0] as any)?.ultimaAlteracaoEm
@@ -7665,8 +7651,8 @@ if (
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="rounded-md border border-primary/20 bg-gray-900 p-4 max-h-[300px] overflow-y-auto">
-              <p className="mb-3 text-sm font-semibold text-primary">
+            <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 max-h-[300px] overflow-y-auto">
+              <p className="mb-3 text-sm font-semibold text-[#D4AF37]">
                 Vales do mês atual
               </p>
 
@@ -7677,7 +7663,7 @@ if (
                   {linhaValeAtual.vales.map((vale) => (
                     <div
                       key={vale.id}
-                      className="flex items-center justify-between gap-4 rounded-md border border-primary/10 p-2"
+                      className="flex items-center justify-between gap-4 rounded-md border border-[#D4AF37]/10 p-2"
                     >
                       <div className="text-sm text-gray-300">
   <div>{vale.descricao}</div>
@@ -7717,8 +7703,8 @@ if (
               )}
             </div>
 
-            <div className="rounded-md border border-primary/20 bg-gray-900 p-4 space-y-3">
-              <p className="text-sm font-semibold text-primary">Adicionar vale</p>
+            <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-3">
+              <p className="text-sm font-semibold text-[#D4AF37]">Adicionar vale</p>
 
               <div className="space-y-2">
                 <Label className="text-gray-300">Descrição</Label>
@@ -7730,7 +7716,7 @@ if (
                       descricao: e.target.value,
                     }))
                   }
-                  className="bg-gray-800 border-primary/30 text-white"
+                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
                   placeholder="Ex.: vale mercado"
                 />
               </div>
@@ -7746,7 +7732,7 @@ if (
                       valor: e.target.value,
                     }))
                   }
-                  className="bg-gray-800 border-primary/30 text-white"
+                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
                 />
               </div>
 
@@ -7763,12 +7749,12 @@ if (
                       parcelas: e.target.value,
                     }))
                   }
-                  className="bg-gray-800 border-primary/30 text-white"
+                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
                 />
               </div>
 
               <Button
-                className="bg-primary text-black hover:bg-yellow-300"
+                className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                 onClick={addVale}
               >
                 Adicionar
@@ -7799,9 +7785,9 @@ if (
         open={obsEditor.open}
         onOpenChange={(open) => setObsEditor((prev) => ({ ...prev, open }))}
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-primary">Observações</DialogTitle>
+            <DialogTitle className="text-[#D4AF37]">Observações</DialogTitle>
             <DialogDescription className="text-gray-400">
               Adicione observações e exclua a que desejar.
             </DialogDescription>
@@ -7814,19 +7800,19 @@ if (
                 onChange={(e) =>
                   setObsEditor((prev) => ({ ...prev, novaObs: e.target.value }))
                 }
-                className="bg-gray-800 border-primary/30 text-white"
+                className="bg-[#111111] border-[#D4AF37]/20 text-white"
                 placeholder="Digite a observação"
               />
               <Button
-                className="bg-primary text-black hover:bg-yellow-300"
+                className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                 onClick={addObservacao}
               >
                 Adicionar
               </Button>
             </div>
 
-            <div className="rounded-md border border-primary/20 bg-gray-900 p-4">
-              <p className="mb-3 text-sm font-semibold text-primary">
+            <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
+              <p className="mb-3 text-sm font-semibold text-[#D4AF37]">
                 Observações cadastradas
               </p>
 
@@ -7840,7 +7826,7 @@ if (
                   {linhaObsAtual.observacoes.map((obs, index) => (
                     <div
                       key={`${obs}-${index}`}
-                      className="flex items-center justify-between gap-4 rounded-md border border-primary/10 p-2"
+                      className="flex items-center justify-between gap-4 rounded-md border border-[#D4AF37]/10 p-2"
                     >
                       <span className="text-sm text-gray-300">{obs}</span>
                       <Button
@@ -7880,15 +7866,15 @@ if (
           setNegativoEditor((prev) => ({ ...prev, open }))
         }
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-primary">Boleto negativo</DialogTitle>
+            <DialogTitle className="text-[#D4AF37]">Boleto negativo</DialogTitle>
             <DialogDescription className="text-gray-400">
               Deseja lançar esse valor como vale no próximo mês?
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-md border border-primary/20 bg-gray-900 p-4 space-y-2 text-sm">
+          <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-gray-300">Funcionário</span>
               <span className="text-white">
@@ -7912,7 +7898,7 @@ if (
               Cancelar
             </Button>
             <Button
-              className="bg-primary text-black hover:bg-yellow-300"
+              className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
               onClick={lançarNegativoNoPróximoMês}
             >
               Adicionar no próximo mês
@@ -7927,9 +7913,9 @@ if (
           setRegraSemanaEditor((prev) => ({ ...prev, open }))
         }
       >
-        <DialogContent className="bg-gray-950 border-primary/30 text-white">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
           <DialogHeader>
-  <DialogTitle className="text-primary">
+  <DialogTitle className="text-[#D4AF37]">
     Detalhe da regra
   </DialogTitle>
 
@@ -7966,7 +7952,7 @@ if (
 
           {detalheSemanaAtual && (
             <div className="space-y-4">
-              <div className="rounded-md border border-primary/20 bg-gray-900 p-4 space-y-2 text-sm">
+              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-300">Funcionário</span>
                   <span className="text-white">
@@ -7982,15 +7968,15 @@ if (
                 </div>
               </div>
 
-              <div className="rounded-md border border-primary/20 bg-gray-900 p-4 space-y-2 text-sm">
-                <p className="font-semibold text-primary">
+              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-2 text-sm">
+                <p className="font-semibold text-[#D4AF37]">
                   {detalheSemanaAtual.metaTitulo}
                 </p>
 
                 {detalheSemanaAtual.isSupervisor ? (
                   <div className="space-y-5">
                     <div>
-                      <p className="mb-3 font-semibold text-primary">
+                      <p className="mb-3 font-semibold text-[#D4AF37]">
                         Meta da loja
                       </p>
 
@@ -8036,7 +8022,7 @@ if (
                         )}
                       </div>
 
-                      <div className="mt-3 border-t border-primary/20 pt-3 flex items-center justify-between">
+                      <div className="mt-3 border-t border-[#D4AF37]/15 pt-3 flex items-center justify-between">
                         <span className="text-gray-300">
                           Liquidez atual da loja
                         </span>
@@ -8065,8 +8051,8 @@ if (
                       </div>
                     </div>
 
-                    <div className="border-t border-primary/20 pt-4">
-                      <p className="mb-3 font-semibold text-primary">
+                    <div className="border-t border-[#D4AF37]/15 pt-4">
+                      <p className="mb-3 font-semibold text-[#D4AF37]">
                         Meta do grupo
                       </p>
 
@@ -8136,7 +8122,7 @@ if (
                         </span>
                       </div>
 
-                      <div className="mt-3 border-t border-primary/20 pt-3 flex items-center justify-between">
+                      <div className="mt-3 border-t border-[#D4AF37]/15 pt-3 flex items-center justify-between">
                         <span className="text-gray-300">
                           Liquidez atual do grupo
                         </span>
@@ -8175,7 +8161,7 @@ if (
               </div>
 
               {!detalheSemanaAtual.isSupervisor && (
-              <div className="rounded-md border border-primary/20 bg-gray-900 p-4 space-y-3 text-sm">
+              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-300">
                     {detalheSemanaAtual.baseLabel}
@@ -8340,7 +8326,7 @@ if (
 />
                 </div>
 
-                <div className="flex items-center justify-between border-t border-primary/20 pt-3">
+                <div className="flex items-center justify-between border-t border-[#D4AF37]/15 pt-3">
                   <span className="text-white font-semibold">
                     {detalheSemanaAtual.isSupervisor
                       ? "Premiação da loja"
