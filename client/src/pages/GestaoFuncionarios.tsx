@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowLeft,
@@ -17,6 +17,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
+
+const IMPORT_PENDENTE_STORAGE_KEY = "folha-importacao-pendente-v1";
+const IMPORT_ADIANT_PENDENTE_STORAGE_KEY = "folha-importacao-adiant-pendente-v1";
+const IMPORT_HOLERITE_PENDENTE_STORAGE_KEY = "folha-importacao-holerite-pendente-v1";
 
 const LOJAS = [
   { id: 1, nome: "Joinville" },
@@ -150,7 +155,34 @@ export default function GestaoFuncionarios() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
 
-  const [selectedLoja, setSelectedLoja] = useState("1");
+  const [selectedLoja, setSelectedLoja] = useState(() => {
+    if (typeof window === "undefined") return "1";
+
+    const lojaCadastroExistente = window.sessionStorage.getItem(
+      "folha-funcionario-abrir-loja-id"
+    );
+    if (lojaCadastroExistente) return lojaCadastroExistente;
+
+    try {
+      const cadastroSugeridoRaw = window.sessionStorage.getItem(
+        "folha-cadastro-sugerido"
+      );
+      if (cadastroSugeridoRaw) {
+        const cadastroSugerido = JSON.parse(cadastroSugeridoRaw);
+        if (cadastroSugerido?.lojaId) return String(cadastroSugerido.lojaId);
+      }
+    } catch (error) {
+      console.error("Erro ao ler loja sugerida para cadastro:", error);
+    }
+
+    return "1";
+  });
+  const [funcionarioAbrirId, setFuncionarioAbrirId] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const raw = window.sessionStorage.getItem("folha-funcionario-abrir-id");
+    const id = raw ? Number(raw) : 0;
+    return Number.isFinite(id) && id > 0 ? id : null;
+  });
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [buscaFuncionario, setBuscaFuncionario] = useState("");
@@ -158,6 +190,25 @@ export default function GestaoFuncionarios() {
   const [formData, setFormData] = useState<FormFuncionario>(() => criarFormVazio(1));
 
   const lojaId = Number(selectedLoja);
+
+  const veioDaFolha = () => {
+    if (typeof window === "undefined") return false;
+
+    return Boolean(
+      window.sessionStorage.getItem(IMPORT_PENDENTE_STORAGE_KEY) ||
+        window.sessionStorage.getItem(IMPORT_ADIANT_PENDENTE_STORAGE_KEY) ||
+        window.sessionStorage.getItem(IMPORT_HOLERITE_PENDENTE_STORAGE_KEY)
+    );
+  };
+
+  const voltarParaFolhaSeNecessario = () => {
+    if (veioDaFolha()) {
+      navigate("/folha-pagamento");
+      return true;
+    }
+
+    return false;
+  };
 
   const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
     { lojaId },
@@ -280,6 +331,10 @@ export default function GestaoFuncionarios() {
         id: func.id,
         dataDesligamento: dateFromInput(data),
       });
+
+      if (!voltarParaFolhaSeNecessario()) {
+        fecharFormulario();
+      }
     } catch (error: any) {
       console.error(error);
       alert(error?.message ?? "Erro ao inativar funcionário");
@@ -299,6 +354,10 @@ export default function GestaoFuncionarios() {
         id: func.id,
         dataReativacao: dateFromInput(data),
       });
+
+      if (!voltarParaFolhaSeNecessario()) {
+        fecharFormulario();
+      }
     } catch (error: any) {
       console.error(error);
       alert(error?.message ?? "Erro ao reativar funcionário");
@@ -348,6 +407,8 @@ export default function GestaoFuncionarios() {
       } else {
         await createFuncionario.mutateAsync(payload);
       }
+
+      voltarParaFolhaSeNecessario();
     } catch (error: any) {
       console.error(error);
       alert(error?.message ?? "Erro ao salvar funcionário");
@@ -355,6 +416,75 @@ export default function GestaoFuncionarios() {
   };
 
   const funcionariosBase = (funcionariosQuery.data ?? []) as FuncionarioItem[];
+
+  const funcionarioEmEdicao = editingId
+    ? funcionariosBase.find((item) => Number(item.id) === Number(editingId)) || null
+    : null;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const raw = window.sessionStorage.getItem("folha-cadastro-sugerido");
+    if (!raw) return;
+
+    try {
+      const sugerido = JSON.parse(raw);
+      const lojaSugerida = Number(sugerido?.lojaId || 0);
+      const funcaoSugerida = String(sugerido?.funcao || "") as FuncaoId;
+      const funcaoExiste = FUNCOES.some((funcao) => funcao.id === funcaoSugerida);
+      const ehAci = lojaSugerida === 5;
+      const funcaoPermitidaNaAci = (FUNCOES_ACI_IDS as readonly string[]).includes(
+        funcaoSugerida
+      );
+
+      if (lojaSugerida > 0) {
+        setSelectedLoja(String(lojaSugerida));
+      }
+
+      const formBase = criarFormVazio(lojaSugerida || 1);
+      const funcaoFinal =
+        funcaoExiste && (!ehAci || funcaoPermitidaNaAci)
+          ? funcaoSugerida
+          : formBase.funcao;
+
+      setEditingId(null);
+      setTentouSalvar(false);
+      setBuscaFuncionario("");
+      setFormData({
+        ...formBase,
+        nome: String(sugerido?.nome || ""),
+        funcao: funcaoFinal,
+        tipoMeta:
+          funcaoFinal === "consultor_vendas" && ehAci ? "meta2" : "",
+      });
+      setIsOpen(true);
+
+      window.sessionStorage.removeItem("folha-cadastro-sugerido");
+    } catch (error) {
+      console.error("Erro ao abrir cadastro sugerido pela folha:", error);
+      window.sessionStorage.removeItem("folha-cadastro-sugerido");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!funcionarioAbrirId || funcionariosQuery.isLoading) return;
+
+    const funcionario = funcionariosBase.find(
+      (item) => Number(item.id) === Number(funcionarioAbrirId)
+    );
+
+    if (!funcionario) return;
+
+    setBuscaFuncionario(funcionario.nome || "");
+    handleEditFuncionario(funcionario);
+
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem("folha-funcionario-abrir-id");
+      window.sessionStorage.removeItem("folha-funcionario-abrir-loja-id");
+    }
+
+    setFuncionarioAbrirId(null);
+  }, [funcionarioAbrirId, funcionariosQuery.isLoading, funcionariosQuery.data]);
 
   const funcionarios = funcionariosBase.filter((func) =>
     String(func.nome || "")
@@ -593,6 +723,30 @@ export default function GestaoFuncionarios() {
                     ? "Salvar alterações"
                     : "Cadastrar funcionário"}
                 </Button>
+
+                {editingId && funcionarioEmEdicao && (
+                  funcionarioEmEdicao.status === "ativo" ? (
+                    <Button
+                      onClick={() => handleInativarFuncionario(funcionarioEmEdicao)}
+                      disabled={inativarFuncionario.isPending}
+                      variant="outline"
+                      className="flex-1 border-red-500/30 bg-transparent text-red-400 hover:bg-red-500/10"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Inativar funcionário
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => handleReativarFuncionario(funcionarioEmEdicao)}
+                      disabled={reativarFuncionario.isPending}
+                      variant="outline"
+                      className="flex-1 border-green-500/30 bg-transparent text-green-400 hover:bg-green-500/10"
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Reativar funcionário
+                    </Button>
+                  )
+                )}
 
                 <Button
                   onClick={fecharFormulario}

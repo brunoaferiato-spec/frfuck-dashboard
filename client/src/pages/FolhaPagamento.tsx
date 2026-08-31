@@ -182,7 +182,7 @@ function labelFuncaoFuncionario(value: unknown, lojaId?: number) {
 }
 
 
-const ROTA_GESTAO_FUNCIONARIOS = "/gestao-funcionarios";
+const ROTA_GESTAO_FUNCIONARIOS = "/funcionarios";
 const IMPORT_ALIAS_STORAGE_KEY = "folha-importacao-aliases-v1";
 const IMPORT_PENDENTE_STORAGE_KEY = "folha-importacao-pendente-v1";
 const IMPORT_ADIANT_PENDENTE_STORAGE_KEY = "folha-importacao-adiant-pendente-v1";
@@ -3156,6 +3156,63 @@ return {
     });
   }, [funcionariosDaCidade, lojaId]);
 
+  // Ao voltar do cadastro de funcionários durante uma importação, a lista da loja
+  // é carregada novamente. Se o funcionário acabou de ser cadastrado com o mesmo
+  // nome e função do relatório, promovemos automaticamente a divergência para OK.
+  // Assim ele deixa de aparecer como “Cadastrar funcionário” sem precisar reabrir
+  // ou reenviar o arquivo.
+  useEffect(() => {
+    if (importacaoSemana.etapa !== "conferencia") return;
+    if (funcionariosImportaveis.length === 0) return;
+
+    setImportacaoSemana((prev) => {
+      if (prev.etapa !== "conferencia") return prev;
+
+      let mudou = false;
+      const itens = prev.itens.map((item) => {
+        if (item.status === "ok" || item.status === "ignorado") return item;
+
+        const nomeCanonico = normalizarNomeImportacao(item.nomeRelatorio);
+        const correspondenciasExatas = funcionariosImportaveis.filter(
+          (funcionario: any) => {
+            const funcaoCompativel =
+              item.funcaoRelatorio === "mecanico"
+                ? funcionario.funcao === "mecanico"
+                : funcionario.funcao === "vendedor" ||
+                  (funcionario.funcao === "gerente" &&
+                    (Number(lojaId) === 3 ||
+                      Number(lojaId) === 4 ||
+                      Number(lojaId) === 6));
+
+            return (
+              funcaoCompativel &&
+              normalizarNomeImportacao(funcionario.nome) === nomeCanonico
+            );
+          }
+        );
+
+        // Só vinculamos automaticamente quando existe uma única correspondência
+        // exata. Se houver duplicidade, mantemos a conferência manual.
+        if (correspondenciasExatas.length !== 1) return item;
+
+        const funcionario = correspondenciasExatas[0];
+        mudou = true;
+
+        return {
+          ...item,
+          funcionarioId: Number(funcionario.id),
+          funcionarioNome: funcionario.nome,
+          status: "ok" as const,
+          candidatoId: null,
+          candidatoNome: null,
+          scoreCandidato: 1,
+        };
+      });
+
+      return mudou ? { ...prev, itens } : prev;
+    });
+  }, [importacaoSemana.etapa, funcionariosImportaveis, lojaId]);
+
   const funcionariosAusentesNoRelatorio = useMemo(() => {
     if (importacaoSemana.etapa !== "conferencia") return [] as any[];
 
@@ -3587,6 +3644,10 @@ return {
         "folha-funcionario-abrir-id",
         String(funcionario.id)
       );
+      window.sessionStorage.setItem(
+        "folha-funcionario-abrir-loja-id",
+        String(lojaId)
+      );
     }
 
     setLocation(ROTA_GESTAO_FUNCIONARIOS);
@@ -3942,6 +4003,10 @@ return {
       window.sessionStorage.setItem(
         "folha-funcionario-abrir-id",
         String(funcionario.funcionarioId)
+      );
+      window.sessionStorage.setItem(
+        "folha-funcionario-abrir-loja-id",
+        String(lojaId)
       );
     }
 
@@ -4309,6 +4374,10 @@ return {
       window.sessionStorage.setItem(
         "folha-funcionario-abrir-id",
         String(funcionario.funcionarioId)
+      );
+      window.sessionStorage.setItem(
+        "folha-funcionario-abrir-loja-id",
+        String(lojaId)
       );
     }
 
