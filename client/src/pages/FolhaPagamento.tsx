@@ -2279,6 +2279,11 @@ export default function FolhaPagamento() {
   const [importacaoHoleriteRestaurada, setImportacaoHoleriteRestaurada] =
     useState(false);
 
+  const [reabrirMesOpen, setReabrirMesOpen] = useState(false);
+  const [senhaReabertura, setSenhaReabertura] = useState("");
+  const [erroFechamento, setErroFechamento] = useState("");
+  const [bloqueioAvisoOpen, setBloqueioAvisoOpen] = useState(false);
+
   const [funcionarioDetalheId, setFuncionarioDetalheId] = useState<number | null>(null);
   const [editandoFuncionarioDetalhe, setEditandoFuncionarioDetalhe] = useState(false);
   const [tentouSalvarFuncionarioDetalhe, setTentouSalvarFuncionarioDetalhe] = useState(false);
@@ -2286,6 +2291,38 @@ export default function FolhaPagamento() {
     useState<FormEdicaoFuncionario>(criarFormEdicaoFuncionarioVazio());
 
   const lojaId = parseInt(selectedLoja, 10);
+
+  const fechamentoQuery = trpc.folhaFechamento.getStatus.useQuery(
+    { lojaId, ano, mes },
+    {
+      enabled: !!lojaId && !!ano && !!mes,
+      retry: false,
+      refetchInterval: 5000,
+      refetchOnWindowFocus: true,
+    }
+  );
+
+  const mesFechado = Boolean(fechamentoQuery.data?.fechado);
+  const podeGerenciarFechamento = ["admin", "gestor"].includes(
+    String(meQuery.data?.role || "")
+  );
+
+  const fecharMesMutation = trpc.folhaFechamento.fechar.useMutation({
+    onSuccess: () => {
+      setErroFechamento("");
+      void fechamentoQuery.refetch();
+    },
+  });
+
+  const reabrirMesMutation = trpc.folhaFechamento.reabrir.useMutation({
+    onSuccess: () => {
+      setErroFechamento("");
+      setSenhaReabertura("");
+      setReabrirMesOpen(false);
+      void fechamentoQuery.refetch();
+    },
+  });
+
   const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(   
   { lojaId },
   {
@@ -2314,7 +2351,7 @@ const folhaBaseQuery = trpc.folhaPagamento.getBaseByLojaAnoMes.useQuery(
   }
 );
 
-const usuarioLogado = "Bruno";
+const usuarioLogado = meQuery.data?.name || meQuery.data?.email || "Usuário";
 
 const upsertFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation({
   onSuccess: () => {
@@ -3261,7 +3298,68 @@ return {
     }
   }, [importacaoHoleriteRestaurada]);
 
+  function garantirCompetenciaAberta() {
+    if (!mesFechado) return true;
+    setBloqueioAvisoOpen(true);
+    return false;
+  }
+
+  async function fecharMesAtual() {
+    if (!podeGerenciarFechamento || mesFechado) return;
+
+    const nomeLoja = LOJAS.find((loja) => loja.id === lojaId)?.nome || `Loja ${lojaId}`;
+    const nomeMes = new Date(ano, mes - 1, 1).toLocaleDateString("pt-BR", {
+      month: "long",
+      year: "numeric",
+    });
+
+    const confirmar = window.confirm(
+      `Fechar ${nomeMes} de ${nomeLoja}?\n\nDepois do fechamento, valores, premiações, vales, observações e importações ficarão bloqueados até a competência ser reaberta com senha.`
+    );
+
+    if (!confirmar) return;
+
+    try {
+      setErroFechamento("");
+      await fecharMesMutation.mutateAsync({ lojaId, ano, mes });
+      setCellEditor((prev) => ({ ...prev, open: false }));
+      setPremioEditor((prev) => ({ ...prev, open: false }));
+      setObsEditor((prev) => ({ ...prev, open: false }));
+      setValeEditor((prev) => ({ ...prev, open: false }));
+      setNegativoEditor({ open: false, linha: null });
+      setRegraSemanaEditor({ open: false, linha: null, semana: null });
+      setImportacaoSemana((prev) => ({ ...prev, open: false }));
+      setImportacaoAdiantamento((prev) => ({ ...prev, open: false }));
+      setImportacaoHolerite((prev) => ({ ...prev, open: false }));
+    } catch (err: any) {
+      setErroFechamento(err?.message || "Não foi possível fechar a competência.");
+    }
+  }
+
+  async function confirmarReaberturaMes() {
+    if (!senhaReabertura.trim()) {
+      setErroFechamento("Informe sua senha para reabrir a competência.");
+      return;
+    }
+
+    try {
+      setErroFechamento("");
+      await reabrirMesMutation.mutateAsync({
+        lojaId,
+        ano,
+        mes,
+        password: senhaReabertura,
+      });
+    } catch (err: any) {
+      setErroFechamento(
+        err?.message || "Senha inválida ou não foi possível reabrir a competência."
+      );
+    }
+  }
+
   function openImportacaoSemana(semana: SemanaImportacao) {
+    if (!garantirCompetenciaAberta()) return;
+
     const importacaoSemanalPermitida = usaMetaSemanal(lojaId, ano, mes);
     const importacaoMensalFlorianopolis = lojaId === 4 && usaMetaMensal(lojaId, ano, mes);
 
@@ -3490,6 +3588,8 @@ return {
   }
 
   async function confirmarImportacaoSemana() {
+    if (!garantirCompetenciaAberta()) return;
+
     const itensValidos = importacaoSemana.itens.filter(
       (item) => item.status === "ok" && item.funcionarioId
     );
@@ -3648,6 +3748,7 @@ return {
 
 
   function openImportacaoAdiantamento() {
+    if (!garantirCompetenciaAberta()) return;
     setImportacaoAdiantamento(criarImportacaoAdiantamentoInicial());
   }
 
@@ -3843,6 +3944,8 @@ return {
   }
 
   async function confirmarImportacaoAdiantamento() {
+    if (!garantirCompetenciaAberta()) return;
+
     const itensValidos = importacaoAdiantamento.itens.filter(
       (item) => item.status === "ok" && item.funcionarioId
     );
@@ -3997,6 +4100,7 @@ return {
 
 
   function openImportacaoHolerite() {
+    if (!garantirCompetenciaAberta()) return;
     setImportacaoHolerite(criarImportacaoHoleriteInicial());
   }
 
@@ -4207,6 +4311,8 @@ return {
   }
 
   async function confirmarImportacaoHolerite() {
+    if (!garantirCompetenciaAberta()) return;
+
     const itensValidos = importacaoHolerite.itens.filter(
       (item) => item.status === "ok" && item.funcionarioId
     );
@@ -4379,6 +4485,8 @@ return {
   campo: keyof FolhaMensal,
   valor: any
 ) {
+  if (!garantirCompetenciaAberta()) return;
+
   const currentLine = linhas.find((l) => l.funcionarioId === funcionarioId);
   if (!currentLine) return;
 
@@ -4586,6 +4694,7 @@ function openCellEditor(
   label: string,
   mode: "money" | "number"
 ) {
+  if (!garantirCompetenciaAberta()) return;
   setCellEditor({
     open: true,
     funcionarioId: linha.funcionarioId,
@@ -4647,6 +4756,7 @@ async function clearCellEditor() {
 }
 
 function openPremioEditor(linha: LinhaComQuadrante) {
+  if (!garantirCompetenciaAberta()) return;
   setPremioEditor({
     open: true,
     funcionarioId: Number(linha.funcionarioId),
@@ -4656,6 +4766,7 @@ function openPremioEditor(linha: LinhaComQuadrante) {
 }
 
 async function addPremiacaoManual() {
+  if (!garantirCompetenciaAberta()) return;
   if (!premioEditor.funcionarioId) return;
 
   const descricao = premioEditor.descricao.trim();
@@ -4683,10 +4794,12 @@ async function addPremiacaoManual() {
 }
 
 async function removePremiacaoManual(id: string) {
+  if (!garantirCompetenciaAberta()) return;
   await removePremiacaoMutation.mutateAsync({ id: Number(id) });
 }
 
 function openObsEditor(linha: LinhaComQuadrante) {
+  if (!garantirCompetenciaAberta()) return;
   setObsEditor({
     open: true,
     funcionarioId: linha.funcionarioId,
@@ -4695,6 +4808,7 @@ function openObsEditor(linha: LinhaComQuadrante) {
 }
 
 async function addObservacao() {
+  if (!garantirCompetenciaAberta()) return;
   if (!obsEditor.funcionarioId || !obsEditor.novaObs.trim()) return;
 
   await addObservacaoMutation.mutateAsync({
@@ -4709,6 +4823,7 @@ async function addObservacao() {
 }
 
 async function removeObservacao(index: number) {
+  if (!garantirCompetenciaAberta()) return;
   if (!obsEditor.funcionarioId) return;
 
   const linhaAtual = linhas.find((l) => l.funcionarioId === obsEditor.funcionarioId);
@@ -4725,6 +4840,7 @@ async function removeObservacao(index: number) {
 }
 
 function openValeEditor(linha: LinhaComQuadrante) {
+  if (!garantirCompetenciaAberta()) return;
   setValeEditor({
     open: true,
     funcionarioId: linha.funcionarioId,
@@ -4735,6 +4851,7 @@ function openValeEditor(linha: LinhaComQuadrante) {
 }
 
 async function addVale() {
+  if (!garantirCompetenciaAberta()) return;
   if (!valeEditor.funcionarioId) return;
 
   const descricao = valeEditor.descricao.trim();
@@ -4783,6 +4900,7 @@ async function addVale() {
 }
 
 async function removeVale(vale: ValeItem) {
+  if (!garantirCompetenciaAberta()) return;
   if (!valeEditor.funcionarioId) return;
 
   await removeValesMutation.mutateAsync({
@@ -4798,6 +4916,7 @@ async function removeVale(vale: ValeItem) {
 }
 
 function openNegativoEditor(linha: LinhaComQuadrante) {
+  if (!garantirCompetenciaAberta()) return;
   if (linha.boleto >= 0) return;
   setNegativoEditor({
     open: true,
@@ -4806,6 +4925,7 @@ function openNegativoEditor(linha: LinhaComQuadrante) {
 }
 
 async function lançarNegativoNoPróximoMês() {
+  if (!garantirCompetenciaAberta()) return;
   const linha = negativoEditor.linha;
   if (!linha) return;
 
@@ -4879,6 +4999,7 @@ async function lançarNegativoNoPróximoMês() {
   linha: LinhaComQuadrante,
   semana: 1 | 2 | 3 | 4 | 5
   ) {
+    if (!garantirCompetenciaAberta()) return;
     setRegraSemanaEditor({
       open: true,
       linha,
@@ -5398,7 +5519,8 @@ if (
   meQuery.isLoading ||
   funcionariosQuery.isLoading ||
   folhaBaseQuery.isLoading ||
-  folhaExtrasQuery.isLoading
+  folhaExtrasQuery.isLoading ||
+  fechamentoQuery.isLoading
 ) {
 
   return (
@@ -5415,7 +5537,8 @@ if (!meQuery.data) {
 if (
   funcionariosQuery.error ||
   folhaBaseQuery.error ||
-  folhaExtrasQuery.error
+  folhaExtrasQuery.error ||
+  fechamentoQuery.error
 ) {
 
   return (
@@ -5423,7 +5546,8 @@ if (
       <p className="text-red-400">
         {funcionariosQuery.error?.message ||
   folhaBaseQuery.error?.message ||
-  folhaExtrasQuery.error?.message}
+  folhaExtrasQuery.error?.message ||
+  fechamentoQuery.error?.message}
       </p>
     </div>
   );
@@ -5451,12 +5575,64 @@ if (
             </p>
           </div>
 
-          <Button
-            className="bg-primary text-black hover:bg-yellow-300 font-semibold"
-            onClick={exportarBoletos}
-          >
-            Exportar boletos
-          </Button>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <div
+                className={`rounded-md border px-3 py-2 text-xs font-semibold ${
+                  mesFechado
+                    ? "border-red-500/40 bg-red-950/30 text-red-300"
+                    : "border-green-500/30 bg-green-950/20 text-green-300"
+                }`}
+              >
+                {mesFechado ? "🔒 MÊS FECHADO" : "🟢 MÊS ABERTO"}
+              </div>
+
+              {podeGerenciarFechamento && !mesFechado && (
+                <Button
+                  variant="outline"
+                  className="border-red-500/40 text-red-300 hover:bg-red-950/30"
+                  disabled={fecharMesMutation.isPending}
+                  onClick={fecharMesAtual}
+                >
+                  {fecharMesMutation.isPending ? "Fechando..." : "Fechar mês"}
+                </Button>
+              )}
+
+              {podeGerenciarFechamento && mesFechado && (
+                <Button
+                  variant="outline"
+                  className="border-primary/40 text-primary hover:bg-primary/10"
+                  onClick={() => {
+                    setSenhaReabertura("");
+                    setErroFechamento("");
+                    setReabrirMesOpen(true);
+                  }}
+                >
+                  Reabrir mês
+                </Button>
+              )}
+
+              <Button
+                className="bg-primary text-black hover:bg-yellow-300 font-semibold"
+                onClick={exportarBoletos}
+              >
+                Exportar boletos
+              </Button>
+            </div>
+
+            {mesFechado && fechamentoQuery.data?.fechadoPorNome && (
+              <p className="text-xs text-gray-500">
+                Fechado por {fechamentoQuery.data.fechadoPorNome}
+                {fechamentoQuery.data.fechadoEm
+                  ? ` • ${new Date(fechamentoQuery.data.fechadoEm).toLocaleString("pt-BR")}`
+                  : ""}
+              </p>
+            )}
+
+            {erroFechamento && !reabrirMesOpen && (
+              <p className="text-xs text-red-400 max-w-xl text-right">{erroFechamento}</p>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -5632,6 +5808,22 @@ if (
     </div>
   </CardContent>
 </Card>
+
+        {mesFechado && (
+          <div className="rounded-lg border border-red-500/30 bg-red-950/20 px-5 py-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="font-bold text-red-300">🔒 Competência bloqueada para alterações</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  A folha continua disponível para consulta e exportação, mas nenhum valor, premiação, vale, observação ou importação pode ser alterado enquanto o mês estiver fechado.
+                </p>
+              </div>
+              <div className="text-xs text-gray-500 md:text-right">
+                <p>{String(mes).padStart(2, "0")}/{ano} • {LOJAS.find((loja) => loja.id === lojaId)?.nome}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {linhas.length === 0 ? (
           <Card className="bg-gray-900 border-primary/30">
@@ -7071,6 +7263,84 @@ if (
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reabrirMesOpen} onOpenChange={setReabrirMesOpen}>
+        <DialogContent className="bg-gray-950 border-primary/30 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-primary">Reabrir competência</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Informe a senha do seu usuário. Somente administrador ou gestor pode reabrir um mês fechado.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="rounded-md border border-red-500/20 bg-red-950/20 p-3 text-sm text-gray-300">
+              Você está reabrindo <strong>{String(mes).padStart(2, "0")}/{ano}</strong> de <strong>{LOJAS.find((loja) => loja.id === lojaId)?.nome}</strong>.
+            </div>
+
+            <div>
+              <Label className="text-gray-300">Senha</Label>
+              <Input
+                type="password"
+                autoComplete="current-password"
+                value={senhaReabertura}
+                onChange={(e) => setSenhaReabertura(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void confirmarReaberturaMes();
+                }}
+                className="mt-2 bg-gray-800 border-primary/30 text-white"
+                placeholder="Digite sua senha"
+              />
+            </div>
+
+            {erroFechamento && (
+              <div className="rounded-md border border-red-500/30 bg-red-950/30 p-3 text-sm text-red-300">
+                {erroFechamento}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              disabled={reabrirMesMutation.isPending}
+              onClick={() => {
+                setReabrirMesOpen(false);
+                setSenhaReabertura("");
+                setErroFechamento("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-primary text-black hover:bg-yellow-300"
+              disabled={reabrirMesMutation.isPending || !senhaReabertura.trim()}
+              onClick={confirmarReaberturaMes}
+            >
+              {reabrirMesMutation.isPending ? "Validando..." : "Reabrir mês"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bloqueioAvisoOpen} onOpenChange={setBloqueioAvisoOpen}>
+        <DialogContent className="bg-gray-950 border-red-500/30 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-300">🔒 Mês fechado</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Esta competência está protegida contra alterações.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-md border border-red-500/20 bg-red-950/20 p-4 text-sm text-gray-300">
+            Para modificar qualquer valor de {String(mes).padStart(2, "0")}/{ano}, um administrador ou gestor precisa usar <strong>Reabrir mês</strong> e confirmar a própria senha.
+          </div>
+          <DialogFooter>
+            <Button className="bg-primary text-black" onClick={() => setBloqueioAvisoOpen(false)}>
+              Entendi
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

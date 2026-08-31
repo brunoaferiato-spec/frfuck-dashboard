@@ -32,6 +32,9 @@ import {
   upsertDesconto,
   createValesBatch,
   cancelValesByGrupoFromCurrentForward,
+  getFolhaFechamentoStatus,
+  fecharCompetenciaFolha,
+  reabrirCompetenciaFolha,
 } from "./db";
 
 import { signAuthToken, comparePassword, hashPassword } from "./auth";
@@ -525,6 +528,96 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => upsertFolhaBaseItem(input)),
+  }),
+
+  folhaFechamento: router({
+    getStatus: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number(),
+        })
+      )
+      .query(({ input }) =>
+        getFolhaFechamentoStatus(input.lojaId, input.ano, input.mes)
+      ),
+
+    fechar: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        if (!["admin", "gestor"].includes(String(ctx.user.role))) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Somente administrador ou gestor pode fechar a folha.",
+          });
+        }
+
+        return await fecharCompetenciaFolha({
+          ...input,
+          usuarioId: Number(ctx.user.id),
+          usuarioNome: ctx.user.name || ctx.user.email || `Usuário ${ctx.user.id}`,
+        });
+      }),
+
+    reabrir: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number(),
+          password: z.string().min(1, "Informe sua senha"),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        if (!["admin", "gestor"].includes(String(ctx.user.role))) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Somente administrador ou gestor pode reabrir a folha.",
+          });
+        }
+
+        if (!ctx.user.email) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "O usuário atual não possui e-mail para validar a senha.",
+          });
+        }
+
+        const user = await getUserByEmail(String(ctx.user.email).trim().toLowerCase());
+        if (!user || !user.isActive) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Usuário inválido ou inativo.",
+          });
+        }
+
+        const senhaValida = await comparePassword(
+          input.password,
+          user.passwordHash ?? null
+        );
+
+        if (!senhaValida) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Senha inválida. A competência continua fechada.",
+          });
+        }
+
+        return await reabrirCompetenciaFolha({
+          lojaId: input.lojaId,
+          ano: input.ano,
+          mes: input.mes,
+          usuarioId: Number(ctx.user.id),
+          usuarioNome: ctx.user.name || ctx.user.email || `Usuário ${ctx.user.id}`,
+        });
+      }),
   }),
 
   folhaExtras: router({

@@ -990,6 +990,154 @@ export async function getFolhaExtrasByLojaAnoMes(
   };
 }
 
+
+// ===== Fechamento de competência da folha =====
+// Esta tabela é criada automaticamente na primeira consulta, evitando
+// depender de uma migration separada para ativar o recurso.
+async function ensureFolhaFechamentosTable() {
+  await getDb();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  await _pool.query(`
+    CREATE TABLE IF NOT EXISTS folha_fechamentos (
+      id INT NOT NULL AUTO_INCREMENT,
+      loja_id INT NOT NULL,
+      ano INT NOT NULL,
+      mes INT NOT NULL,
+      status ENUM('aberto','fechado') NOT NULL DEFAULT 'aberto',
+      fechado_por_id INT NULL,
+      fechado_por_nome VARCHAR(255) NULL,
+      fechado_em DATETIME NULL,
+      reaberto_por_id INT NULL,
+      reaberto_por_nome VARCHAR(255) NULL,
+      reaberto_em DATETIME NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uniq_folha_fechamento (loja_id, ano, mes)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+}
+
+export async function getFolhaFechamentoStatus(
+  lojaId: number,
+  ano: number,
+  mes: number
+) {
+  await ensureFolhaFechamentosTable();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  const [rows] = await _pool.query<any[]>(
+    `SELECT
+       id,
+       loja_id AS lojaId,
+       ano,
+       mes,
+       status,
+       fechado_por_id AS fechadoPorId,
+       fechado_por_nome AS fechadoPorNome,
+       fechado_em AS fechadoEm,
+       reaberto_por_id AS reabertoPorId,
+       reaberto_por_nome AS reabertoPorNome,
+       reaberto_em AS reabertoEm
+     FROM folha_fechamentos
+     WHERE loja_id = ? AND ano = ? AND mes = ?
+     LIMIT 1`,
+    [lojaId, ano, mes]
+  );
+
+  const row = rows?.[0];
+
+  if (!row) {
+    return {
+      fechado: false,
+      status: "aberto" as const,
+      lojaId,
+      ano,
+      mes,
+      fechadoPorId: null,
+      fechadoPorNome: null,
+      fechadoEm: null,
+      reabertoPorId: null,
+      reabertoPorNome: null,
+      reabertoEm: null,
+    };
+  }
+
+  return {
+    ...row,
+    fechado: row.status === "fechado",
+  };
+}
+
+export async function fecharCompetenciaFolha(data: {
+  lojaId: number;
+  ano: number;
+  mes: number;
+  usuarioId: number;
+  usuarioNome: string;
+}) {
+  await ensureFolhaFechamentosTable();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  await _pool.query(
+    `INSERT INTO folha_fechamentos
+       (loja_id, ano, mes, status, fechado_por_id, fechado_por_nome, fechado_em,
+        reaberto_por_id, reaberto_por_nome, reaberto_em)
+     VALUES (?, ?, ?, 'fechado', ?, ?, NOW(), NULL, NULL, NULL)
+     ON DUPLICATE KEY UPDATE
+       status = 'fechado',
+       fechado_por_id = VALUES(fechado_por_id),
+       fechado_por_nome = VALUES(fechado_por_nome),
+       fechado_em = NOW(),
+       reaberto_por_id = NULL,
+       reaberto_por_nome = NULL,
+       reaberto_em = NULL`,
+    [data.lojaId, data.ano, data.mes, data.usuarioId, data.usuarioNome]
+  );
+
+  return getFolhaFechamentoStatus(data.lojaId, data.ano, data.mes);
+}
+
+export async function reabrirCompetenciaFolha(data: {
+  lojaId: number;
+  ano: number;
+  mes: number;
+  usuarioId: number;
+  usuarioNome: string;
+}) {
+  await ensureFolhaFechamentosTable();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  await _pool.query(
+    `INSERT INTO folha_fechamentos
+       (loja_id, ano, mes, status, reaberto_por_id, reaberto_por_nome, reaberto_em)
+     VALUES (?, ?, ?, 'aberto', ?, ?, NOW())
+     ON DUPLICATE KEY UPDATE
+       status = 'aberto',
+       reaberto_por_id = VALUES(reaberto_por_id),
+       reaberto_por_nome = VALUES(reaberto_por_nome),
+       reaberto_em = NOW()`,
+    [data.lojaId, data.ano, data.mes, data.usuarioId, data.usuarioNome]
+  );
+
+  return getFolhaFechamentoStatus(data.lojaId, data.ano, data.mes);
+}
+
+export async function assertCompetenciaFolhaAberta(
+  lojaId: number,
+  ano: number,
+  mes: number
+) {
+  const status = await getFolhaFechamentoStatus(lojaId, ano, mes);
+
+  if (status.fechado) {
+    throw new Error(
+      `A folha de ${String(mes).padStart(2, "0")}/${ano} está fechada. Reabra a competência antes de alterar valores.`
+    );
+  }
+}
+
 export async function createPremiacao(data: {
   funcionarioId: number;
   lojaId: number;
@@ -1003,6 +1151,8 @@ export async function createPremiacao(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
+
+  await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
 
   await db.insert(premiacoes).values({
     funcionarioId: data.funcionarioId,
@@ -1023,6 +1173,15 @@ export async function deletePremiacaoById(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
 
+  const row = await db.select().from(premiacoes).where(eq(premiacoes.id, id)).limit(1);
+  if (row[0]) {
+    await assertCompetenciaFolhaAberta(
+      Number(row[0].lojaId),
+      Number(row[0].ano),
+      Number(row[0].mes)
+    );
+  }
+
   await db.delete(premiacoes).where(eq(premiacoes.id, id));
   return { success: true };
 }
@@ -1036,6 +1195,8 @@ export async function createObservacao(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
+
+  await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
 
   await db.insert(observacoes).values({
     funcionarioId: data.funcionarioId,
@@ -1057,6 +1218,8 @@ export async function deleteObservacaoByTexto(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
+
+  await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
 
   const rows = await db.select().from(observacoes).where(
     and(
@@ -1088,6 +1251,8 @@ export async function upsertDesconto(data: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
+
+  await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
 
   const existing = await db.select().from(descontos).where(
     and(
@@ -1146,6 +1311,15 @@ export async function createValesBatch(data: {
 
   if (!data.items.length) return { success: true };
 
+  const competencias = Array.from(
+    new Set(data.items.map((item) => `${item.ano}-${item.mes}`))
+  );
+
+  for (const competencia of competencias) {
+    const [anoItem, mesItem] = competencia.split("-").map(Number);
+    await assertCompetenciaFolhaAberta(data.lojaId, anoItem, mesItem);
+  }
+
   await db.insert(vales).values(
     data.items.map((item) => ({
       funcionarioId: data.funcionarioId,
@@ -1181,6 +1355,8 @@ export async function cancelValesByGrupoFromCurrentForward(data: {
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
 
+  await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
+
 const valeAtual = data.valeId
   ? await db
       .select()
@@ -1204,6 +1380,12 @@ for (const row of rows) {
   const rowRef = new Date(row.ano, row.mes - 1, 1).getTime();
 
   if (rowRef >= currentRef) {
+    await assertCompetenciaFolhaAberta(
+      Number(row.lojaId),
+      Number(row.ano),
+      Number(row.mes)
+    );
+
     await db
       .update(vales)
       .set({ status: "cancelado" } as any)
@@ -1250,6 +1432,8 @@ export async function upsertFolhaBaseItem(data: {
 
   const db = await getDb();
   if (!db) throw new Error("Banco não conectado");
+
+  await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
 
   const existing = await db
     .select()
