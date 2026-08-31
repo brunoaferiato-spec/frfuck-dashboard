@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import {
   computeFolhaLinha,
   findMetaForFuncionario,
+  getRecepcaoConfig,
 } from "@/lib/payrollStore";
 import {
   calcularPremiacaoEspecialFuncionario,
@@ -240,6 +241,7 @@ function calcularBoletoAjustado(args: {
   inss: number;
   adiant: number;
   holerite: number;
+  descontoFolhaProporcional?: number | null;
   boletoOriginal: number;
 }) {
   const totalComissao = Number(args.totalComissao || 0);
@@ -308,18 +310,45 @@ function calcularBoletoAjustado(args: {
     args.quadrante === "comissao_mensal" ||
     args.quadrante === "gerente"
   ) {
-    return (
-      totalComissao +
-      premiacao -
-      vale -
-      aluguel -
-      inss -
-      adiant -
-      holerite
-    );
+    const descontoFolha =
+      args.descontoFolhaProporcional !== null &&
+      args.descontoFolhaProporcional !== undefined
+        ? Number(args.descontoFolhaProporcional || 0)
+        : inss + adiant + holerite;
+
+    return totalComissao + premiacao - vale - aluguel - descontoFolha;
   }
 
   return Number(args.boletoOriginal || 0);
+}
+
+function calcularProporcaoTrocaFuncaoDashboard(
+  dataMudanca: string | Date,
+  ano: number,
+  mes: number
+) {
+  const raw =
+    dataMudanca instanceof Date
+      ? dataMudanca.toISOString().slice(0, 10)
+      : String(dataMudanca || "").slice(0, 10);
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  if (Number(match[1]) !== ano || Number(match[2]) !== mes) return null;
+
+  const totalDias = new Date(ano, mes, 0).getDate();
+  const dia = Math.min(Math.max(1, Number(match[3])), totalDias);
+  const diasNova = Math.max(0, totalDias - dia + 1);
+  return totalDias > 0 ? diasNova / totalDias : 1;
+}
+
+function funcaoAnteriorUsaFolhaFixaDashboard(
+  funcao: string,
+  lojaId: number,
+  ano: number,
+  mes: number
+) {
+  const quadrante = getQuadrante(lojaId, funcao, ano, mes, null);
+  return quadrante === "salario_fixo" || quadrante === "recepcao";
 }
 
 function funcionarioAtivoNaCompetencia(funcionario: any, ano: number, mes: number) {
@@ -382,6 +411,22 @@ function agruparFolhaBase(rows: any[], funcionarios: any[]) {
         percManual2: null,
         percManual3: null,
         percManual4: null,
+        perc1: 0,
+        perc2: 0,
+        perc3: 0,
+        perc4: 0,
+        com1: 0,
+        com2: 0,
+        com3: 0,
+        com4: 0,
+        funcaoSemana1: null,
+        funcaoSemana2: null,
+        funcaoSemana3: null,
+        funcaoSemana4: null,
+        composicaoSemana1: null,
+        composicaoSemana2: null,
+        composicaoSemana3: null,
+        composicaoSemana4: null,
         liquidezLojaGerente: 0,
         boleto: 0,
       });
@@ -396,6 +441,22 @@ function agruparFolhaBase(rows: any[], funcionarios: any[]) {
         row.percentualManual !== null && row.percentualManual !== undefined
           ? Number(row.percentualManual)
           : null;
+      item[`perc${semana}`] = Number(row.percentualComissao || 0);
+      item[`com${semana}`] = Number(row.valorComissao || 0);
+      item[`funcaoSemana${semana}`] =
+        row.funcaoSemana === "vendedor" || row.funcaoSemana === "mecanico"
+          ? row.funcaoSemana
+          : null;
+      try {
+        const rawComposicao = row.composicaoSemana;
+        item[`composicaoSemana${semana}`] = Array.isArray(rawComposicao)
+          ? rawComposicao
+          : typeof rawComposicao === "string" && rawComposicao.trim()
+          ? JSON.parse(rawComposicao)
+          : null;
+      } catch {
+        item[`composicaoSemana${semana}`] = null;
+      }
     }
 
     if (semana === 5) {
@@ -427,12 +488,20 @@ function calcularResumoLoja(args: {
   extras: any;
   fechamento: any;
   resumoSupervisor: any;
+  trocasFuncao: any[];
 }): ResumoLoja {
   const funcionarios = (args.funcionarios || []).filter((f) =>
     funcionarioAtivoNaCompetencia(f, args.ano, args.mes)
   );
 
   const folhaMap = agruparFolhaBase(args.folhaBase || [], funcionarios);
+  const trocaPorFuncionario = new Map<number, any>();
+  for (const troca of args.trocasFuncao || []) {
+    const funcionarioId = Number(troca.funcionarioId);
+    if (!trocaPorFuncionario.has(funcionarioId)) {
+      trocaPorFuncionario.set(funcionarioId, troca);
+    }
+  }
 
   const resumoFuncionariosLoja = funcionarios.map((funcionario) => {
     const base = folhaMap.get(Number(funcionario.id));
@@ -492,6 +561,22 @@ function calcularResumoLoja(args: {
       percManual2: existente.percManual2 ?? null,
       percManual3: existente.percManual3 ?? null,
       percManual4: existente.percManual4 ?? null,
+      perc1: Number(existente.perc1 || 0),
+      perc2: Number(existente.perc2 || 0),
+      perc3: Number(existente.perc3 || 0),
+      perc4: Number(existente.perc4 || 0),
+      com1: Number(existente.com1 || 0),
+      com2: Number(existente.com2 || 0),
+      com3: Number(existente.com3 || 0),
+      com4: Number(existente.com4 || 0),
+      funcaoSemana1: existente.funcaoSemana1 ?? null,
+      funcaoSemana2: existente.funcaoSemana2 ?? null,
+      funcaoSemana3: existente.funcaoSemana3 ?? null,
+      funcaoSemana4: existente.funcaoSemana4 ?? null,
+      composicaoSemana1: existente.composicaoSemana1 ?? null,
+      composicaoSemana2: existente.composicaoSemana2 ?? null,
+      composicaoSemana3: existente.composicaoSemana3 ?? null,
+      composicaoSemana4: existente.composicaoSemana4 ?? null,
       premiacoesManuais,
       vales,
       aluguel: Number(descontos.aluguel || 0),
@@ -535,6 +620,19 @@ function calcularResumoLoja(args: {
     } as any) as any;
 
     const ajustado: any = { ...calculado };
+
+    for (const semana of [1, 2, 3, 4] as const) {
+      const composicao = (base as any)[`composicaoSemana${semana}`];
+      const possuiHistorico =
+        (base as any)[`funcaoSemana${semana}`] === "vendedor" ||
+        (base as any)[`funcaoSemana${semana}`] === "mecanico" ||
+        (Array.isArray(composicao) && composicao.length > 0);
+
+      if (possuiHistorico) {
+        ajustado[`perc${semana}`] = Number((base as any)[`perc${semana}`] || 0);
+        ajustado[`com${semana}`] = Number((base as any)[`com${semana}`] || 0);
+      }
+    }
 
     for (const semana of [1, 2, 3, 4] as const) {
       const manual = Number(base[`percManual${semana}`] || 0);
@@ -647,6 +745,54 @@ function calcularResumoLoja(args: {
       tipoMetaEfetivo
     );
 
+    const trocaFuncaoMes = trocaPorFuncionario.get(funcionarioId) || null;
+    let descontoFolhaProporcional: number | null = null;
+
+    if (trocaFuncaoMes) {
+      if (String(trocaFuncaoMes.funcaoAnterior) === "recepcionista") {
+        const configRecepcao = getRecepcaoConfig(
+          funcionario.nome,
+          String(args.lojaId)
+        );
+        const comissaoAnterior = Number(
+          (
+            Number(trocaFuncaoMes.quantidadeAnterior1 || 0) *
+              Number(configRecepcao.valorVenda || 0) +
+            ([3, 4].includes(args.lojaId)
+              ? Number(trocaFuncaoMes.quantidadeAnterior2 || 0) *
+                Number(configRecepcao.valorEntrada || 0)
+              : 0)
+          ).toFixed(2)
+        );
+        ajustado.totalComissao = Number(
+          (Number(ajustado.totalComissao || 0) + comissaoAnterior).toFixed(2)
+        );
+      }
+
+      const proporcaoNova = calcularProporcaoTrocaFuncaoDashboard(
+        trocaFuncaoMes.dataMudanca,
+        args.ano,
+        args.mes
+      );
+      if (
+        proporcaoNova !== null &&
+        funcaoAnteriorUsaFolhaFixaDashboard(
+          String(trocaFuncaoMes.funcaoAnterior || ""),
+          args.lojaId,
+          args.ano,
+          args.mes
+        ) &&
+        ["comissao_semanal", "comissao_mensal", "gerente"].includes(quadrante)
+      ) {
+        descontoFolhaProporcional = Number(
+          (
+            (base.inss + base.adiant + base.holerite) *
+            proporcaoNova
+          ).toFixed(2)
+        );
+      }
+    }
+
     const boleto = calcularBoletoAjustado({
       quadrante,
       funcao: funcionario.funcao,
@@ -659,6 +805,7 @@ function calcularResumoLoja(args: {
       inss: base.inss,
       adiant: base.adiant,
       holerite: base.holerite,
+      descontoFolhaProporcional,
       boletoOriginal: Number(ajustado.boleto || 0),
     });
 
@@ -846,7 +993,7 @@ export default function Home() {
 
         const resumos = await Promise.all(
           lojasSelecionadas.map(async (loja) => {
-            const [funcionarios, folhaBase, extras, fechamento] =
+            const [funcionarios, folhaBase, extras, fechamento, trocasFuncao] =
               await Promise.all([
                 utils.funcionarios.listByLoja.fetch({ lojaId: loja.id }),
                 utils.folhaPagamento.getBaseByLojaAnoMes.fetch({
@@ -864,6 +1011,11 @@ export default function Home() {
                   ano: anoNumero,
                   mes: mesNumero,
                 }),
+                utils.funcionarios.trocasByLojaCompetencia.fetch({
+                  lojaId: loja.id,
+                  ano: anoNumero,
+                  mes: mesNumero,
+                }),
               ]);
 
             return calcularResumoLoja({
@@ -876,6 +1028,7 @@ export default function Home() {
               extras,
               fechamento,
               resumoSupervisor,
+              trocasFuncao: (trocasFuncao || []) as any[],
             });
           })
         );

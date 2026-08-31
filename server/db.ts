@@ -209,63 +209,22 @@ function formatarDataMySQL(value: Date) {
 }
 
 // ===== Funcionários =====
-async function aplicarDataNascimentoCivil<T extends { id: number }>(rows: T[]) {
-  if (!_pool || rows.length === 0) return rows;
-
-  const ids = rows
-    .map((row) => Number(row.id))
-    .filter((id) => Number.isFinite(id) && id > 0);
-
-  if (ids.length === 0) return rows;
-
-  const placeholders = ids.map(() => "?").join(",");
-  const [rawRows] = await _pool.query(
-    `SELECT id, DATE_FORMAT(dataNascimento, '%Y-%m-%d') AS dataNascimento
-       FROM funcionarios
-      WHERE id IN (${placeholders})`,
-    ids
-  );
-
-  const mapa = new Map<number, string | null>();
-
-  for (const item of rawRows as Array<{ id: number; dataNascimento: string | null }>) {
-    mapa.set(Number(item.id), item.dataNascimento ?? null);
-  }
-
-  return rows.map((row) => ({
-    ...row,
-    // Aniversário é uma data civil, não um instante de tempo.
-    // Entregamos YYYY-MM-DD explicitamente para o frontend, evitando
-    // qualquer conversão de TIMESTAMP/fuso na serialização do tRPC.
-    dataNascimento: mapa.get(Number(row.id)) ?? null,
-  }));
-}
-
 export async function getFuncionariosByLoja(lojaId: number) {
   const db = await getDb();
   if (!db) return [];
 
-  const rows = await db
+  return await db
     .select()
     .from(funcionarios)
     .where(eq(funcionarios.lojaId, lojaId))
     .orderBy(funcionarios.nome);
-
-  return aplicarDataNascimentoCivil(rows);
 }
 
 export async function getFuncionarioById(id: number) {
   const db = await getDb();
   if (!db) return null;
-
-  const rows = await db
-    .select()
-    .from(funcionarios)
-    .where(eq(funcionarios.id, id))
-    .limit(1);
-
-  const normalizados = await aplicarDataNascimentoCivil(rows);
-  return normalizados.length > 0 ? normalizados[0] : null;
+  const result = await db.select().from(funcionarios).where(eq(funcionarios.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
 }
 
 export async function getFuncionarioAtivo(lojaId: number, id: number) {
@@ -351,7 +310,13 @@ export async function createFuncionario(data: {
     return criado[0] ?? null;
   }
 
-  return getFuncionarioById(Number(insertId));
+  const criado = await db
+    .select()
+    .from(funcionarios)
+    .where(eq(funcionarios.id, insertId))
+    .limit(1);
+
+  return criado[0] ?? null;
 }
 
 export async function updateFuncionario(data: {
@@ -415,20 +380,19 @@ export async function updateFuncionario(data: {
     [formatarDataMySQL(data.dataNascimento), data.id]
   );
 
-  // Confirma diretamente no MySQL o valor que acabou de ser gravado.
-  const [rawRows] = await _pool.query(
-    "SELECT DATE_FORMAT(dataNascimento, '%Y-%m-%d') AS dataNascimento FROM funcionarios WHERE id = ? LIMIT 1",
-    [data.id]
-  );
+  const result = await db
+    .select()
+    .from(funcionarios)
+    .where(eq(funcionarios.id, data.id))
+    .limit(1);
 
-  const dataPersistida = (rawRows as Array<{ dataNascimento: string | null }>)[0]
-    ?.dataNascimento;
+  const atualizado = result[0] ?? null;
 
-  if (!dataPersistida) {
+  if (!atualizado || !(atualizado as any).dataNascimento) {
     throw new Error("A data de aniversário não foi persistida no banco");
   }
 
-  return getFuncionarioById(data.id);
+  return atualizado;
 }
 
 export async function inativarFuncionarioById(id: number, dataDesligamento: Date) {
@@ -476,6 +440,355 @@ export async function deleteFuncionarioById(id: number) {
   }
 
   await db.delete(funcionarios).where(eq(funcionarios.id, id));
+
+  return { success: true };
+}
+
+
+// ===== Histórico de troca de função =====
+let _trocaFuncaoTablesReady = false;
+
+function dataCivilMySQL(value: Date) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    throw new Error("Data de mudança inválida");
+  }
+
+  const ano = value.getUTCFullYear();
+  const mes = String(value.getUTCMonth() + 1).padStart(2, "0");
+  const dia = String(value.getUTCDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+function funcaoEhSalarioFixo(funcao: string) {
+  return [
+    "auxiliar_limpeza",
+    "caixa",
+    "caixa_lider",
+    "auxiliar_estoque",
+    "lider_estoque",
+    "auxiliar_mecanico",
+    "administrativo",
+  ].includes(String(funcao || ""));
+}
+
+async function ensureTrocaFuncaoTables() {
+  if (_trocaFuncaoTablesReady) return;
+
+  const db = await getDb();
+  if (!db || !_pool) throw new Error("Banco não conectado");
+
+  await _pool.query(`
+    CREATE TABLE IF NOT EXISTS funcionario_trocas_funcao (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      funcionario_id INT NOT NULL,
+      loja_id INT NOT NULL,
+      funcao_anterior VARCHAR(50) NOT NULL,
+      funcao_nova VARCHAR(50) NOT NULL,
+      tipo_meta_anterior VARCHAR(20) NULL,
+      tipo_meta_novo VARCHAR(20) NULL,
+      data_mudanca DATE NOT NULL,
+      usuario_id INT NULL,
+      usuario_nome VARCHAR(255) NULL,
+      criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_troca_funcionario_data (funcionario_id, data_mudanca),
+      INDEX idx_troca_loja_data (loja_id, data_mudanca)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await _pool.query(`
+    CREATE TABLE IF NOT EXISTS folha_transicoes_funcao (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      troca_funcao_id INT NOT NULL,
+      funcionario_id INT NOT NULL,
+      loja_id INT NOT NULL,
+      ano INT NOT NULL,
+      mes INT NOT NULL,
+      quantidade_anterior_1 DECIMAL(12,2) NOT NULL DEFAULT 0,
+      quantidade_anterior_2 DECIMAL(12,2) NOT NULL DEFAULT 0,
+      valor_fixo_anterior DECIMAL(14,2) NOT NULL DEFAULT 0,
+      ultima_alteracao_por VARCHAR(255) NULL,
+      ultima_alteracao_em DATETIME NULL,
+      criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_folha_transicao (troca_funcao_id, ano, mes),
+      INDEX idx_folha_transicao_competencia (loja_id, ano, mes, funcionario_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  _trocaFuncaoTablesReady = true;
+}
+
+export async function trocarFuncaoFuncionario(data: {
+  id: number;
+  lojaId: number;
+  novaFuncao:
+    | "mecanico"
+    | "vendedor"
+    | "consultor_vendas"
+    | "alinhador"
+    | "aux_alinhador"
+    | "auxiliar_limpeza"
+    | "caixa"
+    | "caixa_lider"
+    | "recepcionista"
+    | "auxiliar_estoque"
+    | "lider_estoque"
+    | "auxiliar_mecanico"
+    | "administrativo"
+    | "gerente"
+    | "supervisor";
+  novoTipoMeta?: "meta1" | "meta2" | null;
+  dataMudanca: Date;
+  usuarioId?: number | null;
+  usuarioNome?: string | null;
+}) {
+  await ensureTrocaFuncaoTables();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  const dataMudancaSql = dataCivilMySQL(data.dataMudanca);
+  const ano = Number(dataMudancaSql.slice(0, 4));
+  const mes = Number(dataMudancaSql.slice(5, 7));
+
+  await assertCompetenciaFolhaAberta(data.lojaId, ano, mes);
+
+  const connection = await _pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [funcRows] = await connection.query<any[]>(
+      `SELECT id, lojaId, funcao, tipoMeta,
+              DATE_FORMAT(dataAdmissao, '%Y-%m-%d') AS dataAdmissao
+         FROM funcionarios
+        WHERE id = ? AND lojaId = ?
+        LIMIT 1
+        FOR UPDATE`,
+      [data.id, data.lojaId]
+    );
+
+    const funcionario = funcRows?.[0];
+    if (!funcionario) {
+      throw new Error("Funcionário não encontrado nesta loja");
+    }
+
+    const funcaoAnterior = String(funcionario.funcao || "");
+    if (funcaoAnterior === data.novaFuncao) {
+      throw new Error("A nova função é igual à função atual do funcionário");
+    }
+
+    const admissaoRaw = funcionario.dataAdmissao
+      ? String(funcionario.dataAdmissao).slice(0, 10)
+      : "";
+    if (admissaoRaw && dataMudancaSql < admissaoRaw) {
+      throw new Error("A data da troca não pode ser anterior à admissão");
+    }
+
+    const tipoMetaAnterior = funcionario.tipoMeta || null;
+    const tipoMetaNovo =
+      data.novaFuncao === "consultor_vendas" &&
+      (data.novoTipoMeta === "meta1" || data.novoTipoMeta === "meta2")
+        ? data.novoTipoMeta
+        : null;
+
+    const [insertResult]: any = await connection.query(
+      `INSERT INTO funcionario_trocas_funcao
+         (funcionario_id, loja_id, funcao_anterior, funcao_nova,
+          tipo_meta_anterior, tipo_meta_novo, data_mudanca, usuario_id, usuario_nome)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.id,
+        data.lojaId,
+        funcaoAnterior,
+        data.novaFuncao,
+        tipoMetaAnterior,
+        tipoMetaNovo,
+        dataMudancaSql,
+        data.usuarioId ?? null,
+        data.usuarioNome ?? null,
+      ]
+    );
+
+    const trocaFuncaoId = Number(insertResult?.insertId || 0);
+    if (!trocaFuncaoId) {
+      throw new Error("Não foi possível registrar o histórico da troca de função");
+    }
+
+    // Ao sair de Recepção ou de uma função de salário fixo, os campos sem1/sem2
+    // tinham outro significado. Migramos os valores para o histórico da transição
+    // antes de zerá-los, evitando que sejam interpretados como liquidez da nova função.
+    if (funcaoAnterior === "recepcionista" || funcaoEhSalarioFixo(funcaoAnterior)) {
+      const [folhaRows] = await connection.query<any[]>(
+        `SELECT semana, liquidez
+           FROM folha_pagamento
+          WHERE funcionarioId = ? AND lojaId = ? AND ano = ? AND mes = ?
+            AND semana IN (1, 2, 3, 4)`,
+        [data.id, data.lojaId, ano, mes]
+      );
+
+      const valorSemana = (semana: number) =>
+        Number(folhaRows.find((row: any) => Number(row.semana) === semana)?.liquidez || 0);
+
+      const quantidadeAnterior1 = funcaoAnterior === "recepcionista" ? valorSemana(1) : 0;
+      const quantidadeAnterior2 = funcaoAnterior === "recepcionista" ? valorSemana(2) : 0;
+      const valorFixoAnterior = funcaoEhSalarioFixo(funcaoAnterior) ? valorSemana(1) : 0;
+
+      await connection.query(
+        `INSERT INTO folha_transicoes_funcao
+           (troca_funcao_id, funcionario_id, loja_id, ano, mes,
+            quantidade_anterior_1, quantidade_anterior_2, valor_fixo_anterior,
+            ultima_alteracao_por, ultima_alteracao_em)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE
+           quantidade_anterior_1 = VALUES(quantidade_anterior_1),
+           quantidade_anterior_2 = VALUES(quantidade_anterior_2),
+           valor_fixo_anterior = VALUES(valor_fixo_anterior),
+           ultima_alteracao_por = VALUES(ultima_alteracao_por),
+           ultima_alteracao_em = NOW()`,
+        [
+          trocaFuncaoId,
+          data.id,
+          data.lojaId,
+          ano,
+          mes,
+          quantidadeAnterior1,
+          quantidadeAnterior2,
+          valorFixoAnterior,
+          data.usuarioNome ?? null,
+        ]
+      );
+
+      await connection.query(
+        `UPDATE folha_pagamento
+            SET liquidez = 0,
+                percentualComissao = 0,
+                valorComissao = 0,
+                percentualManual = NULL,
+                motivoPercentualManual = NULL
+          WHERE funcionarioId = ? AND lojaId = ? AND ano = ? AND mes = ?
+            AND semana IN (1, 2, 3, 4)`,
+        [data.id, data.lojaId, ano, mes]
+      );
+    }
+
+    await connection.query(
+      `UPDATE funcionarios
+          SET funcao = ?, tipoMeta = ?
+        WHERE id = ? AND lojaId = ?`,
+      [data.novaFuncao, tipoMetaNovo, data.id, data.lojaId]
+    );
+
+    await connection.commit();
+
+    return {
+      success: true,
+      trocaFuncaoId,
+      funcaoAnterior,
+      funcaoNova: data.novaFuncao,
+      dataMudanca: dataMudancaSql,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function getTrocasFuncaoByLojaCompetencia(
+  lojaId: number,
+  ano: number,
+  mes: number
+) {
+  await ensureTrocaFuncaoTables();
+  if (!_pool) return [];
+
+  const inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
+  const prox = new Date(Date.UTC(ano, mes, 1));
+  const fimExclusivo = `${prox.getUTCFullYear()}-${String(prox.getUTCMonth() + 1).padStart(2, "0")}-01`;
+
+  const [rows] = await _pool.query<any[]>(
+    `SELECT
+       t.id,
+       t.funcionario_id AS funcionarioId,
+       t.loja_id AS lojaId,
+       t.funcao_anterior AS funcaoAnterior,
+       t.funcao_nova AS funcaoNova,
+       t.tipo_meta_anterior AS tipoMetaAnterior,
+       t.tipo_meta_novo AS tipoMetaNovo,
+       t.data_mudanca AS dataMudanca,
+       t.usuario_nome AS usuarioNome,
+       t.criado_em AS criadoEm,
+       COALESCE(d.quantidade_anterior_1, 0) AS quantidadeAnterior1,
+       COALESCE(d.quantidade_anterior_2, 0) AS quantidadeAnterior2,
+       COALESCE(d.valor_fixo_anterior, 0) AS valorFixoAnterior,
+       d.ultima_alteracao_por AS ultimaAlteracaoPor,
+       d.ultima_alteracao_em AS ultimaAlteracaoEm
+     FROM funcionario_trocas_funcao t
+     LEFT JOIN folha_transicoes_funcao d
+       ON d.troca_funcao_id = t.id AND d.ano = ? AND d.mes = ?
+     WHERE t.loja_id = ?
+       AND t.data_mudanca >= ?
+       AND t.data_mudanca < ?
+     ORDER BY t.funcionario_id, t.data_mudanca DESC, t.id DESC`,
+    [ano, mes, lojaId, inicio, fimExclusivo]
+  );
+
+  return rows || [];
+}
+
+export async function upsertFolhaTransicaoFuncao(data: {
+  trocaFuncaoId: number;
+  funcionarioId: number;
+  lojaId: number;
+  ano: number;
+  mes: number;
+  quantidadeAnterior1: number;
+  quantidadeAnterior2?: number;
+  valorFixoAnterior?: number;
+  ultimaAlteracaoPor?: string | null;
+  ultimaAlteracaoEm?: Date | null;
+}) {
+  await ensureTrocaFuncaoTables();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
+
+  const [trocaRows] = await _pool.query<any[]>(
+    `SELECT id
+       FROM funcionario_trocas_funcao
+      WHERE id = ? AND funcionario_id = ? AND loja_id = ?
+      LIMIT 1`,
+    [data.trocaFuncaoId, data.funcionarioId, data.lojaId]
+  );
+
+  if (!trocaRows?.[0]) {
+    throw new Error("Histórico de troca de função não encontrado");
+  }
+
+  await _pool.query(
+    `INSERT INTO folha_transicoes_funcao
+       (troca_funcao_id, funcionario_id, loja_id, ano, mes,
+        quantidade_anterior_1, quantidade_anterior_2, valor_fixo_anterior,
+        ultima_alteracao_por, ultima_alteracao_em)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       quantidade_anterior_1 = VALUES(quantidade_anterior_1),
+       quantidade_anterior_2 = VALUES(quantidade_anterior_2),
+       valor_fixo_anterior = VALUES(valor_fixo_anterior),
+       ultima_alteracao_por = VALUES(ultima_alteracao_por),
+       ultima_alteracao_em = VALUES(ultima_alteracao_em)`,
+    [
+      data.trocaFuncaoId,
+      data.funcionarioId,
+      data.lojaId,
+      data.ano,
+      data.mes,
+      Number(data.quantidadeAnterior1 || 0),
+      Number(data.quantidadeAnterior2 || 0),
+      Number(data.valorFixoAnterior || 0),
+      data.ultimaAlteracaoPor ?? null,
+      data.ultimaAlteracaoEm ?? null,
+    ]
+  );
 
   return { success: true };
 }
@@ -1432,21 +1745,57 @@ for (const row of rows) {
 return { success: true };
 }
 
+let _funcaoSemanaColumnReady = false;
+
+async function ensureFuncaoSemanaColumn() {
+  if (_funcaoSemanaColumnReady) return;
+
+  const db = await getDb();
+  if (!db || !_pool) throw new Error("Banco não conectado");
+
+  // Compatibilidade sem migration manual: cria as colunas de histórico semanal
+  // somente quando ainda não existirem.
+  const [funcaoColumns] = await _pool.query(
+    `SHOW COLUMNS FROM folha_pagamento LIKE 'funcaoSemana'`
+  );
+
+  if (!Array.isArray(funcaoColumns) || funcaoColumns.length === 0) {
+    await _pool.query(
+      `ALTER TABLE folha_pagamento ADD COLUMN funcaoSemana VARCHAR(30) NULL AFTER semana`
+    );
+  }
+
+  const [composicaoColumns] = await _pool.query(
+    `SHOW COLUMNS FROM folha_pagamento LIKE 'composicaoSemana'`
+  );
+
+  if (!Array.isArray(composicaoColumns) || composicaoColumns.length === 0) {
+    await _pool.query(
+      `ALTER TABLE folha_pagamento ADD COLUMN composicaoSemana JSON NULL AFTER funcaoSemana`
+    );
+  }
+
+  _funcaoSemanaColumnReady = true;
+}
+
 export async function getFolhaBaseByLojaAnoMes(lojaId: number, ano: number, mes: number) {
   console.log("BUSCANDO FOLHA:", lojaId, ano, mes);
   const db = await getDb();
-  if (!db) return [];
+  if (!db || !_pool) return [];
 
-  return await db
-    .select()
-    .from(folhaPagamento)
-    .where(
-      and(
-        eq(folhaPagamento.lojaId, lojaId),
-        eq(folhaPagamento.ano, ano),
-        eq(folhaPagamento.mes, mes)
-      )
-    );
+  await ensureFuncaoSemanaColumn();
+
+  const [rows] = await _pool.query(
+    `SELECT *
+       FROM folha_pagamento
+      WHERE lojaId = ?
+        AND ano = ?
+        AND mes = ?
+      ORDER BY funcionarioId, semana`,
+    [lojaId, ano, mes]
+  );
+
+  return Array.isArray(rows) ? rows : [];
 }
 
 export async function upsertFolhaBaseItem(data: {
@@ -1455,6 +1804,13 @@ export async function upsertFolhaBaseItem(data: {
   ano: number;
   mes: number;
   semana: number;
+  funcaoSemana?: "vendedor" | "mecanico" | null;
+  composicaoSemana?: Array<{
+    funcao: "vendedor" | "mecanico";
+    liquidez: number;
+    percentual: number;
+    comissao: number;
+  }> | null;
   liquidez: number;
   percentualComissao: number;
   valorComissao: number;
@@ -1470,6 +1826,7 @@ export async function upsertFolhaBaseItem(data: {
   if (!db) throw new Error("Banco não conectado");
 
   await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
+  await ensureFuncaoSemanaColumn();
 
   const existing = await db
     .select()
@@ -1499,13 +1856,63 @@ export async function upsertFolhaBaseItem(data: {
   } as any)
   .where(eq(folhaPagamento.id, existing[0].id));
   } else {
+    const {
+      funcaoSemana: _funcaoSemana,
+      composicaoSemana: _composicaoSemana,
+      ...dataBase
+    } = data;
+
     await db.insert(folhaPagamento).values({
-  ...data,
+  ...dataBase,
   percentualManual: data.percentualManual ?? null,
   motivoPercentualManual: data.motivoPercentualManual ?? null,
   ultimaAlteracaoPor: data.ultimaAlteracaoPor ?? null,
   ultimaAlteracaoEm: data.ultimaAlteracaoEm ?? null,
 } as any);
+  }
+
+  // Só altera a função histórica quando o chamador a informa.
+  // Edições manuais posteriores de liquidez/percentual não apagam esse histórico.
+  if (data.funcaoSemana !== undefined && _pool) {
+    await _pool.query(
+      `UPDATE folha_pagamento
+          SET funcaoSemana = ?
+        WHERE funcionarioId = ?
+          AND lojaId = ?
+          AND ano = ?
+          AND mes = ?
+          AND semana = ?`,
+      [
+        data.funcaoSemana ?? null,
+        data.funcionarioId,
+        data.lojaId,
+        data.ano,
+        data.mes,
+        data.semana,
+      ]
+    );
+  }
+
+  if (data.composicaoSemana !== undefined && _pool) {
+    await _pool.query(
+      `UPDATE folha_pagamento
+          SET composicaoSemana = ?
+        WHERE funcionarioId = ?
+          AND lojaId = ?
+          AND ano = ?
+          AND mes = ?
+          AND semana = ?`,
+      [
+        data.composicaoSemana === null
+          ? null
+          : JSON.stringify(data.composicaoSemana),
+        data.funcionarioId,
+        data.lojaId,
+        data.ano,
+        data.mes,
+        data.semana,
+      ]
+    );
   }
 }
 

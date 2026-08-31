@@ -35,6 +35,9 @@ import {
   getFolhaFechamentoStatus,
   fecharCompetenciaFolha,
   reabrirCompetenciaFolha,
+  trocarFuncaoFuncionario,
+  getTrocasFuncaoByLojaCompetencia,
+  upsertFolhaTransicaoFuncao,
 } from "./db";
 
 import { signAuthToken, comparePassword, hashPassword } from "./auth";
@@ -368,6 +371,43 @@ export const appRouter = router({
         };
       }),
 
+    trocasByLojaCompetencia: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number().min(1).max(12),
+        })
+      )
+      .query(({ input }) =>
+        getTrocasFuncaoByLojaCompetencia(input.lojaId, input.ano, input.mes)
+      ),
+
+    trocarFuncao: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          lojaId: z.number(),
+          novaFuncao: funcaoSchema,
+          novoTipoMeta: z.preprocess(
+            (val) => (val === "" ? null : val),
+            z.enum(["meta1", "meta2"]).nullable().optional()
+          ),
+          dataMudanca: z.coerce.date(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        return trocarFuncaoFuncionario({
+          id: input.id,
+          lojaId: input.lojaId,
+          novaFuncao: input.novaFuncao,
+          novoTipoMeta: input.novoTipoMeta ?? null,
+          dataMudanca: input.dataMudanca,
+          usuarioId: Number(ctx.user.id),
+          usuarioNome: ctx.user.name || ctx.user.email || `Usuário ${ctx.user.id}`,
+        });
+      }),
+
     update: protectedProcedure
       .input(
         z.object({
@@ -518,6 +558,18 @@ export const appRouter = router({
           ano: z.number(),
           mes: z.number(),
           semana: z.number(),
+          funcaoSemana: z.enum(["vendedor", "mecanico"]).nullable().optional(),
+          composicaoSemana: z
+            .array(
+              z.object({
+                funcao: z.enum(["vendedor", "mecanico"]),
+                liquidez: z.number(),
+                percentual: z.number(),
+                comissao: z.number(),
+              })
+            )
+            .nullable()
+            .optional(),
           liquidez: z.number(),
           percentualComissao: z.number(),
           valorComissao: z.number(),
@@ -528,6 +580,23 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => upsertFolhaBaseItem(input)),
+
+    upsertTransicaoFuncao: protectedProcedure
+      .input(
+        z.object({
+          trocaFuncaoId: z.number(),
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number().min(1).max(12),
+          quantidadeAnterior1: z.number().min(0),
+          quantidadeAnterior2: z.number().min(0).optional(),
+          valorFixoAnterior: z.number().min(0).optional(),
+          ultimaAlteracaoPor: z.string().nullable().optional(),
+          ultimaAlteracaoEm: z.coerce.date().nullable().optional(),
+        })
+      )
+      .mutation(({ input }) => upsertFolhaTransicaoFuncao(input)),
   }),
 
   folhaFechamento: router({

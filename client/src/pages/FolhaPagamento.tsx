@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, BadgeDollarSign, ReceiptText, Sparkles, TrendingUp, WalletCards } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -941,6 +941,7 @@ function calcularBoletoAjustado(args: {
   inss: number;
   adiant: number;
   holerite: number;
+  descontoFolhaProporcional?: number | null;
   boletoOriginal: number;
 }) {
   const totalComissao = Number(args.totalComissao || 0);
@@ -1035,14 +1036,18 @@ if (args.quadrante === "supervisor_pj") {
     args.quadrante === "comissao_mensal" ||
     args.quadrante === "gerente"
   ) {
+    const descontoFolha =
+      args.descontoFolhaProporcional !== null &&
+      args.descontoFolhaProporcional !== undefined
+        ? Number(args.descontoFolhaProporcional || 0)
+        : inss + adiant + holerite;
+
     return (
       totalComissao +
       premiacao -
       vale -
       aluguel -
-      inss -
-      adiant -
-      holerite
+      descontoFolha
     );
   }
 
@@ -1061,9 +1066,175 @@ type QuadranteKey =
   | "supervisora_consultores_pj"
   | "salario_fixo";
 
+type FuncaoSemanaComissao = "vendedor" | "mecanico";
+
+type ComponenteFuncaoSemana = {
+  funcao: FuncaoSemanaComissao;
+  liquidez: number;
+  percentual: number;
+  comissao: number;
+};
+
+type TrocaFuncaoMes = {
+  id: number;
+  funcionarioId: number;
+  lojaId: number;
+  funcaoAnterior: string;
+  funcaoNova: string;
+  tipoMetaAnterior?: string | null;
+  tipoMetaNovo?: string | null;
+  dataMudanca: string | Date;
+  quantidadeAnterior1: number;
+  quantidadeAnterior2: number;
+  valorFixoAnterior: number;
+  usuarioNome?: string | null;
+};
+
 type LinhaComQuadrante = FolhaMensal & {
   quadrante: QuadranteKey;
+  funcaoSemana1?: FuncaoSemanaComissao | null;
+  funcaoSemana2?: FuncaoSemanaComissao | null;
+  funcaoSemana3?: FuncaoSemanaComissao | null;
+  funcaoSemana4?: FuncaoSemanaComissao | null;
+  composicaoSemana1?: ComponenteFuncaoSemana[] | null;
+  composicaoSemana2?: ComponenteFuncaoSemana[] | null;
+  composicaoSemana3?: ComponenteFuncaoSemana[] | null;
+  composicaoSemana4?: ComponenteFuncaoSemana[] | null;
+  trocaFuncaoMes?: TrocaFuncaoMes | null;
+  comissaoFuncaoAnterior?: number;
+  descontoFolhaProporcional?: number | null;
+  proporcaoNovaFuncao?: number | null;
+  diasFuncaoAnterior?: number | null;
+  diasFuncaoNova?: number | null;
 };
+
+function getComposicaoSemana(
+  linha: LinhaComQuadrante | FolhaMensal,
+  semana: 1 | 2 | 3 | 4
+): ComponenteFuncaoSemana[] {
+  const raw = (linha as any)[`composicaoSemana${semana}`];
+  if (Array.isArray(raw) && raw.length > 0) {
+    return raw.filter(
+      (item: any) =>
+        (item?.funcao === "vendedor" || item?.funcao === "mecanico") &&
+        Number(item?.liquidez || 0) >= 0
+    );
+  }
+
+  const liquidez = Number((linha as any)[`sem${semana}`] || 0);
+  const funcao = getFuncaoSemanaEfetiva(linha, semana);
+  if (!funcao || liquidez <= 0) return [];
+
+  return [{
+    funcao,
+    liquidez,
+    percentual: Number((linha as any)[`perc${semana}`] || 0),
+    comissao: Number((linha as any)[`com${semana}`] || 0),
+  }];
+}
+
+function getFuncaoSemanaEfetiva(
+  linha: LinhaComQuadrante | FolhaMensal,
+  semana: 1 | 2 | 3 | 4
+): FuncaoSemanaComissao | null {
+  const historica = (linha as any)[`funcaoSemana${semana}`];
+  if (historica === "vendedor" || historica === "mecanico") return historica;
+
+  const atual = String((linha as any).funcao || "").toLowerCase();
+  if (atual === "vendedor" || atual === "mecanico") {
+    return atual as FuncaoSemanaComissao;
+  }
+
+  return null;
+}
+
+function getFuncoesComissaoAtivasNoMes(
+  linha: LinhaComQuadrante
+): FuncaoSemanaComissao[] {
+  const funcoes = ([1, 2, 3, 4] as const).flatMap((semana) =>
+    getComposicaoSemana(linha, semana).map((item) => item.funcao)
+  );
+
+  return Array.from(new Set(funcoes));
+}
+
+function temMudancaFuncaoSemanalNoMes(linha: LinhaComQuadrante) {
+  return getFuncoesComissaoAtivasNoMes(linha).length > 1;
+}
+
+function temMudancaFuncaoNoMes(linha: LinhaComQuadrante) {
+  return Boolean(linha.trocaFuncaoMes) || temMudancaFuncaoSemanalNoMes(linha);
+}
+
+function labelFuncaoSemana(funcao: FuncaoSemanaComissao | null) {
+  if (funcao === "mecanico") return "Mecânico";
+  if (funcao === "vendedor") return "Vendedor";
+  return "";
+}
+
+function getDescricaoFuncaoNoMes(linha: LinhaComQuadrante) {
+  if (linha.trocaFuncaoMes) {
+    return `${labelFuncaoFuncionario(
+      linha.trocaFuncaoMes.funcaoAnterior,
+      linha.loja_id
+    )} → ${labelFuncaoFuncionario(
+      linha.trocaFuncaoMes.funcaoNova,
+      linha.loja_id
+    )}`;
+  }
+
+  const diferentes = getFuncoesComissaoAtivasNoMes(linha);
+
+  if (diferentes.length === 0) return labelFuncaoFuncionario(linha.funcao, linha.loja_id);
+  if (diferentes.length === 1) return labelFuncaoSemana(diferentes[0]);
+
+  return diferentes.map((funcao) => labelFuncaoSemana(funcao)).join(" + ");
+}
+
+function calcularProporcaoTrocaFuncao(
+  dataMudanca: string | Date,
+  ano: number,
+  mes: number
+) {
+  const raw =
+    dataMudanca instanceof Date
+      ? dataMudanca.toISOString().slice(0, 10)
+      : String(dataMudanca || "").slice(0, 10);
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const anoMudanca = Number(match[1]);
+  const mesMudanca = Number(match[2]);
+  const diaMudanca = Number(match[3]);
+  if (anoMudanca !== ano || mesMudanca !== mes) return null;
+
+  const totalDias = new Date(ano, mes, 0).getDate();
+  const diaSeguro = Math.min(Math.max(1, diaMudanca), totalDias);
+  const diasFuncaoAnterior = Math.max(0, diaSeguro - 1);
+  const diasFuncaoNova = Math.max(0, totalDias - diaSeguro + 1);
+  const proporcaoNovaFuncao = totalDias > 0 ? diasFuncaoNova / totalDias : 1;
+
+  return {
+    totalDias,
+    diasFuncaoAnterior,
+    diasFuncaoNova,
+    proporcaoNovaFuncao,
+  };
+}
+
+function funcaoAnteriorUsaFolhaFixa(funcao: string, lojaId: number, ano: number, mes: number) {
+  const quadranteAnterior = getQuadrante(lojaId, funcao, ano, mes, null);
+  return quadranteAnterior === "salario_fixo" || quadranteAnterior === "recepcao";
+}
+
+function quadranteDescontaFolhaCompleta(quadrante: QuadranteKey) {
+  return (
+    quadrante === "comissao_semanal" ||
+    quadrante === "comissao_mensal" ||
+    quadrante === "gerente"
+  );
+}
+
 
 type CellEditorState = {
   open: boolean;
@@ -1104,6 +1275,14 @@ type RegraSemanaEditorState = {
   open: boolean;
   linha: LinhaComQuadrante | null;
   semana: 1 | 2 | 3 | 4 | 5 | null;
+};
+
+type TransicaoFuncaoEditorState = {
+  open: boolean;
+  linha: LinhaComQuadrante | null;
+  quantidadeAnterior1: string;
+  quantidadeAnterior2: string;
+  valorFixoAnterior: string;
 };
 
 function usaMetaSemanal(lojaId: number, ano: number, mes: number) {
@@ -1317,9 +1496,11 @@ function TabelaQuadrante({
   onOpenNegativoEditor,
   onOpenRegraSemanaEditor,
   onOpenFuncionarioDetalhe,
+  onOpenTransicaoFuncao,
   onOpenImportacaoSemana,
   onOpenImportacaoAdiantamento,
   onOpenImportacaoHolerite,
+  onUpdateComposicaoSemanaPercentual,
 }: {
   titulo: string;
   descricao: string;
@@ -1336,6 +1517,7 @@ function TabelaQuadrante({
   onOpenValeEditor: (linha: LinhaComQuadrante) => void;
   onOpenNegativoEditor: (linha: LinhaComQuadrante) => void;
   onOpenFuncionarioDetalhe: (linha: LinhaComQuadrante) => void;
+  onOpenTransicaoFuncao: (linha: LinhaComQuadrante) => void;
   onOpenRegraSemanaEditor: (
     linha: LinhaComQuadrante,
     semana: 1 | 2 | 3 | 4 | 5
@@ -1343,10 +1525,38 @@ function TabelaQuadrante({
   onOpenImportacaoSemana: (semana: SemanaImportacao) => void;
   onOpenImportacaoAdiantamento: () => void;
   onOpenImportacaoHolerite: () => void;
+  onUpdateComposicaoSemanaPercentual: (
+    linha: LinhaComQuadrante,
+    semana: 1 | 2 | 3 | 4,
+    funcao: FuncaoSemanaComissao,
+    percentualManual: number | null
+  ) => Promise<LinhaComQuadrante | null>;
 }) {
+  const [semanaMistaDetalhe, setSemanaMistaDetalhe] = useState<{
+    linha: LinhaComQuadrante;
+    semana: 1 | 2 | 3 | 4;
+  } | null>(null);
+  const semanaMistaAbertaRef = useRef(false);
+
+  function abrirSemanaMistaDetalhe(
+    linha: LinhaComQuadrante,
+    semana: 1 | 2 | 3 | 4
+  ) {
+    semanaMistaAbertaRef.current = true;
+    setSemanaMistaDetalhe({ linha, semana });
+  }
+
+  function fecharSemanaMistaDetalhe() {
+    // Marca como fechada antes de limpar o state. Isso impede que um onBlur
+    // assíncrono do campo de percentual reabra o modal depois do clique em Fechar.
+    semanaMistaAbertaRef.current = false;
+    setSemanaMistaDetalhe(null);
+  }
+
   if (linhas.length === 0) return null;
 
   const isSalarioFixo = quadrante === "salario_fixo";
+  const temTransicaoNoQuadrante = linhas.some((linha) => Boolean(linha.trocaFuncaoMes));
   const isRecepcao = quadrante === "recepcao";
   const isSupervisor = quadrante === "supervisor_pj";
   const isSupervisoraAci = quadrante === "supervisora_consultores_pj";
@@ -1391,11 +1601,43 @@ const isMensalUnico =
     const text =
       mode === "money" ? `R$ ${money(rawValue)}` : rawValue.toLocaleString("pt-BR");
 
+    const campoSemanaMatch = String(campo).match(/^sem([1-4])$/);
+    const semanaCampo = campoSemanaMatch
+      ? (Number(campoSemanaMatch[1]) as 1 | 2 | 3 | 4)
+      : null;
+    const composicaoSemana = semanaCampo
+      ? getComposicaoSemana(linha, semanaCampo)
+      : [];
+    const semanaMista = composicaoSemana.length > 1;
+    const mudouFuncao = semanaCampo ? temMudancaFuncaoSemanalNoMes(linha) : false;
+    const funcaoSemana = semanaCampo
+      ? getFuncaoSemanaEfetiva(linha, semanaCampo)
+      : null;
+
+    const classeMudanca = semanaMista
+      ? "border-orange-400/65 bg-orange-500/[0.12] shadow-[inset_0_0_24px_rgba(251,146,60,0.07)]"
+      : mudouFuncao && funcaoSemana === "mecanico"
+        ? "border-orange-400/55 bg-orange-500/[0.10] shadow-[inset_0_0_22px_rgba(251,146,60,0.05)]"
+        : mudouFuncao && funcaoSemana === "vendedor"
+        ? "border-[#D4AF37]/55 bg-[#D4AF37]/[0.09] shadow-[inset_0_0_22px_rgba(212,175,55,0.05)]"
+        : "border-white/[0.07] bg-[#101010]";
+
     return (
       <button
         type="button"
-        onClick={() => onOpenCellEditor(linha, campo, label, mode)}
-        className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all duration-200 hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] hover:shadow-[0_0_20px_rgba(212,175,55,0.06)] ${
+        onClick={() =>
+          semanaMista && semanaCampo
+            ? abrirSemanaMistaDetalhe(linha, semanaCampo)
+            : onOpenCellEditor(linha, campo, label, mode)
+        }
+        title={
+          semanaMista
+            ? `SEM${semanaCampo} com ${composicaoSemana.length} funções • clique para ver o detalhamento`
+            : mudouFuncao && funcaoSemana
+            ? `${labelFuncaoSemana(funcaoSemana)} nesta semana • houve mudança de função no mês`
+            : undefined
+        }
+        className={`w-full flex min-h-[42px] flex-col items-end justify-center whitespace-nowrap rounded-xl border px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all duration-200 hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] hover:shadow-[0_0_20px_rgba(212,175,55,0.06)] ${classeMudanca} ${
   rawValue > 0
     ? ["sem1", "sem2", "sem3", "sem4", "premiacao"].includes(String(campo))
       ? "text-green-400"
@@ -1405,7 +1647,20 @@ const isMensalUnico =
     : "text-white"
 }`}
       >
-        {text}
+        <span>{text}</span>
+        {semanaMista ? (
+          <span className="mt-0.5 text-[9px] font-extrabold uppercase tracking-[0.09em] text-orange-300">
+            {composicaoSemana.length} funções
+          </span>
+        ) : mudouFuncao && funcaoSemana ? (
+          <span
+            className={`mt-0.5 text-[9px] font-extrabold uppercase tracking-[0.09em] ${
+              funcaoSemana === "mecanico" ? "text-orange-300" : "text-[#F2D675]"
+            }`}
+          >
+            {labelFuncaoSemana(funcaoSemana)}
+          </span>
+        ) : null}
       </button>
     );
   }
@@ -1414,6 +1669,19 @@ const isMensalUnico =
     linha: LinhaComQuadrante,
     semana: 1 | 2 | 3 | 4
   ) {
+    const composicaoSemana = getComposicaoSemana(linha, semana);
+    if (composicaoSemana.length > 1) {
+      return (
+        <button
+          type="button"
+          onClick={() => abrirSemanaMistaDetalhe(linha, semana)}
+          className="font-bold text-orange-300 hover:text-orange-200 hover:underline underline-offset-4 whitespace-nowrap"
+          title="Clique para ver a comissão calculada separadamente por função"
+        >
+          {composicaoSemana.length} funções
+        </button>
+      );
+    }
    
    if (isConsultorMeta2) {
   return (
@@ -1431,11 +1699,14 @@ const isMensalUnico =
     ? linha.percManual3
     : linha.percManual4;
 
+const funcaoHistoricaSemana = getFuncaoSemanaEfetiva(linha, semana);
+
 const funcaoRegra =
-  linha.funcao === "gerente" &&
+  funcaoHistoricaSemana ||
+  (linha.funcao === "gerente" &&
   (linha.loja_id === 3 || linha.loja_id === 6)
     ? "vendedor"
-    : linha.funcao;
+    : linha.funcao);
 
 const meta = findMetaForFuncionario({
   funcionarioNome: linha.nome,
@@ -1596,6 +1867,11 @@ const regraClassName = manual
               <tr className="border-b border-[#D4AF37]/15 bg-[#D4AF37]/[0.025] text-[#D4AF37]">
                 <th className="sticky left-0 z-20 bg-[#0b0b0b] p-3 text-left text-[11px] font-bold uppercase tracking-[0.08em]">Nome</th>
                 <th className="p-3 text-left text-[11px] font-bold uppercase tracking-[0.06em]">Função</th>
+                {temTransicaoNoQuadrante && (
+                  <th className="p-3 text-left text-[11px] font-bold uppercase tracking-[0.06em] text-orange-300">
+                    Transição
+                  </th>
+                )}
                 {isSalarioFixo && (
   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Salário</th>
 )}
@@ -1828,12 +2104,57 @@ const regraClassName = manual
                     >
                       {linha.nome}
                     </button>
+                    {temMudancaFuncaoNoMes(linha) && (
+                      <span
+                        className="ml-2 inline-flex items-center rounded-full border border-orange-400/30 bg-orange-500/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] text-orange-300"
+                        title="Este funcionário exerceu funções diferentes dentro desta competência"
+                      >
+                        Mudança de função
+                      </span>
+                    )}
                   </td>
                   <td className="p-2 text-gray-300">
-                    {isSupervisoraAci
-                      ? "Supervisora de Consultor de Vendas - PJ"
-                      : linha.funcao}
+                    {isSupervisoraAci ? (
+                      "Supervisora de Consultor de Vendas - PJ"
+                    ) : temMudancaFuncaoNoMes(linha) ? (
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="font-semibold text-[#F2D675]">
+                          {getDescricaoFuncaoNoMes(linha)}
+                        </span>
+                        <span className="rounded-full border border-orange-400/30 bg-orange-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-orange-300">
+                          mudança no mês
+                        </span>
+                      </div>
+                    ) : (
+                      getDescricaoFuncaoNoMes(linha)
+                    )}
                   </td>
+                  {temTransicaoNoQuadrante && (
+                    <td className="min-w-[190px] p-2">
+                      {linha.trocaFuncaoMes ? (
+                        <button
+                          type="button"
+                          onClick={() => onOpenTransicaoFuncao(linha)}
+                          className="w-full rounded-xl border border-orange-400/35 bg-orange-500/[0.08] px-3 py-2 text-left transition hover:border-orange-300/60 hover:bg-orange-500/[0.12]"
+                          title="Ver e ajustar a transição de função desta competência"
+                        >
+                          <span className="block text-[10px] font-extrabold uppercase tracking-[0.08em] text-orange-300">
+                            {formatarDataBR(linha.trocaFuncaoMes.dataMudanca)}
+                          </span>
+                          <span className="mt-1 block text-xs font-semibold text-white">
+                            {labelFuncaoFuncionario(linha.trocaFuncaoMes.funcaoAnterior, linha.loja_id)} → {labelFuncaoFuncionario(linha.trocaFuncaoMes.funcaoNova, linha.loja_id)}
+                          </span>
+                          {linha.trocaFuncaoMes.funcaoAnterior === "recepcionista" && (
+                            <span className="mt-1 block text-[10px] text-[#F2D675]">
+                              Recepção: R$ {money(Number(linha.comissaoFuncaoAnterior || 0))}
+                            </span>
+                          )}
+                        </button>
+                      ) : (
+                        <span className="text-gray-700">—</span>
+                      )}
+                    </td>
+                  )}
                   {isSalarioFixo && (
   <td className="p-2">
     {renderEditButton(
@@ -2200,6 +2521,135 @@ const regraClassName = manual
           </table>
         </div>
       </CardContent>
+
+      <Dialog
+        open={!!semanaMistaDetalhe}
+        onOpenChange={(open) => {
+          if (!open) fecharSemanaMistaDetalhe();
+        }}
+      >
+        <DialogContent className="border border-orange-400/30 bg-[#090909] text-white sm:max-w-lg">
+          {semanaMistaDetalhe && (() => {
+            const { linha, semana } = semanaMistaDetalhe;
+            const composicao = getComposicaoSemana(linha, semana);
+            const totalLiquidez = composicao.reduce(
+              (acc, item) => acc + Number(item.liquidez || 0),
+              0
+            );
+            const totalComissao = composicao.reduce(
+              (acc, item) => acc + Number(item.comissao || 0),
+              0
+            );
+
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-[#F2D675]">
+                    SEM{semana} — Detalhamento por função
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    {linha.nome} trabalhou em mais de uma função nesta semana. Cada parte é calculada pela regra correspondente.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-3">
+                  {composicao.map((item, index) => (
+                    <div
+                      key={`${item.funcao}-${index}`}
+                      className={`rounded-xl border p-4 ${
+                        item.funcao === "mecanico"
+                          ? "border-orange-400/35 bg-orange-500/[0.07]"
+                          : "border-[#D4AF37]/35 bg-[#D4AF37]/[0.06]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-bold uppercase tracking-wide text-white">
+                          {labelFuncaoSemana(item.funcao)}
+                        </span>
+                        <span className="font-bold text-green-400">
+                          R$ {money(item.liquidez)}
+                        </span>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p className="text-gray-500">% aplicado</p>
+                          <Input
+                            key={`${item.funcao}-${index}-${Number(item.percentual || 0).toFixed(2)}`}
+                            type="number"
+                            step="0.01"
+                            defaultValue={Number(item.percentual || 0)}
+                            className="mt-1 h-9 w-28 border-yellow-500/30 bg-black text-right font-semibold text-yellow-300"
+                            title="Altere o percentual se necessário. Deixe vazio para voltar à regra automática."
+                            onBlur={async (e) => {
+                              const valorDigitado = e.target.value.trim();
+                              const valor = valorDigitado === "" ? null : Number(valorDigitado);
+
+                              if (valor !== null && (!Number.isFinite(valor) || valor < 0)) {
+                                e.target.value = String(Number(item.percentual || 0));
+                                return;
+                              }
+
+                              const linhaAtualizada = await onUpdateComposicaoSemanaPercentual(
+                                linha,
+                                semana,
+                                item.funcao,
+                                valor
+                              );
+
+                              // Se o usuário clicou em Fechar enquanto o onBlur estava salvando,
+                              // não reabra o modal quando a mutation terminar.
+                              if (linhaAtualizada && semanaMistaAbertaRef.current) {
+                                setSemanaMistaDetalhe({
+                                  linha: linhaAtualizada,
+                                  semana,
+                                });
+                              }
+                            }}
+                          />
+                          <p className="mt-1 text-[10px] text-gray-600">
+                            vazio = regra automática
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-gray-500">Comissão</p>
+                          <p className="font-semibold text-[#F2D675]">
+                            R$ {money(item.comissao)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.055] p-4">
+                  <div className="flex justify-between gap-4 text-sm">
+                    <span className="text-gray-400">Liquidez total da semana</span>
+                    <strong className="text-white">R$ {money(totalLiquidez)}</strong>
+                  </div>
+                  <div className="mt-2 flex justify-between gap-4">
+                    <span className="font-semibold text-gray-300">Comissão total da semana</span>
+                    <strong className="text-[#F2D675]">R$ {money(totalComissao)}</strong>
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    className="bg-[#D4AF37] text-black hover:bg-[#F2D675]"
+                    onMouseDown={() => {
+                      // onMouseDown acontece antes do blur do input.
+                      semanaMistaAbertaRef.current = false;
+                    }}
+                    onClick={fecharSemanaMistaDetalhe}
+                  >
+                    Fechar
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -2261,6 +2711,15 @@ export default function FolhaPagamento() {
     linha: null,
     semana: null,
   });
+
+  const [transicaoFuncaoEditor, setTransicaoFuncaoEditor] =
+    useState<TransicaoFuncaoEditorState>({
+      open: false,
+      linha: null,
+      quantidadeAnterior1: "",
+      quantidadeAnterior2: "",
+      valorFixoAnterior: "",
+    });
 
 
   const [importacaoSemana, setImportacaoSemana] = useState<ImportacaoSemanaState>(
@@ -2338,6 +2797,16 @@ export default function FolhaPagamento() {
   }
 );
 
+const trocasFuncaoQuery = trpc.funcionarios.trocasByLojaCompetencia.useQuery(
+  { lojaId, ano, mes },
+  {
+    enabled: !!lojaId && !!ano && !!mes,
+    retry: false,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  }
+);
+
 const updateFuncionarioDetalheMutation = trpc.funcionarios.update.useMutation({
   onSuccess: async () => {
     await funcionariosQuery.refetch();
@@ -2364,6 +2833,13 @@ const upsertFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation({
   },
 });
 
+
+const upsertTransicaoFuncaoMutation =
+  trpc.folhaPagamento.upsertTransicaoFuncao.useMutation({
+    onSuccess: () => {
+      void trocasFuncaoQuery.refetch();
+    },
+  });
 
 const importFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation();
 const importDescontoMutation = trpc.folhaExtras.saveDesconto.useMutation();
@@ -2579,9 +3055,9 @@ async function salvarEdicaoFuncionarioDetalhe() {
       dataNascimento: dataFuncionarioParaApi(
         funcionarioEdicaoForm.dataNascimento
       ),
-      funcao: funcionarioEdicaoForm.funcao,
+      funcao: String(funcionario.funcao || funcionarioEdicaoForm.funcao) as FuncaoFuncionarioId,
       tipoMeta:
-        funcionarioEdicaoForm.funcao === "consultor_vendas"
+        String(funcionario.funcao || funcionarioEdicaoForm.funcao) === "consultor_vendas"
           ? Number(funcionario.lojaId ?? funcionario.loja_id ?? lojaId) === 5
             ? "meta2"
             : (funcionarioEdicaoForm.tipoMeta as "meta1" | "meta2")
@@ -2714,6 +3190,21 @@ regraMeta: "",
        : null;
        item.perc1 = Number(row.percentualComissao || 0);
        item.com1 = Number(row.valorComissao || 0);
+       (item as any).funcaoSemana1 =
+         row.funcaoSemana === "vendedor" || row.funcaoSemana === "mecanico"
+           ? row.funcaoSemana
+           : null;
+       try {
+         const rawComposicao = (row as any).composicaoSemana;
+         const composicao = Array.isArray(rawComposicao)
+           ? rawComposicao
+           : typeof rawComposicao === "string" && rawComposicao.trim()
+           ? JSON.parse(rawComposicao)
+           : null;
+         (item as any).composicaoSemana1 = Array.isArray(composicao) ? composicao : null;
+       } catch {
+         (item as any).composicaoSemana1 = null;
+       }
 
        (item as any).ultimaAlteracaoPor1 = (row as any).ultimaAlteracaoPor || null;
        (item as any).ultimaAlteracaoEm1 = (row as any).ultimaAlteracaoEm || null;
@@ -2727,6 +3218,21 @@ regraMeta: "",
       : null;
   item.perc2 = Number(row.percentualComissao || 0);
   item.com2 = Number(row.valorComissao || 0);
+  (item as any).funcaoSemana2 =
+    row.funcaoSemana === "vendedor" || row.funcaoSemana === "mecanico"
+      ? row.funcaoSemana
+      : null;
+  try {
+    const rawComposicao = (row as any).composicaoSemana;
+    const composicao = Array.isArray(rawComposicao)
+      ? rawComposicao
+      : typeof rawComposicao === "string" && rawComposicao.trim()
+      ? JSON.parse(rawComposicao)
+      : null;
+    (item as any).composicaoSemana2 = Array.isArray(composicao) ? composicao : null;
+  } catch {
+    (item as any).composicaoSemana2 = null;
+  }
 
   (item as any).ultimaAlteracaoPor2 = (row as any).ultimaAlteracaoPor || null;
   (item as any).ultimaAlteracaoEm2 = (row as any).ultimaAlteracaoEm || null;
@@ -2740,6 +3246,21 @@ if (row.semana === 3) {
       : null;
   item.perc3 = Number(row.percentualComissao || 0);
   item.com3 = Number(row.valorComissao || 0);
+  (item as any).funcaoSemana3 =
+    row.funcaoSemana === "vendedor" || row.funcaoSemana === "mecanico"
+      ? row.funcaoSemana
+      : null;
+  try {
+    const rawComposicao = (row as any).composicaoSemana;
+    const composicao = Array.isArray(rawComposicao)
+      ? rawComposicao
+      : typeof rawComposicao === "string" && rawComposicao.trim()
+      ? JSON.parse(rawComposicao)
+      : null;
+    (item as any).composicaoSemana3 = Array.isArray(composicao) ? composicao : null;
+  } catch {
+    (item as any).composicaoSemana3 = null;
+  }
 
   (item as any).ultimaAlteracaoPor3 = (row as any).ultimaAlteracaoPor || null;
   (item as any).ultimaAlteracaoEm3 = (row as any).ultimaAlteracaoEm || null;
@@ -2753,6 +3274,21 @@ if (row.semana === 4) {
       : null;
   item.perc4 = Number(row.percentualComissao || 0);
   item.com4 = Number(row.valorComissao || 0);
+  (item as any).funcaoSemana4 =
+    row.funcaoSemana === "vendedor" || row.funcaoSemana === "mecanico"
+      ? row.funcaoSemana
+      : null;
+  try {
+    const rawComposicao = (row as any).composicaoSemana;
+    const composicao = Array.isArray(rawComposicao)
+      ? rawComposicao
+      : typeof rawComposicao === "string" && rawComposicao.trim()
+      ? JSON.parse(rawComposicao)
+      : null;
+    (item as any).composicaoSemana4 = Array.isArray(composicao) ? composicao : null;
+  } catch {
+    (item as any).composicaoSemana4 = null;
+  }
 
   (item as any).ultimaAlteracaoPor4 = (row as any).ultimaAlteracaoPor || null;
   (item as any).ultimaAlteracaoEm4 = (row as any).ultimaAlteracaoEm || null;
@@ -2780,6 +3316,28 @@ if (row.semana === 6) {
 }
 setFolhas(Array.from(agrupado.values()));
 }, [folhaBaseQuery.data, todosFuncionarios]);
+  const trocasFuncaoCompetencia = useMemo(() => {
+    return ((trocasFuncaoQuery.data ?? []) as any[]).map((item) => ({
+      ...item,
+      id: Number(item.id),
+      funcionarioId: Number(item.funcionarioId),
+      lojaId: Number(item.lojaId),
+      quantidadeAnterior1: Number(item.quantidadeAnterior1 || 0),
+      quantidadeAnterior2: Number(item.quantidadeAnterior2 || 0),
+      valorFixoAnterior: Number(item.valorFixoAnterior || 0),
+    })) as TrocaFuncaoMes[];
+  }, [trocasFuncaoQuery.data]);
+
+  const trocaFuncaoPorFuncionario = useMemo(() => {
+    const map = new Map<number, TrocaFuncaoMes>();
+    for (const troca of trocasFuncaoCompetencia) {
+      if (!map.has(Number(troca.funcionarioId))) {
+        map.set(Number(troca.funcionarioId), troca);
+      }
+    }
+    return map;
+  }, [trocasFuncaoCompetencia]);
+
   const linhas = useMemo<LinhaComQuadrante[]>(() => {
     const resumoFuncionariosLoja = funcionariosDaCidade.map((funcionario) => {
   const folhaFuncionario = folhas.find(
@@ -2825,6 +3383,9 @@ setFolhas(Array.from(agrupado.values()));
           f.mes === mes &&
           f.funcionarioId === func.id
       );
+
+      const trocaFuncaoMes =
+        trocaFuncaoPorFuncionario.get(Number(func.id)) || null;
 
       const funcaoMetaCalculo =
   func.funcao === "gerente" && (lojaId === 3 || lojaId === 6)
@@ -2918,6 +3479,27 @@ percManual4:
 });
 
 const calculadoAjustado = { ...calculado };
+
+// Quando a função exercida foi registrada por semana, o percentual e a comissão
+// daquela semana são históricos e prevalecem sobre a função atual do cadastro.
+// Assim uma mudança Mecânico -> Vendedor no meio do mês não reescreve o passado.
+([1, 2, 3, 4] as const).forEach((semana) => {
+  const funcaoSemana = (base as any)[`funcaoSemana${semana}`];
+  const composicaoSemana = getComposicaoSemana(base as any, semana);
+  const possuiHistorico =
+    funcaoSemana === "vendedor" ||
+    funcaoSemana === "mecanico" ||
+    composicaoSemana.length > 0;
+
+  if (!possuiHistorico) return;
+
+  (calculadoAjustado as any)[`perc${semana}`] = Number(
+    (base as any)[`perc${semana}`] || 0
+  );
+  (calculadoAjustado as any)[`com${semana}`] = Number(
+    (base as any)[`com${semana}`] || 0
+  );
+});
 
 if (
   Number(base.percManual1 || 0) > 0 &&
@@ -3101,6 +3683,65 @@ if (premiacaoEspecial.total > 0) {
     premiacaoEspecial.detalhes;
 }
 
+let comissaoFuncaoAnterior = 0;
+let descontoFolhaProporcional: number | null = null;
+let proporcaoNovaFuncao: number | null = null;
+let diasFuncaoAnterior: number | null = null;
+let diasFuncaoNova: number | null = null;
+
+if (trocaFuncaoMes) {
+  if (trocaFuncaoMes.funcaoAnterior === "recepcionista") {
+    const configRecepcaoAnterior = getRecepcaoConfig(func.nome, selectedLoja);
+    const quantidadeVendas = Number(trocaFuncaoMes.quantidadeAnterior1 || 0);
+    const quantidadeEntradas = Number(trocaFuncaoMes.quantidadeAnterior2 || 0);
+    const usaEntradas = lojaId === 3 || lojaId === 4;
+
+    comissaoFuncaoAnterior = Number(
+      (
+        quantidadeVendas * Number(configRecepcaoAnterior.valorVenda || 0) +
+        (usaEntradas
+          ? quantidadeEntradas * Number(configRecepcaoAnterior.valorEntrada || 0)
+          : 0)
+      ).toFixed(2)
+    );
+
+    calculadoAjustado.totalComissao = Number(
+      (Number(calculadoAjustado.totalComissao || 0) + comissaoFuncaoAnterior).toFixed(2)
+    );
+  }
+
+  const proporcao = calcularProporcaoTrocaFuncao(
+    trocaFuncaoMes.dataMudanca,
+    ano,
+    mes
+  );
+
+  if (proporcao) {
+    proporcaoNovaFuncao = proporcao.proporcaoNovaFuncao;
+    diasFuncaoAnterior = proporcao.diasFuncaoAnterior;
+    diasFuncaoNova = proporcao.diasFuncaoNova;
+
+    if (
+      funcaoAnteriorUsaFolhaFixa(
+        trocaFuncaoMes.funcaoAnterior,
+        lojaId,
+        ano,
+        mes
+      ) &&
+      quadranteDescontaFolhaCompleta(quadrante)
+    ) {
+      descontoFolhaProporcional = Number(
+        (
+          (Number(base.inss || 0) +
+            Number(base.adiant || 0) +
+            Number(base.holerite || 0)) *
+          proporcao.proporcaoNovaFuncao
+        ).toFixed(2)
+      );
+    }
+  }
+}
+
 const boletoAjustado = calcularBoletoAjustado({
   quadrante,
   funcao: func.funcao,
@@ -3113,6 +3754,7 @@ const boletoAjustado = calcularBoletoAjustado({
   inss: base.inss,
   adiant: base.adiant,
   holerite: base.holerite,
+  descontoFolhaProporcional,
   boletoOriginal: calculadoAjustado.boleto,
 });
 
@@ -3122,6 +3764,12 @@ return {
   regraMeta: meta?.regra || "Sem meta cadastrada",
   quadrante,
   ...calculadoAjustado,
+  trocaFuncaoMes,
+  comissaoFuncaoAnterior,
+  descontoFolhaProporcional,
+  proporcaoNovaFuncao,
+  diasFuncaoAnterior,
+  diasFuncaoNova,
   boleto: boletoAjustado,
 };
 
@@ -3135,6 +3783,7 @@ return {
   selectedLoja,
   folhaExtrasQuery.data,
   resumoSupervisorQuery.data,
+  trocaFuncaoPorFuncionario,
 ]);
 
   const funcionariosImportaveis = useMemo(() => {
@@ -3163,7 +3812,7 @@ return {
   // ou reenviar o arquivo.
   useEffect(() => {
     if (importacaoSemana.etapa !== "conferencia") return;
-    if (funcionariosImportaveis.length === 0) return;
+    if (funcionariosDaCidade.length === 0) return;
 
     setImportacaoSemana((prev) => {
       if (prev.etapa !== "conferencia") return prev;
@@ -3172,31 +3821,76 @@ return {
       const itens = prev.itens.map((item) => {
         if (item.status === "ok" || item.status === "ignorado") return item;
 
-        const nomeCanonico = normalizarNomeImportacao(item.nomeRelatorio);
-        const correspondenciasExatas = funcionariosImportaveis.filter(
-          (funcionario: any) => {
-            const funcaoCompativel =
-              item.funcaoRelatorio === "mecanico"
-                ? funcionario.funcao === "mecanico"
-                : funcionario.funcao === "vendedor" ||
-                  (funcionario.funcao === "gerente" &&
-                    (Number(lojaId) === 3 ||
-                      Number(lojaId) === 4 ||
-                      Number(lojaId) === 6));
+        const candidatoPersistido = item.candidatoId
+          ? funcionariosDaCidade.find(
+              (funcionario: any) =>
+                Number(funcionario.id) === Number(item.candidatoId)
+            )
+          : null;
 
-            return (
-              funcaoCompativel &&
-              normalizarNomeImportacao(funcionario.nome) === nomeCanonico
-            );
+        // Ao voltar da tela de cadastro/troca de função, preservamos o candidato
+        // que já havia sido identificado antes de navegar. Se a troca foi confirmada
+        // e a função agora é compatível com o bloco do relatório, promovemos para OK
+        // mesmo que o nome no relatório tenha uma pequena diferença de sobrenome.
+        if (candidatoPersistido) {
+          const funcaoCompativelCandidato =
+            item.funcaoRelatorio === "mecanico"
+              ? candidatoPersistido.funcao === "mecanico"
+              : candidatoPersistido.funcao === "vendedor" ||
+                (candidatoPersistido.funcao === "gerente" &&
+                  (Number(lojaId) === 3 ||
+                    Number(lojaId) === 4 ||
+                    Number(lojaId) === 6));
+
+          if (funcaoCompativelCandidato) {
+            mudou = true;
+            return {
+              ...item,
+              funcionarioId: Number(candidatoPersistido.id),
+              funcionarioNome: candidatoPersistido.nome,
+              status: "ok" as const,
+              candidatoId: null,
+              candidatoNome: null,
+              scoreCandidato: 1,
+            };
           }
+        }
+
+        const nomeCanonico = normalizarNomeImportacao(item.nomeRelatorio);
+        const correspondenciasMesmoNome = funcionariosDaCidade.filter(
+          (funcionario: any) =>
+            normalizarNomeImportacao(funcionario.nome) === nomeCanonico
         );
 
-        // Só vinculamos automaticamente quando existe uma única correspondência
-        // exata. Se houver duplicidade, mantemos a conferência manual.
-        if (correspondenciasExatas.length !== 1) return item;
+        // Nome exato e único na loja: nunca tratamos como novo funcionário.
+        // Se a função/bloco também bater, vinculamos automaticamente. Se o bloco
+        // do relatório divergir, deixamos uma confirmação manual para não alterar
+        // regra financeira silenciosamente.
+        if (correspondenciasMesmoNome.length !== 1) return item;
 
-        const funcionario = correspondenciasExatas[0];
+        const funcionario = correspondenciasMesmoNome[0];
+        const funcaoCompativel =
+          item.funcaoRelatorio === "mecanico"
+            ? funcionario.funcao === "mecanico"
+            : funcionario.funcao === "vendedor" ||
+              (funcionario.funcao === "gerente" &&
+                (Number(lojaId) === 3 ||
+                  Number(lojaId) === 4 ||
+                  Number(lojaId) === 6));
+
         mudou = true;
+
+        if (!funcaoCompativel) {
+          return {
+            ...item,
+            funcionarioId: null,
+            funcionarioNome: null,
+            status: "possivel" as const,
+            candidatoId: Number(funcionario.id),
+            candidatoNome: funcionario.nome,
+            scoreCandidato: 1,
+          };
+        }
 
         return {
           ...item,
@@ -3211,7 +3905,12 @@ return {
 
       return mudou ? { ...prev, itens } : prev;
     });
-  }, [importacaoSemana.etapa, funcionariosImportaveis, lojaId]);
+  }, [
+    importacaoSemana.etapa,
+    funcionariosDaCidade,
+    funcionariosImportaveis,
+    lojaId,
+  ]);
 
   const funcionariosAusentesNoRelatorio = useMemo(() => {
     if (importacaoSemana.etapa !== "conferencia") return [] as any[];
@@ -3494,11 +4193,20 @@ return {
           }
         );
 
+        // Alias já confirmado pelo usuário deve continuar valendo mesmo se o
+        // funcionário aparecer em outro bloco do relatório (VENDA/MECÂNICA).
         const porAlias = aliasId
-          ? candidatosFuncao.find((f: any) => Number(f.id) === Number(aliasId))
+          ? funcionariosImportaveis.find((f: any) => Number(f.id) === Number(aliasId))
           : null;
 
         const nomeCanonico = normalizarNomeImportacao(item.nomeRelatorio);
+        const exatosMesmoNome = funcionariosDaCidade.filter(
+          (funcionario: any) =>
+            normalizarNomeImportacao(funcionario.nome) === nomeCanonico
+        );
+        const exatoQualquerFuncao =
+          exatosMesmoNome.length === 1 ? exatosMesmoNome[0] : null;
+
         const exato = candidatosFuncao.find(
           (funcionario: any) =>
             normalizarNomeImportacao(funcionario.nome) === nomeCanonico
@@ -3521,6 +4229,25 @@ return {
           };
         }
 
+        // Se o nome é exatamente o mesmo na mesma cidade, nunca oferecemos
+        // cadastrar outra pessoa. Se ele já é Vendedor/Mecânico, podemos apenas
+        // vincular o bloco semanal. Se vem de Recepção/Salário Fixo, a conferência
+        // direciona para “Trocar função” antes de permitir a importação.
+        if (exatoQualquerFuncao) {
+          return {
+            id: `${item.funcaoRelatorio}-${index}-${normalizarTextoImportacao(item.nomeRelatorio)}`,
+            nomeRelatorio: item.nomeRelatorio,
+            funcaoRelatorio: item.funcaoRelatorio,
+            valor: item.valor,
+            funcionarioId: null,
+            funcionarioNome: null,
+            status: "possivel" as const,
+            candidatoId: Number(exatoQualquerFuncao.id),
+            candidatoNome: exatoQualquerFuncao.nome,
+            scoreCandidato: 1,
+          };
+        }
+
         const candidatosOrdenados = candidatosFuncao
           .map((funcionario: any) => ({
             funcionario,
@@ -3528,8 +4255,35 @@ return {
           }))
           .sort((a, b) => b.score - a.score);
 
-        const melhor = candidatosOrdenados[0];
-        const ehPossivel = !!melhor && melhor.score >= 0.55;
+        const candidatosQualquerFuncaoOrdenados = funcionariosDaCidade
+          .map((funcionario: any) => ({
+            funcionario,
+            score: scoreNomesImportacao(item.nomeRelatorio, funcionario.nome),
+          }))
+          .sort((a, b) => b.score - a.score);
+
+        const melhorCompativel = candidatosOrdenados[0];
+        const melhorQualquerFuncao = candidatosQualquerFuncaoOrdenados[0];
+        const segundoQualquerFuncao = candidatosQualquerFuncaoOrdenados[1];
+
+        // Para troca de função, aceitamos também nomes em que o relatório acrescentou
+        // ou retirou um sobrenome (ex.: "LEONARDO APOLINARIO" x
+        // "LEONARDO APOLINARIO COSTA"). Nunca vinculamos automaticamente: mostramos
+        // o cadastro encontrado para o usuário confirmar a troca. A diferença mínima
+        // para o segundo candidato evita sugerir uma pessoa quando o nome é ambíguo.
+        const melhorQualquerFuncaoSeguro =
+          melhorQualquerFuncao &&
+          melhorQualquerFuncao.score >= 0.6 &&
+          (!segundoQualquerFuncao ||
+            melhorQualquerFuncao.score - segundoQualquerFuncao.score >= 0.15)
+            ? melhorQualquerFuncao
+            : null;
+
+        const melhor =
+          melhorCompativel && melhorCompativel.score >= 0.55
+            ? melhorCompativel
+            : melhorQualquerFuncaoSeguro;
+        const ehPossivel = !!melhor;
 
         return {
           id: `${item.funcaoRelatorio}-${index}-${normalizarTextoImportacao(item.nomeRelatorio)}`,
@@ -3539,9 +4293,9 @@ return {
           funcionarioId: null,
           funcionarioNome: null,
           status: ehPossivel ? "possivel" : "nao_cadastrado",
-          candidatoId: ehPossivel ? Number(melhor.funcionario.id) : null,
-          candidatoNome: ehPossivel ? melhor.funcionario.nome : null,
-          scoreCandidato: ehPossivel ? melhor.score : 0,
+          candidatoId: ehPossivel ? Number(melhor?.funcionario.id) : null,
+          candidatoNome: ehPossivel ? melhor?.funcionario.nome ?? null : null,
+          scoreCandidato: ehPossivel ? Number(melhor?.score || 0) : 0,
         };
       });
 
@@ -3591,6 +4345,58 @@ return {
     }
   }
 
+  function resolverConflitoFuncaoImportacao(
+    funcionarioId: number,
+    funcaoEscolhida: FuncaoImportacao
+  ) {
+    const funcionario = funcionariosImportaveis.find(
+      (f: any) => Number(f.id) === Number(funcionarioId)
+    );
+    if (!funcionario) return;
+
+    setImportacaoSemana((prev) => ({
+      ...prev,
+      erro: "",
+      itens: prev.itens.map((item) => {
+        const idEfetivo = Number(item.funcionarioId || item.candidatoId || 0);
+        if (idEfetivo !== Number(funcionarioId)) return item;
+
+        if (item.funcaoRelatorio === funcaoEscolhida) {
+          return {
+            ...item,
+            status: "ok" as const,
+            funcionarioId: Number(funcionario.id),
+            funcionarioNome: funcionario.nome,
+            candidatoId: null,
+            candidatoNome: null,
+            scoreCandidato: 1,
+          };
+        }
+
+        return {
+          ...item,
+          status: "ignorado" as const,
+          funcionarioId: null,
+          funcionarioNome: null,
+          candidatoId: null,
+          candidatoNome: null,
+        };
+      }),
+    }));
+
+    const itemEscolhido = importacaoSemana.itens.find((item) => {
+      const idEfetivo = Number(item.funcionarioId || item.candidatoId || 0);
+      return (
+        idEfetivo === Number(funcionarioId) &&
+        item.funcaoRelatorio === funcaoEscolhida
+      );
+    });
+
+    if (itemEscolhido) {
+      salvarAliasImportacao(lojaId, itemEscolhido.nomeRelatorio, Number(funcionario.id));
+    }
+  }
+
   function ignorarItemImportacao(itemId: string) {
     setImportacaoSemana((prev) => ({
       ...prev,
@@ -3619,6 +4425,52 @@ return {
         importacao: importacaoSemana,
       })
     );
+  }
+
+  function candidatoImportacaoPorId(item: ItemRelatorioImportacao) {
+    if (!item.candidatoId) return null;
+    return (
+      funcionariosDaCidade.find(
+        (funcionario: any) => Number(funcionario.id) === Number(item.candidatoId)
+      ) || null
+    );
+  }
+
+  function itemExigeTrocaFuncao(item: ItemRelatorioImportacao) {
+    if (item.status !== "possivel" || !item.candidatoId) return false;
+    const candidato = candidatoImportacaoPorId(item);
+    if (!candidato) return false;
+
+    return !funcionariosImportaveis.some(
+      (funcionario: any) => Number(funcionario.id) === Number(candidato.id)
+    );
+  }
+
+  function irParaTrocarFuncaoExistente(item: ItemRelatorioImportacao) {
+    const funcionario = candidatoImportacaoPorId(item);
+    if (!funcionario || typeof window === "undefined") return;
+
+    salvarImportacaoPendente();
+    window.sessionStorage.setItem(
+      "folha-funcionario-abrir-id",
+      String(funcionario.id)
+    );
+    window.sessionStorage.setItem(
+      "folha-funcionario-abrir-loja-id",
+      String(lojaId)
+    );
+    window.sessionStorage.setItem(
+      "folha-troca-funcao-sugerida-v1",
+      JSON.stringify({
+        novaFuncao: item.funcaoRelatorio,
+        funcionarioId: Number(funcionario.id),
+        lojaId,
+        ano,
+        mes,
+      })
+    );
+
+    setLocation(ROTA_GESTAO_FUNCIONARIOS);
   }
 
   function irParaCadastrarFuncionario(item: ItemRelatorioImportacao) {
@@ -3656,9 +4508,32 @@ return {
   async function confirmarImportacaoSemana() {
     if (!garantirCompetenciaAberta()) return;
 
-    const itensValidos = importacaoSemana.itens.filter(
-      (item) => item.status === "ok" && item.funcionarioId
-    );
+    const itensValidos = importacaoSemana.itens
+      .map((item) => {
+        const funcionarioIdEfetivo = Number(
+          item.funcionarioId ||
+            (item.status === "possivel" && Number(item.scoreCandidato) === 1
+              ? item.candidatoId
+              : 0)
+        );
+
+        if (item.status === "ignorado" || !funcionarioIdEfetivo) return null;
+        if (item.status !== "ok" && !(item.status === "possivel" && Number(item.scoreCandidato) === 1)) {
+          return null;
+        }
+
+        const funcionario = funcionariosImportaveis.find(
+          (f: any) => Number(f.id) === funcionarioIdEfetivo
+        );
+        if (!funcionario) return null;
+
+        return {
+          ...item,
+          funcionarioId: funcionarioIdEfetivo,
+          funcionarioNome: funcionario.nome,
+        };
+      })
+      .filter(Boolean) as Array<ItemRelatorioImportacao & { funcionarioId: number }>;
 
     if (itensValidos.length === 0) {
       setImportacaoSemana((prev) => ({
@@ -3676,92 +4551,245 @@ return {
 
     const semana = importacaoSemana.semana;
     const campoSemana = `sem${semana}` as "sem1" | "sem2" | "sem3" | "sem4";
+    const campoFuncaoSemana = `funcaoSemana${semana}` as
+      | "funcaoSemana1"
+      | "funcaoSemana2"
+      | "funcaoSemana3"
+      | "funcaoSemana4";
+    const campoComposicaoSemana = `composicaoSemana${semana}` as
+      | "composicaoSemana1"
+      | "composicaoSemana2"
+      | "composicaoSemana3"
+      | "composicaoSemana4";
+
+    const gruposPorFuncionario = new Map<number, typeof itensValidos>();
+    for (const item of itensValidos) {
+      const grupo = gruposPorFuncionario.get(Number(item.funcionarioId)) || [];
+      grupo.push(item);
+      gruposPorFuncionario.set(Number(item.funcionarioId), grupo);
+    }
 
     try {
-      const atualizacoes = itensValidos.map((item) => {
-        const currentLine = linhas.find(
-          (linha) => Number(linha.funcionarioId) === Number(item.funcionarioId)
-        );
+      const atualizacoes = Array.from(gruposPorFuncionario.entries()).map(
+        ([funcionarioId, itensFuncionario]) => {
+          const currentLine = linhas.find(
+            (linha) => Number(linha.funcionarioId) === Number(funcionarioId)
+          );
 
-        if (!currentLine) {
-          throw new Error(`Funcionário ${item.funcionarioNome || item.nomeRelatorio} não encontrado na folha.`);
-        }
+          if (!currentLine) {
+            throw new Error(
+              `Funcionário ${itensFuncionario[0]?.funcionarioNome || itensFuncionario[0]?.nomeRelatorio || funcionarioId} não encontrado na folha.`
+            );
+          }
 
-        const updatedLine = {
-          ...currentLine,
-          [campoSemana]: Number(item.valor || 0),
-        } as LinhaComQuadrante;
+          // Protege semanas antigas que ainda não tinham histórico explícito de função.
+          const funcaoAtualCadastro =
+            currentLine.funcao === "vendedor" || currentLine.funcao === "mecanico"
+              ? (currentLine.funcao as FuncaoSemanaComissao)
+              : null;
 
-        const metaAtualizacao = findMetaForFuncionario({
-          funcionarioNome: updatedLine.nome,
-          funcao: updatedLine.funcao,
-          cidade: selectedLoja,
-          tipoMeta: updatedLine.tipoMeta,
-        });
+          const backfillFuncoes = funcaoAtualCadastro
+            ? ([1, 2, 3, 4] as const)
+                .filter(
+                  (semanaAnterior) =>
+                    semanaAnterior < semana &&
+                    Number((currentLine as any)[`sem${semanaAnterior}`] || 0) > 0 &&
+                    !(currentLine as any)[`funcaoSemana${semanaAnterior}`] &&
+                    getComposicaoSemana(currentLine, semanaAnterior).length <= 1
+                )
+                .map((semanaAnterior) => ({
+                  funcionarioId,
+                  lojaId,
+                  ano,
+                  mes,
+                  semana: semanaAnterior,
+                  funcaoSemana: funcaoAtualCadastro,
+                  composicaoSemana: [
+                    {
+                      funcao: funcaoAtualCadastro,
+                      liquidez: Number((currentLine as any)[`sem${semanaAnterior}`] || 0),
+                      percentual: Number((currentLine as any)[`perc${semanaAnterior}`] || 0),
+                      comissao: Number((currentLine as any)[`com${semanaAnterior}`] || 0),
+                    },
+                  ],
+                  liquidez: Number((currentLine as any)[`sem${semanaAnterior}`] || 0),
+                  percentualComissao: Number(
+                    (currentLine as any)[`perc${semanaAnterior}`] || 0
+                  ),
+                  valorComissao: Number(
+                    (currentLine as any)[`com${semanaAnterior}`] || 0
+                  ),
+                  ultimaAlteracaoPor: usuarioLogado,
+                  ultimaAlteracaoEm: new Date(),
+                }))
+            : [];
 
-        const recalculado = computeFolhaLinha({
-          meta: metaAtualizacao,
-          funcao: updatedLine.funcao,
-          cidade: selectedLoja,
-          funcionarioNome: updatedLine.nome,
-          tipoMeta: updatedLine.tipoMeta,
-          sem1: Number(updatedLine.sem1 || 0),
-          sem2: Number(updatedLine.sem2 || 0),
-          sem3: Number(updatedLine.sem3 || 0),
-          sem4: Number(updatedLine.sem4 || 0),
-          percManual1: null,
-          percManual2: null,
-          percManual3: null,
-          percManual4: null,
-          premiacoesManuais: updatedLine.premiacoesManuais || [],
-          vales: updatedLine.vales || [],
-          aluguel: Number(updatedLine.aluguel || 0),
-          inss: Number(updatedLine.inss || 0),
-          adiant: Number(updatedLine.adiant || 0),
-          holerite: Number(updatedLine.holerite || 0),
-        });
+          // O mesmo funcionário pode aparecer em VENDA e MECÂNICA na mesma semana.
+          // Cada parcela é calculada isoladamente pela regra da própria função e só
+          // depois somamos liquidez e comissão para exibir uma única célula semanal.
+          const componentes: ComponenteFuncaoSemana[] = itensFuncionario.map((item) => {
+            const funcaoComponente = item.funcaoRelatorio as FuncaoSemanaComissao;
+            const liquidezComponente = Number(item.valor || 0);
+            const metaComponente = findMetaForFuncionario({
+              funcionarioNome: currentLine.nome,
+              funcao: funcaoComponente,
+              cidade: selectedLoja,
+              tipoMeta: currentLine.tipoMeta,
+            });
 
-        const mergedLine = {
-          ...updatedLine,
-          ...recalculado,
-        } as LinhaComQuadrante;
+            const calculoComponente = computeFolhaLinha({
+              meta: metaComponente,
+              funcao: funcaoComponente,
+              cidade: selectedLoja,
+              funcionarioNome: currentLine.nome,
+              tipoMeta: currentLine.tipoMeta,
+              sem1: semana === 1 ? liquidezComponente : 0,
+              sem2: semana === 2 ? liquidezComponente : 0,
+              sem3: semana === 3 ? liquidezComponente : 0,
+              sem4: semana === 4 ? liquidezComponente : 0,
+              percManual1: null,
+              percManual2: null,
+              percManual3: null,
+              percManual4: null,
+              premiacoesManuais: [],
+              vales: [],
+              aluguel: 0,
+              inss: 0,
+              adiant: 0,
+              holerite: 0,
+            });
 
-        const percentual =
-          semana === 1
-            ? mergedLine.perc1
-            : semana === 2
-            ? mergedLine.perc2
-            : semana === 3
-            ? mergedLine.perc3
-            : mergedLine.perc4;
+            const percentual = Number(
+              semana === 1
+                ? calculoComponente.perc1
+                : semana === 2
+                ? calculoComponente.perc2
+                : semana === 3
+                ? calculoComponente.perc3
+                : calculoComponente.perc4
+            );
 
-        const comissao =
-          semana === 1
-            ? mergedLine.com1
-            : semana === 2
-            ? mergedLine.com2
-            : semana === 3
-            ? mergedLine.com3
-            : mergedLine.com4;
+            const comissao = Number(
+              semana === 1
+                ? calculoComponente.com1
+                : semana === 2
+                ? calculoComponente.com2
+                : semana === 3
+                ? calculoComponente.com3
+                : calculoComponente.com4
+            );
 
-        return {
-          mergedLine,
-          payload: {
-            funcionarioId: Number(item.funcionarioId),
+            return {
+              funcao: funcaoComponente,
+              liquidez: liquidezComponente,
+              percentual,
+              comissao,
+            };
+          });
+
+          const componentesOrdenados = [...componentes].sort((a, b) => {
+            const ordem: Record<FuncaoSemanaComissao, number> = {
+              mecanico: 1,
+              vendedor: 2,
+            };
+            return ordem[a.funcao] - ordem[b.funcao];
+          });
+
+          const totalLiquidezSemana = Number(
+            componentesOrdenados
+              .reduce((acc, item) => acc + Number(item.liquidez || 0), 0)
+              .toFixed(2)
+          );
+          const totalComissaoSemana = Number(
+            componentesOrdenados
+              .reduce((acc, item) => acc + Number(item.comissao || 0), 0)
+              .toFixed(2)
+          );
+          const funcoesUnicas = Array.from(
+            new Set(componentesOrdenados.map((item) => item.funcao))
+          );
+          const funcaoSemanaPersistida =
+            funcoesUnicas.length === 1 ? funcoesUnicas[0] : null;
+          const percentualSemanaPersistido =
+            componentesOrdenados.length === 1
+              ? Number(componentesOrdenados[0].percentual || 0)
+              : 0;
+
+          const updatedLine = {
+            ...currentLine,
+            [campoSemana]: totalLiquidezSemana,
+            [campoFuncaoSemana]: funcaoSemanaPersistida,
+            [campoComposicaoSemana]: componentesOrdenados,
+            [`perc${semana}`]: percentualSemanaPersistido,
+            [`com${semana}`]: totalComissaoSemana,
+          } as LinhaComQuadrante;
+
+          for (const historico of backfillFuncoes) {
+            (updatedLine as any)[`funcaoSemana${historico.semana}`] = historico.funcaoSemana;
+            (updatedLine as any)[`composicaoSemana${historico.semana}`] =
+              historico.composicaoSemana;
+          }
+
+          updatedLine.totalLiquidez =
+            Number(updatedLine.sem1 || 0) +
+            Number(updatedLine.sem2 || 0) +
+            Number(updatedLine.sem3 || 0) +
+            Number(updatedLine.sem4 || 0);
+
+          updatedLine.totalComissao =
+            Number(updatedLine.com1 || 0) +
+            Number(updatedLine.com2 || 0) +
+            Number(updatedLine.com3 || 0) +
+            Number(updatedLine.com4 || 0);
+
+          const boleto = calcularBoletoAjustado({
+            quadrante: updatedLine.quadrante,
+            funcao: updatedLine.funcao,
             lojaId,
-            ano,
-            mes,
-            semana,
-            liquidez: Number(item.valor || 0),
-            percentualComissao: Number(percentual || 0),
-            valorComissao: Number(comissao || 0),
-            ultimaAlteracaoPor: usuarioLogado,
-            ultimaAlteracaoEm: new Date(),
-          },
-        };
-      });
+            funcionarioNome: updatedLine.nome,
+            totalComissao: Number(updatedLine.totalComissao || 0),
+            premiacao: Number(updatedLine.premiacao || 0),
+            vale: Number(updatedLine.vale || 0),
+            aluguel: Number(updatedLine.aluguel || 0),
+            inss: Number(updatedLine.inss || 0),
+            adiant: Number(updatedLine.adiant || 0),
+            holerite: Number(updatedLine.holerite || 0),
+            descontoFolhaProporcional:
+              updatedLine.descontoFolhaProporcional ?? null,
+            boletoOriginal: Number(updatedLine.boleto || 0),
+          });
 
-      // Atualiza a tela imediatamente.
+          const mergedLine = {
+            ...updatedLine,
+            boleto,
+          } as LinhaComQuadrante;
+
+          // Nome exato na mesma loja passa a apontar sempre para o mesmo cadastro.
+          for (const item of itensFuncionario) {
+            salvarAliasImportacao(lojaId, item.nomeRelatorio, funcionarioId);
+          }
+
+          return {
+            mergedLine,
+            backfillFuncoes,
+            payload: {
+              funcionarioId,
+              lojaId,
+              ano,
+              mes,
+              semana,
+              funcaoSemana: funcaoSemanaPersistida,
+              composicaoSemana: componentesOrdenados,
+              liquidez: totalLiquidezSemana,
+              percentualComissao: percentualSemanaPersistido,
+              valorComissao: totalComissaoSemana,
+              ultimaAlteracaoPor: usuarioLogado,
+              ultimaAlteracaoEm: new Date(),
+            },
+          };
+        }
+      );
+
       setFolhas((prev) => {
         let next = [...prev];
 
@@ -3775,23 +4803,23 @@ return {
               Number(f.mes) === Number(mes)
           );
 
-          if (index >= 0) {
-            next[index] = linha;
-          } else {
-            next.push(linha);
-          }
+          if (index >= 0) next[index] = linha;
+          else next.push(linha);
         }
 
         return next;
       });
 
       await Promise.all(
-        atualizacoes.map((atualizacao) =>
-          importFolhaBaseMutation.mutateAsync(atualizacao.payload)
-        )
+        atualizacoes.flatMap((atualizacao) => [
+          ...atualizacao.backfillFuncoes.map((payloadHistorico) =>
+            importFolhaBaseMutation.mutateAsync(payloadHistorico)
+          ),
+          importFolhaBaseMutation.mutateAsync(atualizacao.payload),
+        ])
       );
 
-      void folhaBaseQuery.refetch();
+      await folhaBaseQuery.refetch();
       void resumoSupervisorQuery.refetch();
 
       setImportacaoSemana((prev) => ({
@@ -3799,8 +4827,8 @@ return {
         etapa: "sucesso",
         mensagem:
           lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
-            ? `${itensValidos.length} valor(es) importado(s) para a Liquidez mensal de Florianópolis.`
-            : `${itensValidos.length} valor(es) importado(s) para a SEM${semana}.`,
+            ? `${atualizacoes.length} funcionário(s) importado(s) para a Liquidez mensal de Florianópolis.`
+            : `${atualizacoes.length} funcionário(s) importado(s) para a SEM${semana}.`,
       }));
     } catch (err: any) {
       console.error("Erro ao importar relatório semanal:", err);
@@ -4100,6 +5128,8 @@ return {
           inss: Number(updatedLine.inss || 0),
           adiant: Number(item.valorLiquido || 0),
           holerite: Number(updatedLine.holerite || 0),
+          descontoFolhaProporcional:
+            updatedLine.descontoFolhaProporcional ?? null,
           boletoOriginal: Number(recalculado.boleto || 0),
         });
 
@@ -4554,6 +5584,174 @@ return {
     }
   }
 
+  async function updateComposicaoSemanaPercentual(
+    linha: LinhaComQuadrante,
+    semana: 1 | 2 | 3 | 4,
+    funcaoComponente: FuncaoSemanaComissao,
+    percentualManual: number | null
+  ): Promise<LinhaComQuadrante | null> {
+    if (!garantirCompetenciaAberta()) return null;
+
+    const composicaoAtual = getComposicaoSemana(linha, semana);
+    if (composicaoAtual.length <= 1) return null;
+
+    const componenteAtual = composicaoAtual.find(
+      (item) => item.funcao === funcaoComponente
+    );
+    if (!componenteAtual) return null;
+
+    const liquidezComponente = Number(componenteAtual.liquidez || 0);
+
+    // Campo vazio restaura a regra automática da função naquela semana.
+    let percentualFinal = percentualManual;
+    if (percentualFinal === null) {
+      const metaComponente = findMetaForFuncionario({
+        funcionarioNome: linha.nome,
+        funcao: funcaoComponente,
+        cidade: selectedLoja,
+        tipoMeta: linha.tipoMeta,
+      });
+
+      const calculoAutomatico = computeFolhaLinha({
+        meta: metaComponente,
+        funcao: funcaoComponente,
+        cidade: selectedLoja,
+        funcionarioNome: linha.nome,
+        tipoMeta: linha.tipoMeta,
+        sem1: semana === 1 ? liquidezComponente : 0,
+        sem2: semana === 2 ? liquidezComponente : 0,
+        sem3: semana === 3 ? liquidezComponente : 0,
+        sem4: semana === 4 ? liquidezComponente : 0,
+        percManual1: null,
+        percManual2: null,
+        percManual3: null,
+        percManual4: null,
+        premiacoesManuais: [],
+        vales: [],
+        aluguel: 0,
+        inss: 0,
+        adiant: 0,
+        holerite: 0,
+      });
+
+      percentualFinal = Number(
+        semana === 1
+          ? calculoAutomatico.perc1
+          : semana === 2
+          ? calculoAutomatico.perc2
+          : semana === 3
+          ? calculoAutomatico.perc3
+          : calculoAutomatico.perc4
+      );
+    }
+
+    if (!Number.isFinite(Number(percentualFinal)) || Number(percentualFinal) < 0) {
+      return null;
+    }
+
+    const percentualAplicado = Number(percentualFinal);
+    const novaComissaoComponente = Number(
+      (liquidezComponente * (percentualAplicado / 100)).toFixed(2)
+    );
+
+    const novaComposicao = composicaoAtual.map((item) =>
+      item.funcao === funcaoComponente
+        ? {
+            ...item,
+            percentual: percentualAplicado,
+            comissao: novaComissaoComponente,
+          }
+        : { ...item }
+    );
+
+    const totalLiquidezSemana = Number(
+      novaComposicao
+        .reduce((acc, item) => acc + Number(item.liquidez || 0), 0)
+        .toFixed(2)
+    );
+    const totalComissaoSemana = Number(
+      novaComposicao
+        .reduce((acc, item) => acc + Number(item.comissao || 0), 0)
+        .toFixed(2)
+    );
+
+    const linhaAtualizada = {
+      ...linha,
+      [`sem${semana}`]: totalLiquidezSemana,
+      [`perc${semana}`]: 0,
+      [`com${semana}`]: totalComissaoSemana,
+      [`funcaoSemana${semana}`]: null,
+      [`composicaoSemana${semana}`]: novaComposicao,
+      ultimaAlteracaoPor: usuarioLogado,
+      ultimaAlteracaoEm: new Date(),
+    } as LinhaComQuadrante;
+
+    linhaAtualizada.totalLiquidez =
+      Number(linhaAtualizada.sem1 || 0) +
+      Number(linhaAtualizada.sem2 || 0) +
+      Number(linhaAtualizada.sem3 || 0) +
+      Number(linhaAtualizada.sem4 || 0);
+
+    linhaAtualizada.totalComissao =
+      Number(linhaAtualizada.com1 || 0) +
+      Number(linhaAtualizada.com2 || 0) +
+      Number(linhaAtualizada.com3 || 0) +
+      Number(linhaAtualizada.com4 || 0);
+
+    linhaAtualizada.boleto = calcularBoletoAjustado({
+      quadrante: linhaAtualizada.quadrante,
+      funcao: linhaAtualizada.funcao,
+      lojaId,
+      funcionarioNome: linhaAtualizada.nome,
+      totalComissao: Number(linhaAtualizada.totalComissao || 0),
+      premiacao: Number(linhaAtualizada.premiacao || 0),
+      vale: Number(linhaAtualizada.vale || 0),
+      aluguel: Number(linhaAtualizada.aluguel || 0),
+      inss: Number(linhaAtualizada.inss || 0),
+      adiant: Number(linhaAtualizada.adiant || 0),
+      holerite: Number(linhaAtualizada.holerite || 0),
+      descontoFolhaProporcional:
+        linhaAtualizada.descontoFolhaProporcional ?? null,
+      boletoOriginal: Number(linhaAtualizada.boleto || 0),
+    });
+
+    setFolhas((prev) =>
+      prev.map((f) =>
+        Number(f.funcionarioId) === Number(linha.funcionarioId) &&
+        Number(f.loja_id) === Number(lojaId) &&
+        Number(f.ano) === Number(ano) &&
+        Number(f.mes) === Number(mes)
+          ? linhaAtualizada
+          : f
+      )
+    );
+
+    try {
+      await upsertFolhaBaseMutation.mutateAsync({
+        funcionarioId: Number(linha.funcionarioId),
+        lojaId,
+        ano,
+        mes,
+        semana,
+        funcaoSemana: null,
+        composicaoSemana: novaComposicao,
+        liquidez: totalLiquidezSemana,
+        percentualComissao: 0,
+        percentualManual: null,
+        valorComissao: totalComissaoSemana,
+        ultimaAlteracaoPor: usuarioLogado,
+        ultimaAlteracaoEm: new Date(),
+      });
+
+      void folhaBaseQuery.refetch();
+      return linhaAtualizada;
+    } catch (err) {
+      console.error("Erro ao ajustar percentual da semana com duas funções:", err);
+      void folhaBaseQuery.refetch();
+      return null;
+    }
+  }
+
   async function updateLinha(
   funcionarioId: number,
   campo: keyof FolhaMensal,
@@ -4759,6 +5957,65 @@ if (camposBase.includes(campo as (typeof camposBase)[number])) {
       ultimaAlteracaoEm: new Date(),
     });
 
+  }
+}
+
+function openTransicaoFuncaoEditor(linha: LinhaComQuadrante) {
+  if (!linha.trocaFuncaoMes) return;
+
+  setTransicaoFuncaoEditor({
+    open: true,
+    linha,
+    quantidadeAnterior1: String(Number(linha.trocaFuncaoMes.quantidadeAnterior1 || 0)),
+    quantidadeAnterior2: String(Number(linha.trocaFuncaoMes.quantidadeAnterior2 || 0)),
+    valorFixoAnterior: String(Number(linha.trocaFuncaoMes.valorFixoAnterior || 0)),
+  });
+}
+
+async function salvarTransicaoFuncaoEditor() {
+  const linha = transicaoFuncaoEditor.linha;
+  const troca = linha?.trocaFuncaoMes;
+  if (!linha || !troca) return;
+  if (!garantirCompetenciaAberta()) return;
+
+  const quantidadeAnterior1 = Math.max(
+    0,
+    Number(transicaoFuncaoEditor.quantidadeAnterior1 || 0)
+  );
+  const quantidadeAnterior2 = Math.max(
+    0,
+    Number(transicaoFuncaoEditor.quantidadeAnterior2 || 0)
+  );
+  const valorFixoAnterior = Math.max(
+    0,
+    parseValorBR(transicaoFuncaoEditor.valorFixoAnterior)
+  );
+
+  try {
+    await upsertTransicaoFuncaoMutation.mutateAsync({
+      trocaFuncaoId: Number(troca.id),
+      funcionarioId: Number(linha.funcionarioId),
+      lojaId,
+      ano,
+      mes,
+      quantidadeAnterior1,
+      quantidadeAnterior2,
+      valorFixoAnterior,
+      ultimaAlteracaoPor: usuarioLogado,
+      ultimaAlteracaoEm: new Date(),
+    });
+
+    await trocasFuncaoQuery.refetch();
+    setTransicaoFuncaoEditor({
+      open: false,
+      linha: null,
+      quantidadeAnterior1: "",
+      quantidadeAnterior2: "",
+      valorFixoAnterior: "",
+    });
+  } catch (error: any) {
+    console.error("Erro ao salvar transição de função:", error);
+    alert(error?.message || "Não foi possível salvar a transição de função.");
   }
 }
 
@@ -5209,7 +6466,9 @@ function getMetaFuncaoTexto(
   linha: LinhaComQuadrante,
   semana: number
 ) {
-  const funcao = String(linha.funcao || "")
+  const funcao = String(
+    getFuncaoSemanaEfetiva(linha, semana as 1 | 2 | 3 | 4) || linha.funcao || ""
+  )
     .trim()
     .toLowerCase();
 
@@ -5594,7 +6853,8 @@ if (
   funcionariosQuery.isLoading ||
   folhaBaseQuery.isLoading ||
   folhaExtrasQuery.isLoading ||
-  fechamentoQuery.isLoading
+  fechamentoQuery.isLoading ||
+  trocasFuncaoQuery.isLoading
 ) {
 
   return (
@@ -5612,7 +6872,8 @@ if (
   funcionariosQuery.error ||
   folhaBaseQuery.error ||
   folhaExtrasQuery.error ||
-  fechamentoQuery.error
+  fechamentoQuery.error ||
+  trocasFuncaoQuery.error
 ) {
 
   return (
@@ -5621,7 +6882,8 @@ if (
         {funcionariosQuery.error?.message ||
   folhaBaseQuery.error?.message ||
   folhaExtrasQuery.error?.message ||
-  fechamentoQuery.error?.message}
+  fechamentoQuery.error?.message ||
+  trocasFuncaoQuery.error?.message}
       </p>
     </div>
   );
@@ -5903,13 +7165,253 @@ if (
               onOpenFuncionarioDetalhe={(linha) =>
                 setFuncionarioDetalheId(Number(linha.funcionarioId))
               }
+              onOpenTransicaoFuncao={openTransicaoFuncaoEditor}
               onOpenImportacaoSemana={openImportacaoSemana}
               onOpenImportacaoAdiantamento={openImportacaoAdiantamento}
               onOpenImportacaoHolerite={openImportacaoHolerite}
+              onUpdateComposicaoSemanaPercentual={updateComposicaoSemanaPercentual}
             />
           ))
         )}
       </div>
+
+      <Dialog
+        open={transicaoFuncaoEditor.open}
+        onOpenChange={(open) => {
+          if (!open && !upsertTransicaoFuncaoMutation.isPending) {
+            setTransicaoFuncaoEditor({
+              open: false,
+              linha: null,
+              quantidadeAnterior1: "",
+              quantidadeAnterior2: "",
+              valorFixoAnterior: "",
+            });
+          }
+        }}
+      >
+        <DialogContent className="border border-orange-400/30 bg-[#090909] text-white sm:max-w-2xl">
+          {transicaoFuncaoEditor.linha?.trocaFuncaoMes && (() => {
+            const linha = transicaoFuncaoEditor.linha as LinhaComQuadrante;
+            const troca = linha.trocaFuncaoMes as TrocaFuncaoMes;
+            const proporcao = calcularProporcaoTrocaFuncao(troca.dataMudanca, ano, mes);
+            const totalFolha =
+              Number(linha.inss || 0) +
+              Number(linha.adiant || 0) +
+              Number(linha.holerite || 0);
+            const descontoNovaFuncao =
+              proporcao &&
+              funcaoAnteriorUsaFolhaFixa(troca.funcaoAnterior, lojaId, ano, mes) &&
+              quadranteDescontaFolhaCompleta(linha.quadrante)
+                ? Number((totalFolha * proporcao.proporcaoNovaFuncao).toFixed(2))
+                : totalFolha;
+            const parcelaFuncaoAnterior = Math.max(0, totalFolha - descontoNovaFuncao);
+            const configRecepcao = getRecepcaoConfig(linha.nome, String(lojaId));
+            const quantidadeAnterior1 = Math.max(
+              0,
+              Number(transicaoFuncaoEditor.quantidadeAnterior1 || 0)
+            );
+            const quantidadeAnterior2 = Math.max(
+              0,
+              Number(transicaoFuncaoEditor.quantidadeAnterior2 || 0)
+            );
+            const comissaoAnteriorPreview =
+              troca.funcaoAnterior === "recepcionista"
+                ? Number(
+                    (
+                      quantidadeAnterior1 * Number(configRecepcao.valorVenda || 0) +
+                      ([3, 4].includes(lojaId)
+                        ? quantidadeAnterior2 * Number(configRecepcao.valorEntrada || 0)
+                        : 0)
+                    ).toFixed(2)
+                  )
+                : 0;
+            const comissaoNovaFuncao = Math.max(
+              0,
+              Number(linha.totalComissao || 0) - Number(linha.comissaoFuncaoAnterior || 0)
+            );
+            const totalComissaoPreview = Number(
+              (comissaoNovaFuncao + comissaoAnteriorPreview).toFixed(2)
+            );
+
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-[#F2D675]">Transição de função</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    {linha.nome} • {labelFuncaoFuncionario(troca.funcaoAnterior, lojaId)} → {labelFuncaoFuncionario(troca.funcaoNova, lojaId)} • {formatarDataBR(troca.dataMudanca)}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500">Função anterior</p>
+                      <p className="mt-1 font-semibold text-orange-300">
+                        {labelFuncaoFuncionario(troca.funcaoAnterior, lojaId)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500">Nova função</p>
+                      <p className="mt-1 font-semibold text-[#F2D675]">
+                        {labelFuncaoFuncionario(troca.funcaoNova, lojaId)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-gray-500">Data efetiva</p>
+                      <p className="mt-1 font-semibold text-white">{formatarDataBR(troca.dataMudanca)}</p>
+                    </div>
+                  </div>
+
+                  {troca.funcaoAnterior === "recepcionista" && (
+                    <div className="rounded-xl border border-orange-400/25 bg-orange-500/[0.055] p-4">
+                      <p className="font-semibold text-orange-200">Produção da Recepção antes da troca</p>
+                      <p className="mt-1 text-xs text-gray-400">
+                        Esta produção pertence à função anterior e é somada à comissão do mês sem criar um segundo cadastro.
+                      </p>
+                      <div className={`mt-4 grid grid-cols-1 gap-4 ${[3, 4].includes(lojaId) ? "sm:grid-cols-2" : ""}`}>
+                        <div>
+                          <Label className="text-gray-300">Vendas fechadas</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            disabled={mesFechado}
+                            value={transicaoFuncaoEditor.quantidadeAnterior1}
+                            onChange={(e) =>
+                              setTransicaoFuncaoEditor((prev) => ({
+                                ...prev,
+                                quantidadeAnterior1: e.target.value,
+                              }))
+                            }
+                            className="mt-1 border-orange-400/25 bg-black"
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            R$ {money(configRecepcao.valorVenda)} por venda
+                          </p>
+                        </div>
+
+                        {[3, 4].includes(lojaId) && (
+                          <div>
+                            <Label className="text-gray-300">Entradas</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="1"
+                              disabled={mesFechado}
+                              value={transicaoFuncaoEditor.quantidadeAnterior2}
+                              onChange={(e) =>
+                                setTransicaoFuncaoEditor((prev) => ({
+                                  ...prev,
+                                  quantidadeAnterior2: e.target.value,
+                                }))
+                              }
+                              className="mt-1 border-orange-400/25 bg-black"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              R$ {money(configRecepcao.valorEntrada)} por entrada
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-4 flex items-center justify-between border-t border-orange-400/15 pt-3">
+                        <span className="text-sm text-gray-300">Comissão da função anterior</span>
+                        <strong className="text-orange-300">R$ {money(comissaoAnteriorPreview)}</strong>
+                      </div>
+                    </div>
+                  )}
+
+                  {funcaoAnteriorUsaFolhaFixa(troca.funcaoAnterior, lojaId, ano, mes) && (
+                    <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] p-4">
+                      <p className="font-semibold text-[#F2D675]">Proporção da folha na mudança</p>
+                      <p className="mt-1 text-xs text-gray-400">
+                        O Holerite oficial não é recalculado. A proporção define apenas quanto de INSS + Adiantamento + Holerite será compensado na comissão da nova função.
+                      </p>
+
+                      {proporcao && (
+                        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                          <div className="rounded-lg bg-black/35 p-3">
+                            <p className="text-[10px] uppercase text-gray-500">Função anterior</p>
+                            <p className="mt-1 font-semibold text-white">{proporcao.diasFuncaoAnterior} dia(s)</p>
+                          </div>
+                          <div className="rounded-lg bg-black/35 p-3">
+                            <p className="text-[10px] uppercase text-gray-500">Nova função</p>
+                            <p className="mt-1 font-semibold text-white">{proporcao.diasFuncaoNova} dia(s)</p>
+                          </div>
+                          <div className="rounded-lg bg-black/35 p-3">
+                            <p className="text-[10px] uppercase text-gray-500">% nova função</p>
+                            <p className="mt-1 font-semibold text-[#F2D675]">{(proporcao.proporcaoNovaFuncao * 100).toFixed(2)}%</p>
+                          </div>
+                          <div className="rounded-lg bg-black/35 p-3">
+                            <p className="text-[10px] uppercase text-gray-500">Folha total</p>
+                            <p className="mt-1 font-semibold text-white">R$ {money(totalFolha)}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-4 space-y-2 border-t border-[#D4AF37]/15 pt-3 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-400">Parcela vinculada à função anterior</span>
+                          <strong className="text-white">R$ {money(parcelaFuncaoAnterior)}</strong>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-300">Desconto aplicado na comissão da nova função</span>
+                          <strong className="text-[#F2D675]">R$ {money(descontoNovaFuncao)}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
+                    <div className="flex justify-between gap-4 text-sm">
+                      <span className="text-gray-400">Comissão da nova função</span>
+                      <strong className="text-white">R$ {money(comissaoNovaFuncao)}</strong>
+                    </div>
+                    {troca.funcaoAnterior === "recepcionista" && (
+                      <div className="mt-2 flex justify-between gap-4 text-sm">
+                        <span className="text-gray-400">Comissão da Recepção</span>
+                        <strong className="text-orange-300">R$ {money(comissaoAnteriorPreview)}</strong>
+                      </div>
+                    )}
+                    <div className="mt-3 flex justify-between gap-4 border-t border-white/10 pt-3">
+                      <span className="font-semibold text-gray-300">Total comissão do mês</span>
+                      <strong className="text-[#F2D675]">R$ {money(totalComissaoPreview)}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={upsertTransicaoFuncaoMutation.isPending}
+                    onClick={() =>
+                      setTransicaoFuncaoEditor({
+                        open: false,
+                        linha: null,
+                        quantidadeAnterior1: "",
+                        quantidadeAnterior2: "",
+                        valorFixoAnterior: "",
+                      })
+                    }
+                  >
+                    Fechar
+                  </Button>
+                  {!mesFechado && (
+                    <Button
+                      type="button"
+                      className="bg-[#D4AF37] text-black hover:bg-[#F2D675]"
+                      disabled={upsertTransicaoFuncaoMutation.isPending}
+                      onClick={salvarTransicaoFuncaoEditor}
+                    >
+                      {upsertTransicaoFuncaoMutation.isPending ? "Salvando..." : "Salvar transição"}
+                    </Button>
+                  )}
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={importacaoSemana.open}
@@ -5974,10 +7476,58 @@ if (
               !cidadeSelecionadaNormalizada.includes(cidadeRelatorioNormalizada) &&
               !cidadeRelatorioNormalizada.includes(cidadeSelecionadaNormalizada);
 
-            const prontos = importacaoSemana.itens.filter((item) => item.status === "ok");
-            const divergencias = importacaoSemana.itens.filter(
-              (item) => item.status === "possivel" || item.status === "nao_cadastrado"
+            const gruposPorFuncionario = new Map<number, ItemRelatorioImportacao[]>();
+            for (const item of importacaoSemana.itens) {
+              if (item.status === "ignorado") continue;
+              const idEfetivo = Number(
+                item.funcionarioId ||
+                  (item.status === "possivel" && Number(item.scoreCandidato) === 1
+                    ? item.candidatoId
+                    : 0)
+              );
+              if (!idEfetivo) continue;
+              const grupo = gruposPorFuncionario.get(idEfetivo) || [];
+              grupo.push(item);
+              gruposPorFuncionario.set(idEfetivo, grupo);
+            }
+
+            const conflitosFuncao = Array.from(gruposPorFuncionario.entries())
+              .map(([funcionarioId, itens]) => {
+                const venda = itens.find((item) => item.funcaoRelatorio === "vendedor");
+                const mecanica = itens.find((item) => item.funcaoRelatorio === "mecanico");
+                if (!venda || !mecanica) return null;
+                const funcionario = funcionariosImportaveis.find(
+                  (f: any) => Number(f.id) === Number(funcionarioId)
+                );
+                return { funcionarioId, funcionario, venda, mecanica };
+              })
+              .filter(Boolean) as Array<{
+                funcionarioId: number;
+                funcionario: any;
+                venda: ItemRelatorioImportacao;
+                mecanica: ItemRelatorioImportacao;
+              }>;
+
+            const idsComConflito = new Set(
+              conflitosFuncao.map((conflito) => Number(conflito.funcionarioId))
             );
+
+            const prontos = importacaoSemana.itens.filter((item) => {
+              const idEfetivo = Number(item.funcionarioId || item.candidatoId || 0);
+              return item.status === "ok" && !idsComConflito.has(idEfetivo);
+            });
+            const quantidadeProntos = new Set([
+              ...prontos.map((item) => Number(item.funcionarioId)),
+              ...conflitosFuncao.map((conflito) => Number(conflito.funcionarioId)),
+            ]).size;
+
+            const divergencias = importacaoSemana.itens.filter((item) => {
+              const idEfetivo = Number(item.funcionarioId || item.candidatoId || 0);
+              return (
+                (item.status === "possivel" || item.status === "nao_cadastrado") &&
+                !idsComConflito.has(idEfetivo)
+              );
+            });
             const ignorados = importacaoSemana.itens.filter((item) => item.status === "ignorado");
             const campoSemana = `sem${importacaoSemana.semana}` as keyof LinhaComQuadrante;
             const existentesComValor = prontos.filter((item) => {
@@ -6006,7 +7556,7 @@ if (
                   </div>
                   <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
                     <p className="text-xs text-gray-400">Prontos</p>
-                    <p className="font-semibold text-green-400">{prontos.length}</p>
+                    <p className="font-semibold text-green-400">{quantidadeProntos}</p>
                   </div>
                 </div>
 
@@ -6019,6 +7569,45 @@ if (
                 {existentesComValor.length > 0 && (
                   <div className="rounded-md border border-yellow-500/30 bg-yellow-950/20 p-4 text-yellow-200">
                     {existentesComValor.length} funcionário(s) já possuem valor {lojaId === 4 && usaMetaMensal(lojaId, ano, mes) ? "na liquidez mensal" : `na SEM${importacaoSemana.semana}`}. Ao confirmar, somente esses valores encontrados no relatório serão substituídos.
+                  </div>
+                )}
+
+                {conflitosFuncao.length > 0 && (
+                  <div className="rounded-md border border-orange-400/40 bg-orange-950/15 p-4">
+                    <div className="mb-3">
+                      <p className="font-semibold text-orange-300">Mais de uma função na mesma semana</p>
+                      <p className="mt-1 text-sm text-gray-400">
+                        O mesmo funcionário apareceu em VENDA e MECÂNICA. O sistema vai somar as duas liquidações na mesma célula e calcular cada comissão separadamente pela regra da função.
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      {conflitosFuncao.map((conflito) => {
+                        const total = Number(conflito.venda.valor || 0) + Number(conflito.mecanica.valor || 0);
+                        return (
+                          <div
+                            key={`conflito-${conflito.funcionarioId}`}
+                            className="rounded-md border border-orange-400/20 bg-[#090909] p-3"
+                          >
+                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                              <div>
+                                <p className="font-semibold text-white">
+                                  {conflito.funcionario?.nome || conflito.venda.nomeRelatorio}
+                                </p>
+                                <div className="mt-2 space-y-1 text-sm">
+                                  <p className="text-[#F2D675]">VENDA • R$ {money(conflito.venda.valor)}</p>
+                                  <p className="text-orange-300">MECÂNICA • R$ {money(conflito.mecanica.valor)}</p>
+                                </div>
+                              </div>
+                              <div className="rounded-lg border border-orange-400/25 bg-orange-500/[0.06] px-4 py-3 text-right">
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500">Total na célula</p>
+                                <p className="font-bold text-green-400">R$ {money(total)}</p>
+                                <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-orange-300">2 funções</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
@@ -6068,7 +7657,17 @@ if (
                               </p>
                               {item.status === "possivel" && item.candidatoNome && (
                                 <p className="text-sm text-yellow-200 mt-1">
-                                  Possível correspondência: <strong>{item.candidatoNome}</strong>
+                                  {Number(item.scoreCandidato) === 1 ? (
+                                    itemExigeTrocaFuncao(item) ? (
+                                      <>
+                                        Já existe este funcionário no cadastro: <strong>{item.candidatoNome}</strong>. A função atual é <strong>{labelFuncaoFuncionario(candidatoImportacaoPorId(item)?.funcao, lojaId)}</strong>. Confirme a troca para {item.funcaoRelatorio === "vendedor" ? "Vendedor" : "Mecânico"} antes de importar.
+                                      </>
+                                    ) : (
+                                      <>Já existe este funcionário no cadastro: <strong>{item.candidatoNome}</strong>. O bloco do relatório está diferente; confirme o vínculo desta semana.</>
+                                    )
+                                  ) : (
+                                    <>Possível correspondência: <strong>{item.candidatoNome}</strong></>
+                                  )}
                                 </p>
                               )}
                               {item.status === "nao_cadastrado" && (
@@ -6077,22 +7676,35 @@ if (
                             </div>
                             <div className="flex flex-wrap gap-2">
                               {item.status === "possivel" && item.candidatoId && (
+                                itemExigeTrocaFuncao(item) ? (
+                                  <Button
+                                    type="button"
+                                    className="bg-orange-400 text-black hover:bg-orange-300"
+                                    onClick={() => irParaTrocarFuncaoExistente(item)}
+                                  >
+                                    Abrir cadastro / trocar função
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                                    onClick={() => vincularItemImportacao(item.id, Number(item.candidatoId))}
+                                  >
+                                    {Number(item.scoreCandidato) === 1 ? "Usar cadastro existente" : "Sim, vincular"}
+                                  </Button>
+                                )
+                              )}
+                              {!itemExigeTrocaFuncao(item) &&
+                                !(item.status === "possivel" && Number(item.scoreCandidato) === 1 && item.candidatoId) && (
                                 <Button
                                   type="button"
-                                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
-                                  onClick={() => vincularItemImportacao(item.id, Number(item.candidatoId))}
+                                  variant="outline"
+                                  className="border-[#D4AF37]/20 text-[#D4AF37]"
+                                  onClick={() => irParaCadastrarFuncionario(item)}
                                 >
-                                  Sim, vincular
+                                  Cadastrar funcionário
                                 </Button>
                               )}
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="border-[#D4AF37]/20 text-[#D4AF37]"
-                                onClick={() => irParaCadastrarFuncionario(item)}
-                              >
-                                Cadastrar funcionário
-                              </Button>
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -6164,7 +7776,8 @@ if (
                     className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                     disabled={
                       cidadeDiferente ||
-                      prontos.length === 0 ||
+                      quantidadeProntos === 0 ||
+                      divergencias.length > 0 ||
                       importacaoSemana.etapa === "importando"
                     }
                     onClick={confirmarImportacaoSemana}
@@ -6172,8 +7785,8 @@ if (
                     {importacaoSemana.etapa === "importando"
                       ? "Importando..."
                       : lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
-                        ? `Importar Liquidez (${prontos.length})`
-                        : `Importar SEM${importacaoSemana.semana} (${prontos.length})`}
+                        ? `Importar Liquidez (${quantidadeProntos})`
+                        : `Importar SEM${importacaoSemana.semana} (${quantidadeProntos})`}
                   </Button>
                 </DialogFooter>
               </div>
@@ -7096,54 +8709,32 @@ if (
                       <Label className="text-gray-300">
                         Função <span className="text-red-400">*</span>
                       </Label>
-                      <select
-                        className={`h-10 w-full rounded-md border px-3 py-2 text-sm ${classeCampo(
-                          funcionarioEdicaoCamposInvalidos.funcao
-                        )}`}
-                        value={funcionarioEdicaoForm.funcao}
-                        onChange={(e) =>
-                          setFuncionarioEdicaoForm((prev) => ({
-                            ...prev,
-                            funcao: e.target.value as FuncaoFuncionarioId,
-                            tipoMeta:
-                              e.target.value === "consultor_vendas"
-                                ? Number(
-                                    funcionario.lojaId ?? funcionario.loja_id ?? lojaId
-                                  ) === 5
-                                  ? "meta2"
-                                  : prev.tipoMeta
-                                : "",
-                          }))
-                        }
-                      >
-                        {FUNCOES_FUNCIONARIO
-                          .filter((item) => {
-                            const lojaFuncionario = Number(
-                              funcionario.lojaId ?? funcionario.loja_id ?? lojaId
+                      <div className="h-10 w-full rounded-md border border-[#D4AF37]/20 bg-[#0b0b0b] px-3 py-2 text-sm text-white">
+                        {labelFuncaoFuncionario(
+                          funcionario.funcao,
+                          Number(funcionario.lojaId ?? funcionario.loja_id ?? lojaId)
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="mt-2 w-full border-orange-400/30 bg-orange-500/[0.05] text-orange-300 hover:bg-orange-500/[0.10]"
+                        onClick={() => {
+                          if (typeof window !== "undefined") {
+                            window.sessionStorage.setItem(
+                              "folha-funcionario-abrir-id",
+                              String(funcionario.id)
                             );
-
-                            if (lojaFuncionario !== 5) return true;
-
-                            return [
-                              "administrativo",
-                              "consultor_vendas",
-                              "supervisor",
-                            ].includes(item.id);
-                          })
-                          .map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {Number(
-                                funcionario.lojaId ?? funcionario.loja_id ?? lojaId
-                              ) === 5 && item.id === "supervisor"
-                                ? "Supervisora de Consultor de Vendas - PJ"
-                                : Number(
-                                    funcionario.lojaId ?? funcionario.loja_id ?? lojaId
-                                  ) === 5 && item.id === "consultor_vendas"
-                                ? "Consultor de Vendas - Meta 2"
-                                : item.nome}
-                            </option>
-                          ))}
-                      </select>
+                            window.sessionStorage.setItem(
+                              "folha-funcionario-abrir-loja-id",
+                              String(funcionario.lojaId ?? funcionario.loja_id ?? lojaId)
+                            );
+                          }
+                          setLocation(ROTA_GESTAO_FUNCIONARIOS);
+                        }}
+                      >
+                        Trocar função com histórico
+                      </Button>
                     </div>
 
                     {funcionarioEdicaoForm.funcao === "consultor_vendas" && (

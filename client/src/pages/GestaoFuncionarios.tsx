@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowLeft,
+  ArrowRightLeft,
   Loader2,
   Pencil,
   RotateCcw,
@@ -22,6 +23,7 @@ import {
 const IMPORT_PENDENTE_STORAGE_KEY = "folha-importacao-pendente-v1";
 const IMPORT_ADIANT_PENDENTE_STORAGE_KEY = "folha-importacao-adiant-pendente-v1";
 const IMPORT_HOLERITE_PENDENTE_STORAGE_KEY = "folha-importacao-holerite-pendente-v1";
+const TROCA_FUNCAO_SUGERIDA_STORAGE_KEY = "folha-troca-funcao-sugerida-v1";
 
 const LOJAS = [
   { id: 1, nome: "Joinville" },
@@ -188,6 +190,12 @@ export default function GestaoFuncionarios() {
   const [buscaFuncionario, setBuscaFuncionario] = useState("");
   const [tentouSalvar, setTentouSalvar] = useState(false);
   const [formData, setFormData] = useState<FormFuncionario>(() => criarFormVazio(1));
+  const [trocaFuncaoOpen, setTrocaFuncaoOpen] = useState(false);
+  const [trocaFuncaoForm, setTrocaFuncaoForm] = useState<{
+    novaFuncao: FuncaoId | "";
+    novoTipoMeta: TipoMeta;
+    dataMudanca: string;
+  }>({ novaFuncao: "", novoTipoMeta: "", dataMudanca: "" });
 
   const lojaId = Number(selectedLoja);
 
@@ -224,6 +232,8 @@ export default function GestaoFuncionarios() {
     setIsOpen(false);
     setEditingId(null);
     setTentouSalvar(false);
+    setTrocaFuncaoOpen(false);
+    setTrocaFuncaoForm({ novaFuncao: "", novoTipoMeta: "", dataMudanca: "" });
     setFormData(criarFormVazio(lojaId));
   };
 
@@ -238,6 +248,23 @@ export default function GestaoFuncionarios() {
     onSuccess: async () => {
       await utils.funcionarios.listByLoja.invalidate({ lojaId });
       fecharFormulario();
+    },
+  });
+
+  const trocarFuncaoMutation = trpc.funcionarios.trocarFuncao.useMutation({
+    onSuccess: async (_result, variables) => {
+      await utils.funcionarios.listByLoja.invalidate({ lojaId });
+      await funcionariosQuery.refetch();
+      setFormData((prev) => ({
+        ...prev,
+        funcao: variables.novaFuncao as FuncaoId,
+        tipoMeta:
+          variables.novaFuncao === "consultor_vendas"
+            ? ((variables.novoTipoMeta || "") as TipoMeta)
+            : "",
+      }));
+      setTrocaFuncaoOpen(false);
+      setTrocaFuncaoForm({ novaFuncao: "", novoTipoMeta: "", dataMudanca: "" });
     },
   });
 
@@ -318,6 +345,81 @@ export default function GestaoFuncionarios() {
     setIsOpen(true);
   };
 
+  const abrirTrocaFuncao = (func: FuncionarioItem, sugerida?: FuncaoId | "") => {
+    const novaFuncaoSugerida =
+      sugerida && sugerida !== func.funcao ? sugerida : "";
+
+    setTrocaFuncaoForm({
+      novaFuncao: novaFuncaoSugerida,
+      novoTipoMeta:
+        novaFuncaoSugerida === "consultor_vendas" && lojaId === 5 ? "meta2" : "",
+      dataMudanca: "",
+    });
+    setTrocaFuncaoOpen(true);
+  };
+
+  const confirmarTrocaFuncao = async () => {
+    if (!funcionarioEmEdicao) return;
+
+    if (!trocaFuncaoForm.novaFuncao) {
+      alert("Selecione a nova função.");
+      return;
+    }
+
+    if (trocaFuncaoForm.novaFuncao === funcionarioEmEdicao.funcao) {
+      alert("Selecione uma função diferente da função atual.");
+      return;
+    }
+
+    if (!trocaFuncaoForm.dataMudanca) {
+      alert("Informe a data efetiva da troca de função.");
+      return;
+    }
+
+    if (
+      trocaFuncaoForm.novaFuncao === "consultor_vendas" &&
+      lojaId !== 5 &&
+      !trocaFuncaoForm.novoTipoMeta
+    ) {
+      alert("Selecione o tipo de meta / comissão da nova função.");
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `Confirmar troca de função de ${funcionarioEmEdicao.nome}?\n\n` +
+        `${labelFuncao(funcionarioEmEdicao.funcao, lojaId)} → ${labelFuncao(
+          trocaFuncaoForm.novaFuncao,
+          lojaId
+        )}\n` +
+        `Válida a partir de ${formatDateBR(trocaFuncaoForm.dataMudanca)}.\n\n` +
+        `O histórico será preservado e a folha da competência poderá aplicar cálculo proporcional quando necessário.`
+    );
+
+    if (!confirmar) return;
+
+    try {
+      await trocarFuncaoMutation.mutateAsync({
+        id: Number(funcionarioEmEdicao.id),
+        lojaId,
+        novaFuncao: trocaFuncaoForm.novaFuncao,
+        novoTipoMeta:
+          trocaFuncaoForm.novaFuncao === "consultor_vendas"
+            ? lojaId === 5
+              ? "meta2"
+              : (trocaFuncaoForm.novoTipoMeta as "meta1" | "meta2")
+            : null,
+        dataMudanca: dateFromInput(trocaFuncaoForm.dataMudanca),
+      });
+
+      if (!voltarParaFolhaSeNecessario()) {
+        setBuscaFuncionario(funcionarioEmEdicao.nome || "");
+      }
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message ?? "Erro ao trocar a função do funcionário");
+    }
+  };
+
   const handleInativarFuncionario = async (func: FuncionarioItem) => {
     const data = prompt(
       `Digite a data de desligamento de ${func.nome}\nFormato: 2026-05-01`,
@@ -392,9 +494,9 @@ export default function GestaoFuncionarios() {
         cpf: formData.cpf.trim(),
         pix: formData.pix.trim(),
         dataNascimento: dateFromInput(formData.dataNascimento),
-        funcao: formData.funcao,
+        funcao: editingId && funcionarioEmEdicao ? funcionarioEmEdicao.funcao : formData.funcao,
         tipoMeta:
-          formData.funcao === "consultor_vendas"
+          (editingId && funcionarioEmEdicao ? funcionarioEmEdicao.funcao : formData.funcao) === "consultor_vendas"
             ? lojaId === 5
               ? "meta2"
               : (formData.tipoMeta as "meta1" | "meta2")
@@ -479,6 +581,25 @@ export default function GestaoFuncionarios() {
     handleEditFuncionario(funcionario);
 
     if (typeof window !== "undefined") {
+      const trocaSugeridaRaw = window.sessionStorage.getItem(
+        TROCA_FUNCAO_SUGERIDA_STORAGE_KEY
+      );
+
+      if (trocaSugeridaRaw) {
+        try {
+          const trocaSugerida = JSON.parse(trocaSugeridaRaw);
+          const novaFuncao = String(trocaSugerida?.novaFuncao || "") as FuncaoId;
+          const funcaoValida = FUNCOES.some((item) => item.id === novaFuncao);
+          if (funcaoValida && novaFuncao !== funcionario.funcao) {
+            abrirTrocaFuncao(funcionario, novaFuncao);
+          }
+        } catch (error) {
+          console.error("Erro ao abrir troca de função sugerida pela folha:", error);
+        } finally {
+          window.sessionStorage.removeItem(TROCA_FUNCAO_SUGERIDA_STORAGE_KEY);
+        }
+      }
+
       window.sessionStorage.removeItem("folha-funcionario-abrir-id");
       window.sessionStorage.removeItem("folha-funcionario-abrir-loja-id");
     }
@@ -492,7 +613,8 @@ export default function GestaoFuncionarios() {
       .includes(buscaFuncionario.trim().toLowerCase())
   );
 
-  const salvando = createFuncionario.isPending || updateFuncionario.isPending;
+  const salvando =
+    createFuncionario.isPending || updateFuncionario.isPending || trocarFuncaoMutation.isPending;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-950 to-black p-6 text-white">
@@ -630,32 +752,53 @@ export default function GestaoFuncionarios() {
                   <label className="mb-2 block text-sm text-gray-300">
                     Função <span className="text-red-400">*</span>
                   </label>
-                  <select
-                    value={formData.funcao}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        funcao: e.target.value as FuncaoId,
-                        tipoMeta:
-                          e.target.value === "consultor_vendas"
-                            ? lojaId === 5
-                              ? "meta2"
-                              : prev.tipoMeta
-                            : "",
-                      }))
-                    }
-                    className={classeCampo(camposInvalidos.funcao)}
-                  >
-                    {funcoesDisponiveis.map((funcao) => (
-                      <option key={funcao.id} value={funcao.id}>
-                        {lojaId === 5 && funcao.id === "supervisor"
-                          ? "Supervisora de Consultor de Vendas - PJ"
-                          : lojaId === 5 && funcao.id === "consultor_vendas"
-                          ? "Consultor de Vendas - Meta 2"
-                          : funcao.nome}
-                      </option>
-                    ))}
-                  </select>
+
+                  {editingId && funcionarioEmEdicao ? (
+                    <div className="space-y-2">
+                      <div className="w-full rounded-md border border-yellow-500/20 bg-gray-900 px-3 py-2 text-white">
+                        {labelFuncao(funcionarioEmEdicao.funcao, lojaId)}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => abrirTrocaFuncao(funcionarioEmEdicao)}
+                        className="w-full border-orange-400/30 bg-orange-500/5 text-orange-300 hover:bg-orange-500/10 hover:text-orange-200"
+                      >
+                        <ArrowRightLeft className="mr-2 h-4 w-4" />
+                        Trocar função
+                      </Button>
+                      <p className="text-xs text-gray-500">
+                        A função atual não é sobrescrita silenciosamente. Use “Trocar função” para registrar a data e preservar o histórico da folha.
+                      </p>
+                    </div>
+                  ) : (
+                    <select
+                      value={formData.funcao}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          funcao: e.target.value as FuncaoId,
+                          tipoMeta:
+                            e.target.value === "consultor_vendas"
+                              ? lojaId === 5
+                                ? "meta2"
+                                : prev.tipoMeta
+                              : "",
+                        }))
+                      }
+                      className={classeCampo(camposInvalidos.funcao)}
+                    >
+                      {funcoesDisponiveis.map((funcao) => (
+                        <option key={funcao.id} value={funcao.id}>
+                          {lojaId === 5 && funcao.id === "supervisor"
+                            ? "Supervisora de Consultor de Vendas - PJ"
+                            : lojaId === 5 && funcao.id === "consultor_vendas"
+                            ? "Consultor de Vendas - Meta 2"
+                            : funcao.nome}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 {formData.funcao === "consultor_vendas" && (
@@ -704,6 +847,128 @@ export default function GestaoFuncionarios() {
                   />
                 </div>
               </div>
+
+              {editingId && funcionarioEmEdicao && trocaFuncaoOpen && (
+                <div className="mt-5 rounded-xl border border-orange-400/30 bg-orange-500/[0.06] p-4">
+                  <div className="mb-4 flex items-start gap-3">
+                    <ArrowRightLeft className="mt-0.5 h-5 w-5 text-orange-300" />
+                    <div>
+                      <p className="font-semibold text-orange-200">Troca de função</p>
+                      <p className="text-xs text-gray-400">
+                        Confirme a nova função e a data efetiva. O sistema mantém um único cadastro e preserva o histórico da competência.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm text-gray-300">Função atual</label>
+                      <div className="rounded-md border border-white/10 bg-black/30 px-3 py-2 text-gray-300">
+                        {labelFuncao(funcionarioEmEdicao.funcao, lojaId)}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm text-gray-300">Nova função *</label>
+                      <select
+                        value={trocaFuncaoForm.novaFuncao}
+                        onChange={(e) => {
+                          const novaFuncao = e.target.value as FuncaoId | "";
+                          setTrocaFuncaoForm((prev) => ({
+                            ...prev,
+                            novaFuncao,
+                            novoTipoMeta:
+                              novaFuncao === "consultor_vendas" && lojaId === 5
+                                ? "meta2"
+                                : novaFuncao === "consultor_vendas"
+                                ? prev.novoTipoMeta
+                                : "",
+                          }));
+                        }}
+                        className="w-full rounded-md border border-orange-400/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                      >
+                        <option value="">Selecione</option>
+                        {funcoesDisponiveis
+                          .filter((funcao) => funcao.id !== funcionarioEmEdicao.funcao)
+                          .map((funcao) => (
+                            <option key={funcao.id} value={funcao.id}>
+                              {lojaId === 5 && funcao.id === "supervisor"
+                                ? "Supervisora de Consultor de Vendas - PJ"
+                                : lojaId === 5 && funcao.id === "consultor_vendas"
+                                ? "Consultor de Vendas - Meta 2"
+                                : funcao.nome}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm text-gray-300">Data efetiva da troca *</label>
+                      <input
+                        type="date"
+                        value={trocaFuncaoForm.dataMudanca}
+                        onChange={(e) =>
+                          setTrocaFuncaoForm((prev) => ({
+                            ...prev,
+                            dataMudanca: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-md border border-orange-400/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                      />
+                    </div>
+
+                    {trocaFuncaoForm.novaFuncao === "consultor_vendas" && (
+                      <div>
+                        <label className="mb-2 block text-sm text-gray-300">Tipo de meta / comissão *</label>
+                        {lojaId === 5 ? (
+                          <div className="rounded-md border border-orange-400/30 bg-gray-900 px-3 py-2 text-white">
+                            Meta 2 - Mensal
+                          </div>
+                        ) : (
+                          <select
+                            value={trocaFuncaoForm.novoTipoMeta}
+                            onChange={(e) =>
+                              setTrocaFuncaoForm((prev) => ({
+                                ...prev,
+                                novoTipoMeta: e.target.value as TipoMeta,
+                              }))
+                            }
+                            className="w-full rounded-md border border-orange-400/30 bg-gray-900 px-3 py-2 text-white outline-none"
+                          >
+                            <option value="">Selecione</option>
+                            <option value="meta1">Meta 1</option>
+                            <option value="meta2">Meta 2</option>
+                          </select>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      type="button"
+                      onClick={confirmarTrocaFuncao}
+                      disabled={trocarFuncaoMutation.isPending}
+                      className="bg-orange-400 text-black hover:bg-orange-300"
+                    >
+                      {trocarFuncaoMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <ArrowRightLeft className="mr-2 h-4 w-4" />
+                      )}
+                      Confirmar troca de função
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setTrocaFuncaoOpen(false)}
+                      disabled={trocarFuncaoMutation.isPending}
+                    >
+                      Cancelar troca
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {tentouSalvar && !formValido && (
                 <div className="mt-4 rounded-md border border-red-500/30 bg-red-950/20 p-3 text-sm text-red-300">
