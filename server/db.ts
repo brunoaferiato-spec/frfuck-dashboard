@@ -209,22 +209,63 @@ function formatarDataMySQL(value: Date) {
 }
 
 // ===== Funcionários =====
+async function aplicarDataNascimentoCivil<T extends { id: number }>(rows: T[]) {
+  if (!_pool || rows.length === 0) return rows;
+
+  const ids = rows
+    .map((row) => Number(row.id))
+    .filter((id) => Number.isFinite(id) && id > 0);
+
+  if (ids.length === 0) return rows;
+
+  const placeholders = ids.map(() => "?").join(",");
+  const [rawRows] = await _pool.query(
+    `SELECT id, DATE_FORMAT(dataNascimento, '%Y-%m-%d') AS dataNascimento
+       FROM funcionarios
+      WHERE id IN (${placeholders})`,
+    ids
+  );
+
+  const mapa = new Map<number, string | null>();
+
+  for (const item of rawRows as Array<{ id: number; dataNascimento: string | null }>) {
+    mapa.set(Number(item.id), item.dataNascimento ?? null);
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    // Aniversário é uma data civil, não um instante de tempo.
+    // Entregamos YYYY-MM-DD explicitamente para o frontend, evitando
+    // qualquer conversão de TIMESTAMP/fuso na serialização do tRPC.
+    dataNascimento: mapa.get(Number(row.id)) ?? null,
+  }));
+}
+
 export async function getFuncionariosByLoja(lojaId: number) {
   const db = await getDb();
   if (!db) return [];
 
-  return await db
+  const rows = await db
     .select()
     .from(funcionarios)
     .where(eq(funcionarios.lojaId, lojaId))
     .orderBy(funcionarios.nome);
+
+  return aplicarDataNascimentoCivil(rows);
 }
 
 export async function getFuncionarioById(id: number) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.select().from(funcionarios).where(eq(funcionarios.id, id)).limit(1);
-  return result.length > 0 ? result[0] : null;
+
+  const rows = await db
+    .select()
+    .from(funcionarios)
+    .where(eq(funcionarios.id, id))
+    .limit(1);
+
+  const normalizados = await aplicarDataNascimentoCivil(rows);
+  return normalizados.length > 0 ? normalizados[0] : null;
 }
 
 export async function getFuncionarioAtivo(lojaId: number, id: number) {
@@ -310,13 +351,7 @@ export async function createFuncionario(data: {
     return criado[0] ?? null;
   }
 
-  const criado = await db
-    .select()
-    .from(funcionarios)
-    .where(eq(funcionarios.id, insertId))
-    .limit(1);
-
-  return criado[0] ?? null;
+  return getFuncionarioById(Number(insertId));
 }
 
 export async function updateFuncionario(data: {
@@ -380,19 +415,20 @@ export async function updateFuncionario(data: {
     [formatarDataMySQL(data.dataNascimento), data.id]
   );
 
-  const result = await db
-    .select()
-    .from(funcionarios)
-    .where(eq(funcionarios.id, data.id))
-    .limit(1);
+  // Confirma diretamente no MySQL o valor que acabou de ser gravado.
+  const [rawRows] = await _pool.query(
+    "SELECT DATE_FORMAT(dataNascimento, '%Y-%m-%d') AS dataNascimento FROM funcionarios WHERE id = ? LIMIT 1",
+    [data.id]
+  );
 
-  const atualizado = result[0] ?? null;
+  const dataPersistida = (rawRows as Array<{ dataNascimento: string | null }>)[0]
+    ?.dataNascimento;
 
-  if (!atualizado || !(atualizado as any).dataNascimento) {
+  if (!dataPersistida) {
     throw new Error("A data de aniversário não foi persistida no banco");
   }
 
-  return atualizado;
+  return getFuncionarioById(data.id);
 }
 
 export async function inativarFuncionarioById(id: number, dataDesligamento: Date) {
