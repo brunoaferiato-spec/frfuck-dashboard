@@ -1313,6 +1313,8 @@ type TransicaoFuncaoEditorState = {
   quantidadeAnterior1: string;
   quantidadeAnterior2: string;
   valorFixoAnterior: string;
+  corrigindoData: boolean;
+  novaDataMudanca: string;
 };
 
 function usaMetaSemanal(lojaId: number, ano: number, mes: number) {
@@ -2769,6 +2771,8 @@ export default function FolhaPagamento() {
       quantidadeAnterior1: "",
       quantidadeAnterior2: "",
       valorFixoAnterior: "",
+      corrigindoData: false,
+      novaDataMudanca: "",
     });
 
 
@@ -2913,6 +2917,12 @@ const upsertTransicaoFuncaoMutation =
       void trocasFuncaoQuery.refetch();
     },
   });
+
+const corrigirDataTrocaMutation = trpc.funcionarios.corrigirDataTroca.useMutation({
+  onSuccess: () => {
+    void trocasFuncaoQuery.refetch();
+  },
+});
 
 const importFolhaBaseMutation = trpc.folhaPagamento.upsertBaseItem.useMutation();
 const importDescontoMutation = trpc.folhaExtras.saveDesconto.useMutation();
@@ -6247,6 +6257,8 @@ function openTransicaoFuncaoEditor(linha: LinhaComQuadrante) {
     quantidadeAnterior1: String(Number(linha.trocaFuncaoMes.quantidadeAnterior1 || 0)),
     quantidadeAnterior2: String(Number(linha.trocaFuncaoMes.quantidadeAnterior2 || 0)),
     valorFixoAnterior: String(Number(linha.trocaFuncaoMes.valorFixoAnterior || 0)),
+    corrigindoData: false,
+    novaDataMudanca: formatarDataInputFuncionario(linha.trocaFuncaoMes.dataMudanca),
   });
 }
 
@@ -6290,10 +6302,72 @@ async function salvarTransicaoFuncaoEditor() {
       quantidadeAnterior1: "",
       quantidadeAnterior2: "",
       valorFixoAnterior: "",
+      corrigindoData: false,
+      novaDataMudanca: "",
     });
   } catch (error: any) {
     console.error("Erro ao salvar transição de função:", error);
     alert(error?.message || "Não foi possível salvar a transição de função.");
+  }
+}
+
+async function salvarCorrecaoDataTrocaEditor() {
+  const linha = transicaoFuncaoEditor.linha;
+  const troca = linha?.trocaFuncaoMes;
+  const novaData = transicaoFuncaoEditor.novaDataMudanca;
+
+  if (!linha || !troca) return;
+  if (!novaData) {
+    alert("Informe a nova data efetiva da troca.");
+    return;
+  }
+  if (!garantirCompetenciaAberta()) return;
+
+  const dataAtual = formatarDataInputFuncionario(troca.dataMudanca);
+  if (dataAtual === novaData) {
+    setTransicaoFuncaoEditor((prev) => ({ ...prev, corrigindoData: false }));
+    return;
+  }
+
+  const confirmar = window.confirm(
+    `Corrigir a data efetiva da troca de função?\n\n` +
+      `${linha.nome}\n` +
+      `${labelFuncaoFuncionario(troca.funcaoAnterior, lojaId)} → ${labelFuncaoFuncionario(troca.funcaoNova, lojaId)}\n` +
+      `De: ${formatarDataBR(dataAtual)}\n` +
+      `Para: ${formatarDataBR(novaData)}\n\n` +
+      `A função não será alterada novamente. Somente a data do histórico será corrigida.`
+  );
+
+  if (!confirmar) return;
+
+  try {
+    const resultado = await corrigirDataTrocaMutation.mutateAsync({
+      trocaFuncaoId: Number(troca.id),
+      funcionarioId: Number(linha.funcionarioId),
+      lojaId,
+      novaData: dataFuncionarioParaApi(novaData),
+    });
+
+    const dataCorrigida = String((resultado as any)?.dataNova || novaData).slice(0, 10);
+
+    setTransicaoFuncaoEditor((prev) => ({
+      ...prev,
+      corrigindoData: false,
+      novaDataMudanca: dataCorrigida,
+      linha: prev.linha
+        ? {
+            ...prev.linha,
+            trocaFuncaoMes: prev.linha.trocaFuncaoMes
+              ? { ...prev.linha.trocaFuncaoMes, dataMudanca: dataCorrigida }
+              : prev.linha.trocaFuncaoMes,
+          }
+        : null,
+    }));
+
+    await trocasFuncaoQuery.refetch();
+  } catch (error: any) {
+    console.error("Erro ao corrigir data da troca de função:", error);
+    alert(error?.message || "Não foi possível corrigir a data da troca de função.");
   }
 }
 
@@ -7509,18 +7583,24 @@ if (
       <Dialog
         open={transicaoFuncaoEditor.open}
         onOpenChange={(open) => {
-          if (!open && !upsertTransicaoFuncaoMutation.isPending) {
+          if (
+            !open &&
+            !upsertTransicaoFuncaoMutation.isPending &&
+            !corrigirDataTrocaMutation.isPending
+          ) {
             setTransicaoFuncaoEditor({
               open: false,
               linha: null,
               quantidadeAnterior1: "",
               quantidadeAnterior2: "",
               valorFixoAnterior: "",
+              corrigindoData: false,
+              novaDataMudanca: "",
             });
           }
         }}
       >
-        <DialogContent className="border border-orange-400/30 bg-[#090909] text-white sm:max-w-2xl">
+        <DialogContent className="border border-orange-400/30 bg-[#090909] text-white sm:max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
           {transicaoFuncaoEditor.linha?.trocaFuncaoMes && (() => {
             const linha = transicaoFuncaoEditor.linha as LinhaComQuadrante;
             const troca = linha.trocaFuncaoMes as TrocaFuncaoMes;
@@ -7589,7 +7669,74 @@ if (
                     </div>
                     <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
                       <p className="text-[10px] uppercase tracking-wider text-gray-500">Data efetiva</p>
-                      <p className="mt-1 font-semibold text-white">{formatarDataBR(troca.dataMudanca)}</p>
+
+                      {!transicaoFuncaoEditor.corrigindoData ? (
+                        <>
+                          <p className="mt-1 font-semibold text-white">
+                            {formatarDataBR(troca.dataMudanca)}
+                          </p>
+                          {!mesFechado && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="mt-2 h-8 px-2 text-xs text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                              disabled={
+                                upsertTransicaoFuncaoMutation.isPending ||
+                                corrigirDataTrocaMutation.isPending
+                              }
+                              onClick={() =>
+                                setTransicaoFuncaoEditor((prev) => ({
+                                  ...prev,
+                                  corrigindoData: true,
+                                  novaDataMudanca: formatarDataInputFuncionario(troca.dataMudanca),
+                                }))
+                              }
+                            >
+                              Corrigir data
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="mt-2 space-y-2">
+                          <Input
+                            type="date"
+                            value={transicaoFuncaoEditor.novaDataMudanca}
+                            onChange={(e) =>
+                              setTransicaoFuncaoEditor((prev) => ({
+                                ...prev,
+                                novaDataMudanca: e.target.value,
+                              }))
+                            }
+                            disabled={corrigirDataTrocaMutation.isPending}
+                            className="h-9 border-[#D4AF37]/30 bg-black text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              className="h-8 flex-1 bg-[#D4AF37] px-2 text-xs font-semibold text-black hover:bg-[#F2D675]"
+                              disabled={corrigirDataTrocaMutation.isPending}
+                              onClick={salvarCorrecaoDataTrocaEditor}
+                            >
+                              {corrigirDataTrocaMutation.isPending ? "Salvando..." : "Salvar data"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="h-8 px-2 text-xs text-gray-400"
+                              disabled={corrigirDataTrocaMutation.isPending}
+                              onClick={() =>
+                                setTransicaoFuncaoEditor((prev) => ({
+                                  ...prev,
+                                  corrigindoData: false,
+                                  novaDataMudanca: formatarDataInputFuncionario(troca.dataMudanca),
+                                }))
+                              }
+                            >
+                              Cancelar
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -7714,7 +7861,10 @@ if (
                   <Button
                     type="button"
                     variant="ghost"
-                    disabled={upsertTransicaoFuncaoMutation.isPending}
+                    disabled={
+                      upsertTransicaoFuncaoMutation.isPending ||
+                      corrigirDataTrocaMutation.isPending
+                    }
                     onClick={() =>
                       setTransicaoFuncaoEditor({
                         open: false,
@@ -7722,6 +7872,8 @@ if (
                         quantidadeAnterior1: "",
                         quantidadeAnterior2: "",
                         valorFixoAnterior: "",
+                        corrigindoData: false,
+                        novaDataMudanca: "",
                       })
                     }
                   >
@@ -7731,7 +7883,11 @@ if (
                     <Button
                       type="button"
                       className="bg-[#D4AF37] text-black hover:bg-[#F2D675]"
-                      disabled={upsertTransicaoFuncaoMutation.isPending}
+                      disabled={
+                        upsertTransicaoFuncaoMutation.isPending ||
+                        corrigirDataTrocaMutation.isPending ||
+                        transicaoFuncaoEditor.corrigindoData
+                      }
                       onClick={salvarTransicaoFuncaoEditor}
                     >
                       {upsertTransicaoFuncaoMutation.isPending ? "Salvando..." : "Salvar transição"}
