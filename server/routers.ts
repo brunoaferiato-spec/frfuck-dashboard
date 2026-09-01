@@ -37,6 +37,8 @@ import {
   reabrirCompetenciaFolha,
   trocarFuncaoFuncionario,
   getTrocasFuncaoByLojaCompetencia,
+  getTrocasFuncaoByFuncionario,
+  corrigirDataTrocaFuncao,
   upsertFolhaTransicaoFuncao,
   getFolhaSem5Status,
   ativarFolhaSem5,
@@ -386,6 +388,17 @@ export const appRouter = router({
         getTrocasFuncaoByLojaCompetencia(input.lojaId, input.ano, input.mes)
       ),
 
+    trocasByFuncionario: protectedProcedure
+      .input(
+        z.object({
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+        })
+      )
+      .query(({ input }) =>
+        getTrocasFuncaoByFuncionario(input.funcionarioId, input.lojaId)
+      ),
+
     trocarFuncao: protectedProcedure
       .input(
         z.object({
@@ -406,6 +419,26 @@ export const appRouter = router({
           novaFuncao: input.novaFuncao,
           novoTipoMeta: input.novoTipoMeta ?? null,
           dataMudanca: input.dataMudanca,
+          usuarioId: Number(ctx.user.id),
+          usuarioNome: ctx.user.name || ctx.user.email || `Usuário ${ctx.user.id}`,
+        });
+      }),
+
+    corrigirDataTroca: protectedProcedure
+      .input(
+        z.object({
+          trocaFuncaoId: z.number(),
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+          novaData: z.coerce.date(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        return corrigirDataTrocaFuncao({
+          trocaFuncaoId: input.trocaFuncaoId,
+          funcionarioId: input.funcionarioId,
+          lojaId: input.lojaId,
+          novaData: input.novaData,
           usuarioId: Number(ctx.user.id),
           usuarioNome: ctx.user.name || ctx.user.email || `Usuário ${ctx.user.id}`,
         });

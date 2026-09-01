@@ -541,6 +541,24 @@ async function ensureTrocaFuncaoTables() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
 
+  // Auditoria das correções de data de troca de função. A movimentação original
+  // continua sendo um único registro; aqui guardamos cada correção realizada.
+  await _pool.query(`
+    CREATE TABLE IF NOT EXISTS funcionario_trocas_funcao_correcoes (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      troca_funcao_id INT NOT NULL,
+      funcionario_id INT NOT NULL,
+      loja_id INT NOT NULL,
+      data_anterior DATE NOT NULL,
+      data_nova DATE NOT NULL,
+      usuario_id INT NULL,
+      usuario_nome VARCHAR(255) NULL,
+      corrigido_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_correcao_troca (troca_funcao_id, id),
+      INDEX idx_correcao_funcionario (funcionario_id, corrigido_em)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
   _trocaFuncaoTablesReady = true;
 }
 
@@ -759,6 +777,238 @@ export async function getTrocasFuncaoByLojaCompetencia(
   );
 
   return rows || [];
+}
+
+export async function getTrocasFuncaoByFuncionario(
+  funcionarioId: number,
+  lojaId: number
+) {
+  await ensureTrocaFuncaoTables();
+  if (!_pool) return [];
+
+  const [rows] = await _pool.query<any[]>(
+    `SELECT
+       t.id,
+       t.funcionario_id AS funcionarioId,
+       t.loja_id AS lojaId,
+       t.funcao_anterior AS funcaoAnterior,
+       t.funcao_nova AS funcaoNova,
+       t.tipo_meta_anterior AS tipoMetaAnterior,
+       t.tipo_meta_novo AS tipoMetaNovo,
+       DATE_FORMAT(t.data_mudanca, '%Y-%m-%d') AS dataMudanca,
+       t.usuario_nome AS usuarioNome,
+       t.criado_em AS criadoEm,
+       (
+         SELECT DATE_FORMAT(c.data_anterior, '%Y-%m-%d')
+           FROM funcionario_trocas_funcao_correcoes c
+          WHERE c.troca_funcao_id = t.id
+          ORDER BY c.id DESC
+          LIMIT 1
+       ) AS ultimaDataAnterior,
+       (
+         SELECT DATE_FORMAT(c.data_nova, '%Y-%m-%d')
+           FROM funcionario_trocas_funcao_correcoes c
+          WHERE c.troca_funcao_id = t.id
+          ORDER BY c.id DESC
+          LIMIT 1
+       ) AS ultimaDataNova,
+       (
+         SELECT c.usuario_nome
+           FROM funcionario_trocas_funcao_correcoes c
+          WHERE c.troca_funcao_id = t.id
+          ORDER BY c.id DESC
+          LIMIT 1
+       ) AS corrigidoPor,
+       (
+         SELECT c.corrigido_em
+           FROM funcionario_trocas_funcao_correcoes c
+          WHERE c.troca_funcao_id = t.id
+          ORDER BY c.id DESC
+          LIMIT 1
+       ) AS corrigidoEm
+     FROM funcionario_trocas_funcao t
+     WHERE t.funcionario_id = ? AND t.loja_id = ?
+     ORDER BY t.data_mudanca DESC, t.id DESC`,
+    [funcionarioId, lojaId]
+  );
+
+  return rows || [];
+}
+
+export async function corrigirDataTrocaFuncao(data: {
+  trocaFuncaoId: number;
+  funcionarioId: number;
+  lojaId: number;
+  novaData: Date;
+  usuarioId?: number | null;
+  usuarioNome?: string | null;
+}) {
+  await ensureTrocaFuncaoTables();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  const novaDataSql = dataCivilMySQL(data.novaData);
+
+  const [baseRows] = await _pool.query<any[]>(
+    `SELECT
+       t.id,
+       t.funcionario_id AS funcionarioId,
+       t.loja_id AS lojaId,
+       DATE_FORMAT(t.data_mudanca, '%Y-%m-%d') AS dataMudanca,
+       DATE_FORMAT(f.dataAdmissao, '%Y-%m-%d') AS dataAdmissao
+     FROM funcionario_trocas_funcao t
+     INNER JOIN funcionarios f ON f.id = t.funcionario_id AND f.lojaId = t.loja_id
+     WHERE t.id = ? AND t.funcionario_id = ? AND t.loja_id = ?
+     LIMIT 1`,
+    [data.trocaFuncaoId, data.funcionarioId, data.lojaId]
+  );
+
+  const trocaBase = baseRows?.[0];
+  if (!trocaBase) {
+    throw new Error("Histórico de troca de função não encontrado");
+  }
+
+  const dataAnteriorSql = String(trocaBase.dataMudanca || "").slice(0, 10);
+  const dataAdmissaoSql = String(trocaBase.dataAdmissao || "").slice(0, 10);
+
+  if (dataAnteriorSql === novaDataSql) {
+    return {
+      success: true,
+      semAlteracao: true,
+      trocaFuncaoId: data.trocaFuncaoId,
+      dataAnterior: dataAnteriorSql,
+      dataNova: novaDataSql,
+    };
+  }
+
+  if (dataAdmissaoSql && novaDataSql < dataAdmissaoSql) {
+    throw new Error("A data da troca não pode ser anterior à admissão");
+  }
+
+  // Preserva a sequência histórica caso o funcionário tenha mais de uma troca.
+  const [anteriorRows] = await _pool.query<any[]>(
+    `SELECT DATE_FORMAT(data_mudanca, '%Y-%m-%d') AS dataMudanca
+       FROM funcionario_trocas_funcao
+      WHERE funcionario_id = ? AND loja_id = ? AND id < ?
+      ORDER BY id DESC
+      LIMIT 1`,
+    [data.funcionarioId, data.lojaId, data.trocaFuncaoId]
+  );
+
+  const [posteriorRows] = await _pool.query<any[]>(
+    `SELECT DATE_FORMAT(data_mudanca, '%Y-%m-%d') AS dataMudanca
+       FROM funcionario_trocas_funcao
+      WHERE funcionario_id = ? AND loja_id = ? AND id > ?
+      ORDER BY id ASC
+      LIMIT 1`,
+    [data.funcionarioId, data.lojaId, data.trocaFuncaoId]
+  );
+
+  const trocaAnterior = anteriorRows?.[0]?.dataMudanca
+    ? String(anteriorRows[0].dataMudanca).slice(0, 10)
+    : "";
+  const trocaPosterior = posteriorRows?.[0]?.dataMudanca
+    ? String(posteriorRows[0].dataMudanca).slice(0, 10)
+    : "";
+
+  if (trocaAnterior && novaDataSql < trocaAnterior) {
+    throw new Error(
+      `A nova data não pode ser anterior à troca de função anterior (${trocaAnterior}).`
+    );
+  }
+
+  if (trocaPosterior && novaDataSql > trocaPosterior) {
+    throw new Error(
+      `A nova data não pode ser posterior à troca de função seguinte (${trocaPosterior}).`
+    );
+  }
+
+  const anoAnterior = Number(dataAnteriorSql.slice(0, 4));
+  const mesAnterior = Number(dataAnteriorSql.slice(5, 7));
+  const anoNovo = Number(novaDataSql.slice(0, 4));
+  const mesNovo = Number(novaDataSql.slice(5, 7));
+  const mudouCompetencia = anoAnterior !== anoNovo || mesAnterior !== mesNovo;
+
+  await assertCompetenciaFolhaAberta(data.lojaId, anoAnterior, mesAnterior);
+  if (mudouCompetencia) {
+    await assertCompetenciaFolhaAberta(data.lojaId, anoNovo, mesNovo);
+
+    // Se a troca já gerou uma transição financeira, mudar de competência exige
+    // reconstruir valores da folha anterior/nova. Bloqueamos para não corromper
+    // cálculo e orientamos um ajuste controlado.
+    const [transicaoRows] = await _pool.query<any[]>(
+      `SELECT id
+         FROM folha_transicoes_funcao
+        WHERE troca_funcao_id = ?
+        LIMIT 1`,
+      [data.trocaFuncaoId]
+    );
+
+    if (transicaoRows?.[0]) {
+      throw new Error(
+        "Essa correção muda a competência e a troca possui transição financeira. " +
+          "Para preservar os valores da folha, corrija essa movimentação com ajuste assistido."
+      );
+    }
+  }
+
+  const connection = await _pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [lockRows] = await connection.query<any[]>(
+      `SELECT DATE_FORMAT(data_mudanca, '%Y-%m-%d') AS dataMudanca
+         FROM funcionario_trocas_funcao
+        WHERE id = ? AND funcionario_id = ? AND loja_id = ?
+        LIMIT 1
+        FOR UPDATE`,
+      [data.trocaFuncaoId, data.funcionarioId, data.lojaId]
+    );
+
+    const trocaLock = lockRows?.[0];
+    if (!trocaLock) {
+      throw new Error("Histórico de troca de função não encontrado");
+    }
+
+    const dataAtualLock = String(trocaLock.dataMudanca || "").slice(0, 10);
+
+    await connection.query(
+      `INSERT INTO funcionario_trocas_funcao_correcoes
+         (troca_funcao_id, funcionario_id, loja_id, data_anterior, data_nova,
+          usuario_id, usuario_nome)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.trocaFuncaoId,
+        data.funcionarioId,
+        data.lojaId,
+        dataAtualLock,
+        novaDataSql,
+        data.usuarioId ?? null,
+        data.usuarioNome ?? null,
+      ]
+    );
+
+    await connection.query(
+      `UPDATE funcionario_trocas_funcao
+          SET data_mudanca = ?
+        WHERE id = ? AND funcionario_id = ? AND loja_id = ?`,
+      [novaDataSql, data.trocaFuncaoId, data.funcionarioId, data.lojaId]
+    );
+
+    await connection.commit();
+
+    return {
+      success: true,
+      trocaFuncaoId: data.trocaFuncaoId,
+      dataAnterior: dataAtualLock,
+      dataNova: novaDataSql,
+      mudouCompetencia,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function upsertFolhaTransicaoFuncao(data: {

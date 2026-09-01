@@ -94,6 +94,23 @@ type FormFuncionario = {
   dataAdmissao: string;
 };
 
+type TrocaFuncaoItem = {
+  id: number;
+  funcionarioId: number;
+  lojaId: number;
+  funcaoAnterior: FuncaoId;
+  funcaoNova: FuncaoId;
+  tipoMetaAnterior?: string | null;
+  tipoMetaNovo?: string | null;
+  dataMudanca: string | Date;
+  usuarioNome?: string | null;
+  criadoEm?: string | Date | null;
+  ultimaDataAnterior?: string | Date | null;
+  ultimaDataNova?: string | Date | null;
+  corrigidoPor?: string | null;
+  corrigidoEm?: string | Date | null;
+};
+
 function hojeInput() {
   const agora = new Date();
   const ano = agora.getFullYear();
@@ -203,6 +220,8 @@ export default function GestaoFuncionarios() {
     novoTipoMeta: TipoMeta;
     dataMudanca: string;
   }>({ novaFuncao: "", novoTipoMeta: "", dataMudanca: "" });
+  const [correcaoTrocaId, setCorrecaoTrocaId] = useState<number | null>(null);
+  const [correcaoTrocaData, setCorrecaoTrocaData] = useState("");
 
   const lojaId = Number(selectedLoja);
 
@@ -235,12 +254,23 @@ export default function GestaoFuncionarios() {
     }
   );
 
+  const trocasFuncionarioQuery = trpc.funcionarios.trocasByFuncionario.useQuery(
+    { funcionarioId: Number(editingId || 0), lojaId },
+    {
+      enabled: !!editingId && !!lojaId,
+      retry: false,
+      refetchOnWindowFocus: true,
+    }
+  );
+
   const fecharFormulario = () => {
     setIsOpen(false);
     setEditingId(null);
     setTentouSalvar(false);
     setTrocaFuncaoOpen(false);
     setTrocaFuncaoForm({ novaFuncao: "", novoTipoMeta: "", dataMudanca: "" });
+    setCorrecaoTrocaId(null);
+    setCorrecaoTrocaData("");
     setFormData(criarFormVazio(lojaId));
   };
 
@@ -262,6 +292,7 @@ export default function GestaoFuncionarios() {
     onSuccess: async (_result, variables) => {
       await utils.funcionarios.listByLoja.invalidate({ lojaId });
       await funcionariosQuery.refetch();
+      await trocasFuncionarioQuery.refetch();
       setFormData((prev) => ({
         ...prev,
         funcao: variables.novaFuncao as FuncaoId,
@@ -272,6 +303,15 @@ export default function GestaoFuncionarios() {
       }));
       setTrocaFuncaoOpen(false);
       setTrocaFuncaoForm({ novaFuncao: "", novoTipoMeta: "", dataMudanca: "" });
+    },
+  });
+
+  const corrigirDataTrocaMutation = trpc.funcionarios.corrigirDataTroca.useMutation({
+    onSuccess: async () => {
+      await trocasFuncionarioQuery.refetch();
+      setCorrecaoTrocaId(null);
+      setCorrecaoTrocaData("");
+      alert("Data da troca de função corrigida com sucesso.");
     },
   });
 
@@ -427,6 +467,51 @@ export default function GestaoFuncionarios() {
     }
   };
 
+  const abrirCorrecaoDataTroca = (troca: TrocaFuncaoItem) => {
+    setCorrecaoTrocaId(Number(troca.id));
+    setCorrecaoTrocaData(formatDateInput(troca.dataMudanca));
+  };
+
+  const confirmarCorrecaoDataTroca = async (troca: TrocaFuncaoItem) => {
+    if (!funcionarioEmEdicao) return;
+
+    if (!correcaoTrocaData) {
+      alert("Informe a data correta da troca de função.");
+      return;
+    }
+
+    const dataAtual = formatDateInput(troca.dataMudanca);
+    if (dataAtual === correcaoTrocaData) {
+      alert("A nova data é igual à data já registrada.");
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `Corrigir a data desta troca de função?\n\n` +
+        `${labelFuncao(troca.funcaoAnterior, lojaId)} → ${labelFuncao(
+          troca.funcaoNova,
+          lojaId
+        )}\n` +
+        `De: ${formatDateBR(dataAtual)}\n` +
+        `Para: ${formatDateBR(correcaoTrocaData)}\n\n` +
+        `A função atual não será alterada. A correção ficará registrada no histórico.`
+    );
+
+    if (!confirmar) return;
+
+    try {
+      await corrigirDataTrocaMutation.mutateAsync({
+        trocaFuncaoId: Number(troca.id),
+        funcionarioId: Number(funcionarioEmEdicao.id),
+        lojaId,
+        novaData: dateFromInput(correcaoTrocaData),
+      });
+    } catch (error: any) {
+      console.error(error);
+      alert(error?.message ?? "Erro ao corrigir a data da troca de função");
+    }
+  };
+
   const handleInativarFuncionario = async (func: FuncionarioItem) => {
     const data = prompt(
       `Digite a data de desligamento de ${func.nome}\nFormato: 2026-05-01`,
@@ -529,6 +614,8 @@ export default function GestaoFuncionarios() {
   const funcionarioEmEdicao = editingId
     ? funcionariosBase.find((item) => Number(item.id) === Number(editingId)) || null
     : null;
+
+  const historicoTrocas = (trocasFuncionarioQuery.data ?? []) as TrocaFuncaoItem[];
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1130,6 +1217,129 @@ export default function GestaoFuncionarios() {
                   )}
                 </div>
               </section>
+
+              {editingId && funcionarioEmEdicao && (
+                <section className="rounded-2xl border border-white/[0.07] bg-[#0b0b0b] p-4 sm:p-5">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">Histórico de função</p>
+                      <p className="mt-1 text-xs text-white/30">
+                        Consulte as movimentações registradas e corrija somente a data quando houver erro de digitação.
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-white/[0.08] bg-white/[0.025] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-white/40">
+                      {historicoTrocas.length} movimentação{historicoTrocas.length === 1 ? "" : "ões"}
+                    </span>
+                  </div>
+
+                  {trocasFuncionarioQuery.isLoading ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-black/20 p-4 text-sm text-white/35">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Carregando histórico...
+                    </div>
+                  ) : historicoTrocas.length === 0 ? (
+                    <div className="rounded-xl border border-white/[0.06] bg-black/20 p-4 text-sm text-white/30">
+                      Nenhuma troca de função registrada para este funcionário.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {historicoTrocas.map((troca) => {
+                        const corrigindo = correcaoTrocaId === Number(troca.id);
+                        const foiCorrigida = Boolean(troca.ultimaDataAnterior);
+
+                        return (
+                          <div
+                            key={troca.id}
+                            className="rounded-xl border border-white/[0.07] bg-black/25 p-4"
+                          >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 text-sm">
+                                  <span className="font-medium text-white/65">
+                                    {labelFuncao(troca.funcaoAnterior, lojaId)}
+                                  </span>
+                                  <ArrowRightLeft className="h-3.5 w-3.5 text-[#D4AF37]" />
+                                  <span className="font-semibold text-[#F2D675]">
+                                    {labelFuncao(troca.funcaoNova, lojaId)}
+                                  </span>
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/32">
+                                  <span>Data efetiva: {formatDateBR(troca.dataMudanca)}</span>
+                                  {troca.usuarioNome && <span>Registrada por: {troca.usuarioNome}</span>}
+                                </div>
+                                {foiCorrigida && (
+                                  <p className="mt-2 text-[11px] text-emerald-300/65">
+                                    Data corrigida anteriormente de {formatDateBR(troca.ultimaDataAnterior)} para {formatDateBR(troca.ultimaDataNova)}
+                                    {troca.corrigidoPor ? ` por ${troca.corrigidoPor}` : ""}.
+                                  </p>
+                                )}
+                              </div>
+
+                              {!corrigindo && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => abrirCorrecaoDataTroca(troca)}
+                                  className="h-9 shrink-0 rounded-lg border-[#D4AF37]/18 bg-[#D4AF37]/[0.035] px-3 text-xs text-[#F2D675] hover:border-[#D4AF37]/38 hover:bg-[#D4AF37]/[0.075] hover:text-[#F7DF86]"
+                                >
+                                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                                  Corrigir data
+                                </Button>
+                              )}
+                            </div>
+
+                            {corrigindo && (
+                              <div className="mt-4 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.025] p-4">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+                                  <div>
+                                    <label className="mb-2 block text-xs font-medium text-white/50">
+                                      Data correta da troca
+                                    </label>
+                                    <input
+                                      type="date"
+                                      value={correcaoTrocaData}
+                                      onChange={(e) => setCorrecaoTrocaData(e.target.value)}
+                                      className="h-10 w-full rounded-lg border border-[#D4AF37]/20 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
+                                    />
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    onClick={() => confirmarCorrecaoDataTroca(troca)}
+                                    disabled={corrigirDataTrocaMutation.isPending}
+                                    className="h-10 rounded-lg bg-[#D4AF37] px-4 font-bold text-black hover:bg-[#E7C553]"
+                                  >
+                                    {corrigirDataTrocaMutation.isPending ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <CalendarDays className="mr-2 h-4 w-4" />
+                                    )}
+                                    Salvar correção
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setCorrecaoTrocaId(null);
+                                      setCorrecaoTrocaData("");
+                                    }}
+                                    disabled={corrigirDataTrocaMutation.isPending}
+                                    className="h-10 rounded-lg text-white/45 hover:bg-white/[0.04] hover:text-white"
+                                  >
+                                    Cancelar
+                                  </Button>
+                                </div>
+                                <p className="mt-3 text-[10px] leading-relaxed text-white/25">
+                                  Esta ação corrige somente a data da movimentação e mantém a função atual. Se a nova data mudar a competência e já existir transição financeira, o sistema bloqueará a alteração para proteger a folha.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              )}
 
               {editingId && funcionarioEmEdicao && trocaFuncaoOpen && (
                 <section className="overflow-hidden rounded-2xl border border-orange-400/28 bg-gradient-to-br from-orange-500/[0.075] to-[#0b0908]">
