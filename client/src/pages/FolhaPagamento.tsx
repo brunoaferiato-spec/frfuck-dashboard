@@ -6802,6 +6802,29 @@ async function lançarNegativoNoPróximoMês() {
 
   const premioAutomaticoAtual = useMemo(() => {
     if (!linhaPremioAtual) return { detalhes: [], total: 0 };
+
+    // Consultores de São Leopoldo e Gravataí usam a regra mensal exclusiva
+    // definida nesta tela. A discriminação precisa usar o mesmo detalhamento
+    // que gerou a premiação da linha, e não a Meta 2 antiga do payrollStore.
+    if (
+      linhaPremioAtual.funcao === "consultor_vendas" &&
+      ehConsultorSulMensal(linhaPremioAtual.loja_id)
+    ) {
+      const detalhesConsultorSul =
+        ((linhaPremioAtual as any).detalhesPremiacaoConsultorSul || []) as Array<{
+          descricao: string;
+          valor: number;
+        }>;
+
+      return {
+        detalhes: detalhesConsultorSul,
+        total: detalhesConsultorSul.reduce(
+          (acc, item) => acc + Number(item.valor || 0),
+          0
+        ),
+      };
+    }
+
     const detalhesPremiacaoEspecial =
   ((linhaPremioAtual as any).detalhesPremiacaoEspecial || []) as Array<{
     descricao: string;
