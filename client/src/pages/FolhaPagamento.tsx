@@ -10536,7 +10536,7 @@ if (
           setRegraSemanaEditor((prev) => ({ ...prev, open }))
         }
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
   <DialogTitle className="text-[#D4AF37]">
     Detalhe da regra
