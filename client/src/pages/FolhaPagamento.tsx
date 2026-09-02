@@ -1778,9 +1778,14 @@ const isMensalUnico =
 
     if (isConsultorMeta2) {
       return (
-        <span className="text-yellow-300 font-semibold whitespace-nowrap">
+        <button
+          type="button"
+          onClick={() => onOpenRegraSemanaEditor(linha, 1)}
+          className="text-yellow-300 font-semibold whitespace-nowrap hover:underline underline-offset-4"
+          title="Clique para visualizar a meta do consultor"
+        >
           {getRegraConsultorTexto(linha, Number(linha.sem1 || 0))}
-        </span>
+        </button>
       );
     }
 
@@ -2328,8 +2333,15 @@ const isMensalUnico =
     </td>
 
     <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
-  {getRegraConsultorTexto(linha, Number(linha.sem1 || 0))}
-</td>
+      <button
+        type="button"
+        onClick={() => onOpenRegraSemanaEditor(linha, 1)}
+        className="text-yellow-300 font-semibold whitespace-nowrap hover:underline underline-offset-4 cursor-pointer"
+        title="Clique para visualizar a meta do consultor"
+      >
+        {getRegraConsultorTexto(linha, Number(linha.sem1 || 0))}
+      </button>
+    </td>
 
     <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
       {Number(linha.sem1 || 0).toLocaleString("pt-BR")}
@@ -4406,6 +4418,141 @@ return {
     }
   }, [importacaoHoleriteRestaurada]);
 
+  // Mantém a conferência do Holerite sincronizada com o cadastro de funcionários.
+  // 1) Se o cadastro acabou de nascer a partir desta tela, usa o ID retornado pelo RH.
+  // 2) Se o funcionário já foi cadastrado e o nome bate exatamente, resolve a
+  //    divergência automaticamente. Isso também corrige conferências que ficaram
+  //    abertas antes desta melhoria.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (importacaoHolerite.etapa !== "conferencia") return;
+
+    const candidatos = linhas.filter(
+      (linha) =>
+        linha.quadrante !== "supervisor_pj" &&
+        linha.quadrante !== "supervisora_consultores_pj"
+    );
+
+    if (candidatos.length === 0) return;
+
+    const rawConcluido = window.sessionStorage.getItem(
+      CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY
+    );
+
+    if (rawConcluido) {
+      try {
+        const concluido = JSON.parse(rawConcluido);
+
+        if (
+          concluido?.origem === "importacao-holerite" &&
+          Number(concluido?.lojaId || 0) === Number(lojaId)
+        ) {
+          const funcionarioId = Number(concluido?.funcionarioId || 0);
+          const funcionario = candidatos.find(
+            (linha) => Number(linha.funcionarioId) === funcionarioId
+          );
+
+          const itemAlvo = importacaoHolerite.itens.find((item) => {
+            if (concluido?.itemId && item.id === concluido.itemId) return true;
+            return (
+              item.status !== "ok" &&
+              item.status !== "ignorado" &&
+              normalizarNomeImportacao(item.nomePdf) ===
+                normalizarNomeImportacao(String(concluido?.nomePdf || ""))
+            );
+          });
+
+          if (funcionarioId && funcionario && itemAlvo) {
+            setImportacaoHolerite((prev) => ({
+              ...prev,
+              itens: prev.itens.map((item) =>
+                item.id === itemAlvo.id
+                  ? {
+                      ...item,
+                      status: "ok" as const,
+                      funcionarioId,
+                      funcionarioNome: funcionario.nome,
+                      candidatoId: null,
+                      candidatoNome: null,
+                      scoreCandidato: 1,
+                    }
+                  : item
+              ),
+            }));
+
+            salvarAliasImportacao(lojaId, itemAlvo.nomePdf, funcionarioId);
+            window.sessionStorage.removeItem(CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY);
+            window.sessionStorage.removeItem(CADASTRO_RETORNO_FOLHA_STORAGE_KEY);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao concluir retorno do cadastro para o Holerite:", error);
+        window.sessionStorage.removeItem(CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY);
+      }
+    }
+
+    // Também resolve automaticamente nomes exatos que já foram cadastrados enquanto
+    // esta conferência estava aberta. Só aceita nome canônico único (ou alias já salvo),
+    // evitando vincular silenciosamente pessoas parecidas.
+    const aliases = lerAliasesImportacao();
+    const resolucoes = new Map<string, LinhaComQuadrante>();
+
+    for (const item of importacaoHolerite.itens) {
+      if (item.status === "ok" || item.status === "ignorado") continue;
+
+      const chaveAlias = `${lojaId}:${normalizarTextoImportacao(item.nomePdf)}`;
+      const aliasId = aliases[chaveAlias];
+      const porAlias = aliasId
+        ? candidatos.find(
+            (linha) => Number(linha.funcionarioId) === Number(aliasId)
+          )
+        : null;
+
+      const nomeCanonico = normalizarNomeImportacao(item.nomePdf);
+      const exatos = candidatos.filter(
+        (linha) => normalizarNomeImportacao(linha.nome) === nomeCanonico
+      );
+      const exatoUnico = exatos.length === 1 ? exatos[0] : null;
+      const escolhido = porAlias || exatoUnico;
+
+      if (escolhido) {
+        resolucoes.set(item.id, escolhido);
+      }
+    }
+
+    if (resolucoes.size === 0) return;
+
+    setImportacaoHolerite((prev) => ({
+      ...prev,
+      itens: prev.itens.map((item) => {
+        const funcionario = resolucoes.get(item.id);
+        if (!funcionario) return item;
+
+        return {
+          ...item,
+          status: "ok" as const,
+          funcionarioId: Number(funcionario.funcionarioId),
+          funcionarioNome: funcionario.nome,
+          candidatoId: null,
+          candidatoNome: null,
+          scoreCandidato: 1,
+        };
+      }),
+    }));
+
+    for (const [itemId, funcionario] of resolucoes.entries()) {
+      const item = importacaoHolerite.itens.find((row) => row.id === itemId);
+      if (item) {
+        salvarAliasImportacao(
+          lojaId,
+          item.nomePdf,
+          Number(funcionario.funcionarioId)
+        );
+      }
+    }
+  }, [importacaoHolerite.etapa, importacaoHolerite.itens, linhas, lojaId]);
+
   function garantirCompetenciaAberta() {
     if (!mesFechado) return true;
     setBloqueioAvisoOpen(true);
@@ -5809,6 +5956,22 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
   function irParaCadastrarFuncionarioHolerite(item: ItemHoleritePdf) {
     if (typeof window !== "undefined") {
       salvarImportacaoHoleritePendente();
+
+      // Guarda exatamente qual linha do PDF originou o cadastro. Assim, ao salvar
+      // o funcionário no RH, a Folha consegue voltar para esta mesma conferência
+      // e vincular o cadastro recém-criado pelo ID, sem depender apenas do nome.
+      window.sessionStorage.setItem(
+        CADASTRO_RETORNO_FOLHA_STORAGE_KEY,
+        JSON.stringify({
+          origem: "importacao-holerite",
+          itemId: item.id,
+          nomePdf: item.nomePdf,
+          lojaId,
+          ano,
+          mes,
+        })
+      );
+
       window.sessionStorage.setItem(
         "folha-cadastro-sugerido",
         JSON.stringify({
@@ -7142,6 +7305,65 @@ if (funcao === "gerente") {
     const isConsultor = linha.funcao === "consultor_vendas";
     const isRecepcao = linha.funcao === "recepcionista";
     const isSupervisor = linha.funcao === "supervisor";
+    const isConsultorSulMensal =
+      isConsultor && ehConsultorSulMensal(linha.loja_id);
+
+    if (isConsultorSulMensal) {
+      const calculo = calcularConsultorSulMensal(Number(linha.sem1 || 0));
+      const metasConsultorSul = [
+        {
+          minimo: 0,
+          maximo: 199,
+          faixa: "Até 199 carros",
+          valorPorCarro: 7,
+          premioAdicional: 0,
+          premioAcumulado: 0,
+        },
+        {
+          minimo: 200,
+          maximo: 249,
+          faixa: "200 a 249 carros",
+          valorPorCarro: 7,
+          premioAdicional: 300,
+          premioAcumulado: 300,
+        },
+        {
+          minimo: 250,
+          maximo: 299,
+          faixa: "250 a 299 carros",
+          valorPorCarro: 10,
+          premioAdicional: 500,
+          premioAcumulado: 800,
+        },
+        {
+          minimo: 300,
+          maximo: null,
+          faixa: "300 carros ou mais",
+          valorPorCarro: 12,
+          premioAdicional: 1000,
+          premioAcumulado: 1800,
+        },
+      ];
+
+      return {
+        linha,
+        semana,
+        isConsultor: true,
+        isRecepcao: false,
+        isSupervisor: false,
+        isConsultorSulMensal: true,
+        base: calculo.totalCarros,
+        percentual: calculo.valorPorCarro,
+        comissao: calculo.comissao,
+        regraTexto: getRegraConsultorSulTexto(calculo.totalCarros),
+        metaTitulo: "Meta - Consultor de Vendas Mensal",
+        metaDescricao: "Premiações acumulativas.",
+        baseLabel: "Total de carros",
+        extra: "",
+        metasConsultorSul,
+        premiacaoConsultorSul: calculo.premiacao,
+      };
+    }
 
     if (isSupervisor) {
       const lojaIdSupervisor = Number(linha.loja_id);
@@ -10374,7 +10596,74 @@ if (
                   {detalheSemanaAtual.metaTitulo}
                 </p>
 
-                {detalheSemanaAtual.isSupervisor ? (
+                {(detalheSemanaAtual as any).isConsultorSulMensal ? (
+                  <div className="space-y-3">
+                    {((detalheSemanaAtual as any).metasConsultorSul || []).map(
+                      (
+                        meta: {
+                          minimo: number;
+                          maximo: number | null;
+                          faixa: string;
+                          valorPorCarro: number;
+                          premioAdicional: number;
+                          premioAcumulado: number;
+                        },
+                        index: number
+                      ) => {
+                        const totalCarros = Number(detalheSemanaAtual.base || 0);
+                        const faixaAtual =
+                          totalCarros >= meta.minimo &&
+                          (meta.maximo === null || totalCarros <= meta.maximo);
+
+                        return (
+                          <div
+                            key={`meta-consultor-${index}`}
+                            className={`rounded-lg border p-3 ${
+                              faixaAtual
+                                ? "border-green-500/40 bg-green-500/[0.06]"
+                                : "border-white/[0.07] bg-black/20"
+                            }`}
+                          >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p
+                                  className={
+                                    faixaAtual
+                                      ? "font-semibold text-green-400"
+                                      : "font-semibold text-white"
+                                  }
+                                >
+                                  {meta.faixa}
+                                  {faixaAtual ? " • faixa atual" : ""}
+                                </p>
+                                <p className="mt-1 text-xs text-gray-400">
+                                  R$ {money(meta.valorPorCarro)} por carro
+                                </p>
+                              </div>
+
+                              <div className="text-left sm:text-right">
+                                <p className="text-sm text-yellow-300">
+                                  {meta.premioAdicional > 0
+                                    ? `+ R$ ${money(meta.premioAdicional)}`
+                                    : "Sem premiação"}
+                                </p>
+                                {meta.premioAcumulado > 0 && (
+                                  <p className="mt-1 text-xs text-gray-400">
+                                    Acumulado: R$ {money(meta.premioAcumulado)}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                    )}
+
+                    <p className="pt-1 text-xs text-gray-400">
+                      As premiações são acumulativas.
+                    </p>
+                  </div>
+                ) : detalheSemanaAtual.isSupervisor ? (
                   <div className="space-y-5">
                     <div>
                       <p className="mb-3 font-semibold text-[#D4AF37]">
@@ -10583,6 +10872,11 @@ if (
                       ? "Regra aplicada"
                       : "% aplicado"}
                   </span>
+                  {(detalheSemanaAtual as any).isConsultorSulMensal ? (
+                    <span className="font-semibold text-yellow-300">
+                      R$ {money(detalheSemanaAtual.percentual || 0)} / carro
+                    </span>
+                  ) : (
                   <Input
   type="number"
   step="0.01"
@@ -10780,7 +11074,17 @@ if (
     }
   }}
 />
+                  )}
                 </div>
+
+                {(detalheSemanaAtual as any).isConsultorSulMensal && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Premiação acumulada</span>
+                    <span className="font-semibold text-yellow-300">
+                      R$ {money((detalheSemanaAtual as any).premiacaoConsultorSul || 0)}
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between border-t border-[#D4AF37]/15 pt-3">
                   <span className="text-white font-semibold">

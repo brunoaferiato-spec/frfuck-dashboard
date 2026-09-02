@@ -623,7 +623,9 @@ export default function GestaoFuncionarios() {
       const funcionarioCriado = (resultadoCadastro as any)?.funcionario || null;
 
       if (
-        retornoCadastro?.origem === "importacao-semanal" &&
+        ["importacao-semanal", "importacao-holerite"].includes(
+          String(retornoCadastro?.origem || "")
+        ) &&
         funcionarioCriado?.id &&
         typeof window !== "undefined"
       ) {
