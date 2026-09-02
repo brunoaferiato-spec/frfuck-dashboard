@@ -31,6 +31,8 @@ const IMPORT_PENDENTE_STORAGE_KEY = "folha-importacao-pendente-v1";
 const IMPORT_ADIANT_PENDENTE_STORAGE_KEY = "folha-importacao-adiant-pendente-v1";
 const IMPORT_HOLERITE_PENDENTE_STORAGE_KEY = "folha-importacao-holerite-pendente-v1";
 const TROCA_FUNCAO_SUGERIDA_STORAGE_KEY = "folha-troca-funcao-sugerida-v1";
+const CADASTRO_RETORNO_FOLHA_STORAGE_KEY = "folha-cadastro-retorno-v1";
+const CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY = "folha-cadastro-concluido-v1";
 
 const LOJAS = [
   { id: 1, nome: "Joinville" },
@@ -229,7 +231,8 @@ export default function GestaoFuncionarios() {
     if (typeof window === "undefined") return false;
 
     return Boolean(
-      window.sessionStorage.getItem(IMPORT_PENDENTE_STORAGE_KEY) ||
+      window.sessionStorage.getItem(CADASTRO_RETORNO_FOLHA_STORAGE_KEY) ||
+        window.sessionStorage.getItem(IMPORT_PENDENTE_STORAGE_KEY) ||
         window.sessionStorage.getItem(IMPORT_ADIANT_PENDENTE_STORAGE_KEY) ||
         window.sessionStorage.getItem(IMPORT_HOLERITE_PENDENTE_STORAGE_KEY)
     );
@@ -598,8 +601,44 @@ export default function GestaoFuncionarios() {
 
       if (editingId) {
         await updateFuncionario.mutateAsync({ id: editingId, ...payload });
-      } else {
-        await createFuncionario.mutateAsync(payload);
+        voltarParaFolhaSeNecessario();
+        return;
+      }
+
+      const retornoCadastroRaw =
+        typeof window !== "undefined"
+          ? window.sessionStorage.getItem(CADASTRO_RETORNO_FOLHA_STORAGE_KEY)
+          : null;
+
+      let retornoCadastro: any = null;
+      if (retornoCadastroRaw) {
+        try {
+          retornoCadastro = JSON.parse(retornoCadastroRaw);
+        } catch (error) {
+          console.error("Erro ao ler contexto de retorno para a folha:", error);
+        }
+      }
+
+      const resultadoCadastro = await createFuncionario.mutateAsync(payload);
+      const funcionarioCriado = (resultadoCadastro as any)?.funcionario || null;
+
+      if (
+        retornoCadastro?.origem === "importacao-semanal" &&
+        funcionarioCriado?.id &&
+        typeof window !== "undefined"
+      ) {
+        window.sessionStorage.setItem(
+          CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY,
+          JSON.stringify({
+            ...retornoCadastro,
+            funcionarioId: Number(funcionarioCriado.id),
+            funcionarioNome: funcionarioCriado.nome || payload.nome,
+            funcionarioFuncao: funcionarioCriado.funcao || payload.funcao,
+          })
+        );
+        window.sessionStorage.removeItem(CADASTRO_RETORNO_FOLHA_STORAGE_KEY);
+        navigate("/folha-pagamento");
+        return;
       }
 
       voltarParaFolhaSeNecessario();

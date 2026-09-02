@@ -236,6 +236,8 @@ const IMPORT_ALIAS_STORAGE_KEY = "folha-importacao-aliases-v1";
 const IMPORT_PENDENTE_STORAGE_KEY = "folha-importacao-pendente-v1";
 const IMPORT_ADIANT_PENDENTE_STORAGE_KEY = "folha-importacao-adiant-pendente-v1";
 const IMPORT_HOLERITE_PENDENTE_STORAGE_KEY = "folha-importacao-holerite-pendente-v1";
+const CADASTRO_RETORNO_FOLHA_STORAGE_KEY = "folha-cadastro-retorno-v1";
+const CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY = "folha-cadastro-concluido-v1";
 
 type SemanaImportacao = 1 | 2 | 3 | 4 | 5;
 type FuncaoImportacao = "vendedor" | "mecanico";
@@ -4164,6 +4166,99 @@ return {
     lojaId,
   ]);
 
+  // Retorno explícito após cadastrar um funcionário a partir da conferência semanal.
+  // O vínculo usa o item original da importação + o ID retornado pelo cadastro,
+  // então não depende de o nome digitado ficar 100% idêntico ao nome do relatório.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (importacaoSemana.etapa !== "conferencia") return;
+    if (funcionariosDaCidade.length === 0) return;
+
+    const raw = window.sessionStorage.getItem(CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY);
+    if (!raw) return;
+
+    try {
+      const concluido = JSON.parse(raw);
+      if (concluido?.origem !== "importacao-semanal") return;
+      if (Number(concluido?.lojaId || 0) !== Number(lojaId)) return;
+
+      const funcionarioId = Number(concluido?.funcionarioId || 0);
+      if (!funcionarioId) return;
+
+      const funcionario = funcionariosDaCidade.find(
+        (item: any) => Number(item.id) === funcionarioId
+      );
+      if (!funcionario) return;
+
+      const itemAlvo = importacaoSemana.itens.find((item) => {
+        if (concluido?.itemId && item.id === concluido.itemId) return true;
+        return (
+          item.status !== "ok" &&
+          item.status !== "ignorado" &&
+          normalizarNomeImportacao(item.nomeRelatorio) ===
+            normalizarNomeImportacao(String(concluido?.nomeRelatorio || ""))
+        );
+      });
+      if (!itemAlvo) return;
+
+      const funcaoCompativel =
+        itemAlvo.funcaoRelatorio === "mecanico"
+          ? funcionario.funcao === "mecanico"
+          : funcionario.funcao === "vendedor" ||
+            (funcionario.funcao === "gerente" &&
+              (Number(lojaId) === 3 ||
+                Number(lojaId) === 4 ||
+                Number(lojaId) === 6));
+
+      setImportacaoSemana((prev) => ({
+        ...prev,
+        itens: prev.itens.map((item) => {
+          const mesmoItem = concluido?.itemId
+            ? item.id === concluido.itemId
+            : item.id === itemAlvo.id;
+          if (!mesmoItem) return item;
+
+          if (!funcaoCompativel) {
+            return {
+              ...item,
+              funcionarioId: null,
+              funcionarioNome: null,
+              status: "possivel" as const,
+              candidatoId: funcionarioId,
+              candidatoNome: funcionario.nome,
+              scoreCandidato: 1,
+            };
+          }
+
+          return {
+            ...item,
+            funcionarioId,
+            funcionarioNome: funcionario.nome,
+            status: "ok" as const,
+            candidatoId: null,
+            candidatoNome: null,
+            scoreCandidato: 1,
+          };
+        }),
+      }));
+
+      if (funcaoCompativel) {
+        salvarAliasImportacao(lojaId, itemAlvo.nomeRelatorio, funcionarioId);
+      }
+
+      window.sessionStorage.removeItem(CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY);
+      window.sessionStorage.removeItem(CADASTRO_RETORNO_FOLHA_STORAGE_KEY);
+    } catch (error) {
+      console.error("Erro ao concluir retorno do cadastro para a importação:", error);
+      window.sessionStorage.removeItem(CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY);
+    }
+  }, [
+    importacaoSemana.etapa,
+    importacaoSemana.itens,
+    funcionariosDaCidade,
+    lojaId,
+  ]);
+
   const funcionariosAusentesNoRelatorio = useMemo(() => {
     if (importacaoSemana.etapa !== "conferencia") return [] as any[];
 
@@ -4792,6 +4887,21 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
   function irParaCadastrarFuncionario(item: ItemRelatorioImportacao) {
     if (typeof window !== "undefined") {
       salvarImportacaoPendente();
+
+      window.sessionStorage.setItem(
+        CADASTRO_RETORNO_FOLHA_STORAGE_KEY,
+        JSON.stringify({
+          origem: "importacao-semanal",
+          itemId: item.id,
+          nomeRelatorio: item.nomeRelatorio,
+          funcaoRelatorio: item.funcaoRelatorio,
+          lojaId,
+          ano,
+          mes,
+          semana: importacaoSemana.semana,
+        })
+      );
+
       window.sessionStorage.setItem(
         "folha-cadastro-sugerido",
         JSON.stringify({
