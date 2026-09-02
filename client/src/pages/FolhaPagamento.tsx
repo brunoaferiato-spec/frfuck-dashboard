@@ -4530,6 +4530,30 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
     }
   }
 
+  function funcionariosSelecionaveisParaItem(item: ItemRelatorioImportacao) {
+    return funcionariosImportaveis
+      .filter((funcionario: any) => {
+        if (item.funcaoRelatorio === "mecanico") {
+          return funcionario.funcao === "mecanico";
+        }
+
+        if (item.funcaoRelatorio === "vendedor") {
+          if (funcionario.funcao === "vendedor") return true;
+
+          return (
+            funcionario.funcao === "gerente" &&
+            (Number(lojaId) === 3 || Number(lojaId) === 4 || Number(lojaId) === 6)
+          );
+        }
+
+        return false;
+      })
+      .slice()
+      .sort((a: any, b: any) =>
+        String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR")
+      );
+  }
+
   function vincularItemImportacao(itemId: string, funcionarioId: number) {
     const funcionario = funcionariosImportaveis.find(
       (f: any) => Number(f.id) === Number(funcionarioId)
@@ -8181,6 +8205,25 @@ if (
                                   </Button>
                                 )
                               )}
+                              {!itemExigeTrocaFuncao(item) && (
+                                <select
+                                  defaultValue=""
+                                  onChange={(e) => {
+                                    const funcionarioId = Number(e.target.value);
+                                    if (!funcionarioId) return;
+                                    vincularItemImportacao(item.id, funcionarioId);
+                                  }}
+                                  className="h-10 min-w-[260px] rounded-md border border-[#D4AF37]/30 bg-[#111111] px-3 text-sm text-white outline-none focus:border-[#D4AF37]/60 focus:ring-2 focus:ring-[#D4AF37]/10"
+                                >
+                                  <option value="">Selecionar funcionário cadastrado</option>
+                                  {funcionariosSelecionaveisParaItem(item).map((funcionario: any) => (
+                                    <option key={funcionario.id} value={funcionario.id}>
+                                      {funcionario.nome}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+
                               {!itemExigeTrocaFuncao(item) &&
                                 !(item.status === "possivel" && Number(item.scoreCandidato) === 1 && item.candidatoId) && (
                                 <Button
