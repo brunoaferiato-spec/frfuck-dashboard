@@ -790,6 +790,25 @@ function normalizarTextoImportacao(value: unknown) {
     .toUpperCase();
 }
 
+function deveImportarEmprestimoClt(linha: {
+  funcao?: string | null;
+  nome?: string | null;
+  loja_id?: number | string | null;
+}) {
+  const funcao = String(linha?.funcao || "");
+
+  // Regra de negócio do Empréstimo CLT importado pela Folha Mensal:
+  // - todos os vendedores;
+  // - todos os mecânicos;
+  // - todos os gerentes;
+  // - alinhador: somente Milton de Blumenau.
+  if (funcao === "vendedor" || funcao === "mecanico" || funcao === "gerente") return true;
+  if (funcao !== "alinhador") return false;
+
+  const nomeNormalizado = normalizarTextoImportacao(linha?.nome || "");
+  return Number(linha?.loja_id || 0) === 2 && nomeNormalizado.includes("MILTON");
+}
+
 function normalizarNomeImportacao(value: unknown) {
   const ignorar = new Set(["DE", "DA", "DO", "DAS", "DOS", "E"]);
 
@@ -6082,7 +6101,9 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
           });
         }
 
-        if (item.emprestimos.length > 0) {
+        const deveLancarEmprestimoClt = deveImportarEmprestimoClt(currentLine);
+
+        if (deveLancarEmprestimoClt && item.emprestimos.length > 0) {
           await addValesMutation.mutateAsync({
             funcionarioId,
             lojaId,
@@ -6147,9 +6168,19 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
       void folhaBaseQuery.refetch();
       void resumoSupervisorQuery.refetch();
 
-      const totalEmprestimos = itensValidos.reduce(
+      const totalEmprestimosDetectados = itensValidos.reduce(
         (acc, item) => acc + item.emprestimos.length,
         0
+      );
+      const totalEmprestimos = itensValidos.reduce((acc, item) => {
+        const linha = linhas.find(
+          (l) => Number(l.funcionarioId) === Number(item.funcionarioId)
+        );
+        return acc + (linha && deveImportarEmprestimoClt(linha) ? item.emprestimos.length : 0);
+      }, 0);
+      const totalEmprestimosIgnorados = Math.max(
+        0,
+        totalEmprestimosDetectados - totalEmprestimos
       );
 
       setImportacaoHolerite((prev) => ({
@@ -6158,6 +6189,9 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
         mensagem:
           `${itensValidos.length} holerite(s) importado(s). ` +
           `INSS e Valor Líquido atualizados; ${totalEmprestimos} empréstimo(s) CLT lançado(s) no Vale. ` +
+          (totalEmprestimosIgnorados > 0
+            ? `${totalEmprestimosIgnorados} empréstimo(s) CLT ignorado(s) pela função do funcionário. `
+            : "") +
           `Adiantamento preservado.`,
       }));
     } catch (err: any) {
@@ -9132,7 +9166,7 @@ if (
               Importar Folha Mensal — PDF
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Preenche INSS e Holerite pelo PDF e lança os descontos reais de Empréstimo CLT no Vale. O Adiant. do dia 20 nunca é alterado por esta importação.
+              Preenche INSS e Holerite pelo PDF. Empréstimo CLT vai para o Vale somente para Vendedor, Mecânico e para o alinhador Milton de Blumenau. Nas demais funções, o empréstimo é ignorado. O Adiant. do dia 20 nunca é alterado por esta importação.
             </DialogDescription>
           </DialogHeader>
 
@@ -9197,9 +9231,19 @@ if (
             const ignorados = importacaoHolerite.itens.filter(
               (item) => item.status === "ignorado"
             );
-            const totalEmprestimos = prontos.reduce(
+            const totalEmprestimosDetectados = prontos.reduce(
               (acc, item) => acc + item.emprestimos.length,
               0
+            );
+            const totalEmprestimos = prontos.reduce((acc, item) => {
+              const linha = linhas.find(
+                (l) => Number(l.funcionarioId) === Number(item.funcionarioId)
+              );
+              return acc + (linha && deveImportarEmprestimoClt(linha) ? item.emprestimos.length : 0);
+            }, 0);
+            const totalEmprestimosIgnorados = Math.max(
+              0,
+              totalEmprestimosDetectados - totalEmprestimos
             );
             const existentesComValor = prontos.filter((item) => {
               const linha = linhas.find(
@@ -9232,8 +9276,13 @@ if (
                     <p className="font-semibold text-green-400">{prontos.length}</p>
                   </div>
                   <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
-                    <p className="text-xs text-gray-400">Empréstimos CLT</p>
+                    <p className="text-xs text-gray-400">Empréstimos CLT a lançar</p>
                     <p className="font-semibold text-yellow-300">{totalEmprestimos}</p>
+                    {totalEmprestimosIgnorados > 0 && (
+                      <p className="mt-1 text-[10px] text-gray-500">
+                        {totalEmprestimosIgnorados} ignorado(s) pela função
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -9272,6 +9321,11 @@ if (
                           (acc, emprestimo) => acc + Number(emprestimo.valor || 0),
                           0
                         );
+                        const linhaFuncionario = linhas.find(
+                          (linha) => Number(linha.funcionarioId) === Number(item.funcionarioId)
+                        );
+                        const importaEmprestimoClt = !!linhaFuncionario &&
+                          deveImportarEmprestimoClt(linhaFuncionario);
 
                         return (
                           <div
@@ -9309,17 +9363,41 @@ if (
                                 </div>
                                 <div className="rounded bg-gray-950/60 px-3 py-2">
                                   <p className="text-xs text-gray-500">Empréstimo CLT</p>
-                                  <p className="font-bold text-yellow-300">
-                                    {item.emprestimos.length} • {formatarMoeda(totalEmprestimoItem)}
-                                  </p>
+                                  {item.emprestimos.length === 0 ? (
+                                    <p className="font-bold text-gray-400">0 • {formatarMoeda(0)}</p>
+                                  ) : importaEmprestimoClt ? (
+                                    <p className="font-bold text-yellow-300">
+                                      {item.emprestimos.length} • {formatarMoeda(totalEmprestimoItem)}
+                                    </p>
+                                  ) : (
+                                    <div>
+                                      <p className="font-bold text-gray-400">
+                                        {item.emprestimos.length} • {formatarMoeda(totalEmprestimoItem)}
+                                      </p>
+                                      <p className="text-[10px] font-semibold text-gray-500">
+                                        Ignorado pela função
+                                      </p>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
 
                             {item.emprestimos.length > 0 && (
-                              <div className="mt-3 rounded border border-yellow-500/20 bg-yellow-950/10 p-3">
-                                <p className="text-xs font-semibold text-yellow-300 mb-2">
+                              <div
+                                className={`mt-3 rounded border p-3 ${
+                                  importaEmprestimoClt
+                                    ? "border-yellow-500/20 bg-yellow-950/10"
+                                    : "border-gray-700/40 bg-gray-950/30"
+                                }`}
+                              >
+                                <p
+                                  className={`text-xs font-semibold mb-2 ${
+                                    importaEmprestimoClt ? "text-yellow-300" : "text-gray-400"
+                                  }`}
+                                >
                                   Discriminação dos empréstimos
+                                  {!importaEmprestimoClt && " • não será lançado no Vale"}
                                 </p>
                                 <div className="space-y-1">
                                   {item.emprestimos.map((emprestimo, index) => (
