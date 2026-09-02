@@ -204,6 +204,24 @@ export function getRegraAlinhador(args: {
   }
 
   if (lojaId === 3) {
+    // SÃO JOSÉ - regras individuais de alinhador.
+    // João Gabriel: 1% fixo sobre a liquidez.
+    if (nome.includes("JOAO GABRIEL RODRIGUES VIEIRA")) {
+      return {
+        ...regraAlinhadorSaoJose,
+        faixas: [{ minimo: 0, percentual: 1 }],
+      };
+    }
+
+    // Alessander dos Santos Albino: 2% fixo sobre a liquidez.
+    if (nome.includes("ALESSANDER DOS SANTOS ALBINO")) {
+      return {
+        ...regraAlinhadorSaoJose,
+        faixas: [{ minimo: 0, percentual: 2 }],
+      };
+    }
+
+    // Demais alinhadores de São José preservam a regra atual.
     return regraAlinhadorSaoJose;
   }
 
