@@ -66,6 +66,55 @@ const LOJAS = [
 
 const ACI_SUPERVISORA_SALARIO_FIXO = 2400;
 
+// ======================================================
+// CONSULTOR DE VENDAS — SÃO LEOPOLDO / GRAVATAÍ
+// Regra mensal exclusiva das lojas 6 e 7.
+// - Base: R$ 7,00 por carro
+// - 200 carros: + R$ 300,00
+// - 250 carros: R$ 10,00 por carro + R$ 500,00 adicional
+// - 300 carros: R$ 12,00 por carro + R$ 1.000,00 adicional
+// As premiações são acumulativas.
+// ======================================================
+const LOJAS_CONSULTOR_SUL_MENSAL = new Set([6, 7]);
+
+function ehConsultorSulMensal(lojaId: number | string) {
+  return LOJAS_CONSULTOR_SUL_MENSAL.has(Number(lojaId));
+}
+
+function calcularConsultorSulMensal(totalCarrosBruto: number) {
+  const totalCarros = Math.max(0, Number(totalCarrosBruto || 0));
+
+  let valorPorCarro = 7;
+  if (totalCarros >= 300) valorPorCarro = 12;
+  else if (totalCarros >= 250) valorPorCarro = 10;
+
+  const detalhesPremiacao: Array<{ descricao: string; valor: number }> = [];
+  if (totalCarros >= 200) detalhesPremiacao.push({ descricao: "META 200 CARROS", valor: 300 });
+  if (totalCarros >= 250) detalhesPremiacao.push({ descricao: "META 250 CARROS", valor: 500 });
+  if (totalCarros >= 300) detalhesPremiacao.push({ descricao: "META 300 CARROS", valor: 1000 });
+
+  const premiacao = detalhesPremiacao.reduce(
+    (total, item) => total + Number(item.valor || 0),
+    0
+  );
+
+  return {
+    totalCarros,
+    valorPorCarro,
+    comissao: Number((totalCarros * valorPorCarro).toFixed(2)),
+    premiacao,
+    detalhesPremiacao,
+  };
+}
+
+function getRegraConsultorSulTexto(totalCarrosBruto: number) {
+  const calculado = calcularConsultorSulMensal(totalCarrosBruto);
+  return `R$ ${calculado.valorPorCarro.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} / carro`;
+}
+
 function getValorPorCarroSupervisoraAci(totalCarrosBruto: number) {
   const totalCarros = Number(totalCarrosBruto || 0);
 
@@ -1355,10 +1404,10 @@ function getQuadrante(
   return "gerente";
 }
   if (funcao === "consultor_vendas") {
-  // Na ACI existe somente Consultor de Vendas Meta 2 (mensal).
-  if (lojaId === 5 || tipoMeta === "meta2") {
-  return "consultor_vendas_mensal";
-}
+  // ACI e as lojas 6/7 usam consultor mensal.
+  if (lojaId === 5 || ehConsultorSulMensal(lojaId) || tipoMeta === "meta2") {
+    return "consultor_vendas_mensal";
+  }
 
   return "consultor_vendas";
 }
@@ -1618,6 +1667,10 @@ const isMensalUnico =
   quadrante === "gerente";
 
   function getRegraConsultorTexto(linha: LinhaComQuadrante, carrosSemana: number) {
+    if (ehConsultorSulMensal(linha.loja_id)) {
+      return getRegraConsultorSulTexto(carrosSemana);
+    }
+
     return getConsultorRegraTexto({
       cidade: linha.loja_id.toString(),
       tipoMeta: linha.tipoMeta,
@@ -3512,7 +3565,7 @@ setFolhas(Array.from(agrupado.values()));
   func.funcao === "gerente" && (lojaId === 3 || lojaId === 6);
 
 const tipoMetaEfetivo =
-  func.funcao === "consultor_vendas" && lojaId === 5
+  func.funcao === "consultor_vendas" && (lojaId === 5 || ehConsultorSulMensal(lojaId))
     ? "meta2"
     : func.tipoMeta;
 
@@ -3748,6 +3801,31 @@ if (func.funcao !== "supervisor") {
 
   calculadoAjustado.totalLiquidez =
     Number(calculadoAjustado.totalLiquidez || 0) + sem5Extra;
+}
+
+// Regra exclusiva mensal dos Consultores de São Leopoldo (6) e Gravataí (7).
+// SEM1 representa o Total de Carros do mês.
+if (func.funcao === "consultor_vendas" && ehConsultorSulMensal(lojaId)) {
+  const calculoConsultorSul = calcularConsultorSulMensal(Number(base.sem1 || 0));
+  const premiacaoManualConsultorSul = (base.premiacoesManuais || []).reduce(
+    (total: number, item: any) => total + Number(item?.valor || 0),
+    0
+  );
+
+  calculadoAjustado.perc1 = calculoConsultorSul.valorPorCarro;
+  calculadoAjustado.perc2 = 0;
+  calculadoAjustado.perc3 = 0;
+  calculadoAjustado.perc4 = 0;
+  calculadoAjustado.com1 = calculoConsultorSul.comissao;
+  calculadoAjustado.com2 = 0;
+  calculadoAjustado.com3 = 0;
+  calculadoAjustado.com4 = 0;
+  (calculadoAjustado as any).com5Extra = 0;
+  (calculadoAjustado as any).perc5Extra = 0;
+  calculadoAjustado.totalLiquidez = calculoConsultorSul.totalCarros;
+  calculadoAjustado.totalComissao = calculoConsultorSul.comissao;
+  calculadoAjustado.premiacao = calculoConsultorSul.premiacao + premiacaoManualConsultorSul;
+  (calculadoAjustado as any).detalhesPremiacaoConsultorSul = calculoConsultorSul.detalhesPremiacao;
 }
 const quadrante = getQuadrante(
   lojaId,
