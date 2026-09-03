@@ -65,6 +65,7 @@ const LOJAS = [
 ];
 
 const ACI_SUPERVISORA_SALARIO_FIXO = 2400;
+const CONSULTOR_GRAVATAI_SALARIO_FIXO_PJ = 2000;
 
 // ======================================================
 // CONSULTOR DE VENDAS — SÃO LEOPOLDO / GRAVATAÍ
@@ -1071,7 +1072,13 @@ function calcularBoletoAjustado(args: {
 if (
   args.quadrante === "consultor_vendas_mensal"
 ) {
+  // GRAVATAÍ (loja 7): as consultoras são PJ e possuem fixo mensal de R$ 2.000,00.
+  // São Leopoldo mantém a regra anterior, sem fixo adicional.
+  const salarioFixoPj =
+    Number(args.lojaId) === 7 ? CONSULTOR_GRAVATAI_SALARIO_FIXO_PJ : 0;
+
   return (
+    salarioFixoPj +
     totalComissao +
     premiacao -
     vale -
@@ -1590,7 +1597,7 @@ function exportBoletosCsv(rows: Array<{
     const valorNumero = Math.round(Number(r.valor || 0) * 100) / 100;
     const valor = Number.isInteger(valorNumero)
       ? String(valorNumero)
-      : valorNumero.toFixed(2).replace(".", ",");
+      : valorNumero.toFixed(2);
 
     const pixOriginal = String(r.pix || cpf).trim();
     const pixSomenteNumeros = pixOriginal.replace(/\D/g, "");
@@ -1599,19 +1606,20 @@ function exportBoletosCsv(rows: Array<{
         ? pixSomenteNumeros
         : pixOriginal;
 
+    // O arquivo bancário exige o valor sem aspas e com ponto decimal quando
+    // houver centavos (ex.: 1544.44). Valores inteiros permanecem sem .00.
+    // Por isso o campo Valor não passa pelo escape padrão de CSV.
     return [
-      cpf,
-      nome,
+      formatarCelulaCsv(cpf),
+      formatarCelulaCsv(nome),
       valor,
       "",
       "",
       "",
       "",
-      pix,
+      formatarCelulaCsv(pix),
       "",
-    ]
-      .map(formatarCelulaCsv)
-      .join(",");
+    ].join(",");
   });
 
   const csv = [cabecalho.join(","), ...lines].join("\r\n");
@@ -1716,6 +1724,9 @@ function TabelaQuadrante({
 
 const isConsultorMeta2 =
   quadrante === "consultor_vendas_mensal";
+
+const isConsultorGravataiPj =
+  isConsultorMeta2 && Number(linhas[0]?.loja_id) === 7;
 
   const isGerente =
   quadrante === "gerente";
@@ -2127,10 +2138,16 @@ const isMensalUnico =
                  
                 {isConsultorMeta2 && (
   <>
+    {isConsultorGravataiPj && (
+      <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Salário Fixo</th>
+    )}
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Quant. Carro</th>
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Regra</th>
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Carros</th>
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Comissão</th>
+    {isConsultorGravataiPj && (
+      <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total</th>
+    )}
   </>
 )}
 
@@ -2384,6 +2401,12 @@ const isMensalUnico =
 
 {isConsultorMeta2 && (
   <>
+    {isConsultorGravataiPj && (
+      <td className="p-2 text-right text-white font-semibold whitespace-nowrap">
+        R$ {money(CONSULTOR_GRAVATAI_SALARIO_FIXO_PJ)}
+      </td>
+    )}
+
     <td className="p-2">
       {renderEditButton(
         linha,
@@ -2411,6 +2434,12 @@ const isMensalUnico =
     <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
       R$ {money(linha.totalComissao)}
     </td>
+
+    {isConsultorGravataiPj && (
+      <td className="p-2 text-right text-green-400 font-bold whitespace-nowrap">
+        R$ {money(CONSULTOR_GRAVATAI_SALARIO_FIXO_PJ + Number(linha.totalComissao || 0))}
+      </td>
+    )}
   </>
 )}
 
