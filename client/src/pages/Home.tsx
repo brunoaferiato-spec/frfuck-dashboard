@@ -41,6 +41,7 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -980,6 +981,18 @@ export default function Home() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginSenha, setLoginSenha] = useState("");
+  const [loginErro, setLoginErro] = useState("");
+
+  const loginMutation = trpc.auth.login.useMutation({
+    onSuccess: () => {
+      window.location.href = "/";
+    },
+    onError: (error) => {
+      setLoginErro(error?.message || "Não foi possível entrar. Confira email e senha.");
+    },
+  });
 
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -991,6 +1004,12 @@ export default function Home() {
   const mesNumero = Number(mes);
 
   useEffect(() => {
+    if (!user) {
+      setCarregando(false);
+      setDashboard(null);
+      return;
+    }
+
     let cancelado = false;
 
     async function carregar() {
@@ -1070,7 +1089,7 @@ export default function Home() {
     return () => {
       cancelado = true;
     };
-  }, [escopo, anoNumero, mesNumero, utils]);
+  }, [user, escopo, anoNumero, mesNumero, utils]);
 
   const totais = useMemo(() => {
     const lojas = dashboard?.lojas || [];
@@ -1143,9 +1162,86 @@ export default function Home() {
   }
 
   if (!user) {
+    async function entrar(event: React.FormEvent<HTMLFormElement>) {
+      event.preventDefault();
+      const email = loginEmail.trim().toLowerCase();
+      const password = loginSenha;
+
+      if (!email || !password) {
+        setLoginErro("Informe email e senha.");
+        return;
+      }
+
+      setLoginErro("");
+      await loginMutation.mutateAsync({ email, password }).catch(() => undefined);
+    }
+
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-white">
-        Acesso restrito.
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] px-4 text-white">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(212,175,55,0.14),transparent_34%),radial-gradient(circle_at_10%_90%,rgba(212,175,55,0.05),transparent_28%)]" />
+
+        <Card className="relative w-full max-w-md border-[#D4AF37]/20 bg-[#0a0a0a]/95 shadow-[0_30px_90px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+          <CardContent className="p-7 sm:p-8">
+            <div className="mb-7 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#D4AF37]/30 bg-[#D4AF37]/10">
+                <ShieldCheck className="h-7 w-7 text-[#F2D675]" />
+              </div>
+              <h1 className="text-2xl font-black tracking-tight text-[#F2D675]">Acesso ao sistema</h1>
+              <p className="mt-2 text-sm text-[#8f8a80]">Entre com o usuário cadastrado para acessar a gestão.</p>
+            </div>
+
+            <form onSubmit={entrar} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-[#b5ad9b]">Email</label>
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  value={loginEmail}
+                  onChange={(event) => setLoginEmail(event.target.value)}
+                  placeholder="usuario@empresa.com"
+                  className="h-12 border-[#D4AF37]/20 bg-[#111111] text-white placeholder:text-[#5f5b54] focus-visible:ring-[#D4AF37]/40"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-[#b5ad9b]">Senha</label>
+                <Input
+                  type="password"
+                  autoComplete="current-password"
+                  value={loginSenha}
+                  onChange={(event) => setLoginSenha(event.target.value)}
+                  placeholder="Digite sua senha"
+                  className="h-12 border-[#D4AF37]/20 bg-[#111111] text-white placeholder:text-[#5f5b54] focus-visible:ring-[#D4AF37]/40"
+                />
+              </div>
+
+              {loginErro && (
+                <div className="rounded-xl border border-red-500/25 bg-red-950/20 px-4 py-3 text-sm text-red-300">
+                  {loginErro}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={loginMutation.isPending}
+                className="h-12 w-full bg-[#D4AF37] font-bold text-black hover:bg-[#E6C760] disabled:opacity-60"
+              >
+                {loginMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  "Entrar"
+                )}
+              </Button>
+            </form>
+
+            <p className="mt-5 text-center text-xs text-[#68635b]">
+              O acesso é liberado somente para usuários cadastrados e ativos.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
