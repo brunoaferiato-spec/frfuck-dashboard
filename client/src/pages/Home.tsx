@@ -970,7 +970,7 @@ function KpiCard(props: {
 }
 
 export default function Home() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
 
@@ -986,17 +986,20 @@ export default function Home() {
   const [loginErro, setLoginErro] = useState("");
 
   const loginMutation = trpc.auth.login.useMutation({
-    onSuccess: () => {
-      window.location.href = "/";
+    onSuccess: (data) => {
+      try {
+        localStorage.removeItem("frfuck-explicit-logout");
+        localStorage.setItem("manus-runtime-user-info", JSON.stringify(data.user));
+      } catch {
+        // Ignorar erro de localStorage.
+      }
+
+      utils.auth.me.setData(undefined, data.user);
+      setLoginErro("");
+      setLoginSenha("");
     },
     onError: (error) => {
       setLoginErro(error?.message || "Não foi possível entrar. Confira email e senha.");
-    },
-  });
-
-  const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: () => {
-      window.location.href = "/";
     },
   });
 
@@ -1300,7 +1303,9 @@ export default function Home() {
               </p>
               <Button
                 variant="ghost"
-                onClick={() => logoutMutation.mutate()}
+                onClick={async () => {
+                  await logout();
+                }}
                 className="mt-3 w-full justify-start text-gray-400 hover:bg-red-500/10 hover:text-rose-300"
               >
                 <LogOut className="mr-2 h-4 w-4" />

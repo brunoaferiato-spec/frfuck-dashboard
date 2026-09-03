@@ -47,7 +47,6 @@ import {
 
 import { signAuthToken, comparePassword, hashPassword } from "./auth";
 import { COOKIE_NAME } from "@shared/const";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
@@ -127,11 +126,13 @@ export const appRouter = router({
             isActive: Boolean(user.isActive),
           });
 
-          ctx.res.cookie(
-            COOKIE_NAME,
-            token,
-            getSessionCookieOptions(ctx.req)
-          );
+          ctx.res.cookie(COOKIE_NAME, token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            maxAge: 365 * 24 * 60 * 60 * 1000,
+          });
 
           return {
             success: true,
@@ -281,11 +282,11 @@ export const appRouter = router({
       }),
 
     logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-
       ctx.res.clearCookie(COOKIE_NAME, {
-        ...cookieOptions,
-        maxAge: -1,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
       });
 
       return { success: true };
