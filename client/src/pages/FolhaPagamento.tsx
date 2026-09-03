@@ -1563,16 +1563,58 @@ function exportBoletosCsv(rows: Array<{
   pix: string;
   valor: number;
 }>) {
+  const cabecalho = [
+    "Documento",
+    "Nome",
+    "Valor",
+    "Banco",
+    "Agencia com digito",
+    "Conta com digito",
+    "Conta Poupanca",
+    "Chave Pix",
+    "Observacao",
+  ];
+
+  const formatarCelulaCsv = (valor: string) => {
+    const texto = String(valor ?? "");
+    if (/[",\r\n]/.test(texto)) {
+      return `"${texto.replace(/"/g, '""')}"`;
+    }
+    return texto;
+  };
+
   const lines = rows.map((r) => {
     const cpf = String(r.cpf || "").replace(/\D/g, "");
     const nome = String(r.nome || "").trim();
-    const valor = Number(r.valor || 0).toFixed(2);
-    const pix = String(r.pix || cpf).trim();
 
-    return `${cpf},${nome},${valor},,,,,${pix},`;
+    const valorNumero = Math.round(Number(r.valor || 0) * 100) / 100;
+    const valor = Number.isInteger(valorNumero)
+      ? String(valorNumero)
+      : valorNumero.toFixed(2).replace(".", ",");
+
+    const pixOriginal = String(r.pix || cpf).trim();
+    const pixSomenteNumeros = pixOriginal.replace(/\D/g, "");
+    const pix =
+      pixSomenteNumeros.length === 11 && /^[\d.\-\s]+$/.test(pixOriginal)
+        ? pixSomenteNumeros
+        : pixOriginal;
+
+    return [
+      cpf,
+      nome,
+      valor,
+      "",
+      "",
+      "",
+      "",
+      pix,
+      "",
+    ]
+      .map(formatarCelulaCsv)
+      .join(",");
   });
 
-  const csv = lines.join("\n");
+  const csv = [cabecalho.join(","), ...lines].join("\r\n");
 
   const blob = new Blob(["\ufeff" + csv], {
     type: "text/csv;charset=utf-8;",
@@ -7073,7 +7115,7 @@ async function lançarNegativoNoPróximoMês() {
 
   function exportarBoletos() {
     const rows = linhas
-      .filter((linha) => linha.boleto > 0)
+      .filter((linha) => linha.boleto > 0 && linha.quadrante !== "recepcao")
       .map((linha) => {
         const funcionario = getFuncionarioById(linha.funcionarioId) as any;
         return {
