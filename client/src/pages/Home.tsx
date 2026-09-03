@@ -970,7 +970,7 @@ function KpiCard(props: {
 }
 
 export default function Home() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading, logout, refresh } = useAuth();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
 
@@ -986,15 +986,40 @@ export default function Home() {
   const [loginErro, setLoginErro] = useState("");
 
   const loginMutation = trpc.auth.login.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       try {
+        // O cliente tRPC lê esta chave em todas as requisições e envia o JWT
+        // no header Authorization. Isso funciona como reforço da sessão em
+        // navegadores que não persistirem o cookie corretamente.
         localStorage.removeItem("frfuck-explicit-logout");
-        localStorage.setItem("manus-runtime-user-info", JSON.stringify(data.user));
+        localStorage.setItem("auth_token", data.token);
+        localStorage.removeItem("manus-runtime-user-info");
       } catch {
-        // Ignorar erro de localStorage.
+        // Se o navegador bloquear o armazenamento, a sessão por cookie ainda
+        // poderá funcionar. A confirmação abaixo decide se o login é válido.
       }
 
-      utils.auth.me.setData(undefined, data.user);
+      // Não libera o Dashboard apenas porque email/senha foram aceitos.
+      // Confirma a sessão chamando auth.me; essa chamada já leva o novo token.
+      const confirmacao = await refresh();
+      const usuarioConfirmado = confirmacao.data ?? null;
+
+      if (!usuarioConfirmado) {
+        try {
+          localStorage.removeItem("auth_token");
+          localStorage.removeItem("manus-runtime-user-info");
+        } catch {
+          // Ignorar erro de localStorage.
+        }
+
+        utils.auth.me.setData(undefined, null);
+        setLoginErro(
+          "Login aceito, mas a sessão não foi confirmada. Atualize a página e tente novamente."
+        );
+        return;
+      }
+
+      utils.auth.me.setData(undefined, usuarioConfirmado);
       setLoginErro("");
       setLoginSenha("");
     },

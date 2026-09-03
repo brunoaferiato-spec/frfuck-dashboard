@@ -4,6 +4,7 @@ import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 
 const RUNTIME_USER_KEY = "manus-runtime-user-info";
+const AUTH_TOKEN_KEY = "auth_token";
 const EXPLICIT_LOGOUT_KEY = "frfuck-explicit-logout";
 
 type UseAuthOptions = {
@@ -16,9 +17,10 @@ export function useAuth(options?: UseAuthOptions) {
     options ?? {};
   const utils = trpc.useUtils();
 
-  // A sessão oficial é sempre o cookie/JWT validado pelo backend.
-  // Não usamos mais localStorage como fallback de autenticação porque ele
-  // conseguia "ressuscitar" o usuário depois do logout.
+  // A sessão oficial é sempre o JWT validado pelo backend, recebido por
+  // cookie ou pelo header Authorization. O localStorage nunca é usado como
+  // fallback de usuário; ele guarda apenas o token que o cliente tRPC envia
+  // ao servidor quando necessário.
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
@@ -37,6 +39,7 @@ export function useAuth(options?: UseAuthOptions) {
     try {
       localStorage.setItem(EXPLICIT_LOGOUT_KEY, "1");
       localStorage.removeItem(RUNTIME_USER_KEY);
+      localStorage.removeItem(AUTH_TOKEN_KEY);
     } catch {
       // Ignorar erro de localStorage.
     }
