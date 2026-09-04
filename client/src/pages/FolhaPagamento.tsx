@@ -4086,13 +4086,20 @@ if (trocaFuncaoMes) {
       ) &&
       quadranteDescontaFolhaCompleta(quadrante)
     ) {
+      // Quando a função anterior era Recepção, a comissão produzida antes da
+      // troca não faz parte da folha fixa. Portanto, ela deve ser retirada da
+      // base usada para calcular a parcela proporcional que será descontada
+      // da comissão da nova função.
+      const totalFolhaTransicao = Math.max(
+        0,
+        Number(base.inss || 0) +
+          Number(base.adiant || 0) +
+          Number(base.holerite || 0) -
+          Number(comissaoFuncaoAnterior || 0)
+      );
+
       descontoFolhaProporcional = Number(
-        (
-          (Number(base.inss || 0) +
-            Number(base.adiant || 0) +
-            Number(base.holerite || 0)) *
-          proporcao.proporcaoNovaFuncao
-        ).toFixed(2)
+        (totalFolhaTransicao * proporcao.proporcaoNovaFuncao).toFixed(2)
       );
     }
   }
@@ -8167,17 +8174,6 @@ if (
             const linha = transicaoFuncaoEditor.linha as LinhaComQuadrante;
             const troca = linha.trocaFuncaoMes as TrocaFuncaoMes;
             const proporcao = calcularProporcaoTrocaFuncao(troca.dataMudanca, ano, mes);
-            const totalFolha =
-              Number(linha.inss || 0) +
-              Number(linha.adiant || 0) +
-              Number(linha.holerite || 0);
-            const descontoNovaFuncao =
-              proporcao &&
-              funcaoAnteriorUsaFolhaFixa(troca.funcaoAnterior, lojaId, ano, mes) &&
-              quadranteDescontaFolhaCompleta(linha.quadrante)
-                ? Number((totalFolha * proporcao.proporcaoNovaFuncao).toFixed(2))
-                : totalFolha;
-            const parcelaFuncaoAnterior = Math.max(0, totalFolha - descontoNovaFuncao);
             const configRecepcao = getRecepcaoConfig(linha.nome, String(lojaId));
             const quantidadeAnterior1 = Math.max(
               0,
@@ -8198,6 +8194,24 @@ if (
                     ).toFixed(2)
                   )
                 : 0;
+
+            // A comissão da Recepção não compõe a folha fixa. No exemplo do
+            // Leonardo: R$ 3.168,27 - R$ 568,50 = R$ 2.599,77 de folha base
+            // para a proporcionalidade da mudança.
+            const totalFolha = Math.max(
+              0,
+              Number(linha.inss || 0) +
+                Number(linha.adiant || 0) +
+                Number(linha.holerite || 0) -
+                Number(comissaoAnteriorPreview || 0)
+            );
+            const descontoNovaFuncao =
+              proporcao &&
+              funcaoAnteriorUsaFolhaFixa(troca.funcaoAnterior, lojaId, ano, mes) &&
+              quadranteDescontaFolhaCompleta(linha.quadrante)
+                ? Number((totalFolha * proporcao.proporcaoNovaFuncao).toFixed(2))
+                : totalFolha;
+            const parcelaFuncaoAnterior = Math.max(0, totalFolha - descontoNovaFuncao);
             const comissaoNovaFuncao = Math.max(
               0,
               Number(linha.totalComissao || 0) - Number(linha.comissaoFuncaoAnterior || 0)
