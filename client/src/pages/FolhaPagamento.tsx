@@ -1072,6 +1072,12 @@ function calcularBoletoAjustado(args: {
 if (
   args.quadrante === "consultor_vendas_mensal"
 ) {
+  // ACI PROMOÇÕES (loja 5): a comissão dos carros é paga integralmente na folha.
+  // O boleto leva somente PREMIAÇÃO - VALE - ALUGUEL.
+  if (Number(args.lojaId) === 5) {
+    return premiacao - vale - aluguel;
+  }
+
   // GRAVATAÍ (loja 7): as consultoras são PJ e possuem fixo mensal de R$ 2.000,00.
   // São Leopoldo mantém a regra anterior, sem fixo adicional.
   const salarioFixoPj =
@@ -1728,6 +1734,9 @@ const isConsultorMeta2 =
 const isConsultorGravataiPj =
   isConsultorMeta2 && Number(linhas[0]?.loja_id) === 7;
 
+const isConsultorAci =
+  isConsultorMeta2 && Number(linhas[0]?.loja_id) === 5;
+
   const isGerente =
   quadrante === "gerente";
 
@@ -2144,6 +2153,9 @@ const isMensalUnico =
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Quant. Carro</th>
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Regra</th>
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Carros</th>
+    {isConsultorAci && (
+      <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Premiação</th>
+    )}
     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Comissão</th>
     {isConsultorGravataiPj && (
       <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total</th>
@@ -2225,7 +2237,9 @@ const isMensalUnico =
 
                 {isRecepcao && <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Comissão</th>}
 
-                <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Premiação</th>
+                {!isConsultorAci && (
+                  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Premiação</th>
+                )}
                 <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Vale</th>
                 <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Aluguel</th>
                 {!isPj && <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">INSS</th>}
@@ -2431,8 +2445,25 @@ const isMensalUnico =
       {Number(linha.sem1 || 0).toLocaleString("pt-BR")}
     </td>
 
+    {isConsultorAci && (
+      <td className="p-2">
+        <button
+          type="button"
+          onClick={() => onOpenPremioEditor(linha)}
+          className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] ${
+            Number(linha.premiacao || 0) > 0 ? "text-green-400" : "text-white"
+          }`}
+        >
+          R$ {money(Number(linha.premiacao || 0))}
+        </button>
+      </td>
+    )}
+
     <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
-      R$ {money(linha.totalComissao)}
+      R$ {money(
+        Number(linha.totalComissao || 0) +
+        (isConsultorAci ? Number(linha.premiacao || 0) : 0)
+      )}
     </td>
 
     {isConsultorGravataiPj && (
@@ -2639,29 +2670,31 @@ const isMensalUnico =
                     </td>
                   )}
 
-                  <td className="p-2">
-                    <button
-                      type="button"
-                      onClick={() => onOpenPremioEditor(linha)}
-                      className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] ${
-                       (
-  linha.premiacao +
-  (((linha as any).detalhesGrupo || []).reduce(
-    (acc: number, item: any) => acc + Number(item.valor || 0),
-    0
-  ))
-) > 0
-                      }`}
-                    >
-                      R$ {money(
-  linha.premiacao +
-  (((linha as any).detalhesGrupo || []).reduce(
-    (acc: number, item: any) => acc + Number(item.valor || 0),
-    0
-  ))
-)}
-                    </button>
-                  </td>
+                  {!isConsultorAci && (
+                    <td className="p-2">
+                      <button
+                        type="button"
+                        onClick={() => onOpenPremioEditor(linha)}
+                        className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] ${
+                         (
+    linha.premiacao +
+    (((linha as any).detalhesGrupo || []).reduce(
+      (acc: number, item: any) => acc + Number(item.valor || 0),
+      0
+    ))
+  ) > 0
+                        }`}
+                      >
+                        R$ {money(
+    linha.premiacao +
+    (((linha as any).detalhesGrupo || []).reduce(
+      (acc: number, item: any) => acc + Number(item.valor || 0),
+      0
+    ))
+  )}
+                      </button>
+                    </td>
+                  )}
 
                   <td className="p-2">
                     <button
