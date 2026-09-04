@@ -1028,15 +1028,10 @@ function calcularBoletoAjustado(args: {
 }
 
   if (args.quadrante === "recepcao") {
-    // JOINVILLE:
-    // Recepção vai para boleto somente com PREMIAÇÃO - VALE.
+    // RECEPÇÃO - TODAS AS LOJAS:
     // A comissão da recepção fica registrada na folha, mas não compõe o boleto.
-    if (Number(args.lojaId) === 1) {
-      return premiacao - vale;
-    }
-
-    // Demais lojas mantêm a regra já validada.
-    return totalComissao + premiacao - vale;
+    // O boleto leva somente PREMIAÇÃO - VALE - ALUGUEL.
+    return premiacao - vale - aluguel;
   }
 
   if (args.quadrante === "consultor_vendas") {
