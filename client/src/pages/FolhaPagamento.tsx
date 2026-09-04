@@ -985,6 +985,18 @@ function formatarDataBR(value: unknown) {
   return data.toLocaleDateString("pt-BR");
 }
 
+function dataValePadrao(ano: number, mes: number) {
+  const hoje = new Date();
+  const anoAtual = hoje.getFullYear();
+  const mesAtual = hoje.getMonth() + 1;
+
+  if (ano !== anoAtual || mes !== mesAtual) return "";
+
+  const mm = String(mesAtual).padStart(2, "0");
+  const dd = String(hoje.getDate()).padStart(2, "0");
+  return `${anoAtual}-${mm}-${dd}`;
+}
+
 function formatarCpf(value: unknown) {
   const digits = String(value || "").replace(/\D/g, "");
   if (digits.length !== 11) return String(value || "Não informado");
@@ -1372,6 +1384,8 @@ type ValeEditorState = {
   descricao: string;
   valor: string;
   parcelas: string;
+  dataVale: string;
+  repasseFranklyn: boolean;
 };
 
 type NegativoEditorState = {
@@ -2936,7 +2950,11 @@ export default function FolhaPagamento() {
     descricao: "",
     valor: "",
     parcelas: "1",
+    dataVale: dataValePadrao(ano, mes),
+    repasseFranklyn: false,
   });
+
+  const [repasseFranklynOpen, setRepasseFranklynOpen] = useState(false);
 
   const [negativoEditor, setNegativoEditor] = useState<NegativoEditorState>({
     open: false,
@@ -3126,6 +3144,16 @@ const folhaExtrasQuery = trpc.folhaExtras.getByLojaAnoMes.useQuery(
   }
 );
 
+const repassesFranklynQuery = trpc.folhaExtras.getRepassesFranklyn.useQuery(
+  { ano, mes },
+  {
+    enabled: !!ano && !!mes,
+    retry: false,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  }
+);
+
 const resumoSupervisorQuery =
   trpc.folhaPagamento.getResumoSupervisorMensal.useQuery(
     { ano, mes },
@@ -3171,13 +3199,32 @@ const saveDescontoMutation = trpc.folhaExtras.saveDesconto.useMutation({
 const addValesMutation = trpc.folhaExtras.addVales.useMutation({
   onSuccess: () => {
     void folhaExtrasQuery.refetch();
+    void repassesFranklynQuery.refetch();
   },
 });
+
+const setRepasseFranklynPagoMutation =
+  trpc.folhaExtras.setRepasseFranklynPago.useMutation({
+    onSuccess: () => {
+      void folhaExtrasQuery.refetch();
+      void repassesFranklynQuery.refetch();
+    },
+  });
+
+const repassesFranklyn = (repassesFranklynQuery.data ?? []) as any[];
+const totalRepasseFranklynPendente = repassesFranklyn.reduce(
+  (total, item) =>
+    String(item?.repasseStatus || "pendente") === "pendente"
+      ? total + Number(item?.valor || 0)
+      : total,
+  0
+);
 
 const removeValesMutation =
   trpc.folhaExtras.removeValesFromCurrentForward.useMutation({
     onSuccess: () => {
       void folhaExtrasQuery.refetch();
+      void repassesFranklynQuery.refetch();
     },
   });
   
@@ -7334,6 +7381,8 @@ function openValeEditor(linha: LinhaComQuadrante) {
     descricao: "",
     valor: "",
     parcelas: "1",
+    dataVale: dataValePadrao(ano, mes),
+    repasseFranklyn: false,
   });
 }
 
@@ -7344,8 +7393,22 @@ async function addVale() {
   const descricao = valeEditor.descricao.trim();
   const valorTotal = parseValorBR(valeEditor.valor);
   const parcelas = Math.max(1, Math.floor(Number(valeEditor.parcelas || 1)));
+  const dataVale = valeEditor.dataVale.trim();
 
   if (!descricao || valorTotal <= 0) return;
+
+  if (!dataVale) {
+    alert("Informe a data do vale.");
+    return;
+  }
+
+  const [anoVale, mesVale] = dataVale.split("-").map(Number);
+  if (anoVale !== ano || mesVale !== mes) {
+    alert(
+      `A data do vale precisa pertencer à competência ${String(mes).padStart(2, "0")}/${ano}.`
+    );
+    return;
+  }
 
   const parcelasCriadas = createParcelasVale({
     descricao,
@@ -7371,6 +7434,8 @@ async function addVale() {
       mes: mesParcela,
       mesOrigem: item.mesOrigem,
       tipo: item.totalParcelas > 1 ? "parcelado" as const : "simples" as const,
+      dataVale,
+      repasseBeneficiario: valeEditor.repasseFranklyn ? ("Franklyn" as const) : null,
     })
   ),
 
@@ -7383,6 +7448,8 @@ async function addVale() {
     descricao: "",
     valor: "",
     parcelas: "1",
+    dataVale: dataValePadrao(ano, mes),
+    repasseFranklyn: false,
   }));
 }
 
@@ -7400,6 +7467,11 @@ async function removeVale(vale: ValeItem) {
   });
 
   await folhaExtrasQuery.refetch();
+  await repassesFranklynQuery.refetch();
+}
+
+async function alterarStatusRepasseFranklyn(valeId: number, pago: boolean) {
+  await setRepasseFranklynPagoMutation.mutateAsync({ valeId, pago });
 }
 
 function openNegativoEditor(linha: LinhaComQuadrante) {
@@ -8205,6 +8277,20 @@ if (
                     Reabrir mês
                   </Button>
                 )}
+
+                <Button
+                  variant="outline"
+                  className="rounded-xl border-[#D4AF37]/30 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F7E5A7]"
+                  onClick={() => setRepasseFranklynOpen(true)}
+                >
+                  <WalletCards className="mr-2 h-4 w-4" />
+                  Repasses Franklyn
+                  {totalRepasseFranklynPendente > 0 && (
+                    <span className="ml-2 rounded-md bg-[#D4AF37]/15 px-2 py-0.5 text-xs font-black">
+                      R$ {money(totalRepasseFranklynPendente)}
+                    </span>
+                  )}
+                </Button>
 
                 <Button
                   className="rounded-xl bg-gradient-to-r from-[#C79C2C] via-[#D4AF37] to-[#E2C45F] font-bold text-black shadow-[0_10px_30px_rgba(212,175,55,0.16)] transition hover:brightness-110"
@@ -10826,6 +10912,123 @@ if (
         </DialogContent>
       </Dialog>
 
+      <Dialog open={repasseFranklynOpen} onOpenChange={setRepasseFranklynOpen}>
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[#F2D675]">
+              Repasses ao Franklyn — {String(mes).padStart(2, "0")}/{ano}
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Mostra todos os vales marcados para repasse ao Franklyn, em todas as lojas. Em vale parcelado, cada mês exibe somente a parcela daquele mês.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
+              <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Pendentes</p>
+              <p className="mt-1 text-2xl font-black text-[#F2D675]">
+                R$ {money(totalRepasseFranklynPendente)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-4">
+              <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Quantidade</p>
+              <p className="mt-1 text-2xl font-black text-white">
+                {repassesFranklyn.length}
+              </p>
+            </div>
+            <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4">
+              <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Pagos</p>
+              <p className="mt-1 text-2xl font-black text-emerald-400">
+                {repassesFranklyn.filter((item) => item.repasseStatus === "pago").length}
+              </p>
+            </div>
+          </div>
+
+          {repassesFranklynQuery.isLoading ? (
+            <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-6 text-center text-gray-400">
+              Carregando repasses...
+            </div>
+          ) : repassesFranklyn.length === 0 ? (
+            <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-6 text-center text-gray-400">
+              Nenhum vale marcado para repasse ao Franklyn nesta competência.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-[#D4AF37]/15">
+              <table className="w-full min-w-[980px] text-sm">
+                <thead className="bg-[#0d0d0d] text-left text-[11px] font-bold uppercase tracking-[0.08em] text-[#D4AF37]">
+                  <tr>
+                    <th className="p-3">Funcionário</th>
+                    <th className="p-3">Loja</th>
+                    <th className="p-3">Data do vale</th>
+                    <th className="p-3">Vale / descrição</th>
+                    <th className="p-3 text-center">Parcela</th>
+                    <th className="p-3 text-right">Valor</th>
+                    <th className="p-3 text-center">Situação</th>
+                    <th className="p-3 text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {repassesFranklyn.map((item) => {
+                    const pago = String(item.repasseStatus || "pendente") === "pago";
+                    return (
+                      <tr key={item.id} className="border-t border-white/[0.06]">
+                        <td className="p-3 font-semibold text-white">{item.funcionarioNome}</td>
+                        <td className="p-3 text-gray-300">{item.lojaNome || `Loja ${item.lojaId}`}</td>
+                        <td className="p-3 text-gray-300">{formatarDataBR(item.dataVale)}</td>
+                        <td className="p-3 text-gray-300">{item.descricao}</td>
+                        <td className="p-3 text-center text-gray-300">
+                          {item.parcelaAtual}/{item.totalParcelas}
+                        </td>
+                        <td className="p-3 text-right font-black text-[#F2D675]">
+                          R$ {money(Number(item.valor || 0))}
+                        </td>
+                        <td className="p-3 text-center">
+                          <span
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${
+                              pago
+                                ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
+                                : "border-amber-500/25 bg-amber-500/10 text-amber-300"
+                            }`}
+                          >
+                            {pago ? "Pago" : "Pendente"}
+                          </span>
+                          {pago && item.repassePagoEm && (
+                            <div className="mt-1 text-[10px] text-gray-500">
+                              {new Date(item.repassePagoEm).toLocaleString("pt-BR")}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <Button
+                            size="sm"
+                            variant={pago ? "outline" : "default"}
+                            disabled={setRepasseFranklynPagoMutation.isPending}
+                            className={
+                              pago
+                                ? "border-white/15 bg-transparent text-gray-300 hover:bg-white/5"
+                                : "bg-[#D4AF37] font-bold text-black hover:bg-[#E6C760]"
+                            }
+                            onClick={() => alterarStatusRepasseFranklyn(Number(item.id), !pago)}
+                          >
+                            {pago ? "Desfazer pago" : "Marcar pago"}
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRepasseFranklynOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={valeEditor.open}
         onOpenChange={(open) => setValeEditor((prev) => ({ ...prev, open }))}
@@ -10859,6 +11062,23 @@ if (
                     >
                       <div className="text-sm text-gray-300">
   <div>{vale.descricao}</div>
+
+  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+    {(vale as any).dataVale && (
+      <span className="text-gray-400">{formatarDataBR((vale as any).dataVale)}</span>
+    )}
+    {(vale as any).repasseBeneficiario === "Franklyn" && (
+      <span
+        className={`rounded-full border px-2 py-0.5 font-bold ${
+          (vale as any).repasseStatus === "pago"
+            ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
+            : "border-amber-500/25 bg-amber-500/10 text-amber-300"
+        }`}
+      >
+        Franklyn • {(vale as any).repasseStatus === "pago" ? "Pago" : "Pendente"}
+      </span>
+    )}
+  </div>
 
   <div className="text-xs text-gray-500">
     Última alteração:
@@ -10897,6 +11117,21 @@ if (
 
             <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-3">
               <p className="text-sm font-semibold text-[#D4AF37]">Adicionar vale</p>
+
+              <div className="space-y-2">
+                <Label className="text-gray-300">Data do vale</Label>
+                <Input
+                  type="date"
+                  value={valeEditor.dataVale}
+                  onChange={(e) =>
+                    setValeEditor((prev) => ({
+                      ...prev,
+                      dataVale: e.target.value,
+                    }))
+                  }
+                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
+                />
+              </div>
 
               <div className="space-y-2">
                 <Label className="text-gray-300">Descrição</Label>
@@ -10945,6 +11180,26 @@ if (
                 />
               </div>
 
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/15 bg-black/20 p-3 transition hover:border-[#D4AF37]/30">
+                <input
+                  type="checkbox"
+                  checked={valeEditor.repasseFranklyn}
+                  onChange={(e) =>
+                    setValeEditor((prev) => ({
+                      ...prev,
+                      repasseFranklyn: e.target.checked,
+                    }))
+                  }
+                  className="mt-1 h-4 w-4 accent-[#D4AF37]"
+                />
+                <div>
+                  <div className="font-bold text-[#F2D675]">Repasse ao Franklyn</div>
+                  <div className="mt-0.5 text-xs leading-relaxed text-gray-400">
+                    Se marcado, o repasse acompanha as parcelas do funcionário. Ex.: R$ 1.200 em 3x gera R$ 400 de repasse em cada mês.
+                  </div>
+                </div>
+              </label>
+
               <Button
                 className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
                 onClick={addVale}
@@ -10964,6 +11219,8 @@ if (
                   descricao: "",
                   valor: "",
                   parcelas: "1",
+                  dataVale: dataValePadrao(ano, mes),
+                  repasseFranklyn: false,
                 })
               }
             >

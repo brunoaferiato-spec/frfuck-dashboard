@@ -32,6 +32,8 @@ import {
   upsertDesconto,
   createValesBatch,
   cancelValesByGrupoFromCurrentForward,
+  getRepassesFranklynByAnoMes,
+  setRepasseFranklynPago,
   getFolhaFechamentoStatus,
   fecharCompetenciaFolha,
   reabrirCompetenciaFolha,
@@ -781,6 +783,29 @@ export const appRouter = router({
         getFolhaExtrasByLojaAnoMes(input.lojaId, input.ano, input.mes)
       ),
 
+    getRepassesFranklyn: protectedProcedure
+      .input(
+        z.object({
+          ano: z.number(),
+          mes: z.number().min(1).max(12),
+        })
+      )
+      .query(({ input }) => getRepassesFranklynByAnoMes(input.ano, input.mes)),
+
+    setRepasseFranklynPago: protectedProcedure
+      .input(
+        z.object({
+          valeId: z.number(),
+          pago: z.boolean(),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        setRepasseFranklynPago({
+          ...input,
+          usuarioNome: ctx.user.name || ctx.user.email || `Usuário ${ctx.user.id}`,
+        })
+      ),
+
     addPremiacao: protectedProcedure
   .input(
     z.object({
@@ -859,6 +884,12 @@ export const appRouter = router({
           mes: z.number(),
           mesOrigem: z.number(),
           tipo: z.enum(["simples", "parcelado"]),
+          dataVale: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .nullable()
+            .optional(),
+          repasseBeneficiario: z.enum(["Franklyn"]).nullable().optional(),
         })
       ),
 

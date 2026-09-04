@@ -1204,6 +1204,60 @@ export async function getPremiacoesByFuncionarioAnoMes(funcionarioId: number, an
 }
 
 // ===== Vales =====
+let _valeRepasseFieldsReady = false;
+
+async function ensureValeRepasseFields() {
+  if (_valeRepasseFieldsReady) return;
+
+  await getDb();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  const [columns] = await _pool.query<any[]>(
+    `SELECT COLUMN_NAME
+       FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'vales'`
+  );
+
+  const existentes = new Set(
+    (columns || []).map((row: any) => String(row.COLUMN_NAME || row.column_name || ""))
+  );
+
+  const alteracoes: string[] = [];
+
+  if (!existentes.has("dataVale")) {
+    alteracoes.push("ADD COLUMN dataVale DATE NULL");
+  }
+  if (!existentes.has("repasseBeneficiario")) {
+    alteracoes.push("ADD COLUMN repasseBeneficiario VARCHAR(100) NULL");
+  }
+  if (!existentes.has("repasseValor")) {
+    alteracoes.push("ADD COLUMN repasseValor DECIMAL(12,2) NULL");
+  }
+  if (!existentes.has("repasseStatus")) {
+    alteracoes.push(
+      "ADD COLUMN repasseStatus ENUM('pendente','pago') NULL"
+    );
+  }
+  if (!existentes.has("repassePagoEm")) {
+    alteracoes.push("ADD COLUMN repassePagoEm DATETIME NULL");
+  }
+  if (!existentes.has("repassePagoPor")) {
+    alteracoes.push("ADD COLUMN repassePagoPor VARCHAR(255) NULL");
+  }
+
+  for (const alteracao of alteracoes) {
+    try {
+      await _pool.query(`ALTER TABLE vales ${alteracao}`);
+    } catch (error: any) {
+      // Em deploys simultâneos, outra instância pode ter criado a coluna primeiro.
+      if (String(error?.code || "") !== "ER_DUP_FIELDNAME") throw error;
+    }
+  }
+
+  _valeRepasseFieldsReady = true;
+}
+
 export async function getValesByFuncionarioAnoMes(funcionarioId: number, ano: number, mes: number) {
   const db = await getDb();
   if (!db) return [];
@@ -1477,7 +1531,25 @@ export async function getFolhaExtrasByLojaAnoMes(
     };
   }
 
-  const [premiosRows, obsRows, descontosRows, valesRows] =
+  await ensureValeRepasseFields();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  const [valesRaw] = await _pool.query<any[]>(
+    `SELECT
+       id, funcionarioId, lojaId, grupoId, descricao, valorTotal, valorParcela,
+       parcelas, parcelaAtual, ano, mes, mesOrigem, tipo, status,
+       ultima_alteracao_por AS ultimaAlteracaoPor,
+       ultima_alteracao_em AS ultimaAlteracaoEm,
+       DATE_FORMAT(dataVale, '%Y-%m-%d') AS dataVale,
+       repasseBeneficiario, repasseValor, repasseStatus, repassePagoEm, repassePagoPor
+     FROM vales
+     WHERE lojaId = ? AND ano = ? AND mes = ? AND status = 'ativo'`,
+    [lojaId, ano, mes]
+  );
+
+  const valesRows = Array.isArray(valesRaw) ? valesRaw : [];
+
+  const [premiosRows, obsRows, descontosRows] =
     await Promise.all([
       db
         .select()
@@ -1512,17 +1584,6 @@ export async function getFolhaExtrasByLojaAnoMes(
           )
         ),
 
-      db
-  .select()
-  .from(vales)
-  .where(
-    and(
-      eq(vales.lojaId, lojaId),
-      eq(vales.ano, ano),
-      eq(vales.mes, mes),
-      eq(vales.status, "ativo")
-    )
-  ),
     ]);
 
     const premiacoesByFuncionario: Record<
@@ -1561,6 +1622,12 @@ export async function getFolhaExtrasByLojaAnoMes(
     totalParcelas: number;
     anoOrigem: number;
     mesOrigem: number;
+    dataVale?: string | null;
+    repasseBeneficiario?: string | null;
+    repasseValor?: number | null;
+    repasseStatus?: "pendente" | "pago" | null;
+    repassePagoEm?: Date | null;
+    repassePagoPor?: string | null;
 
     ultimaAlteracaoPor?: string | null;
     ultimaAlteracaoEm?: Date | null;
@@ -1640,6 +1707,16 @@ export async function getFolhaExtrasByLojaAnoMes(
       totalParcelas: Number(row.parcelas || row.totalParcelas || 1),
       anoOrigem: Number(row.anoOrigem || row.ano || ano),
       mesOrigem: Number(row.mesOrigem || row.mes || mes),
+      dataVale: (row as any).dataVale || null,
+      repasseBeneficiario: (row as any).repasseBeneficiario || null,
+      repasseValor:
+        (row as any).repasseValor == null ? null : Number((row as any).repasseValor),
+      repasseStatus: ((row as any).repasseStatus || null) as
+        | "pendente"
+        | "pago"
+        | null,
+      repassePagoEm: (row as any).repassePagoEm || null,
+      repassePagoPor: (row as any).repassePagoPor || null,
 
       ultimaAlteracaoPor: (row as any).ultimaAlteracaoPor || null,
       ultimaAlteracaoEm: (row as any).ultimaAlteracaoEm || null,
@@ -1966,6 +2043,8 @@ export async function createValesBatch(data: {
     mes: number;
     mesOrigem: number;
     tipo: "simples" | "parcelado";
+    dataVale?: string | null;
+    repasseBeneficiario?: "Franklyn" | null;
   }>;
 
   ultimaAlteracaoPor?: string | null;
@@ -1975,6 +2054,9 @@ export async function createValesBatch(data: {
   if (!db) throw new Error("Banco não conectado");
 
   if (!data.items.length) return { success: true };
+
+  await ensureValeRepasseFields();
+  if (!_pool) throw new Error("Banco não conectado");
 
   const competencias = Array.from(
     new Set(data.items.map((item) => `${item.ano}-${item.mes}`))
@@ -2006,6 +2088,123 @@ export async function createValesBatch(data: {
     })) as any
   );
 
+  // Os campos de repasse são mantidos fora do schema Drizzle atual para não
+  // exigir troca de schema/migration nesta etapa. Cada parcela recebe o mesmo
+  // beneficiário e o valor a repassar é exatamente o valor daquela parcela.
+  for (const item of data.items) {
+    if (!item.dataVale && !item.repasseBeneficiario) continue;
+
+    await _pool.query(
+      `UPDATE vales
+          SET dataVale = ?,
+              repasseBeneficiario = ?,
+              repasseValor = ?,
+              repasseStatus = ?,
+              repassePagoEm = NULL,
+              repassePagoPor = NULL
+        WHERE funcionarioId = ?
+          AND lojaId = ?
+          AND grupoId = ?
+          AND ano = ?
+          AND mes = ?
+          AND parcelaAtual = ?
+          AND status = 'ativo'`,
+      [
+        item.dataVale || null,
+        item.repasseBeneficiario || null,
+        item.repasseBeneficiario ? item.valorParcela.toFixed(2) : null,
+        item.repasseBeneficiario ? "pendente" : null,
+        data.funcionarioId,
+        data.lojaId,
+        item.grupoId,
+        item.ano,
+        item.mes,
+        item.parcelaAtual,
+      ]
+    );
+  }
+
+  return { success: true };
+}
+
+export async function getRepassesFranklynByAnoMes(ano: number, mes: number) {
+  await ensureValeRepasseFields();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  const [rows] = await _pool.query<any[]>(
+    `SELECT
+       v.id,
+       v.funcionarioId,
+       f.nome AS funcionarioNome,
+       v.lojaId,
+       l.nome AS lojaNome,
+       DATE_FORMAT(v.dataVale, '%Y-%m-%d') AS dataVale,
+       v.descricao,
+       COALESCE(v.repasseValor, v.valorParcela) AS valor,
+       v.parcelaAtual,
+       v.parcelas AS totalParcelas,
+       COALESCE(v.repasseStatus, 'pendente') AS repasseStatus,
+       v.repassePagoEm,
+       v.repassePagoPor
+     FROM vales v
+     INNER JOIN funcionarios f ON f.id = v.funcionarioId
+     LEFT JOIN lojas l ON l.id = v.lojaId
+     WHERE v.ano = ?
+       AND v.mes = ?
+       AND v.status = 'ativo'
+       AND v.repasseBeneficiario = 'Franklyn'
+     ORDER BY
+       CASE WHEN COALESCE(v.repasseStatus, 'pendente') = 'pendente' THEN 0 ELSE 1 END,
+       v.dataVale, l.nome, f.nome, v.id`,
+    [ano, mes]
+  );
+
+  return (rows || []).map((row: any) => ({
+    ...row,
+    id: Number(row.id),
+    funcionarioId: Number(row.funcionarioId),
+    lojaId: Number(row.lojaId),
+    valor: Number(row.valor || 0),
+    parcelaAtual: Number(row.parcelaAtual || 1),
+    totalParcelas: Number(row.totalParcelas || 1),
+  }));
+}
+
+export async function setRepasseFranklynPago(data: {
+  valeId: number;
+  pago: boolean;
+  usuarioNome: string;
+}) {
+  await ensureValeRepasseFields();
+  if (!_pool) throw new Error("Banco não conectado");
+
+  const [rows] = await _pool.query<any[]>(
+    `SELECT id, repasseBeneficiario
+       FROM vales
+      WHERE id = ? AND status = 'ativo'
+      LIMIT 1`,
+    [data.valeId]
+  );
+
+  const vale = rows?.[0];
+  if (!vale || String(vale.repasseBeneficiario || "") !== "Franklyn") {
+    throw new Error("Repasse ao Franklyn não encontrado");
+  }
+
+  await _pool.query(
+    `UPDATE vales
+        SET repasseStatus = ?,
+            repassePagoEm = ?,
+            repassePagoPor = ?
+      WHERE id = ?`,
+    [
+      data.pago ? "pago" : "pendente",
+      data.pago ? new Date() : null,
+      data.pago ? data.usuarioNome : null,
+      data.valeId,
+    ]
+  );
+
   return { success: true };
 }
 
@@ -2021,6 +2220,8 @@ export async function cancelValesByGrupoFromCurrentForward(data: {
   if (!db) throw new Error("Banco não conectado");
 
   await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
+  await ensureValeRepasseFields();
+  if (!_pool) throw new Error("Banco não conectado");
 
 const valeAtual = data.valeId
   ? await db
@@ -2045,6 +2246,20 @@ for (const row of rows) {
   const rowRef = new Date(row.ano, row.mes - 1, 1).getTime();
 
   if (rowRef >= currentRef) {
+    const [repasseRows] = await _pool.query<any[]>(
+      `SELECT repasseBeneficiario, repasseStatus FROM vales WHERE id = ? LIMIT 1`,
+      [row.id]
+    );
+
+    if (
+      String(repasseRows?.[0]?.repasseBeneficiario || "") === "Franklyn" &&
+      String(repasseRows?.[0]?.repasseStatus || "") === "pago"
+    ) {
+      throw new Error(
+        "Este vale já foi pago ao Franklyn e não pode ser excluído. Desfaça o pagamento do repasse primeiro."
+      );
+    }
+
     await assertCompetenciaFolhaAberta(
       Number(row.lojaId),
       Number(row.ano),
