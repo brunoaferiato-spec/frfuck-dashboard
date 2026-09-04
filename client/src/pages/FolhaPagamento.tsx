@@ -2987,6 +2987,10 @@ export default function FolhaPagamento() {
   const [importacaoHoleriteRestaurada, setImportacaoHoleriteRestaurada] =
     useState(false);
 
+  const [limpandoSemana, setLimpandoSemana] = useState(false);
+  const [limpandoAdiantamento, setLimpandoAdiantamento] = useState(false);
+  const [limpandoHolerite, setLimpandoHolerite] = useState(false);
+
   const [reabrirMesOpen, setReabrirMesOpen] = useState(false);
   const [senhaReabertura, setSenhaReabertura] = useState("");
   const [erroFechamento, setErroFechamento] = useState("");
@@ -6315,6 +6319,295 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
     }
   }
 
+  async function limparValoresImportadosSemana() {
+    if (!garantirCompetenciaAberta()) return;
+
+    const semana = importacaoSemana.semana;
+    if (semana === 5 && !sem5Ativa) return;
+
+    const mensalFlorianopolis = lojaId === 4 && usaMetaMensal(lojaId, ano, mes);
+    const rotulo = mensalFlorianopolis ? "Liquidez Venda" : `SEM${semana}`;
+
+    const confirmou =
+      typeof window === "undefined" ||
+      window.confirm(
+        `Limpar todos os valores de ${rotulo} desta competência? Esta ação zera liquidez, percentual, comissão e composição da semana para todos os funcionários que possuem lançamento.`
+      );
+
+    if (!confirmou) return;
+
+    setLimpandoSemana(true);
+    setImportacaoSemana((prev) => ({ ...prev, erro: "", mensagem: "" }));
+
+    try {
+      const semanaPersistida = semanaPersistenciaVisual(semana);
+      const rowsPersistidos = ((folhaBaseQuery.data ?? []) as any[]).filter(
+        (row) =>
+          Number(row.lojaId) === Number(lojaId) &&
+          Number(row.ano) === Number(ano) &&
+          Number(row.mes) === Number(mes) &&
+          Number(row.semana) === Number(semanaPersistida)
+      );
+
+      const porFuncionario = new Map<number, any>();
+      for (const row of rowsPersistidos) {
+        porFuncionario.set(Number(row.funcionarioId), row);
+      }
+
+      if (porFuncionario.size === 0) {
+        setImportacaoSemana((prev) => ({
+          ...prev,
+          etapa: "arquivo",
+          mensagem: `Não há valores lançados em ${rotulo} para limpar.`,
+        }));
+        return;
+      }
+
+      await Promise.all(
+        Array.from(porFuncionario.values()).map((row) =>
+          importFolhaBaseMutation.mutateAsync({
+            funcionarioId: Number(row.funcionarioId),
+            lojaId,
+            ano,
+            mes,
+            semana: semanaPersistida,
+            funcaoSemana: null,
+            composicaoSemana: [],
+            liquidez: 0,
+            percentualComissao: 0,
+            percentualManual: null,
+            valorComissao: 0,
+            ultimaAlteracaoPor: usuarioLogado,
+            ultimaAlteracaoEm: new Date(),
+          })
+        )
+      );
+
+      await folhaBaseQuery.refetch();
+      void resumoSupervisorQuery.refetch();
+
+      setImportacaoSemana((prev) => ({
+        ...prev,
+        etapa: "arquivo",
+        arquivoNome: "",
+        periodo: "",
+        cidadeRelatorio: "",
+        itens: [],
+        erro: "",
+        mensagem: `${rotulo} foi limpa. Todos os valores dessa importação foram zerados.`,
+      }));
+    } catch (err: any) {
+      console.error(`Erro ao limpar ${rotulo}:`, err);
+      setImportacaoSemana((prev) => ({
+        ...prev,
+        erro: err?.message || `Não foi possível limpar ${rotulo}.`,
+      }));
+    } finally {
+      setLimpandoSemana(false);
+    }
+  }
+
+  async function limparValoresImportadosAdiantamento() {
+    if (!garantirCompetenciaAberta()) return;
+
+    const confirmou =
+      typeof window === "undefined" ||
+      window.confirm(
+        "Limpar todos os valores da coluna Adiant. desta competência? Esta ação zera os adiantamentos de todos os funcionários da loja."
+      );
+
+    if (!confirmou) return;
+
+    setLimpandoAdiantamento(true);
+    setImportacaoAdiantamento((prev) => ({ ...prev, erro: "", mensagem: "" }));
+
+    try {
+      const descontosByFuncionario =
+        ((folhaExtrasQuery.data as any)?.descontosByFuncionario ?? {}) as Record<string, any>;
+
+      const funcionariosComValor = Object.entries(descontosByFuncionario)
+        .filter(([, descontos]) => Number(descontos?.adiant || 0) !== 0)
+        .map(([funcionarioId]) => Number(funcionarioId))
+        .filter((funcionarioId) => Number.isFinite(funcionarioId) && funcionarioId > 0);
+
+      if (funcionariosComValor.length === 0) {
+        setImportacaoAdiantamento((prev) => ({
+          ...prev,
+          etapa: "arquivo",
+          mensagem: "Não há valores de adiantamento para limpar nesta competência.",
+        }));
+        return;
+      }
+
+      await Promise.all(
+        funcionariosComValor.map((funcionarioId) =>
+          importDescontoMutation.mutateAsync({
+            funcionarioId,
+            lojaId,
+            ano,
+            mes,
+            tipo: "adiantamento" as const,
+            valor: 0,
+            ultimaAlteracaoPor: usuarioLogado,
+            ultimaAlteracaoEm: new Date(),
+          })
+        )
+      );
+
+      await folhaExtrasQuery.refetch();
+      void folhaBaseQuery.refetch();
+
+      setImportacaoAdiantamento((prev) => ({
+        ...prev,
+        etapa: "arquivo",
+        arquivoNome: "",
+        competencia: "",
+        competenciaMes: null,
+        competenciaAno: null,
+        cidadeRelatorio: "",
+        itens: [],
+        erro: "",
+        mensagem: `${funcionariosComValor.length} adiantamento(s) zerado(s).`,
+      }));
+    } catch (err: any) {
+      console.error("Erro ao limpar adiantamentos:", err);
+      setImportacaoAdiantamento((prev) => ({
+        ...prev,
+        erro: err?.message || "Não foi possível limpar os adiantamentos.",
+      }));
+    } finally {
+      setLimpandoAdiantamento(false);
+    }
+  }
+
+  async function limparValoresImportadosHolerite() {
+    if (!garantirCompetenciaAberta()) return;
+
+    const confirmou =
+      typeof window === "undefined" ||
+      window.confirm(
+        "Limpar a Folha Mensal importada desta competência? Esta ação zera INSS e Holerite e remove somente os empréstimos CLT criados pela importação do PDF. O Adiantamento e os vales manuais serão preservados."
+      );
+
+    if (!confirmou) return;
+
+    setLimpandoHolerite(true);
+    setImportacaoHolerite((prev) => ({ ...prev, erro: "", mensagem: "" }));
+
+    try {
+      const extras = (folhaExtrasQuery.data ?? {}) as any;
+      const descontosByFuncionario =
+        (extras.descontosByFuncionario ?? {}) as Record<string, any>;
+      const valesByFuncionario =
+        (extras.valesByFuncionario ?? {}) as Record<string, any[]>;
+
+      const ids = new Set<number>();
+
+      for (const [funcionarioIdRaw, descontos] of Object.entries(descontosByFuncionario)) {
+        if (Number(descontos?.inss || 0) !== 0 || Number(descontos?.holerite || 0) !== 0) {
+          const funcionarioId = Number(funcionarioIdRaw);
+          if (Number.isFinite(funcionarioId) && funcionarioId > 0) ids.add(funcionarioId);
+        }
+      }
+
+      for (const [funcionarioIdRaw, valesFuncionario] of Object.entries(valesByFuncionario)) {
+        const funcionarioId = Number(funcionarioIdRaw);
+        if (!Number.isFinite(funcionarioId) || funcionarioId <= 0) continue;
+
+        const prefixoGrupo = `emprestimo-clt-pdf-${lojaId}-${funcionarioId}-${ano}-${mes}-`;
+        if (
+          (valesFuncionario || []).some((vale: any) =>
+            String(vale?.grupoId || "").startsWith(prefixoGrupo)
+          )
+        ) {
+          ids.add(funcionarioId);
+        }
+      }
+
+      const funcionariosAlvo = Array.from(ids);
+
+      if (funcionariosAlvo.length === 0) {
+        setImportacaoHolerite((prev) => ({
+          ...prev,
+          etapa: "arquivo",
+          mensagem: "Não há valores da Folha Mensal importada para limpar nesta competência.",
+        }));
+        return;
+      }
+
+      for (const funcionarioId of funcionariosAlvo) {
+        await Promise.all([
+          importDescontoMutation.mutateAsync({
+            funcionarioId,
+            lojaId,
+            ano,
+            mes,
+            tipo: "inss" as const,
+            valor: 0,
+            ultimaAlteracaoPor: usuarioLogado,
+            ultimaAlteracaoEm: new Date(),
+          }),
+          importDescontoMutation.mutateAsync({
+            funcionarioId,
+            lojaId,
+            ano,
+            mes,
+            tipo: "holerite" as const,
+            valor: 0,
+            ultimaAlteracaoPor: usuarioLogado,
+            ultimaAlteracaoEm: new Date(),
+          }),
+        ]);
+
+        const prefixoGrupo = `emprestimo-clt-pdf-${lojaId}-${funcionarioId}-${ano}-${mes}-`;
+        const gruposImportados = Array.from(
+          new Set(
+            (valesByFuncionario[String(funcionarioId)] || [])
+              .map((vale: any) => String(vale?.grupoId || ""))
+              .filter((grupoId: string) => grupoId.startsWith(prefixoGrupo))
+          )
+        );
+
+        for (const grupoId of gruposImportados) {
+          await removeValesMutation.mutateAsync({
+            funcionarioId,
+            lojaId,
+            grupoId,
+            ano,
+            mes,
+          });
+        }
+      }
+
+      await folhaExtrasQuery.refetch();
+      void folhaBaseQuery.refetch();
+      void resumoSupervisorQuery.refetch();
+
+      setImportacaoHolerite((prev) => ({
+        ...prev,
+        etapa: "arquivo",
+        arquivoNome: "",
+        competencia: "",
+        competenciaMes: null,
+        competenciaAno: null,
+        cidadeRelatorio: "",
+        itens: [],
+        erro: "",
+        mensagem:
+          `${funcionariosAlvo.length} funcionário(s) limpo(s). ` +
+          "INSS e Holerite foram zerados e os empréstimos CLT criados pelo PDF foram removidos.",
+      }));
+    } catch (err: any) {
+      console.error("Erro ao limpar Folha Mensal:", err);
+      setImportacaoHolerite((prev) => ({
+        ...prev,
+        erro: err?.message || "Não foi possível limpar a Folha Mensal importada.",
+      }));
+    } finally {
+      setLimpandoHolerite(false);
+    }
+  }
+
   async function updateComposicaoSemanaPercentual(
     linha: LinhaComQuadrante,
     semana: SemanaComissaoVisual,
@@ -8547,7 +8840,29 @@ if (
                     ? "Se a liquidez mensal já tiver valores, a confirmação substituirá somente os funcionários encontrados no relatório."
                     : "Se a semana já tiver valores, a confirmação substituirá somente os funcionários encontrados no relatório."}
                 </p>
+
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={limpandoSemana || mesFechado}
+                    onClick={limparValoresImportadosSemana}
+                    className="border-red-500/35 bg-red-500/[0.04] text-red-300 hover:border-red-400/60 hover:bg-red-500/[0.10] hover:text-red-200 disabled:opacity-50"
+                  >
+                    {limpandoSemana
+                      ? "Limpando..."
+                      : lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
+                        ? "Limpar Liquidez Venda"
+                        : `Limpar SEM${importacaoSemana.semana}`}
+                  </Button>
+                </div>
               </div>
+
+              {importacaoSemana.mensagem && (
+                <div className="rounded-md border border-green-500/30 bg-green-950/20 p-4 text-green-300">
+                  {importacaoSemana.mensagem}
+                </div>
+              )}
 
               {importacaoSemana.erro && (
                 <div className="rounded-md border border-red-500/30 bg-red-950/30 p-4 text-red-300">
@@ -8917,7 +9232,20 @@ if (
                   Vendedores e mecânicos foram recalculados automaticamente. Alinhadores permanecem com lançamento mensal manual.
                 </p>
               </div>
-              <DialogFooter>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={limpandoSemana || mesFechado}
+                  onClick={limparValoresImportadosSemana}
+                  className="border-red-500/35 bg-red-500/[0.04] text-red-300 hover:border-red-400/60 hover:bg-red-500/[0.10] hover:text-red-200 disabled:opacity-50"
+                >
+                  {limpandoSemana
+                    ? "Limpando..."
+                    : lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
+                      ? "Limpar Liquidez Venda"
+                      : `Limpar SEM${importacaoSemana.semana}`}
+                </Button>
                 <Button
                   type="button"
                   className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
@@ -8966,7 +9294,25 @@ if (
                   <p>• Funcionários que não estiverem no PDF permanecem como estão e serão mostrados para conferência.</p>
                   <p>• Funcionário encontrado no PDF e não cadastrado poderá ser enviado direto para o cadastro.</p>
                 </div>
+
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={limpandoAdiantamento || mesFechado}
+                    onClick={limparValoresImportadosAdiantamento}
+                    className="border-red-500/35 bg-red-500/[0.04] text-red-300 hover:border-red-400/60 hover:bg-red-500/[0.10] hover:text-red-200 disabled:opacity-50"
+                  >
+                    {limpandoAdiantamento ? "Limpando..." : "Limpar Adiantamentos"}
+                  </Button>
+                </div>
               </div>
+
+              {importacaoAdiantamento.mensagem && (
+                <div className="rounded-md border border-green-500/30 bg-green-950/20 p-4 text-green-300">
+                  {importacaoAdiantamento.mensagem}
+                </div>
+              )}
 
               {importacaoAdiantamento.erro && (
                 <div className="rounded-md border border-red-500/30 bg-red-950/30 p-4 text-red-300">
@@ -9256,7 +9602,16 @@ if (
                   Somente a coluna Adiant. foi alterada. Uma futura importação da folha mensal não deverá sobrescrever esses valores.
                 </p>
               </div>
-              <DialogFooter>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={limpandoAdiantamento || mesFechado}
+                  onClick={limparValoresImportadosAdiantamento}
+                  className="border-red-500/35 bg-red-500/[0.04] text-red-300 hover:border-red-400/60 hover:bg-red-500/[0.10] hover:text-red-200 disabled:opacity-50"
+                >
+                  {limpandoAdiantamento ? "Limpando..." : "Limpar Adiantamentos"}
+                </Button>
                 <Button
                   type="button"
                   className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
@@ -9306,7 +9661,25 @@ if (
                   <p>• DESC.ADIANT.SALARIAL é ignorado: o Adiant. já veio do recibo do dia 20.</p>
                   <p>• Reimportar o mesmo mês substitui apenas empréstimos criados pelo PDF; vales manuais permanecem.</p>
                 </div>
+
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={limpandoHolerite || mesFechado}
+                    onClick={limparValoresImportadosHolerite}
+                    className="border-red-500/35 bg-red-500/[0.04] text-red-300 hover:border-red-400/60 hover:bg-red-500/[0.10] hover:text-red-200 disabled:opacity-50"
+                  >
+                    {limpandoHolerite ? "Limpando..." : "Limpar Folha importada"}
+                  </Button>
+                </div>
               </div>
+
+              {importacaoHolerite.mensagem && (
+                <div className="rounded-md border border-green-500/30 bg-green-950/20 p-4 text-green-300">
+                  {importacaoHolerite.mensagem}
+                </div>
+              )}
 
               {importacaoHolerite.erro && (
                 <div className="rounded-md border border-red-500/30 bg-red-950/30 p-4 text-red-300">
@@ -9735,7 +10108,16 @@ if (
                   INSS e Holerite foram atualizados; empréstimos CLT foram lançados no Vale. Adiantamento preservado.
                 </p>
               </div>
-              <DialogFooter>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={limpandoHolerite || mesFechado}
+                  onClick={limparValoresImportadosHolerite}
+                  className="border-red-500/35 bg-red-500/[0.04] text-red-300 hover:border-red-400/60 hover:bg-red-500/[0.10] hover:text-red-200 disabled:opacity-50"
+                >
+                  {limpandoHolerite ? "Limpando..." : "Limpar Folha importada"}
+                </Button>
                 <Button
                   type="button"
                   className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
