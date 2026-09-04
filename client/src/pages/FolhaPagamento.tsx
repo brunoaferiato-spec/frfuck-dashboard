@@ -3372,13 +3372,9 @@ const funcionariosDaCidade = useMemo(() => {
     if (f.status === "inativo") {
       if (!desligamento) return false;
 
-      if (reativacao) {
-        return (
-          dataReferencia < desligamento ||
-          dataReferencia >= reativacao
-        );
-      }
-
+      // Se o funcionário está atualmente inativo, a data de reativação
+      // histórica não pode fazê-lo reaparecer depois do desligamento atual.
+      // Ele aparece somente nas competências anteriores ao desligamento.
       return dataReferencia < desligamento;
     }
 
