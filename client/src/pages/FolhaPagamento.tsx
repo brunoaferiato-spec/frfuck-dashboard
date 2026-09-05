@@ -997,6 +997,258 @@ function dataValePadrao(ano: number, mes: number) {
   return `${anoAtual}-${mm}-${dd}`;
 }
 
+
+type ConferenciaValeStatus = "encontrado" | "nao_lancado" | "divergente" | "nao_identificado";
+type ConferenciaValeValidacao = "pendente" | "validado" | "aceito_divergente" | "ignorado";
+
+type ConferenciaValeItem = {
+  id: string;
+  dataVale: string;
+  dataMensagem: string;
+  hora: string;
+  remetente: string;
+  funcionarioWhatsapp: string;
+  funcionarioId: number | null;
+  funcionarioSistema: string | null;
+  funcaoWhatsapp: string;
+  valorTotal: number;
+  valorConferencia: number;
+  parcelas: number;
+  motivo: string;
+  status: ConferenciaValeStatus;
+  validacao: ConferenciaValeValidacao;
+  valoresSistema: number[];
+};
+
+type ConferenciaValeState = {
+  open: boolean;
+  arquivoNome: string;
+  carregando: boolean;
+  erro: string;
+  aviso: string;
+  totalMensagensVale: number;
+  totalForaCompetencia: number;
+  itens: ConferenciaValeItem[];
+};
+
+type IdentificacaoValeConferenciaState = {
+  open: boolean;
+  itemId: string | null;
+  funcionarioId: string;
+  busca: string;
+};
+
+function conferenciaValeInicial(): ConferenciaValeState {
+  return {
+    open: false,
+    arquivoNome: "",
+    carregando: false,
+    erro: "",
+    aviso: "",
+    totalMensagensVale: 0,
+    totalForaCompetencia: 0,
+    itens: [],
+  };
+}
+
+function limparWhatsApp(value: unknown) {
+  return String(value ?? "")
+    .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, "")
+    .replace(/[\*_~`]/g, "")
+    .trim();
+}
+
+function normalizarConferencia(value: unknown) {
+  return limparWhatsApp(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9]+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function ehCabecalhoVale(value: string) {
+  return /^(VALE|VALE ADIANTAMENTO|VALE ADIANTAMENTO DE SALARIO|VALE SALARIO|VALE COMISSAO)$/.test(
+    normalizarConferencia(value)
+  );
+}
+
+function numeroWhatsApp(value: string) {
+  const raw = String(value || "").replace(/R\$/gi, "").replace(/\$/g, "").replace(/\s/g, "");
+  if (!raw) return 0;
+  if (raw.includes(",")) {
+    const n = Number(raw.replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  }
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function primeiroValorWhatsApp(value: string) {
+  const m = String(value || "").match(/(?:R\$|\$)?\s*(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})|\d+(?:,\d{1,2})?|\d+(?:\.\d{1,2})?)/i);
+  return m ? numeroWhatsApp(m[1]) : 0;
+}
+
+function campoWhatsApp(conteudo: string, nomes: string[]) {
+  const normalizados = nomes.map(normalizarConferencia);
+  for (const linhaRaw of String(conteudo || "").split("\n")) {
+    const linha = limparWhatsApp(linhaRaw);
+    const norm = normalizarConferencia(linha);
+    for (const nome of normalizados) {
+      if (!norm.startsWith(nome)) continue;
+      const idx = linha.indexOf(":");
+      if (idx >= 0) return limparWhatsApp(linha.slice(idx + 1));
+      const palavras = nome.split(" ").length;
+      return limparWhatsApp(linha.split(/\s+/).slice(palavras).join(" "));
+    }
+  }
+  return "";
+}
+
+function dataIsoWhatsApp(dataCampo: string, dataMensagem: string) {
+  const msg = String(dataMensagem || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!msg) return "";
+  let ano = Number(msg[3]);
+  const mesMsg = Number(msg[2]);
+  let dia = Number(msg[1]);
+  let mes = mesMsg;
+  const completa = String(dataCampo || "").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  const parcial = String(dataCampo || "").match(/(\d{1,2})\/(\d{1,2})/);
+  if (completa) {
+    dia = Number(completa[1]); mes = Number(completa[2]); ano = Number(completa[3]);
+  } else if (parcial) {
+    dia = Number(parcial[1]); mes = Number(parcial[2]);
+    if (mes - mesMsg > 6) ano -= 1;
+  }
+  return `${ano}-${String(mes).padStart(2,"0")}-${String(dia).padStart(2,"0")}`;
+}
+
+function motivoWhatsApp(conteudo: string) {
+  const linhas = String(conteudo || "").split("\n");
+  const partes: string[] = [];
+  let lendo = false;
+  for (const raw of linhas) {
+    const linha = limparWhatsApp(raw);
+    const norm = normalizarConferencia(linha);
+    if (!lendo) {
+      if (!norm.startsWith("MOTIVO")) continue;
+      lendo = true;
+      const idx = linha.indexOf(":");
+      const inicial = idx >= 0 ? linha.slice(idx + 1) : linha.replace(/^\s*motivo\s*/i, "");
+      if (limparWhatsApp(inicial)) partes.push(limparWhatsApp(inicial));
+      continue;
+    }
+    if (!linha || linha.startsWith("@") || /MENSAGEM EDITADA/i.test(norm)) break;
+    partes.push(linha);
+  }
+  return partes.join(" ").replace(/\s+/g," ").trim();
+}
+
+function nomesWhatsApp(conteudo: string) {
+  const campo = campoWhatsApp(conteudo, ["Funcionário", "Funcionaria", "Funcionario", "Funcionários", "Funcionarias"]);
+  if (campo) {
+    return campo.split(/\s+(?:e|&)\s+|\s*[,;]\s*/i).map(limparWhatsApp).filter(Boolean);
+  }
+  const alternativos = ["Vendedor", "Vendedora", "Mecânico", "Mecanico", "Alinhador", "Estoquista"]
+    .map((label) => campoWhatsApp(conteudo, [label]))
+    .filter(Boolean);
+  return alternativos;
+}
+
+function separarMensagensWhatsApp(texto: string) {
+  const linhas = String(texto || "").replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+  const mensagens: Array<{data:string;hora:string;remetente:string;conteudo:string}> = [];
+  let atual: {data:string;hora:string;remetente:string;conteudo:string} | null = null;
+  const a = /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),\s*(\d{1,2}:\d{2}(?::\d{2})?)\]\s*([^:]+):\s*(.*)$/;
+  const b = /^(\d{1,2}\/\d{1,2}\/\d{2,4}),\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*([^:]+):\s*(.*)$/;
+  for (const raw of linhas) {
+    const linha = raw.replace(/[\u200e\u200f\ufeff]/g, "");
+    const m = linha.match(a) || linha.match(b);
+    if (m) {
+      if (atual) mensagens.push(atual);
+      const curto = m[1].match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+      const data = curto ? `${curto[1]}/${curto[2]}/20${curto[3]}` : m[1];
+      atual = {data,hora:m[2],remetente:limparWhatsApp(m[3]),conteudo:m[4]};
+    } else if (atual) {
+      atual.conteudo += `\n${linha}`;
+    }
+  }
+  if (atual) mensagens.push(atual);
+  return mensagens;
+}
+
+function extrairValesWhatsApp(texto: string) {
+  const mensagens = separarMensagensWhatsApp(texto);
+  const mensagensVale = mensagens.filter((m) => ehCabecalhoVale(String(m.conteudo||"").split("\n")[0]||""));
+  const itens: Array<Omit<ConferenciaValeItem,"funcionarioId"|"funcionarioSistema"|"status"|"validacao"|"valoresSistema">> = [];
+  mensagensVale.forEach((m, idx) => {
+    const nomes = nomesWhatsApp(m.conteudo);
+    const funcao = campoWhatsApp(m.conteudo,["Função","Funcao","Setor"]);
+    const dataVale = dataIsoWhatsApp(campoWhatsApp(m.conteudo,["Data"]),m.data);
+    const motivo = motivoWhatsApp(m.conteudo) || campoWhatsApp(m.conteudo,["Item"]);
+    const linhaValor = String(m.conteudo||"").split("\n").map(limparWhatsApp).find((l)=>normalizarConferencia(l).startsWith("VALOR")) || "";
+    let valorTotal = primeiroValorWhatsApp(linhaValor);
+    const textoLimpo = limparWhatsApp(m.conteudo).replace(/\n/g," ");
+    const px = textoLimpo.match(/(\d+)\s*x\s*(?:de\s*)?(?:R\$|\$)?\s*(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})|\d+(?:,\d{1,2})?)/i);
+    const qx = textoLimpo.match(/(?:em|fazer\s+em|parcelad[oa]\s+em)\s*(\d+)\s*x\b/i);
+    const cada = textoLimpo.match(/(?:R\$|\$)?\s*(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})|\d+(?:,\d{1,2})?)\s*(?:PRA|PARA)\s+CADA/i);
+    const parcelas = px ? Math.max(1,Number(px[1])) : qx ? Math.max(1,Number(qx[1])) : 1;
+    const valorParcela = px ? numeroWhatsApp(px[2]) : 0;
+    const valorCada = cada ? numeroWhatsApp(cada[1]) : 0;
+    if (!valorTotal && valorCada && nomes.length) valorTotal = valorCada * nomes.length;
+    const listaNomes = nomes.length ? nomes : [""];
+    listaNomes.forEach((nome,iNome)=>{
+      const individual = valorCada || valorTotal;
+      itens.push({
+        id:`wa-${idx}-${iNome}`,
+        dataVale,
+        dataMensagem:m.data,
+        hora:m.hora,
+        remetente:m.remetente,
+        funcionarioWhatsapp:nome,
+        funcaoWhatsapp:funcao,
+        valorTotal:individual,
+        valorConferencia:valorParcela || (parcelas>1 && individual>0 ? individual/parcelas : individual),
+        parcelas,
+        motivo,
+      });
+    });
+  });
+  return { mensagensVale: mensagensVale.length, itens };
+}
+
+async function lerTxtZipWhatsApp(file: File) {
+  const buffer = await file.arrayBuffer();
+  const view = new DataView(buffer); const bytes = new Uint8Array(buffer); const decoder = new TextDecoder("utf-8");
+  let eocd=-1; for(let i=buffer.byteLength-22;i>=Math.max(0,buffer.byteLength-65557);i-=1){if(view.getUint32(i,true)===0x06054b50){eocd=i;break;}}
+  if(eocd<0) throw new Error("ZIP inválido.");
+  const total=view.getUint16(eocd+10,true); let off=view.getUint32(eocd+16,true);
+  for(let n=0;n<total;n+=1){
+    if(view.getUint32(off,true)!==0x02014b50) break;
+    const metodo=view.getUint16(off+10,true), tam=view.getUint32(off+20,true), nomeLen=view.getUint16(off+28,true), extraLen=view.getUint16(off+30,true), comentarioLen=view.getUint16(off+32,true), local=view.getUint32(off+42,true);
+    const nome=decoder.decode(bytes.slice(off+46,off+46+nomeLen));
+    if(/\.txt$/i.test(nome)){
+      const localNome=view.getUint16(local+26,true), localExtra=view.getUint16(local+28,true), inicio=local+30+localNome+localExtra, compactado=bytes.slice(inicio,inicio+tam);
+      if(metodo===0) return decoder.decode(compactado);
+      if(metodo===8){
+        if(typeof DecompressionStream==="undefined") throw new Error("Seu navegador não suporta ZIP. Use o _chat.txt.");
+        const stream=new Blob([compactado]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+        return decoder.decode(await new Response(stream).arrayBuffer());
+      }
+      throw new Error("Compactação do ZIP não suportada.");
+    }
+    off += 46+nomeLen+extraLen+comentarioLen;
+  }
+  throw new Error("Não encontrei o _chat.txt dentro do ZIP.");
+}
+
+async function lerConversaWhatsApp(file: File) {
+  const nome=String(file.name||"").toLowerCase();
+  if(nome.endsWith(".txt")) return file.text();
+  if(nome.endsWith(".zip")) return lerTxtZipWhatsApp(file);
+  throw new Error("Use o .zip ou .txt exportado pelo WhatsApp sem mídia.");
+}
+
 function formatarCpf(value: unknown) {
   const digits = String(value || "").replace(/\D/g, "");
   if (digits.length !== 11) return String(value || "Não informado");
@@ -1660,6 +1912,7 @@ function TabelaQuadrante({
   onOpenPremioEditor,
   onOpenObsEditor,
   onOpenValeEditor,
+  onOpenConferenciaVales,
   onOpenNegativoEditor,
   onOpenRegraSemanaEditor,
   onOpenFuncionarioDetalhe,
@@ -1683,6 +1936,7 @@ function TabelaQuadrante({
   onOpenPremioEditor: (linha: LinhaComQuadrante) => void;
   onOpenObsEditor: (linha: LinhaComQuadrante) => void;
   onOpenValeEditor: (linha: LinhaComQuadrante) => void;
+  onOpenConferenciaVales: () => void;
   onOpenNegativoEditor: (linha: LinhaComQuadrante) => void;
   onOpenFuncionarioDetalhe: (linha: LinhaComQuadrante) => void;
   onOpenTransicaoFuncao: (linha: LinhaComQuadrante) => void;
@@ -2249,7 +2503,16 @@ const isMensalUnico =
                 {!isConsultorAci && (
                   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Premiação</th>
                 )}
-                <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Vale</th>
+                <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
+                  <button
+                    type="button"
+                    onClick={onOpenConferenciaVales}
+                    className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
+                    title="Conferir vales pelo WhatsApp"
+                  >
+                    Vale
+                  </button>
+                </th>
                 <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Aluguel</th>
                 {!isPj && <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">INSS</th>}
                 {isSupervisoraAci ? (
@@ -2955,6 +3218,15 @@ export default function FolhaPagamento() {
   });
 
   const [repasseFranklynOpen, setRepasseFranklynOpen] = useState(false);
+  const [conferenciaVale, setConferenciaVale] = useState<ConferenciaValeState>(() => conferenciaValeInicial());
+  const [valeConferenciaRetornoId, setValeConferenciaRetornoId] = useState<string | null>(null);
+  const [identificacaoValeConferencia, setIdentificacaoValeConferencia] =
+    useState<IdentificacaoValeConferenciaState>({
+      open: false,
+      itemId: null,
+      funcionarioId: "",
+      busca: "",
+    });
 
   const [negativoEditor, setNegativoEditor] = useState<NegativoEditorState>({
     open: false,
@@ -7373,6 +7645,255 @@ async function removeObservacao(index: number) {
   });
 }
 
+function openConferenciaVales() {
+  setConferenciaVale((prev) => ({ ...prev, open: true, erro: "", aviso: "" }));
+}
+
+function linhaConferenciaPorNome(nome: string) {
+  const alvo = normalizarConferencia(nome);
+  if (!alvo) return null;
+  const exatos = linhas.filter((l) => normalizarConferencia(l.nome) === alvo);
+  if (exatos.length === 1) return exatos[0];
+  const parciais = linhas.filter((l) => {
+    const sistema = normalizarConferencia(l.nome);
+    return alvo.length >= 5 && (sistema.includes(alvo) || alvo.includes(sistema));
+  });
+  return parciais.length === 1 ? parciais[0] : null;
+}
+
+function classificarValeConferencia(
+  base: Omit<ConferenciaValeItem,"funcionarioId"|"funcionarioSistema"|"status"|"validacao"|"valoresSistema">,
+  opcoes?: {
+    valesOverride?: any[];
+    statusAnterior?: ConferenciaValeStatus;
+    validacaoAnterior?: ConferenciaValeValidacao;
+    forcarPendente?: boolean;
+    linhaForcada?: LinhaComQuadrante | null;
+  }
+): ConferenciaValeItem {
+  const linha = opcoes?.linhaForcada ?? linhaConferenciaPorNome(base.funcionarioWhatsapp);
+
+  const validacaoPara = (statusNovo: ConferenciaValeStatus): ConferenciaValeValidacao => {
+    if (opcoes?.forcarPendente) return "pendente";
+    if (opcoes?.statusAnterior === statusNovo && opcoes?.validacaoAnterior) {
+      return opcoes.validacaoAnterior;
+    }
+    return "pendente";
+  };
+
+  if (!linha) {
+    return {
+      ...base,
+      funcionarioId: null,
+      funcionarioSistema: null,
+      status: "nao_identificado",
+      validacao: validacaoPara("nao_identificado"),
+      valoresSistema: [],
+    };
+  }
+
+  const vales = opcoes?.valesOverride ?? (Array.isArray(linha.vales) ? linha.vales : []);
+  const exato = vales.find((v:any)=>{
+    if(Math.abs(Number(v?.valor||0)-Number(base.valorConferencia||0))>0.01) return false;
+    const ds=String(v?.dataVale||"").slice(0,10);
+    const dw=String(base.dataVale||"").slice(0,10);
+    return !ds || !dw || ds===dw;
+  });
+
+  if(exato) {
+    return {
+      ...base,
+      funcionarioId:Number(linha.funcionarioId),
+      funcionarioSistema:linha.nome,
+      status:"encontrado",
+      validacao: validacaoPara("encontrado"),
+      valoresSistema:[Number((exato as any).valor||0)],
+    };
+  }
+
+  const mesmaData=vales.filter((v:any)=>String(v?.dataVale||"").slice(0,10)===String(base.dataVale||"").slice(0,10));
+  const valores=(mesmaData.length?mesmaData:vales).map((v:any)=>Number(v?.valor||0)).filter((v:number)=>v>0);
+  const status: ConferenciaValeStatus = valores.length ? "divergente" : "nao_lancado";
+
+  return {
+    ...base,
+    funcionarioId:Number(linha.funcionarioId),
+    funcionarioSistema:linha.nome,
+    status,
+    validacao: validacaoPara(status),
+    valoresSistema:valores,
+  };
+}
+
+function atualizarClassificacaoItemConferencia(
+  itemId: string,
+  valesOverride?: any[],
+  forcarPendente = false
+) {
+  setConferenciaVale((prev) => ({
+    ...prev,
+    itens: prev.itens.map((item) => {
+      if (item.id !== itemId) return item;
+      const linhaAtual = item.funcionarioId
+        ? linhas.find((linha) => Number(linha.funcionarioId) === Number(item.funcionarioId)) || null
+        : null;
+      return classificarValeConferencia(item, {
+        valesOverride,
+        statusAnterior: item.status,
+        validacaoAnterior: item.validacao,
+        forcarPendente,
+        linhaForcada: linhaAtual,
+      });
+    }),
+  }));
+}
+
+function validarItemConferenciaVale(itemId: string, validacao: ConferenciaValeValidacao) {
+  setConferenciaVale((prev) => ({
+    ...prev,
+    itens: prev.itens.map((item) =>
+      item.id === itemId ? { ...item, validacao } : item
+    ),
+  }));
+}
+
+function validarTodosConferenciaVale() {
+  setConferenciaVale((prev) => ({
+    ...prev,
+    itens: prev.itens.map((item) =>
+      item.status === "encontrado" && item.validacao === "pendente"
+        ? { ...item, validacao: "validado" as const }
+        : item
+    ),
+  }));
+}
+
+function abrirIdentificacaoValeConferencia(item: ConferenciaValeItem) {
+  setIdentificacaoValeConferencia({
+    open: true,
+    itemId: item.id,
+    funcionarioId: item.funcionarioId ? String(item.funcionarioId) : "",
+    // O campo abre vazio; a lista aparece somente quando a usuária clica na busca.
+    busca: "",
+  });
+}
+
+function aplicarIdentificacaoValeConferencia(abrirLancamento = false) {
+  const item = conferenciaVale.itens.find(
+    (atual) => atual.id === identificacaoValeConferencia.itemId
+  );
+  const linha = linhas.find(
+    (atual) =>
+      Number(atual.funcionarioId) === Number(identificacaoValeConferencia.funcionarioId)
+  );
+
+  if (!item || !linha) {
+    alert("Selecione o funcionário correto.");
+    return;
+  }
+
+  const reclassificado = classificarValeConferencia(item, {
+    linhaForcada: linha,
+    forcarPendente: true,
+  });
+
+  setConferenciaVale((prev) => ({
+    ...prev,
+    open: abrirLancamento && reclassificado.status === "nao_lancado" ? false : prev.open,
+    itens: prev.itens.map((atual) =>
+      atual.id === item.id ? reclassificado : atual
+    ),
+  }));
+
+  setIdentificacaoValeConferencia({
+    open: false,
+    itemId: null,
+    funcionarioId: "",
+    busca: "",
+  });
+
+  if (abrirLancamento && reclassificado.status === "nao_lancado") {
+    const valorTotal = Number(
+      reclassificado.valorTotal || reclassificado.valorConferencia || 0
+    );
+
+    setValeConferenciaRetornoId(reclassificado.id);
+    setValeEditor({
+      open: true,
+      funcionarioId: Number(linha.funcionarioId),
+      descricao: reclassificado.motivo || "Vale WhatsApp",
+      valor: valorTotal > 0 ? valorTotal.toFixed(2).replace(".", ",") : "",
+      parcelas: String(Math.max(1, Number(reclassificado.parcelas || 1))),
+      dataVale: reclassificado.dataVale || dataValePadrao(ano, mes),
+      repasseFranklyn: false,
+    });
+  }
+}
+
+function abrirValePelaConferencia(item: ConferenciaValeItem) {
+  if (!garantirCompetenciaAberta()) return;
+  if (!item.funcionarioId) return;
+
+  const linha = linhas.find((l) => Number(l.funcionarioId) === Number(item.funcionarioId));
+  if (!linha) {
+    alert("Não encontrei o funcionário na folha atual.");
+    return;
+  }
+
+  const valorTotal = Number(item.valorTotal || item.valorConferencia || 0);
+
+  setValeConferenciaRetornoId(item.id);
+  setConferenciaVale((prev) => ({ ...prev, open: false }));
+  setValeEditor({
+    open: true,
+    funcionarioId: Number(item.funcionarioId),
+    descricao: item.motivo || "Vale WhatsApp",
+    valor: valorTotal > 0 ? valorTotal.toFixed(2).replace(".", ",") : "",
+    parcelas: String(Math.max(1, Number(item.parcelas || 1))),
+    dataVale: item.dataVale || dataValePadrao(ano, mes),
+    repasseFranklyn: false,
+  });
+}
+
+function fecharValeEditor() {
+  const deveVoltar = Boolean(valeConferenciaRetornoId);
+  setValeEditor({
+    open: false,
+    funcionarioId: null,
+    descricao: "",
+    valor: "",
+    parcelas: "1",
+    dataVale: dataValePadrao(ano, mes),
+    repasseFranklyn: false,
+  });
+
+  if (deveVoltar) {
+    setConferenciaVale((prev) => ({ ...prev, open: true }));
+    setValeConferenciaRetornoId(null);
+  }
+}
+
+async function importarArquivoConferenciaVale(file: File | null) {
+  if(!file) return;
+  setConferenciaVale((prev)=>({...prev,arquivoNome:file.name,carregando:true,erro:"",aviso:"",itens:[]}));
+  try{
+    const texto=await lerConversaWhatsApp(file);
+    const extraido=extrairValesWhatsApp(texto);
+    const dentro=extraido.itens.filter((item)=>{
+      const m=String(item.dataVale||"").match(/^(\d{4})-(\d{2})-/);
+      return !!m && Number(m[1])===ano && Number(m[2])===mes;
+    });
+    const itens=dentro.map((item)=>classificarValeConferencia(item));
+    const nomeArq=normalizarConferencia(file.name);
+    const outra=LOJAS.find((l)=>l.id!==lojaId && normalizarConferencia(l.nome).length>=5 && nomeArq.includes(normalizarConferencia(l.nome)));
+    setConferenciaVale((prev)=>({...prev,carregando:false,totalMensagensVale:extraido.mensagensVale,totalForaCompetencia:Math.max(0,extraido.itens.length-dentro.length),itens,
+      aviso:outra?`Atenção: o arquivo parece ser de ${outra.nome}, mas a loja selecionada é ${LOJAS.find((l)=>l.id===lojaId)?.nome||lojaId}.`:"",
+      erro:extraido.mensagensVale===0?"Nenhuma mensagem estruturada com cabeçalho VALE foi encontrada.":dentro.length===0?`Existem vales no arquivo, mas nenhum pertence a ${String(mes).padStart(2,"0")}/${ano}.`:""}));
+  }catch(error:any){
+    setConferenciaVale((prev)=>({...prev,carregando:false,erro:error instanceof Error?error.message:"Erro ao ler o arquivo."}));
+  }
+}
+
 function openValeEditor(linha: LinhaComQuadrante) {
   if (!garantirCompetenciaAberta()) return;
   setValeEditor({
@@ -7443,6 +7964,35 @@ async function addVale() {
       ultimaAlteracaoEm: new Date()
 });
 
+  const retornoConferenciaId = valeConferenciaRetornoId;
+  const funcionarioIdLancado = Number(valeEditor.funcionarioId);
+  const extrasAtualizados = await folhaExtrasQuery.refetch();
+  await repassesFranklynQuery.refetch();
+
+  if (retornoConferenciaId) {
+    const valesAtualizados =
+      (extrasAtualizados.data as any)?.valesByFuncionario?.[funcionarioIdLancado] || [];
+
+    atualizarClassificacaoItemConferencia(
+      retornoConferenciaId,
+      valesAtualizados,
+      true
+    );
+
+    setValeEditor({
+      open: false,
+      funcionarioId: null,
+      descricao: "",
+      valor: "",
+      parcelas: "1",
+      dataVale: dataValePadrao(ano, mes),
+      repasseFranklyn: false,
+    });
+    setValeConferenciaRetornoId(null);
+    setConferenciaVale((prev) => ({ ...prev, open: true }));
+    return;
+  }
+
   setValeEditor((prev) => ({
     ...prev,
     descricao: "",
@@ -7466,8 +8016,18 @@ async function removeVale(vale: ValeItem) {
     mes,
   });
 
-  await folhaExtrasQuery.refetch();
+  const extrasAtualizados = await folhaExtrasQuery.refetch();
   await repassesFranklynQuery.refetch();
+
+  if (valeConferenciaRetornoId) {
+    const valesAtualizados =
+      (extrasAtualizados.data as any)?.valesByFuncionario?.[Number(valeEditor.funcionarioId)] || [];
+    atualizarClassificacaoItemConferencia(
+      valeConferenciaRetornoId,
+      valesAtualizados,
+      true
+    );
+  }
 }
 
 async function alterarStatusRepasseFranklyn(valeId: number, pago: boolean) {
@@ -8536,6 +9096,7 @@ if (
               onOpenPremioEditor={openPremioEditor}
               onOpenObsEditor={openObsEditor}
               onOpenValeEditor={openValeEditor}
+              onOpenConferenciaVales={openConferenciaVales}
               onOpenNegativoEditor={(linha) => setNegativoEditor({ open: true, linha })}
               onOpenRegraSemanaEditor={openRegraSemanaEditor}
               onOpenFuncionarioDetalhe={(linha) =>
@@ -10912,6 +11473,307 @@ if (
         </DialogContent>
       </Dialog>
 
+      <Dialog open={conferenciaVale.open} onOpenChange={(open)=>setConferenciaVale((prev)=>({...prev,open}))}>
+        <DialogContent className="w-[96vw] max-w-[96vw] sm:max-w-[96vw] border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-h-[94vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[#F2D675]">Conferência de Vales — {LOJAS.find((l)=>l.id===lojaId)?.nome || `Loja ${lojaId}`} — {String(mes).padStart(2,"0")}/{ano}</DialogTitle>
+            <DialogDescription className="text-gray-400">Importe o .zip ou _chat.txt do grupo financeiro da cidade. Confira os encontrados, lance o que estiver faltando e trate as divergências antes de finalizar.</DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-xl border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-3">
+            <Label className="text-gray-300">Conversa exportada do WhatsApp</Label>
+            <Input type="file" accept=".zip,.txt,application/zip,text/plain" className="bg-[#111111] border-[#D4AF37]/20 text-white file:text-[#F2D675]" onChange={(e)=>{const file=e.target.files?.[0]||null; void importarArquivoConferenciaVale(file); e.currentTarget.value="";}} />
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+              <span>Aceita .zip direto do WhatsApp ou _chat.txt.</span>
+              {conferenciaVale.arquivoNome && <span>Arquivo: <b className="text-gray-300">{conferenciaVale.arquivoNome}</b></span>}
+              {conferenciaVale.arquivoNome && <Button size="sm" variant="outline" className="h-7 border-red-500/25 bg-transparent text-red-300" onClick={()=>setConferenciaVale({...conferenciaValeInicial(),open:true})}>Limpar</Button>}
+            </div>
+          </div>
+
+          {conferenciaVale.carregando && <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-6 text-center text-gray-400">Lendo a conversa e conferindo os vales...</div>}
+          {conferenciaVale.aviso && <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-sm text-amber-200">{conferenciaVale.aviso}</div>}
+          {conferenciaVale.erro && <div className="rounded-xl border border-red-500/25 bg-red-500/[0.06] p-4 text-sm text-red-300">{conferenciaVale.erro}</div>}
+
+          {conferenciaVale.itens.length>0 && (()=>{
+            const encontrados=conferenciaVale.itens.filter((i)=>i.status==="encontrado").length;
+            const naoLancados=conferenciaVale.itens.filter((i)=>i.status==="nao_lancado").length;
+            const divergentes=conferenciaVale.itens.filter((i)=>i.status==="divergente").length;
+            const naoIdentificados=conferenciaVale.itens.filter((i)=>i.status==="nao_identificado").length;
+            const validados=conferenciaVale.itens.filter((i)=>i.validacao==="validado"||i.validacao==="aceito_divergente").length;
+            const ignorados=conferenciaVale.itens.filter((i)=>i.validacao==="ignorado").length;
+            const encontradosPendentes=conferenciaVale.itens.filter((i)=>i.status==="encontrado"&&i.validacao==="pendente").length;
+            return <>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm text-gray-400">
+                  Valide os lançamentos corretos. Divergências só entram como validadas depois de ajustar ou clicar em <b className="text-gray-200">OK assim</b>.
+                </div>
+                <Button
+                  className="bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40"
+                  disabled={encontradosPendentes===0}
+                  onClick={validarTodosConferenciaVale}
+                >
+                  Validar todos {encontradosPendentes>0?`(${encontradosPendentes})`:""}
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+                <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Vales no mês</p><p className="mt-1 text-2xl font-black text-white">{conferenciaVale.itens.length}</p></div>
+                <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Encontrados</p><p className="mt-1 text-2xl font-black text-emerald-400">{encontrados}</p></div>
+                <div className="rounded-xl border border-red-500/15 bg-red-500/[0.04] p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Não lançados</p><p className="mt-1 text-2xl font-black text-red-400">{naoLancados}</p></div>
+                <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Divergentes</p><p className="mt-1 text-2xl font-black text-amber-300">{divergentes}</p></div>
+                <div className="rounded-xl border border-orange-500/15 bg-orange-500/[0.04] p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Não identificados</p><p className="mt-1 text-2xl font-black text-orange-300">{naoIdentificados}</p></div>
+                <div className="rounded-xl border border-sky-500/15 bg-sky-500/[0.04] p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Validados</p><p className="mt-1 text-2xl font-black text-sky-300">{validados}</p></div>
+                <div className="rounded-xl border border-gray-500/15 bg-white/[0.02] p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Ignorados</p><p className="mt-1 text-2xl font-black text-gray-300">{ignorados}</p></div>
+              </div>
+
+              {conferenciaVale.totalForaCompetencia>0 && <p className="text-xs text-gray-500">{conferenciaVale.totalForaCompetencia} ocorrência(s) de VALE são de outras competências e foram ignoradas nesta conferência.</p>}
+
+              <div className="overflow-x-auto rounded-xl border border-[#D4AF37]/15">
+                <table className="w-full min-w-[1450px] text-sm">
+                  <thead className="sticky top-0 z-10 bg-[#0d0d0d] text-left text-[10px] font-bold uppercase tracking-[0.08em] text-[#D4AF37]"><tr><th className="p-3">Data</th><th className="p-3">Funcionário WhatsApp</th><th className="p-3">Funcionário sistema</th><th className="p-3 text-right">Valor WhatsApp</th><th className="p-3">Motivo</th><th className="p-3">Valor no sistema</th><th className="p-3 text-center">Situação</th><th className="p-3 text-right">Ação</th></tr></thead>
+                  <tbody>{conferenciaVale.itens.map((item)=>{
+                    const validado=item.validacao==="validado";
+                    const aceitoDivergente=item.validacao==="aceito_divergente";
+                    const ignorado=item.validacao==="ignorado";
+                    const badge = ignorado
+                      ? "Ignorado"
+                      : validado
+                        ? "Validado"
+                        : aceitoDivergente
+                          ? "OK c/ divergência"
+                          : item.status==="encontrado"
+                            ? "Encontrado"
+                            : item.status==="nao_lancado"
+                              ? "Não lançado"
+                              : item.status==="divergente"
+                                ? "Valor divergente"
+                                : "Não identificado";
+                    const badgeClass = ignorado
+                      ? "border-gray-500/30 bg-white/[0.04] text-gray-300"
+                      : validado
+                        ? "border-sky-500/30 bg-sky-500/10 text-sky-300"
+                        : aceitoDivergente
+                          ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                          : item.status==="encontrado"
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                            : item.status==="nao_lancado"
+                              ? "border-red-500/30 bg-red-500/10 text-red-300"
+                              : item.status==="divergente"
+                                ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                                : "border-orange-500/30 bg-orange-500/10 text-orange-300";
+
+                    return <tr key={item.id} className={`border-t border-white/[0.06] align-top ${validado||aceitoDivergente?"bg-emerald-500/[0.025]":ignorado?"opacity-60":""}`}>
+                      <td className="p-3 whitespace-nowrap text-gray-300">{formatarDataBR(item.dataVale)}</td>
+                      <td className="p-3"><div className="font-semibold text-white">{item.funcionarioWhatsapp||"Não identificado"}</div>{item.funcaoWhatsapp&&<div className="mt-1 text-[10px] text-gray-500">{item.funcaoWhatsapp}</div>}</td>
+                      <td className="p-3 text-gray-300">{item.funcionarioSistema||"—"}</td>
+                      <td className="p-3 text-right whitespace-nowrap"><div className="font-black text-[#F2D675]">R$ {money(Number(item.valorConferencia||0))}</div>{item.parcelas>1&&<div className="mt-1 text-[10px] text-gray-500">Total R$ {money(Number(item.valorTotal||0))} • {item.parcelas}x</div>}</td>
+                      <td className="p-3 max-w-[420px] text-gray-300"><div className="line-clamp-4">{item.motivo||"Sem motivo informado"}</div><div className="mt-1 text-[10px] text-gray-600">{item.remetente} • {item.hora}</div></td>
+                      <td className="p-3 text-gray-300">{item.valoresSistema.length?item.valoresSistema.slice(0,6).map((v,idx)=><div key={`${item.id}-${idx}`} className="whitespace-nowrap">R$ {money(v)}</div>):"—"}</td>
+                      <td className="p-3 text-center"><span className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-bold ${badgeClass}`}>{badge}</span></td>
+                      <td className="p-3">
+                        <div className="flex min-w-[230px] flex-wrap justify-end gap-2">
+                          {item.validacao!=="pendente" ? (
+                            <Button size="sm" variant="outline" className="border-white/15 bg-transparent text-gray-300 hover:bg-white/5" onClick={()=>validarItemConferenciaVale(item.id,"pendente")}>Desfazer</Button>
+                          ) : item.status==="encontrado" ? (
+                            <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-500" onClick={()=>validarItemConferenciaVale(item.id,"validado")}>Validar</Button>
+                          ) : item.status==="nao_lancado" ? (
+                            <>
+                              <Button size="sm" className="bg-[#D4AF37] text-black hover:bg-[#E6C760]" onClick={()=>abrirValePelaConferencia(item)}>Lançar vale</Button>
+                              <Button size="sm" variant="outline" className="border-gray-500/30 bg-transparent text-gray-300" onClick={()=>validarItemConferenciaVale(item.id,"ignorado")}>Ignorar</Button>
+                            </>
+                          ) : item.status==="divergente" ? (
+                            <>
+                              <Button size="sm" className="bg-[#D4AF37] text-black hover:bg-[#E6C760]" onClick={()=>abrirValePelaConferencia(item)}>Ajustar</Button>
+                              <Button size="sm" variant="outline" className="border-amber-500/30 bg-amber-500/[0.05] text-amber-200 hover:bg-amber-500/10" onClick={()=>validarItemConferenciaVale(item.id,"aceito_divergente")}>OK assim</Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                                onClick={() => abrirIdentificacaoValeConferencia(item)}
+                              >
+                                Identificar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-gray-500/30 bg-transparent text-gray-300"
+                                onClick={() => validarItemConferenciaVale(item.id, "ignorado")}
+                              >
+                                Ignorar
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>;
+                  })}</tbody>
+                </table>
+              </div>
+            </>;
+          })()}
+          <DialogFooter><Button variant="ghost" onClick={()=>setConferenciaVale((prev)=>({...prev,open:false}))}>Fechar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={identificacaoValeConferencia.open}
+        onOpenChange={(open) =>
+          setIdentificacaoValeConferencia((prev) => ({ ...prev, open }))
+        }
+      >
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[#F2D675]">
+              Identificar funcionário do vale
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Escolha quem é o funcionário citado no WhatsApp. Identificar não lança nada automaticamente: primeiro o sistema confere se o vale já existe para esse funcionário.
+            </DialogDescription>
+          </DialogHeader>
+
+          {(() => {
+            const item = conferenciaVale.itens.find(
+              (atual) => atual.id === identificacaoValeConferencia.itemId
+            );
+            const candidatos = [...linhas]
+              .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"))
+              .slice(0, 100);
+            const linhaSelecionada = linhas.find(
+              (linha) =>
+                Number(linha.funcionarioId) ===
+                Number(identificacaoValeConferencia.funcionarioId)
+            );
+            const previa =
+              item && linhaSelecionada
+                ? classificarValeConferencia(item, {
+                    linhaForcada: linhaSelecionada,
+                    forcarPendente: true,
+                  })
+                : null;
+
+            const previaLabel =
+              previa?.status === "encontrado"
+                ? "Vale já encontrado no sistema"
+                : previa?.status === "nao_lancado"
+                  ? "Vale ainda não lançado"
+                  : previa?.status === "divergente"
+                    ? "Existe valor divergente"
+                    : "Selecione o funcionário";
+
+            return (
+              <div className="space-y-4">
+                {item && (
+                  <div className="grid gap-3 rounded-xl border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 sm:grid-cols-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">WhatsApp</p>
+                      <p className="mt-1 font-semibold text-white">{item.funcionarioWhatsapp || "Não identificado"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Valor</p>
+                      <p className="mt-1 font-black text-[#F2D675]">R$ {money(item.valorConferencia)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Data</p>
+                      <p className="mt-1 font-semibold text-white">{formatarDataBR(item.dataVale)}</p>
+                    </div>
+                    <div className="sm:col-span-3">
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Motivo</p>
+                      <p className="mt-1 text-sm text-gray-300">{item.motivo || "Sem motivo informado"}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-gray-300">Buscar funcionário</Label>
+                  <Select
+                    value={identificacaoValeConferencia.funcionarioId || undefined}
+                    onValueChange={(value) => {
+                      const selecionado = linhas.find(
+                        (linha) => String(linha.funcionarioId) === String(value)
+                      );
+
+                      setIdentificacaoValeConferencia((prev) => ({
+                        ...prev,
+                        funcionarioId: String(value),
+                        busca: String(selecionado?.nome || ""),
+                      }));
+                    }}
+                  >
+                    <SelectTrigger className="w-full bg-[#111111] border-[#D4AF37]/20 text-white">
+                      <SelectValue placeholder="Clique para selecionar o funcionário" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[280px] border-[#D4AF37]/25 bg-[#0d0d0d] text-white">
+                      {candidatos.map((linha) => (
+                        <SelectItem
+                          key={linha.funcionarioId}
+                          value={String(linha.funcionarioId)}
+                          className="cursor-pointer focus:bg-[#D4AF37]/10 focus:text-white"
+                        >
+                          <span className="font-semibold">{linha.nome}</span>
+                          <span className="ml-2 text-xs text-gray-500">
+                            • {labelFuncaoFuncionario(String(linha.funcao || ""), lojaId)}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
+                  <span className="text-gray-500">Após identificar: </span>
+                  <span className={
+                    previa?.status === "encontrado"
+                      ? "font-semibold text-emerald-400"
+                      : previa?.status === "nao_lancado"
+                        ? "font-semibold text-red-300"
+                        : previa?.status === "divergente"
+                          ? "font-semibold text-amber-300"
+                          : "text-gray-400"
+                  }>
+                    {previaLabel}
+                  </span>
+                </div>
+
+                <DialogFooter className="gap-2 sm:gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setIdentificacaoValeConferencia({
+                        open: false,
+                        itemId: null,
+                        funcionarioId: "",
+                        busca: "",
+                      });
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!linhaSelecionada}
+                    className="border-[#D4AF37]/30 bg-transparent text-[#F2D675]"
+                    onClick={() => aplicarIdentificacaoValeConferencia(false)}
+                  >
+                    Identificar
+                  </Button>
+                  {previa?.status === "nao_lancado" && (
+                    <Button
+                      disabled={!linhaSelecionada}
+                      className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                      onClick={() => aplicarIdentificacaoValeConferencia(true)}
+                    >
+                      Identificar e lançar vale
+                    </Button>
+                  )}
+                </DialogFooter>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={repasseFranklynOpen} onOpenChange={setRepasseFranklynOpen}>
         <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -11031,7 +11893,13 @@ if (
 
       <Dialog
         open={valeEditor.open}
-        onOpenChange={(open) => setValeEditor((prev) => ({ ...prev, open }))}
+        onOpenChange={(open) => {
+          if (open) {
+            setValeEditor((prev) => ({ ...prev, open: true }));
+          } else {
+            fecharValeEditor();
+          }
+        }}
       >
         <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -11212,17 +12080,7 @@ if (
           <DialogFooter>
             <Button
               variant="ghost"
-              onClick={() =>
-                setValeEditor({
-                  open: false,
-                  funcionarioId: null,
-                  descricao: "",
-                  valor: "",
-                  parcelas: "1",
-                  dataVale: dataValePadrao(ano, mes),
-                  repasseFranklyn: false,
-                })
-              }
+              onClick={fecharValeEditor}
             >
               Fechar
             </Button>
