@@ -51,6 +51,7 @@ import {
   salvarRhPontoImportacao,
   salvarRhPontoConferencia,
   getRhPontoPendencias,
+  vincularRhPontoNomeFuncionario,
   criarRhPontoTratativa,
   salvarDocumentoRhPontoTratativa,
   getRhPontoTratativaDocumento,
@@ -1536,6 +1537,29 @@ export const appRouter = router({
           : Number(input.lojaId);
 
         return getRhPontoPendencias({ lojaId });
+      }),
+
+    vincularNomeFuncionario: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number().int().positive(),
+          nomePdf: z.string().trim().min(1).max(255),
+          funcionarioId: z.number().int().positive(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        assertAcessoRhPontoPendencia(ctx, input.lojaId);
+
+        return vincularRhPontoNomeFuncionario({
+          lojaId: input.lojaId,
+          nomePdf: input.nomePdf,
+          funcionarioId: input.funcionarioId,
+          usuarioId: Number(ctx.user.id),
+          usuarioNome:
+            ctx.user.name ||
+            ctx.user.email ||
+            `Usuário ${ctx.user.id}`,
+        });
       }),
 
     criarTratativa: protectedProcedure

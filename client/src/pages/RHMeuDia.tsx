@@ -623,6 +623,22 @@ export default function RHMeuDia() {
     { enabled: lojaIdAtual > 0, retry: false }
   );
 
+  const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
+    { lojaId: lojaIdAtual },
+    { enabled: lojaIdAtual > 0, retry: false }
+  );
+
+  const funcionariosVinculaveis = useMemo(
+    () =>
+      ((funcionariosQuery.data || []) as any[])
+        .filter((funcionario) => {
+          const status = String(funcionario.status || "");
+          return (status === "ativo" || status === "experiencia") && !Boolean(funcionario.cargoConfianca);
+        })
+        .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR")),
+    [funcionariosQuery.data]
+  );
+
   const conferencias = useMemo(
     () => ((pontoDiaQuery.data || []) as any[]),
     [pontoDiaQuery.data]
@@ -662,8 +678,11 @@ export default function RHMeuDia() {
   const [mensagemTratativa, setMensagemTratativa] = useState("");
   const [arquivoTratativa, setArquivoTratativa] = useState<File | null>(null);
   const [enviandoDocumentoId, setEnviandoDocumentoId] = useState<number | null>(null);
+  const [funcionarioVinculoPorNome, setFuncionarioVinculoPorNome] = useState<Record<string, string>>({});
+  const [vinculandoNomePdf, setVinculandoNomePdf] = useState<string | null>(null);
 
   const analisarMutation = trpc.rhPonto.analisarImportacao.useMutation();
+  const vincularNomeFuncionarioMutation = trpc.rhPonto.vincularNomeFuncionario.useMutation();
 
   const salvarImportacaoMutation = trpc.rhPonto.salvarImportacao.useMutation({
     onSuccess: async () => {
@@ -727,6 +746,8 @@ export default function RHMeuDia() {
     setArquivoNome("");
     setArquivoHash(null);
     setMensagemModal("");
+    setFuncionarioVinculoPorNome({});
+    setVinculandoNomePdf(null);
   }
 
   function abrirConferencia(periodo: PeriodoPonto) {
@@ -773,6 +794,53 @@ export default function RHMeuDia() {
       );
     } finally {
       setProcessandoPdf(false);
+    }
+  }
+
+  async function vincularFuncionarioDoPdf(item: AnaliseItem) {
+    if (!periodoAberto || registrosImportados.length === 0) return;
+
+    const nomePdf = String(item.nomePdf || "").trim();
+    const funcionarioId = Number(funcionarioVinculoPorNome[nomePdf] || 0);
+
+    if (!nomePdf) {
+      setMensagemModal("Não foi possível identificar o nome vindo do PDF.");
+      return;
+    }
+
+    if (!funcionarioId) {
+      setMensagemModal("Selecione o funcionário correto antes de vincular.");
+      return;
+    }
+
+    setVinculandoNomePdf(nomePdf);
+    setMensagemModal("");
+
+    try {
+      await vincularNomeFuncionarioMutation.mutateAsync({
+        lojaId: lojaIdAtual,
+        nomePdf,
+        funcionarioId,
+      });
+
+      const resposta = await analisarMutation.mutateAsync({
+        lojaId: lojaIdAtual,
+        dataReferencia,
+        periodo: periodoAberto,
+        registros: registrosImportados,
+      });
+
+      setAnalise(resposta as AnalisePonto);
+      await pendenciasQuery.refetch();
+      setFuncionarioVinculoPorNome((atual) => {
+        const proximo = { ...atual };
+        delete proximo[nomePdf];
+        return proximo;
+      });
+    } catch (error: any) {
+      setMensagemModal(error?.message || "Não foi possível vincular o funcionário.");
+    } finally {
+      setVinculandoNomePdf(null);
     }
   }
 
@@ -1469,6 +1537,57 @@ export default function RHMeuDia() {
                                   <p className="mt-1 text-[11px] opacity-60">
                                     Previsto: {item.horarioPrevisto || "—"} • Realizado: {item.horarioBatida || "—"}
                                   </p>
+                                )}
+
+                                {item.status === "nao_identificado" && item.nomePdf && (
+                                  <div className="mt-3 rounded-xl border border-[#D4AF37]/20 bg-black/20 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#F2D675]">
+                                      Nome recebido do Secullum
+                                    </p>
+                                    <p className="mt-1 text-xs font-bold text-white">{item.nomePdf}</p>
+
+                                    <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+                                      <Select
+                                        value={funcionarioVinculoPorNome[item.nomePdf] || ""}
+                                        onValueChange={(valor) =>
+                                          setFuncionarioVinculoPorNome((atual) => ({
+                                            ...atual,
+                                            [item.nomePdf as string]: valor,
+                                          }))
+                                        }
+                                      >
+                                        <SelectTrigger className="h-10 border-[#D4AF37]/25 bg-[#111111] text-xs text-white">
+                                          <SelectValue placeholder="Selecionar funcionário correto" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-72 border-[#D4AF37]/20 bg-[#111111] text-white">
+                                          {funcionariosVinculaveis.map((funcionario) => (
+                                            <SelectItem key={funcionario.id} value={String(funcionario.id)}>
+                                              {funcionario.nome}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        disabled={
+                                          !funcionarioVinculoPorNome[item.nomePdf] ||
+                                          vinculandoNomePdf === item.nomePdf ||
+                                          vincularNomeFuncionarioMutation.isPending ||
+                                          analisarMutation.isPending
+                                        }
+                                        onClick={() => void vincularFuncionarioDoPdf(item)}
+                                        className="h-10 bg-[#D4AF37] px-4 text-xs font-black text-black hover:bg-[#E6C760] disabled:opacity-40"
+                                      >
+                                        {vinculandoNomePdf === item.nomePdf ? "Vinculando..." : "Vincular funcionário"}
+                                      </Button>
+                                    </div>
+
+                                    <p className="mt-2 text-[10px] leading-4 text-gray-500">
+                                      O vínculo fica salvo para os próximos relatórios desta loja. Depois de vincular, esta conferência será recalculada automaticamente.
+                                    </p>
+                                  </div>
                                 )}
                               </div>
 
