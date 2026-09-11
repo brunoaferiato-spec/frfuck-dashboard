@@ -985,6 +985,16 @@ export default function Home() {
   const [loginSenha, setLoginSenha] = useState("");
   const [loginErro, setLoginErro] = useState("");
 
+  const roleAtual = String(user?.role || "");
+  const ehUsuarioRh = roleAtual === "rh";
+  const ehCaixaLiderAcesso = ehUsuarioRh && Number(user?.lojaId || 0) > 0;
+
+  useEffect(() => {
+    if (!user || !ehUsuarioRh) return;
+
+    navigate(ehCaixaLiderAcesso ? "/rh/meu-dia" : "/rh/gestao");
+  }, [user, ehUsuarioRh, ehCaixaLiderAcesso, navigate]);
+
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async (data) => {
       try {
@@ -1032,7 +1042,7 @@ export default function Home() {
   const mesNumero = Number(mes);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || ehUsuarioRh) {
       setCarregando(false);
       setDashboard(null);
       return;
@@ -1117,7 +1127,7 @@ export default function Home() {
     return () => {
       cancelado = true;
     };
-  }, [user, escopo, anoNumero, mesNumero, utils]);
+  }, [user, ehUsuarioRh, escopo, anoNumero, mesNumero, utils]);
 
   const totais = useMemo(() => {
     const lojas = dashboard?.lojas || [];
@@ -1177,6 +1187,7 @@ export default function Home() {
     { label: "Dashboard", icon: LayoutDashboard, rota: "/", ativo: true },
     { label: "Folha de Pagamento", icon: WalletCards, rota: "/folha-pagamento" },
     { label: "RH / Funcionários", icon: Users, rota: "/funcionarios" },
+    { label: "Gestão RH", icon: ShieldCheck, rota: "/rh/gestao", adminOnly: true },
     { label: "Análise de Funcionários", icon: UserRoundSearch, rota: "/analise-funcionario" },
     { label: "Usuários", icon: ShieldCheck, rota: "/usuarios", adminOnly: true },
   ];
@@ -1270,6 +1281,14 @@ export default function Home() {
             </p>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (ehUsuarioRh) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <Loader2 className="h-8 w-8 animate-spin text-[#F2D675]" />
       </div>
     );
   }

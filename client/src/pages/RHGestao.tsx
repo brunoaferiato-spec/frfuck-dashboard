@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
+  Download,
   FileWarning,
   LayoutDashboard,
   LogOut,
@@ -128,6 +129,66 @@ function formatarHorarioData(valor: unknown) {
   }).format(data);
 }
 
+function formatarDataHora(valor: unknown) {
+  if (!valor) return "";
+
+  const data = new Date(String(valor));
+  if (Number.isNaN(data.getTime())) return "";
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(data);
+}
+
+function formatarMoeda(valor: unknown) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(Number(valor || 0));
+}
+
+function labelMotivoCaixa(valor: unknown) {
+  const motivo = String(valor || "");
+
+  if (motivo === "diferenca_caixa") return "Diferença de caixa";
+  if (motivo === "uber_aberto") return "Uber em aberto";
+  if (motivo === "pagamento_dinheiro_pix_aberto") {
+    return "Pagamento em dinheiro ou PIX em aberto";
+  }
+  if (motivo === "outro") return "Outros";
+
+  return motivo || "—";
+}
+
+function statusCaixa(fechamento: any) {
+  const diferenca = Number(fechamento?.diferenca || 0);
+  const diferencaAbsoluta = Math.abs(diferenca);
+
+  if (diferencaAbsoluta < 0.005) {
+    return {
+      label: "Caixa correto",
+      classe:
+        "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-300",
+    };
+  }
+
+  if (diferencaAbsoluta <= 5) {
+    return {
+      label: "Diferença dentro da margem",
+      classe: "border-amber-400/20 bg-amber-400/[0.05] text-amber-300",
+    };
+  }
+
+  return {
+    label: "Diferença fora da margem",
+    classe: "border-rose-400/20 bg-rose-400/[0.05] text-rose-300",
+  };
+}
+
 function normalizarTexto(valor: unknown) {
   return String(valor || "")
     .normalize("NFD")
@@ -154,12 +215,23 @@ function labelPendenciaRh(p: any) {
 export default function RHGestao() {
   const { user, logout } = useAuth();
   const [, navigate] = useLocation();
+  const utils = trpc.useUtils();
 
   const roleAtual = String(user?.role || "");
   const podeVoltarDashboardGeral =
     roleAtual === "admin" || roleAtual === "gestor";
 
   const hoje = hojeCivil();
+
+  const [caixaDataFiltro, setCaixaDataFiltro] = useState(hoje);
+  const [caixaLojaFiltro, setCaixaLojaFiltro] = useState("todas");
+  const [caixaFiltroAplicado, setCaixaFiltroAplicado] = useState<{
+    data: string;
+    loja: string;
+  } | null>(null);
+  const [caixaErroRelatorio, setCaixaErroRelatorio] = useState("");
+  const [caixaBaixandoId, setCaixaBaixandoId] = useState<number | null>(null);
+
   const [dataInicio, setDataInicio] = useState(hoje);
   const [dataFim, setDataFim] = useState(hoje);
   const [lojaFiltro, setLojaFiltro] = useState("todas");
@@ -193,6 +265,21 @@ export default function RHGestao() {
     { retry: false }
   );
 
+  const fechamentosCaixaQuery = trpc.rhCaixa.historico.useQuery(
+    {
+      dataInicio: caixaFiltroAplicado?.data || hoje,
+      dataFim: caixaFiltroAplicado?.data || hoje,
+      lojaId:
+        caixaFiltroAplicado && caixaFiltroAplicado.loja !== "todas"
+          ? Number(caixaFiltroAplicado.loja)
+          : null,
+    },
+    {
+      enabled: Boolean(caixaFiltroAplicado),
+      retry: false,
+    }
+  );
+
   const historico = useMemo(
     () => ((historicoQuery.data || []) as any[]),
     [historicoQuery.data]
@@ -201,6 +288,11 @@ export default function RHGestao() {
   const pendencias = useMemo(
     () => ((pendenciasQuery.data || []) as any[]),
     [pendenciasQuery.data]
+  );
+
+  const fechamentosCaixa = useMemo(
+    () => ((fechamentosCaixaQuery.data || []) as any[]),
+    [fechamentosCaixaQuery.data]
   );
 
   const historicoFiltrado = useMemo(() => {
@@ -249,6 +341,76 @@ export default function RHGestao() {
     };
   }, [historico, pendencias]);
 
+  function buscarFechamentosCaixa() {
+    const proximoFiltro = {
+      data: caixaDataFiltro,
+      loja: caixaLojaFiltro,
+    };
+
+    setCaixaErroRelatorio("");
+
+    const mesmoFiltro =
+      caixaFiltroAplicado?.data === proximoFiltro.data &&
+      caixaFiltroAplicado?.loja === proximoFiltro.loja;
+
+    if (mesmoFiltro) {
+      fechamentosCaixaQuery.refetch();
+      return;
+    }
+
+    setCaixaFiltroAplicado(proximoFiltro);
+  }
+
+  async function baixarRelatorioCaixa(fechamento: any) {
+    setCaixaErroRelatorio("");
+    setCaixaBaixandoId(Number(fechamento.id));
+
+    try {
+      const resposta = await utils.rhCaixa.relatorioUrl.fetch({
+        fechamentoId: Number(fechamento.id),
+        lojaId: Number(fechamento.lojaId),
+      });
+
+      if (resposta.base64) {
+        const binario = atob(resposta.base64);
+        const bytes = new Uint8Array(binario.length);
+
+        for (let i = 0; i < binario.length; i += 1) {
+          bytes[i] = binario.charCodeAt(i);
+        }
+
+        const blob = new Blob([bytes], {
+          type:
+            resposta.mime ||
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = resposta.nome || "relatorio-caixa.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+        return;
+      }
+
+      if (resposta.url) {
+        window.open(resposta.url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      throw new Error("Relatório original não encontrado.");
+    } catch (error: any) {
+      setCaixaErroRelatorio(
+        error?.message || "Não foi possível acessar o relatório original."
+      );
+    } finally {
+      setCaixaBaixandoId(null);
+    }
+  }
+
   async function sair() {
     await logout();
     navigate("/");
@@ -257,6 +419,12 @@ export default function RHGestao() {
   function abrirHistoricoPonto() {
     document
       .getElementById("historico-ponto")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function abrirFechamentosCaixa() {
+    document
+      .getElementById("fechamentos-caixa")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -393,7 +561,7 @@ export default function RHGestao() {
                     modulo.titulo === "Conferência de Ponto"
                       ? abrirHistoricoPonto
                       : modulo.titulo === "Conferência de Caixa"
-                      ? () => navigate("/rh/caixa")
+                      ? abrirFechamentosCaixa
                       : undefined
                   }
                   className={`border-white/[0.08] bg-[#0b0b0b] transition hover:border-[#D4AF37]/25 ${
@@ -429,6 +597,228 @@ export default function RHGestao() {
                           : "Ver histórico ↓"}
                       </p>
                     )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+
+        <section id="fechamentos-caixa" className="mt-8 scroll-mt-6">
+          <div className="mb-4">
+            <p className="text-xl font-black text-white">Fechamentos de Caixa</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Consulte o fechamento realizado pela Caixa Líder por loja e data.
+            </p>
+          </div>
+
+          <Card className="border-[#D4AF37]/15 bg-[#0b0b0b]">
+            <CardContent className="p-4 sm:p-5">
+              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-gray-400">
+                    Loja
+                  </label>
+                  <Select
+                    value={caixaLojaFiltro}
+                    onValueChange={setCaixaLojaFiltro}
+                  >
+                    <SelectTrigger className="h-11 w-full border-white/10 bg-black/30 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="border-white/10 bg-[#111111] text-white">
+                      <SelectItem value="todas">Todas as lojas</SelectItem>
+                      {lojas.map((loja) => (
+                        <SelectItem key={loja.id} value={String(loja.id)}>
+                          {loja.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-gray-400">
+                    Data
+                  </label>
+                  <input
+                    type="date"
+                    value={caixaDataFiltro}
+                    onChange={(event) => setCaixaDataFiltro(event.target.value)}
+                    className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50"
+                  />
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={buscarFechamentosCaixa}
+                  disabled={!caixaDataFiltro || fechamentosCaixaQuery.isFetching}
+                  className="h-11 bg-[#D4AF37] px-6 font-bold text-black hover:bg-[#E6C760]"
+                >
+                  <Search className="mr-2 h-4 w-4" />
+                  {fechamentosCaixaQuery.isFetching ? "Buscando..." : "Buscar"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {caixaErroRelatorio && (
+            <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/[0.05] p-4 text-sm text-rose-200">
+              {caixaErroRelatorio}
+            </div>
+          )}
+
+          <div className="mt-4 space-y-3">
+            {!caixaFiltroAplicado && (
+              <div className="rounded-2xl border border-white/[0.08] bg-[#0b0b0b] p-5 text-sm text-gray-500">
+                Selecione a loja e a data e clique em Buscar.
+              </div>
+            )}
+
+            {caixaFiltroAplicado && fechamentosCaixaQuery.isLoading && (
+              <div className="rounded-2xl border border-white/[0.08] bg-[#0b0b0b] p-5 text-sm text-gray-500">
+                Carregando fechamentos...
+              </div>
+            )}
+
+            {caixaFiltroAplicado && fechamentosCaixaQuery.error && (
+              <div className="rounded-2xl border border-rose-400/20 bg-rose-400/[0.05] p-5 text-sm text-rose-200">
+                {fechamentosCaixaQuery.error.message}
+              </div>
+            )}
+
+            {caixaFiltroAplicado &&
+              !fechamentosCaixaQuery.isLoading &&
+              !fechamentosCaixaQuery.error &&
+              fechamentosCaixa.length === 0 && (
+                <div className="rounded-2xl border border-white/[0.08] bg-[#0b0b0b] p-5 text-sm text-gray-500">
+                  Nenhum fechamento encontrado para a loja e data selecionadas.
+                </div>
+              )}
+
+            {fechamentosCaixa.map((fechamento: any) => {
+              const status = statusCaixa(fechamento);
+              const diferenca = Number(fechamento.diferenca || 0);
+
+              return (
+                <Card
+                  key={fechamento.id}
+                  className="border-white/[0.08] bg-[#0b0b0b]"
+                >
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] px-2.5 py-1 text-xs font-black text-[#F2D675]">
+                            {fechamento.lojaNome}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {formatarData(fechamento.dataReferencia)}
+                          </span>
+                        </div>
+
+                        <p className="mt-3 text-lg font-black text-white">
+                          {fechamento.contaNome || "CAIXA"}
+                        </p>
+
+                        <p className="mt-1 text-xs text-gray-500">
+                          Fechado por{" "}
+                          <strong className="text-gray-300">
+                            {fechamento.fechadoPorNome || "Usuário não informado"}
+                          </strong>
+                          {fechamento.fechadoEm
+                            ? ` • ${formatarDataHora(fechamento.fechadoEm)}`
+                            : ""}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`rounded-full border px-3 py-1.5 text-xs font-black ${status.classe}`}
+                      >
+                        {status.label}
+                      </span>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Saldo Final esperado
+                        </p>
+                        <p className="mt-1 text-lg font-black text-white">
+                          {formatarMoeda(fechamento.saldoFinal)}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Dinheiro contado
+                        </p>
+                        <p className="mt-1 text-lg font-black text-white">
+                          {formatarMoeda(fechamento.totalFisico)}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Diferença
+                        </p>
+                        <p
+                          className={`mt-1 text-lg font-black ${
+                            Math.abs(diferenca) < 0.005
+                              ? "text-emerald-300"
+                              : Math.abs(diferenca) <= 5
+                              ? "text-amber-300"
+                              : "text-rose-300"
+                          }`}
+                        >
+                          {formatarMoeda(diferenca)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Motivo
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-gray-200">
+                          {labelMotivoCaixa(fechamento.justificativaTipo)}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Observação
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-gray-300">
+                          {fechamento.justificativaObservacao || "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                          Relatório original
+                        </p>
+                        <p className="mt-1 max-w-xl truncate text-xs text-[#F2D675]/70">
+                          {fechamento.relatorioNome || "relatorio-caixa.xlsx"}
+                        </p>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => baixarRelatorioCaixa(fechamento)}
+                        disabled={caixaBaixandoId === Number(fechamento.id)}
+                        className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        {caixaBaixandoId === Number(fechamento.id)
+                          ? "Abrindo..."
+                          : "Baixar relatório XLSX"}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               );

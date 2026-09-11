@@ -8,6 +8,7 @@ import {
   decimal,
   boolean,
   json,
+  date,
 } from "drizzle-orm/mysql-core";
 
 /**
@@ -74,6 +75,12 @@ export const funcionarios = mysqlTable("funcionarios", {
   ]).notNull(),
   tipoMeta: mysqlEnum("tipoMeta", ["meta1", "meta2"]),
   dataAdmissao: timestamp("dataAdmissao").notNull(),
+  cargoConfianca: boolean("cargoConfianca").default(false).notNull(),
+  horarioEntrada1: varchar("horarioEntrada1", { length: 5 }),
+  duracaoAlmocoMinutos: int("duracaoAlmocoMinutos"),
+  horarioSaida1: varchar("horarioSaida1", { length: 5 }),
+  horarioEntrada2: varchar("horarioEntrada2", { length: 5 }),
+  horarioSaida2: varchar("horarioSaida2", { length: 5 }),
   dataDesligamento: timestamp("dataDesligamento"),
   dataReativacao: timestamp("data_reativacao"),
   motivoDesligamento: varchar("motivoDesligamento", { length: 100 }),
@@ -475,3 +482,61 @@ export const auditoria = mysqlTable("auditoria", {
 
 export type Auditoria = typeof auditoria.$inferSelect;
 export type InsertAuditoria = typeof auditoria.$inferInsert;
+
+/**
+ * RH - Conferências diárias de ponto.
+ * Uma conferência por loja/data/período.
+ */
+export const rhPontoConferencias = mysqlTable("rh_ponto_conferencias", {
+  id: int("id").autoincrement().primaryKey(),
+  lojaId: int("lojaId").notNull(),
+  dataReferencia: date("dataReferencia").notNull(),
+  periodo: mysqlEnum("periodo", [
+    "entrada",
+    "saida_almoco",
+    "retorno_almoco",
+    "saida",
+  ]).notNull(),
+  horarioPrevisto: varchar("horarioPrevisto", { length: 5 }).notNull(),
+  conferidoPorUsuarioId: int("conferidoPorUsuarioId").notNull(),
+  conferidoPorNome: varchar("conferidoPorNome", { length: 255 }).notNull(),
+  conferidoEm: timestamp("conferidoEm").notNull(),
+  observacao: text("observacao"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RhPontoConferencia = typeof rhPontoConferencias.$inferSelect;
+export type InsertRhPontoConferencia = typeof rhPontoConferencias.$inferInsert;
+
+/**
+ * RH - Exceções encontradas durante cada conferência de ponto.
+ * Atrasos já nascem com advertência pendente.
+ */
+export const rhPontoOcorrencias = mysqlTable("rh_ponto_ocorrencias", {
+  id: int("id").autoincrement().primaryKey(),
+  conferenciaId: int("conferenciaId").notNull(),
+  lojaId: int("lojaId").notNull(),
+  funcionarioId: int("funcionarioId").notNull(),
+  horarioPrevisto: varchar("horarioPrevisto", { length: 5 }).notNull(),
+  horarioBatida: varchar("horarioBatida", { length: 5 }).notNull(),
+  minutosAtraso: int("minutosAtraso").default(0).notNull(),
+  observacao: text("observacao"),
+  advertenciaObrigatoria: boolean("advertenciaObrigatoria").default(false).notNull(),
+  advertenciaStatus: mysqlEnum("advertenciaStatus", [
+    "pendente",
+    "anexada",
+    "dispensada",
+  ]).default("dispensada").notNull(),
+  advertenciaArquivoNome: varchar("advertenciaArquivoNome", { length: 255 }),
+  advertenciaArquivoUrl: text("advertenciaArquivoUrl"),
+  advertenciaAnexadaEm: timestamp("advertenciaAnexadaEm"),
+  advertenciaAnexadaPorUsuarioId: int("advertenciaAnexadaPorUsuarioId"),
+  advertenciaAnexadaPorNome: varchar("advertenciaAnexadaPorNome", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type RhPontoOcorrencia = typeof rhPontoOcorrencias.$inferSelect;
+export type InsertRhPontoOcorrencia = typeof rhPontoOcorrencias.$inferInsert;
+

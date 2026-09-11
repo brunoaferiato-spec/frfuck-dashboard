@@ -5,6 +5,7 @@ import {
   ArrowRightLeft,
   Building2,
   CalendarDays,
+  Clock3,
   Loader2,
   Pencil,
   Plus,
@@ -31,8 +32,6 @@ const IMPORT_PENDENTE_STORAGE_KEY = "folha-importacao-pendente-v1";
 const IMPORT_ADIANT_PENDENTE_STORAGE_KEY = "folha-importacao-adiant-pendente-v1";
 const IMPORT_HOLERITE_PENDENTE_STORAGE_KEY = "folha-importacao-holerite-pendente-v1";
 const TROCA_FUNCAO_SUGERIDA_STORAGE_KEY = "folha-troca-funcao-sugerida-v1";
-const CADASTRO_RETORNO_FOLHA_STORAGE_KEY = "folha-cadastro-retorno-v1";
-const CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY = "folha-cadastro-concluido-v1";
 
 const LOJAS = [
   { id: 1, nome: "Joinville" },
@@ -81,6 +80,12 @@ type FuncionarioItem = {
   funcao: FuncaoId;
   tipoMeta?: TipoMeta | null;
   dataAdmissao?: string | Date | null;
+  cargoConfianca?: boolean | number | null;
+  horarioEntrada1?: string | null;
+  duracaoAlmocoMinutos?: number | null;
+  horarioSaida1?: string | null;
+  horarioEntrada2?: string | null;
+  horarioSaida2?: string | null;
   dataDesligamento?: string | Date | null;
   dataReativacao?: string | Date | null;
   status?: string | null;
@@ -94,23 +99,10 @@ type FormFuncionario = {
   funcao: FuncaoId;
   tipoMeta: TipoMeta;
   dataAdmissao: string;
-};
-
-type TrocaFuncaoItem = {
-  id: number;
-  funcionarioId: number;
-  lojaId: number;
-  funcaoAnterior: FuncaoId;
-  funcaoNova: FuncaoId;
-  tipoMetaAnterior?: string | null;
-  tipoMetaNovo?: string | null;
-  dataMudanca: string | Date;
-  usuarioNome?: string | null;
-  criadoEm?: string | Date | null;
-  ultimaDataAnterior?: string | Date | null;
-  ultimaDataNova?: string | Date | null;
-  corrigidoPor?: string | null;
-  corrigidoEm?: string | Date | null;
+  cargoConfianca: boolean;
+  horarioEntrada1: string;
+  duracaoAlmocoMinutos: string;
+  horarioSaida2: string;
 };
 
 function hojeInput() {
@@ -132,6 +124,10 @@ function criarFormVazio(lojaId?: number): FormFuncionario {
     funcao: ehAci ? "administrativo" : "mecanico",
     tipoMeta: "",
     dataAdmissao: hojeInput(),
+    cargoConfianca: false,
+    horarioEntrada1: "",
+    duracaoAlmocoMinutos: "",
+    horarioSaida2: "",
   };
 }
 
@@ -179,6 +175,36 @@ function labelFuncao(funcao: string, lojaId?: number) {
   return FUNCOES.find((item) => item.id === funcao)?.nome ?? funcao;
 }
 
+
+function formatarDuracaoAlmoco(minutosRaw: number | string | null | undefined) {
+  const minutos = Number(minutosRaw || 0);
+  if (!Number.isFinite(minutos) || minutos <= 0) return "—";
+
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+
+  if (horas > 0 && resto > 0) return `${horas}h${String(resto).padStart(2, "0")}`;
+  if (horas > 0) return `${horas}h`;
+  return `${resto}min`;
+}
+
+function jornadaResumo(func: FuncionarioItem) {
+  if (Boolean(Number(func.cargoConfianca || 0))) {
+    return "Cargo de confiança • não bate ponto";
+  }
+
+  const entrada = String(func.horarioEntrada1 || "").trim();
+  const saida = String(func.horarioSaida2 || "").trim();
+  const almoco = Number(func.duracaoAlmocoMinutos || 0);
+
+  if (!entrada && !saida && !almoco) {
+    return "Não cadastrada";
+  }
+
+  return `${entrada || "—"} • almoço ${formatarDuracaoAlmoco(almoco)} • ${saida || "—"}`;
+}
+
+
 export default function GestaoFuncionarios() {
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
@@ -222,8 +248,6 @@ export default function GestaoFuncionarios() {
     novoTipoMeta: TipoMeta;
     dataMudanca: string;
   }>({ novaFuncao: "", novoTipoMeta: "", dataMudanca: "" });
-  const [correcaoTrocaId, setCorrecaoTrocaId] = useState<number | null>(null);
-  const [correcaoTrocaData, setCorrecaoTrocaData] = useState("");
 
   const lojaId = Number(selectedLoja);
 
@@ -231,8 +255,7 @@ export default function GestaoFuncionarios() {
     if (typeof window === "undefined") return false;
 
     return Boolean(
-      window.sessionStorage.getItem(CADASTRO_RETORNO_FOLHA_STORAGE_KEY) ||
-        window.sessionStorage.getItem(IMPORT_PENDENTE_STORAGE_KEY) ||
+      window.sessionStorage.getItem(IMPORT_PENDENTE_STORAGE_KEY) ||
         window.sessionStorage.getItem(IMPORT_ADIANT_PENDENTE_STORAGE_KEY) ||
         window.sessionStorage.getItem(IMPORT_HOLERITE_PENDENTE_STORAGE_KEY)
     );
@@ -257,23 +280,12 @@ export default function GestaoFuncionarios() {
     }
   );
 
-  const trocasFuncionarioQuery = trpc.funcionarios.trocasByFuncionario.useQuery(
-    { funcionarioId: Number(editingId || 0), lojaId },
-    {
-      enabled: !!editingId && !!lojaId,
-      retry: false,
-      refetchOnWindowFocus: true,
-    }
-  );
-
   const fecharFormulario = () => {
     setIsOpen(false);
     setEditingId(null);
     setTentouSalvar(false);
     setTrocaFuncaoOpen(false);
     setTrocaFuncaoForm({ novaFuncao: "", novoTipoMeta: "", dataMudanca: "" });
-    setCorrecaoTrocaId(null);
-    setCorrecaoTrocaData("");
     setFormData(criarFormVazio(lojaId));
   };
 
@@ -295,7 +307,6 @@ export default function GestaoFuncionarios() {
     onSuccess: async (_result, variables) => {
       await utils.funcionarios.listByLoja.invalidate({ lojaId });
       await funcionariosQuery.refetch();
-      await trocasFuncionarioQuery.refetch();
       setFormData((prev) => ({
         ...prev,
         funcao: variables.novaFuncao as FuncaoId,
@@ -306,15 +317,6 @@ export default function GestaoFuncionarios() {
       }));
       setTrocaFuncaoOpen(false);
       setTrocaFuncaoForm({ novaFuncao: "", novoTipoMeta: "", dataMudanca: "" });
-    },
-  });
-
-  const corrigirDataTrocaMutation = trpc.funcionarios.corrigirDataTroca.useMutation({
-    onSuccess: async () => {
-      await trocasFuncionarioQuery.refetch();
-      setCorrecaoTrocaId(null);
-      setCorrecaoTrocaData("");
-      alert("Data da troca de função corrigida com sucesso.");
     },
   });
 
@@ -391,6 +393,13 @@ export default function GestaoFuncionarios() {
           ? "meta2"
           : (func.tipoMeta as TipoMeta) || "",
       dataAdmissao: formatDateInput(func.dataAdmissao),
+      cargoConfianca: Boolean(Number(func.cargoConfianca || 0)),
+      horarioEntrada1: func.horarioEntrada1 || "",
+      duracaoAlmocoMinutos:
+        func.duracaoAlmocoMinutos !== null && func.duracaoAlmocoMinutos !== undefined
+          ? String(func.duracaoAlmocoMinutos)
+          : "",
+      horarioSaida2: func.horarioSaida2 || "",
     });
     setIsOpen(true);
   };
@@ -467,51 +476,6 @@ export default function GestaoFuncionarios() {
     } catch (error: any) {
       console.error(error);
       alert(error?.message ?? "Erro ao trocar a função do funcionário");
-    }
-  };
-
-  const abrirCorrecaoDataTroca = (troca: TrocaFuncaoItem) => {
-    setCorrecaoTrocaId(Number(troca.id));
-    setCorrecaoTrocaData(formatDateInput(troca.dataMudanca));
-  };
-
-  const confirmarCorrecaoDataTroca = async (troca: TrocaFuncaoItem) => {
-    if (!funcionarioEmEdicao) return;
-
-    if (!correcaoTrocaData) {
-      alert("Informe a data correta da troca de função.");
-      return;
-    }
-
-    const dataAtual = formatDateInput(troca.dataMudanca);
-    if (dataAtual === correcaoTrocaData) {
-      alert("A nova data é igual à data já registrada.");
-      return;
-    }
-
-    const confirmar = window.confirm(
-      `Corrigir a data desta troca de função?\n\n` +
-        `${labelFuncao(troca.funcaoAnterior, lojaId)} → ${labelFuncao(
-          troca.funcaoNova,
-          lojaId
-        )}\n` +
-        `De: ${formatDateBR(dataAtual)}\n` +
-        `Para: ${formatDateBR(correcaoTrocaData)}\n\n` +
-        `A função atual não será alterada. A correção ficará registrada no histórico.`
-    );
-
-    if (!confirmar) return;
-
-    try {
-      await corrigirDataTrocaMutation.mutateAsync({
-        trocaFuncaoId: Number(troca.id),
-        funcionarioId: Number(funcionarioEmEdicao.id),
-        lojaId,
-        novaData: dateFromInput(correcaoTrocaData),
-      });
-    } catch (error: any) {
-      console.error(error);
-      alert(error?.message ?? "Erro ao corrigir a data da troca de função");
     }
   };
 
@@ -597,50 +561,20 @@ export default function GestaoFuncionarios() {
               : (formData.tipoMeta as "meta1" | "meta2")
             : null,
         dataAdmissao: dateFromInput(formData.dataAdmissao),
+        cargoConfianca: formData.cargoConfianca,
+        horarioEntrada1: formData.horarioEntrada1 || null,
+        duracaoAlmocoMinutos: formData.duracaoAlmocoMinutos
+          ? Number(formData.duracaoAlmocoMinutos)
+          : null,
+        horarioSaida1: null,
+        horarioEntrada2: null,
+        horarioSaida2: formData.horarioSaida2 || null,
       };
 
       if (editingId) {
         await updateFuncionario.mutateAsync({ id: editingId, ...payload });
-        voltarParaFolhaSeNecessario();
-        return;
-      }
-
-      const retornoCadastroRaw =
-        typeof window !== "undefined"
-          ? window.sessionStorage.getItem(CADASTRO_RETORNO_FOLHA_STORAGE_KEY)
-          : null;
-
-      let retornoCadastro: any = null;
-      if (retornoCadastroRaw) {
-        try {
-          retornoCadastro = JSON.parse(retornoCadastroRaw);
-        } catch (error) {
-          console.error("Erro ao ler contexto de retorno para a folha:", error);
-        }
-      }
-
-      const resultadoCadastro = await createFuncionario.mutateAsync(payload);
-      const funcionarioCriado = (resultadoCadastro as any)?.funcionario || null;
-
-      if (
-        ["importacao-semanal", "importacao-holerite"].includes(
-          String(retornoCadastro?.origem || "")
-        ) &&
-        funcionarioCriado?.id &&
-        typeof window !== "undefined"
-      ) {
-        window.sessionStorage.setItem(
-          CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY,
-          JSON.stringify({
-            ...retornoCadastro,
-            funcionarioId: Number(funcionarioCriado.id),
-            funcionarioNome: funcionarioCriado.nome || payload.nome,
-            funcionarioFuncao: funcionarioCriado.funcao || payload.funcao,
-          })
-        );
-        window.sessionStorage.removeItem(CADASTRO_RETORNO_FOLHA_STORAGE_KEY);
-        navigate("/folha-pagamento");
-        return;
+      } else {
+        await createFuncionario.mutateAsync(payload);
       }
 
       voltarParaFolhaSeNecessario();
@@ -655,8 +589,6 @@ export default function GestaoFuncionarios() {
   const funcionarioEmEdicao = editingId
     ? funcionariosBase.find((item) => Number(item.id) === Number(editingId)) || null
     : null;
-
-  const historicoTrocas = (trocasFuncionarioQuery.data ?? []) as TrocaFuncaoItem[];
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -920,7 +852,7 @@ export default function GestaoFuncionarios() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1180px] border-collapse">
+                <table className="w-full min-w-[1320px] border-collapse">
                   <thead>
                     <tr className="border-b border-[#D4AF37]/12 bg-[#0c0c0c]">
                       <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Funcionário</th>
@@ -928,6 +860,7 @@ export default function GestaoFuncionarios() {
                       <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Função</th>
                       <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Nascimento</th>
                       <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Admissão</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Jornada</th>
                       <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Status</th>
                       <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Ações</th>
                     </tr>
@@ -935,7 +868,7 @@ export default function GestaoFuncionarios() {
                   <tbody>
                     {funcionarios.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-16 text-center">
+                        <td colSpan={8} className="px-6 py-16 text-center">
                           <Users className="mx-auto mb-3 h-8 w-8 text-white/15" />
                           <p className="text-sm font-medium text-white/50">Nenhum funcionário encontrado</p>
                           <p className="mt-1 text-xs text-white/25">Altere a busca ou cadastre um novo funcionário.</p>
@@ -978,6 +911,22 @@ export default function GestaoFuncionarios() {
                             <div className="flex items-center gap-2 text-sm text-white/55">
                               <CalendarDays className="h-3.5 w-3.5 text-white/22" />
                               {formatDateBR(func.dataAdmissao)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="flex items-center gap-2 text-xs text-white/55">
+                              <Clock3 className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]/55" />
+                              <span
+                                className={
+                                  Boolean(Number(func.cargoConfianca || 0))
+                                    ? "text-emerald-300/85"
+                                    : jornadaResumo(func) === "Não cadastrada"
+                                    ? "text-orange-300/80"
+                                    : "text-white/65"
+                                }
+                              >
+                                {jornadaResumo(func)}
+                              </span>
                             </div>
                           </td>
                           <td className="px-4 py-4">
@@ -1164,6 +1113,111 @@ export default function GestaoFuncionarios() {
                 </div>
               </section>
 
+              <section className="rounded-2xl border border-[#D4AF37]/16 bg-gradient-to-br from-[#111009] to-[#0a0a0a] p-4 sm:p-5">
+                <div className="mb-4 flex items-start gap-3">
+                  <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2 text-[#F2D675]">
+                    <Clock3 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Jornada de trabalho</p>
+                    <p className="mt-1 text-xs leading-relaxed text-white/30">
+                      Cadastre somente a entrada fixa, o tempo obrigatório de almoço e a saída fixa.
+                      O horário em que o funcionário inicia o almoço pode variar.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/18 bg-[#D4AF37]/[0.05] p-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.cargoConfianca}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        cargoConfianca: e.target.checked,
+                      }))
+                    }
+                    className="mt-0.5 h-4 w-4 accent-[#D4AF37]"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-[#F2D675]">
+                      Cargo de confiança
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-relaxed text-white/40">
+                      Este funcionário não bate ponto e será excluído automaticamente das conferências do PDF.
+                    </span>
+                  </span>
+                </label>
+
+                {formData.cargoConfianca ? (
+                  <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] px-4 py-3 text-xs leading-relaxed text-emerald-200/80">
+                    Ponto dispensado. O funcionário não será cobrado por entrada, almoço ou saída e não aparecerá como ausente do relatório.
+                  </div>
+                ) : (
+                <>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div>
+                    <label className="mb-2 block text-xs font-medium text-white/50">
+                      Entrada fixa
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.horarioEntrada1}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, horarioEntrada1: e.target.value }))
+                      }
+                      className={classeCampo(false)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs font-medium text-white/50">
+                      Tempo de almoço
+                    </label>
+                    <select
+                      value={formData.duracaoAlmocoMinutos}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          duracaoAlmocoMinutos: e.target.value,
+                        }))
+                      }
+                      className={classeCampo(false)}
+                    >
+                      <option value="">Selecione</option>
+                      <option value="30">30 minutos</option>
+                      <option value="45">45 minutos</option>
+                      <option value="60">1 hora</option>
+                      <option value="90">1h30</option>
+                      <option value="120">2 horas</option>
+                      <option value="150">2h30</option>
+                      <option value="180">3 horas</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs font-medium text-white/50">
+                      Saída fixa
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.horarioSaida2}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, horarioSaida2: e.target.value }))
+                      }
+                      className={classeCampo(false)}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-xl border border-white/[0.055] bg-black/25 px-3 py-2.5 text-[11px] leading-relaxed text-white/35">
+                  Exemplo: Entrada 09:00 • Almoço 1 hora • Saída 18:00. Se o almoço começar às
+                  12:17, o sistema exigirá somente a duração cadastrada.
+                </div>
+                </>
+                )}
+              </section>
+
               <section className="rounded-2xl border border-[#D4AF37]/12 bg-gradient-to-br from-[#111009] to-[#0a0a0a] p-4 sm:p-5">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
@@ -1258,129 +1312,6 @@ export default function GestaoFuncionarios() {
                   )}
                 </div>
               </section>
-
-              {editingId && funcionarioEmEdicao && (
-                <section className="rounded-2xl border border-white/[0.07] bg-[#0b0b0b] p-4 sm:p-5">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-white">Histórico de função</p>
-                      <p className="mt-1 text-xs text-white/30">
-                        Consulte as movimentações registradas e corrija somente a data quando houver erro de digitação.
-                      </p>
-                    </div>
-                    <span className="rounded-full border border-white/[0.08] bg-white/[0.025] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-white/40">
-                      {historicoTrocas.length} movimentação{historicoTrocas.length === 1 ? "" : "ões"}
-                    </span>
-                  </div>
-
-                  {trocasFuncionarioQuery.isLoading ? (
-                    <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-black/20 p-4 text-sm text-white/35">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Carregando histórico...
-                    </div>
-                  ) : historicoTrocas.length === 0 ? (
-                    <div className="rounded-xl border border-white/[0.06] bg-black/20 p-4 text-sm text-white/30">
-                      Nenhuma troca de função registrada para este funcionário.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {historicoTrocas.map((troca) => {
-                        const corrigindo = correcaoTrocaId === Number(troca.id);
-                        const foiCorrigida = Boolean(troca.ultimaDataAnterior);
-
-                        return (
-                          <div
-                            key={troca.id}
-                            className="rounded-xl border border-white/[0.07] bg-black/25 p-4"
-                          >
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2 text-sm">
-                                  <span className="font-medium text-white/65">
-                                    {labelFuncao(troca.funcaoAnterior, lojaId)}
-                                  </span>
-                                  <ArrowRightLeft className="h-3.5 w-3.5 text-[#D4AF37]" />
-                                  <span className="font-semibold text-[#F2D675]">
-                                    {labelFuncao(troca.funcaoNova, lojaId)}
-                                  </span>
-                                </div>
-                                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-white/32">
-                                  <span>Data efetiva: {formatDateBR(troca.dataMudanca)}</span>
-                                  {troca.usuarioNome && <span>Registrada por: {troca.usuarioNome}</span>}
-                                </div>
-                                {foiCorrigida && (
-                                  <p className="mt-2 text-[11px] text-emerald-300/65">
-                                    Data corrigida anteriormente de {formatDateBR(troca.ultimaDataAnterior)} para {formatDateBR(troca.ultimaDataNova)}
-                                    {troca.corrigidoPor ? ` por ${troca.corrigidoPor}` : ""}.
-                                  </p>
-                                )}
-                              </div>
-
-                              {!corrigindo && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={() => abrirCorrecaoDataTroca(troca)}
-                                  className="h-9 shrink-0 rounded-lg border-[#D4AF37]/18 bg-[#D4AF37]/[0.035] px-3 text-xs text-[#F2D675] hover:border-[#D4AF37]/38 hover:bg-[#D4AF37]/[0.075] hover:text-[#F7DF86]"
-                                >
-                                  <Pencil className="mr-2 h-3.5 w-3.5" />
-                                  Corrigir data
-                                </Button>
-                              )}
-                            </div>
-
-                            {corrigindo && (
-                              <div className="mt-4 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.025] p-4">
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-                                  <div>
-                                    <label className="mb-2 block text-xs font-medium text-white/50">
-                                      Data correta da troca
-                                    </label>
-                                    <input
-                                      type="date"
-                                      value={correcaoTrocaData}
-                                      onChange={(e) => setCorrecaoTrocaData(e.target.value)}
-                                      className="h-10 w-full rounded-lg border border-[#D4AF37]/20 bg-[#080808] px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/10"
-                                    />
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    onClick={() => confirmarCorrecaoDataTroca(troca)}
-                                    disabled={corrigirDataTrocaMutation.isPending}
-                                    className="h-10 rounded-lg bg-[#D4AF37] px-4 font-bold text-black hover:bg-[#E7C553]"
-                                  >
-                                    {corrigirDataTrocaMutation.isPending ? (
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <CalendarDays className="mr-2 h-4 w-4" />
-                                    )}
-                                    Salvar correção
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    onClick={() => {
-                                      setCorrecaoTrocaId(null);
-                                      setCorrecaoTrocaData("");
-                                    }}
-                                    disabled={corrigirDataTrocaMutation.isPending}
-                                    className="h-10 rounded-lg text-white/45 hover:bg-white/[0.04] hover:text-white"
-                                  >
-                                    Cancelar
-                                  </Button>
-                                </div>
-                                <p className="mt-3 text-[10px] leading-relaxed text-white/25">
-                                  Esta ação corrige somente a data da movimentação e mantém a função atual. Se a nova data mudar a competência e já existir transição financeira, o sistema bloqueará a alteração para proteger a folha.
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-              )}
 
               {editingId && funcionarioEmEdicao && trocaFuncaoOpen && (
                 <section className="overflow-hidden rounded-2xl border border-orange-400/28 bg-gradient-to-br from-orange-500/[0.075] to-[#0b0908]">

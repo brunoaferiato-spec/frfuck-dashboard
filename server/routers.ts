@@ -45,6 +45,19 @@ import {
   getFolhaSem5Status,
   ativarFolhaSem5,
   desativarFolhaSem5,
+  getRhPontoDia,
+  getRhPontoHistorico,
+  analisarRhPontoImportacao,
+  salvarRhPontoImportacao,
+  salvarRhPontoConferencia,
+  getRhPontoPendencias,
+  criarRhPontoTratativa,
+  salvarDocumentoRhPontoTratativa,
+  getRhPontoTratativaDocumento,
+  getRhCaixaDia,
+  getRhCaixaHistorico,
+  salvarRhCaixaFechamento,
+  getRhCaixaRelatorioArquivo,
 } from "./db";
 
 import { signAuthToken, comparePassword, hashPassword } from "./auth";
@@ -54,6 +67,9 @@ import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { users } from "../drizzle/schema";
+import { storageGet, storagePut } from "./storage";
+import { createHash } from "node:crypto";
+import * as XLSX from "xlsx";
 
 const funcaoSchema = z.enum([
   "mecanico",
@@ -72,6 +88,424 @@ const funcaoSchema = z.enum([
   "gerente",
   "supervisor",
 ]);
+
+const horarioJornadaSchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null) return null;
+    const horario = String(value).trim();
+    return horario === "" ? null : horario;
+  },
+  z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Horário inválido")
+    .nullable()
+    .optional()
+);
+
+const duracaoAlmocoSchema = z.preprocess(
+  (value) => {
+    if (value === undefined || value === null || value === "") return null;
+    const numero = Number(value);
+    return Number.isFinite(numero) ? numero : value;
+  },
+  z
+    .number()
+    .int("Duração do almoço inválida")
+    .min(15, "O intervalo deve ter pelo menos 15 minutos")
+    .max(360, "O intervalo não pode ultrapassar 6 horas")
+    .nullable()
+    .optional()
+);
+
+
+
+
+const rhPontoPeriodoSchema = z.enum([
+  "entrada",
+  "saida_almoco",
+  "retorno_almoco",
+  "saida",
+]);
+
+const rhPontoBatidaPdfSchema = z
+  .string()
+  .regex(/^(([01]\d|2[0-3]):([0-5]\d)|FALTA)$/)
+  .nullable()
+  .optional();
+
+const rhPontoRegistroPdfSchema = z.object({
+  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  nomePdf: z.string().trim().min(1).max(255),
+  entrada1: rhPontoBatidaPdfSchema,
+  saida1: rhPontoBatidaPdfSchema,
+  entrada2: rhPontoBatidaPdfSchema,
+  saida2: rhPontoBatidaPdfSchema,
+});
+
+function assertAcessoRhPonto(
+  ctx: any,
+  lojaId: number,
+  modo: "operacional" | "consulta"
+) {
+  const role = String(ctx.user?.role || "");
+  const usuarioLojaId = Number(ctx.user?.lojaId || 0);
+
+  const adminOuGestor = role === "admin" || role === "gestor";
+  const rh = role === "rh";
+  const caixaLider = rh && usuarioLojaId > 0;
+  const liderRh = rh && usuarioLojaId <= 0;
+
+  if (modo === "consulta") {
+    if (!liderRh && !adminOuGestor) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Histórico disponível somente para a Líder de RH.",
+      });
+    }
+
+    return;
+  }
+
+  if (caixaLider) {
+    if (usuarioLojaId !== Number(lojaId)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "A Caixa Líder só pode conferir o ponto da própria loja.",
+      });
+    }
+
+    return;
+  }
+
+  if (!adminOuGestor) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Somente Caixa Líder, Admin ou Gestor podem realizar a conferência.",
+    });
+  }
+}
+
+
+function assertAcessoRhPontoPendencia(ctx: any, lojaId: number) {
+  const role = String(ctx.user?.role || "");
+  const usuarioLojaId = Number(ctx.user?.lojaId || 0);
+  const adminOuGestor = role === "admin" || role === "gestor";
+  const rh = role === "rh";
+  const caixaLider = rh && usuarioLojaId > 0;
+  const liderRh = rh && usuarioLojaId <= 0;
+
+  if (adminOuGestor || liderRh) return;
+  if (caixaLider && usuarioLojaId === Number(lojaId)) return;
+
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message: "Usuário sem acesso a esta pendência de ponto.",
+  });
+}
+
+function nomeArquivoSeguroRhPonto(nome: string) {
+  const limpo = String(nome || "documento")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "")
+    .slice(-120);
+  return limpo || "documento";
+}
+
+
+const rhCaixaContagemSchema = z.object({
+  cedula200: z.number().int().min(0).max(100000),
+  cedula100: z.number().int().min(0).max(100000),
+  cedula50: z.number().int().min(0).max(100000),
+  cedula20: z.number().int().min(0).max(100000),
+  cedula10: z.number().int().min(0).max(100000),
+  cedula5: z.number().int().min(0).max(100000),
+  cedula2: z.number().int().min(0).max(100000),
+  moeda1: z.number().int().min(0).max(100000),
+  moeda050: z.number().int().min(0).max(100000),
+  moeda025: z.number().int().min(0).max(100000),
+  moeda010: z.number().int().min(0).max(100000),
+  moeda005: z.number().int().min(0).max(100000),
+  moeda001: z.number().int().min(0).max(100000),
+});
+
+function assertAcessoRhCaixa(
+  ctx: any,
+  lojaId: number,
+  modo: "operacional" | "consulta"
+) {
+  const role = String(ctx.user?.role || "");
+  const usuarioLojaId = Number(ctx.user?.lojaId || 0);
+  const adminOuGestor = role === "admin" || role === "gestor";
+  const caixaLider = role === "rh" && usuarioLojaId > 0;
+  const liderRh = role === "rh" && usuarioLojaId <= 0;
+
+  if (modo === "consulta") {
+    if (!liderRh && !adminOuGestor) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Histórico de caixa disponível somente para a Líder de RH, Admin ou Gestor.",
+      });
+    }
+    return;
+  }
+
+  if (caixaLider) {
+    if (usuarioLojaId !== Number(lojaId)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "A Caixa Líder só pode fechar o caixa da própria loja.",
+      });
+    }
+    return;
+  }
+
+  if (!adminOuGestor) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Somente Caixa Líder, Admin ou Gestor podem realizar o fechamento de caixa.",
+    });
+  }
+}
+
+function assertAcessoRhCaixaArquivo(ctx: any, lojaId: number) {
+  const role = String(ctx.user?.role || "");
+  const usuarioLojaId = Number(ctx.user?.lojaId || 0);
+  const adminOuGestor = role === "admin" || role === "gestor";
+  const liderRh = role === "rh" && usuarioLojaId <= 0;
+  const caixaLider = role === "rh" && usuarioLojaId > 0;
+
+  if (adminOuGestor || liderRh) return;
+  if (caixaLider && usuarioLojaId === Number(lojaId)) return;
+
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message: "Usuário sem acesso a este relatório de caixa.",
+  });
+}
+
+function nomeArquivoSeguroRhCaixa(nome: string) {
+  const limpo = String(nome || "relatorio.xlsx")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "")
+    .slice(-120);
+  return limpo || "relatorio.xlsx";
+}
+
+function dataBrParaIsoRhCaixa(valor: string) {
+  const match = String(valor || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) throw new Error("Data inválida no relatório de caixa");
+  return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+function normalizarRotuloRhCaixa(valor: unknown) {
+  return String(valor ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/:/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function numeroRhCaixa(valor: unknown): number | null {
+  if (typeof valor === "number" && Number.isFinite(valor)) return valor;
+  if (valor === null || valor === undefined) return null;
+
+  let texto = String(valor).trim();
+  if (!texto) return null;
+  texto = texto.replace(/R\$/gi, "").replace(/\s+/g, "");
+
+  if (/^-?\d{1,3}(\.\d{3})*,\d+$/.test(texto) || /^-?\d+,\d+$/.test(texto)) {
+    texto = texto.replace(/\./g, "").replace(",", ".");
+  } else {
+    texto = texto.replace(/[^0-9.-]/g, "");
+  }
+
+  if (!texto || texto === "-" || texto === ".") return null;
+  const numero = Number(texto);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function bufferRhCaixaBase64(base64: string) {
+  const limpo = String(base64 || "").includes(",")
+    ? String(base64).split(",").pop() || ""
+    : String(base64 || "");
+
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(limpo, "base64");
+  } catch {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Arquivo do caixa inválido." });
+  }
+
+  if (!buffer.length || buffer.length > 5 * 1024 * 1024) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "O relatório de caixa deve ter no máximo 5 MB.",
+    });
+  }
+
+  return buffer;
+}
+
+function parsearRelatorioRhCaixa(buffer: Buffer) {
+  let workbook: XLSX.WorkBook;
+  try {
+    workbook = XLSX.read(buffer, { type: "buffer", cellDates: false });
+  } catch {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Não foi possível abrir o arquivo Excel. Exporte novamente o relatório em .xlsx.",
+    });
+  }
+
+  const linhas: any[][] = [];
+  for (const nomeAba of workbook.SheetNames) {
+    const aba = workbook.Sheets[nomeAba];
+    const dados = XLSX.utils.sheet_to_json<any[]>(aba, {
+      header: 1,
+      raw: true,
+      defval: null,
+    });
+    linhas.push(...dados);
+  }
+
+  if (!linhas.length) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "O relatório está vazio." });
+  }
+
+  let conta = "";
+  let dataInicio = "";
+  let dataFim = "";
+
+  for (const linha of linhas) {
+    for (const celula of linha || []) {
+      const texto = String(celula ?? "").trim();
+      if (!texto) continue;
+
+      if (!conta && /EXTRATO\s+CONTA\s*:/i.test(texto)) {
+        conta = texto.split(":").slice(1).join(":").trim();
+      }
+
+      if (!dataInicio) {
+        const periodo = texto.match(
+          /(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/
+        );
+        if (periodo) {
+          dataInicio = dataBrParaIsoRhCaixa(periodo[1]);
+          dataFim = dataBrParaIsoRhCaixa(periodo[2]);
+        }
+      }
+    }
+  }
+
+  if (!conta || !normalizarRotuloRhCaixa(conta).includes("CAIXA")) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "O arquivo não foi reconhecido como EXTRATO CONTA: CAIXA.",
+    });
+  }
+
+  if (!dataInicio || !dataFim) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Não foi possível identificar a data do relatório.",
+    });
+  }
+
+  if (dataInicio !== dataFim) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Para o fechamento diário, exporte o relatório de apenas um dia.",
+    });
+  }
+
+  const valoresDoRotulo = (rotulo: string) => {
+    const alvo = normalizarRotuloRhCaixa(rotulo);
+    const valores: number[] = [];
+
+    for (const linha of linhas) {
+      for (let coluna = 0; coluna < (linha || []).length; coluna += 1) {
+        if (normalizarRotuloRhCaixa(linha[coluna]) !== alvo) continue;
+
+        for (let seguinte = coluna + 1; seguinte < linha.length; seguinte += 1) {
+          const numero = numeroRhCaixa(linha[seguinte]);
+          if (numero !== null) {
+            valores.push(numero);
+            break;
+          }
+        }
+      }
+    }
+
+    return valores;
+  };
+
+  const valorUnico = (rotulo: string) => {
+    const valores = valoresDoRotulo(rotulo);
+    if (!valores.length) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Não foi possível localizar ${rotulo} no relatório.`,
+      });
+    }
+
+    const referencia = valores[valores.length - 1];
+    const divergente = valores.some(
+      (valor) => Math.abs(Math.round(valor * 100) - Math.round(referencia * 100)) > 1
+    );
+    if (divergente) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `O relatório possui valores divergentes para ${rotulo}.`,
+      });
+    }
+
+    return referencia;
+  };
+
+  const saldoInicial = valorUnico("SALDO INICIAL");
+  const totalCreditos = valorUnico("TOTAL CREDITOS");
+  const totalDebitos = valorUnico("TOTAL DEBITOS");
+  const saldoFinal = valorUnico("SALDO FINAL");
+
+  const calculadoCentavos = Math.round(
+    (saldoInicial + totalCreditos + totalDebitos) * 100
+  );
+  const saldoFinalCentavos = Math.round(saldoFinal * 100);
+  if (Math.abs(calculadoCentavos - saldoFinalCentavos) > 2) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Os totais do relatório não fecham com o Saldo Final. Gere o arquivo novamente.",
+    });
+  }
+
+  let totalMovimentos = 0;
+  for (const linha of linhas) {
+    const primeira = String(linha?.[0] ?? "").trim();
+    const tipo = String(linha?.[2] ?? "").trim().toUpperCase();
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(primeira) && tipo && tipo !== "10") {
+      totalMovimentos += 1;
+    }
+  }
+
+  return {
+    conta: conta || "CAIXA",
+    dataReferencia: dataInicio,
+    saldoInicial: Number(saldoInicial.toFixed(2)),
+    totalCreditos: Number(totalCreditos.toFixed(2)),
+    totalDebitos: Number(totalDebitos.toFixed(2)),
+    saldoFinal: Number(saldoFinal.toFixed(2)),
+    totalMovimentos,
+    arquivoHash: createHash("sha256").update(buffer).digest("hex"),
+  };
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -358,6 +792,12 @@ export const appRouter = router({
             z.enum(["meta1", "meta2"]).nullable().optional()
           ),
           dataAdmissao: z.coerce.date(),
+          cargoConfianca: z.boolean().optional(),
+          horarioEntrada1: horarioJornadaSchema,
+          duracaoAlmocoMinutos: duracaoAlmocoSchema,
+          horarioSaida1: horarioJornadaSchema,
+          horarioEntrada2: horarioJornadaSchema,
+          horarioSaida2: horarioJornadaSchema,
         })
       )
       .mutation(async ({ input }) => {
@@ -370,6 +810,12 @@ export const appRouter = router({
           funcao: input.funcao,
           tipoMeta: input.tipoMeta ?? null,
           dataAdmissao: input.dataAdmissao,
+          cargoConfianca: Boolean(input.cargoConfianca),
+          horarioEntrada1: input.horarioEntrada1 ?? null,
+          duracaoAlmocoMinutos: input.duracaoAlmocoMinutos ?? null,
+          horarioSaida1: input.horarioSaida1 ?? null,
+          horarioEntrada2: input.horarioEntrada2 ?? null,
+          horarioSaida2: input.horarioSaida2 ?? null,
         });
 
         return {
@@ -462,6 +908,12 @@ export const appRouter = router({
             z.enum(["meta1", "meta2"]).nullable().optional()
           ),
           dataAdmissao: z.coerce.date(),
+          cargoConfianca: z.boolean().optional(),
+          horarioEntrada1: horarioJornadaSchema,
+          duracaoAlmocoMinutos: duracaoAlmocoSchema,
+          horarioSaida1: horarioJornadaSchema,
+          horarioEntrada2: horarioJornadaSchema,
+          horarioSaida2: horarioJornadaSchema,
         })
       )
       .mutation(async ({ input }) => {
@@ -475,6 +927,12 @@ export const appRouter = router({
           funcao: input.funcao,
           tipoMeta: input.tipoMeta ?? null,
           dataAdmissao: input.dataAdmissao,
+          cargoConfianca: Boolean(input.cargoConfianca),
+          horarioEntrada1: input.horarioEntrada1 ?? null,
+          duracaoAlmocoMinutos: input.duracaoAlmocoMinutos ?? null,
+          horarioSaida1: input.horarioSaida1 ?? null,
+          horarioEntrada2: input.horarioEntrada2 ?? null,
+          horarioSaida2: input.horarioSaida2 ?? null,
         });
 
         return {
@@ -931,6 +1389,445 @@ export const appRouter = router({
           input.mes
         )
       ),
+  }),
+
+
+  rhPonto: router({
+    dia: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          dataReferencia: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        })
+      )
+      .query(async ({ input, ctx }) => {
+        const role = String(ctx.user.role || "");
+        const usuarioLojaId = Number(ctx.user.lojaId || 0);
+
+        if (role === "rh" && usuarioLojaId > 0 && usuarioLojaId !== input.lojaId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "A Caixa Líder só pode visualizar o dia da própria loja.",
+          });
+        }
+
+        if (
+          role !== "rh" &&
+          role !== "admin" &&
+          role !== "gestor"
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Usuário sem acesso ao RH.",
+          });
+        }
+
+        return getRhPontoDia(input.lojaId, input.dataReferencia);
+      }),
+
+    analisarImportacao: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          dataReferencia: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          periodo: rhPontoPeriodoSchema,
+          registros: z.array(rhPontoRegistroPdfSchema).min(1).max(1000),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        assertAcessoRhPonto(ctx, input.lojaId, "operacional");
+
+        return analisarRhPontoImportacao({
+          lojaId: input.lojaId,
+          dataReferencia: input.dataReferencia,
+          periodo: input.periodo,
+          registros: input.registros,
+        });
+      }),
+
+    salvarImportacao: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          dataReferencia: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          periodo: rhPontoPeriodoSchema,
+          arquivoNome: z.string().trim().min(1).max(255),
+          arquivoHash: z.string().max(128).nullable().optional(),
+          observacao: z.string().max(1000).nullable().optional(),
+          registros: z.array(rhPontoRegistroPdfSchema).min(1).max(1000),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        assertAcessoRhPonto(ctx, input.lojaId, "operacional");
+
+        return salvarRhPontoImportacao({
+          lojaId: input.lojaId,
+          dataReferencia: input.dataReferencia,
+          periodo: input.periodo,
+          arquivoNome: input.arquivoNome,
+          arquivoHash: input.arquivoHash ?? null,
+          observacao: input.observacao ?? null,
+          registros: input.registros,
+          usuarioId: Number(ctx.user.id),
+          usuarioNome:
+            ctx.user.name ||
+            ctx.user.email ||
+            `Usuário ${ctx.user.id}`,
+        });
+      }),
+
+    salvarConferencia: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          dataReferencia: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          periodo: rhPontoPeriodoSchema,
+          observacao: z.string().max(1000).nullable().optional(),
+          ocorrencias: z.array(
+            z.object({
+              funcionarioId: z.number(),
+              horarioBatida: z
+                .string()
+                .regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+              observacao: z.string().max(1000).nullable().optional(),
+            })
+          ),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        assertAcessoRhPonto(ctx, input.lojaId, "operacional");
+
+        return salvarRhPontoConferencia({
+          lojaId: input.lojaId,
+          dataReferencia: input.dataReferencia,
+          periodo: input.periodo,
+          observacao: input.observacao ?? null,
+          ocorrencias: input.ocorrencias,
+          usuarioId: Number(ctx.user.id),
+          usuarioNome:
+            ctx.user.name ||
+            ctx.user.email ||
+            `Usuário ${ctx.user.id}`,
+        });
+      }),
+
+
+    pendencias: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number().nullable().optional(),
+        })
+      )
+      .query(async ({ input, ctx }) => {
+        const role = String(ctx.user.role || "");
+        const usuarioLojaId = Number(ctx.user.lojaId || 0);
+        const adminOuGestor = role === "admin" || role === "gestor";
+        const liderRh = role === "rh" && usuarioLojaId <= 0;
+        const caixaLider = role === "rh" && usuarioLojaId > 0;
+
+        if (!adminOuGestor && !liderRh && !caixaLider) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Usuário sem acesso ao RH." });
+        }
+
+        const lojaId = caixaLider
+          ? usuarioLojaId
+          : input.lojaId === null || input.lojaId === undefined
+          ? null
+          : Number(input.lojaId);
+
+        return getRhPontoPendencias({ lojaId });
+      }),
+
+    criarTratativa: protectedProcedure
+      .input(
+        z.object({
+          ocorrenciaId: z.number().int().positive(),
+          lojaId: z.number().int().positive(),
+          tipo: z.enum(["advertencia", "atestado", "justificativa", "falta"]),
+          observacao: z.string().trim().max(1500).nullable().optional(),
+          diasAtestado: z.number().int().min(1).max(60).nullable().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        assertAcessoRhPontoPendencia(ctx, input.lojaId);
+
+        return criarRhPontoTratativa({
+          ocorrenciaId: input.ocorrenciaId,
+          lojaId: input.lojaId,
+          tipo: input.tipo,
+          observacao: input.observacao ?? null,
+          diasAtestado: input.diasAtestado ?? null,
+          usuarioId: Number(ctx.user.id),
+          usuarioNome: ctx.user.name || ctx.user.email || `Usuário ${ctx.user.id}`,
+        });
+      }),
+
+    anexarDocumentoTratativa: protectedProcedure
+      .input(
+        z.object({
+          tratativaId: z.number().int().positive(),
+          lojaId: z.number().int().positive(),
+          arquivoNome: z.string().trim().min(1).max(255),
+          arquivoMime: z.string().trim().min(1).max(120),
+          arquivoTamanho: z.number().int().positive().max(6 * 1024 * 1024),
+          arquivoBase64: z.string().min(1).max(9_000_000),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        assertAcessoRhPontoPendencia(ctx, input.lojaId);
+
+        const permitidos = new Set([
+          "application/pdf",
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/heic",
+          "image/heif",
+        ]);
+        if (!permitidos.has(input.arquivoMime)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Envie PDF, JPG, PNG, WEBP ou foto HEIC/HEIF.",
+          });
+        }
+
+        let buffer: Buffer;
+        try {
+          buffer = Buffer.from(input.arquivoBase64, "base64");
+        } catch {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Arquivo inválido." });
+        }
+
+        if (!buffer.length || buffer.length > 6 * 1024 * 1024) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "O documento deve ter no máximo 6 MB.",
+          });
+        }
+
+        const nomeSeguro = nomeArquivoSeguroRhPonto(input.arquivoNome);
+        const chave = `rh/ponto/${input.lojaId}/tratativa-${input.tratativaId}/${Date.now()}-${nomeSeguro}`;
+        const salvo = await storagePut(chave, buffer, input.arquivoMime);
+
+        await salvarDocumentoRhPontoTratativa({
+          tratativaId: input.tratativaId,
+          lojaId: input.lojaId,
+          documentoKey: salvo.key,
+          documentoNome: input.arquivoNome,
+          documentoMime: input.arquivoMime,
+          documentoTamanho: buffer.length,
+          usuarioId: Number(ctx.user.id),
+          usuarioNome: ctx.user.name || ctx.user.email || `Usuário ${ctx.user.id}`,
+        });
+
+        return { success: true };
+      }),
+
+    documentoTratativaUrl: protectedProcedure
+      .input(
+        z.object({
+          tratativaId: z.number().int().positive(),
+          lojaId: z.number().int().positive(),
+        })
+      )
+      .query(async ({ input, ctx }) => {
+        assertAcessoRhPontoPendencia(ctx, input.lojaId);
+        const documento = await getRhPontoTratativaDocumento(
+          input.tratativaId,
+          input.lojaId
+        );
+        if (!documento?.documentoKey) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Documento não anexado." });
+        }
+
+        const arquivo = await storageGet(documento.documentoKey);
+        return {
+          url: arquivo.url,
+          nome: documento.documentoNome || "documento",
+          mime: documento.documentoMime || "application/octet-stream",
+        };
+      }),
+
+    historico: protectedProcedure
+      .input(
+        z.object({
+          dataInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          dataFim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          lojaId: z.number().nullable().optional(),
+        })
+      )
+      .query(async ({ input, ctx }) => {
+        assertAcessoRhPonto(
+          ctx,
+          Number(input.lojaId || 0),
+          "consulta"
+        );
+
+        return getRhPontoHistorico({
+          dataInicio: input.dataInicio,
+          dataFim: input.dataFim,
+          lojaId: input.lojaId ?? null,
+        });
+      }),
+  }),
+
+  rhCaixa: router({
+    dia: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number().int().positive(),
+          dataReferencia: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        })
+      )
+      .query(async ({ input, ctx }) => {
+        assertAcessoRhCaixa(ctx, input.lojaId, "operacional");
+        return getRhCaixaDia(input.lojaId, input.dataReferencia);
+      }),
+
+    analisarRelatorio: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number().int().positive(),
+          arquivoNome: z.string().trim().min(1).max(255),
+          arquivoMime: z.string().trim().max(150).optional().default(""),
+          arquivoBase64: z.string().min(1).max(7_500_000),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        assertAcessoRhCaixa(ctx, input.lojaId, "operacional");
+
+        if (!/\.xlsx$/i.test(input.arquivoNome)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Envie o relatório em formato .xlsx.",
+          });
+        }
+
+        const buffer = bufferRhCaixaBase64(input.arquivoBase64);
+        return parsearRelatorioRhCaixa(buffer);
+      }),
+
+    salvarFechamento: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number().int().positive(),
+          dataReferencia: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          arquivoNome: z.string().trim().min(1).max(255),
+          arquivoMime: z.string().trim().max(150).optional().default(""),
+          arquivoBase64: z.string().min(1).max(7_500_000),
+          contagem: rhCaixaContagemSchema,
+          justificativaTipo: z.string().trim().max(60).nullable().optional(),
+          justificativaObservacao: z.string().trim().max(2000).nullable().optional(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        assertAcessoRhCaixa(ctx, input.lojaId, "operacional");
+
+        if (!/\.xlsx$/i.test(input.arquivoNome)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Envie o relatório em formato .xlsx.",
+          });
+        }
+
+        const buffer = bufferRhCaixaBase64(input.arquivoBase64);
+        const relatorio = parsearRelatorioRhCaixa(buffer);
+
+        if (relatorio.dataReferencia !== input.dataReferencia) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A data do relatório é diferente da data selecionada para o fechamento.",
+          });
+        }
+
+        const mime =
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+        return salvarRhCaixaFechamento({
+          lojaId: input.lojaId,
+          dataReferencia: input.dataReferencia,
+          contaNome: relatorio.conta,
+          relatorioNome: input.arquivoNome,
+          relatorioHash: relatorio.arquivoHash,
+          relatorioKey: null,
+          relatorioBase64: input.arquivoBase64,
+          relatorioMime: mime,
+          relatorioTamanho: buffer.length,
+          relatorioTotalMovimentos: relatorio.totalMovimentos,
+          saldoInicial: relatorio.saldoInicial,
+          totalCreditos: relatorio.totalCreditos,
+          totalDebitos: relatorio.totalDebitos,
+          saldoFinal: relatorio.saldoFinal,
+          contagem: input.contagem,
+          justificativaTipo: input.justificativaTipo ?? null,
+          justificativaObservacao: input.justificativaObservacao ?? null,
+          usuarioId: Number(ctx.user.id),
+          usuarioNome:
+            ctx.user.name ||
+            ctx.user.email ||
+            `Usuário ${ctx.user.id}`,
+        });
+      }),
+
+    historico: protectedProcedure
+      .input(
+        z.object({
+          dataInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          dataFim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          lojaId: z.number().int().positive().nullable().optional(),
+        })
+      )
+      .query(async ({ input, ctx }) => {
+        assertAcessoRhCaixa(ctx, Number(input.lojaId || 0), "consulta");
+        return getRhCaixaHistorico({
+          dataInicio: input.dataInicio,
+          dataFim: input.dataFim,
+          lojaId: input.lojaId ?? null,
+        });
+      }),
+
+    relatorioUrl: protectedProcedure
+      .input(
+        z.object({
+          fechamentoId: z.number().int().positive(),
+          lojaId: z.number().int().positive(),
+        })
+      )
+      .query(async ({ input, ctx }) => {
+        assertAcessoRhCaixaArquivo(ctx, input.lojaId);
+
+        const fechamento = await getRhCaixaRelatorioArquivo(
+          input.fechamentoId,
+          input.lojaId
+        );
+        if (fechamento?.relatorioBase64) {
+          return {
+            url: null as string | null,
+            base64: String(fechamento.relatorioBase64),
+            nome: fechamento.relatorioNome || "relatorio-caixa.xlsx",
+            mime:
+              fechamento.relatorioMime ||
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          };
+        }
+
+        if (fechamento?.relatorioKey) {
+          const arquivo = await storageGet(fechamento.relatorioKey);
+          return {
+            url: arquivo.url,
+            base64: null as string | null,
+            nome: fechamento.relatorioNome || "relatorio-caixa.xlsx",
+            mime:
+              fechamento.relatorioMime ||
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          };
+        }
+
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Relatório original não encontrado.",
+        });
+      }),
   }),
 
   compras: router({

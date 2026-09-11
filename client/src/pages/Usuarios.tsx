@@ -2,7 +2,15 @@ import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 
-type Role = "admin" | "gestor" | "rh" | "compras" | "financeiro";
+type PerfilAcesso =
+  | "admin"
+  | "gestor"
+  | "rh_lider"
+  | "rh_caixa"
+  | "compras"
+  | "financeiro";
+
+type RoleBackend = "admin" | "gestor" | "rh" | "compras" | "financeiro";
 
 type UserItem = {
   id: number;
@@ -15,11 +23,16 @@ type UserItem = {
   lastSignedIn?: Date | string | null;
 };
 
+type LojaItem = {
+  id: number;
+  nome: string;
+};
+
 const cardStyle: React.CSSProperties = {
   maxWidth: "1100px",
   margin: "20px auto",
-  background: "#07152b",
-  border: "1px solid #d4a017",
+  background: "#080808",
+  border: "1px solid rgba(212,160,23,0.45)",
   borderRadius: "16px",
   padding: "24px",
   boxShadow: "0 0 20px rgba(0,0,0,0.35)",
@@ -29,8 +42,8 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: "10px",
-  border: "1px solid #d4a017",
-  background: "#0b1730",
+  border: "1px solid rgba(212,160,23,0.55)",
+  background: "#111111",
   color: "#fff",
   outline: "none",
 };
@@ -72,6 +85,38 @@ const dangerButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+function perfilDoUsuario(user: UserItem): PerfilAcesso {
+  if (user.role === "rh") {
+    return Number(user.lojaId || 0) > 0 ? "rh_caixa" : "rh_lider";
+  }
+
+  if (
+    user.role === "admin" ||
+    user.role === "gestor" ||
+    user.role === "compras" ||
+    user.role === "financeiro"
+  ) {
+    return user.role;
+  }
+
+  return "gestor";
+}
+
+function roleBackendDoPerfil(perfil: PerfilAcesso): RoleBackend {
+  if (perfil === "rh_lider" || perfil === "rh_caixa") return "rh";
+  return perfil;
+}
+
+function nomePerfil(user: UserItem) {
+  if (user.role === "rh" && Number(user.lojaId || 0) > 0) return "Caixa Líder";
+  if (user.role === "rh") return "Líder RH";
+  if (user.role === "admin") return "Admin";
+  if (user.role === "gestor") return "Gestor";
+  if (user.role === "compras") return "Compras";
+  if (user.role === "financeiro") return "Financeiro";
+  return user.role;
+}
+
 export default function Usuarios() {
   const [, setLocation] = useLocation();
 
@@ -79,11 +124,16 @@ export default function Usuarios() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("gestor");
+  const [perfil, setPerfil] = useState<PerfilAcesso>("gestor");
+  const [lojaId, setLojaId] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [message, setMessage] = useState("");
 
   const usersQuery = trpc.auth.listUsers.useQuery(undefined, {
+    retry: false,
+  });
+
+  const lojasQuery = trpc.lojas.list.useQuery(undefined, {
     retry: false,
   });
 
@@ -121,6 +171,7 @@ export default function Usuarios() {
 
   const loading =
     usersQuery.isLoading ||
+    lojasQuery.isLoading ||
     registerMutation.isPending ||
     updateMutation.isPending ||
     deleteMutation.isPending;
@@ -129,12 +180,17 @@ export default function Usuarios() {
     return (usersQuery.data || []) as UserItem[];
   }, [usersQuery.data]);
 
+  const lojas = useMemo(() => {
+    return (lojasQuery.data || []) as LojaItem[];
+  }, [lojasQuery.data]);
+
   function resetForm() {
     setEditingUserId(null);
     setName("");
     setEmail("");
     setPassword("");
-    setRole("gestor");
+    setPerfil("gestor");
+    setLojaId("");
     setIsActive(true);
   }
 
@@ -143,7 +199,8 @@ export default function Usuarios() {
     setName(user.name || "");
     setEmail(user.email || "");
     setPassword("");
-    setRole((user.role as Role) || "gestor");
+    setPerfil(perfilDoUsuario(user));
+    setLojaId(user.lojaId ? String(user.lojaId) : "");
     setIsActive(Boolean(user.isActive));
     setMessage("");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -163,6 +220,14 @@ export default function Usuarios() {
     e.preventDefault();
     setMessage("");
 
+    if (perfil === "rh_caixa" && !lojaId) {
+      setMessage("Selecione a loja da Caixa Líder.");
+      return;
+    }
+
+    const role = roleBackendDoPerfil(perfil);
+    const lojaIdBackend = perfil === "rh_caixa" ? Number(lojaId) : null;
+
     if (editingUserId) {
       updateMutation.mutate({
         id: editingUserId,
@@ -170,7 +235,7 @@ export default function Usuarios() {
         email,
         password: password.trim() ? password : undefined,
         role,
-        lojaId: null,
+        lojaId: lojaIdBackend,
         isActive,
       });
       return;
@@ -181,7 +246,7 @@ export default function Usuarios() {
       email,
       password,
       role,
-      lojaId: null,
+      lojaId: lojaIdBackend,
     });
   }
 
@@ -189,16 +254,13 @@ export default function Usuarios() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#000",
+        background: "#050505",
         color: "#fff",
         padding: "20px",
       }}
     >
       <div style={{ maxWidth: "1100px", margin: "0 auto 10px auto" }}>
-        <button
-          onClick={() => setLocation("/")}
-          style={outlineButtonStyle}
-        >
+        <button onClick={() => setLocation("/")} style={outlineButtonStyle}>
           ← Voltar para Dashboard
         </button>
       </div>
@@ -216,8 +278,8 @@ export default function Usuarios() {
 
         <p style={{ color: "#cbd5e1", marginBottom: "24px" }}>
           {editingUserId
-            ? "Atualize os dados do usuário selecionado."
-            : "Cadastre um novo login para acessar o sistema."}
+            ? "Atualize os dados e o nível de acesso do usuário selecionado."
+            : "Cadastre um novo login e defina exatamente qual área ele poderá acessar."}
         </p>
 
         <form
@@ -236,6 +298,7 @@ export default function Usuarios() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               style={inputStyle}
+              required
             />
           </div>
 
@@ -247,6 +310,7 @@ export default function Usuarios() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={inputStyle}
+              required
             />
           </div>
 
@@ -260,23 +324,48 @@ export default function Usuarios() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               style={inputStyle}
+              required={!editingUserId}
             />
           </div>
 
           <div>
-            <label style={labelStyle}>Perfil</label>
+            <label style={labelStyle}>Perfil de acesso</label>
             <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
+              value={perfil}
+              onChange={(e) => {
+                const novoPerfil = e.target.value as PerfilAcesso;
+                setPerfil(novoPerfil);
+                if (novoPerfil !== "rh_caixa") setLojaId("");
+              }}
               style={inputStyle}
             >
               <option value="admin">Admin</option>
               <option value="gestor">Gestor</option>
-              <option value="rh">RH</option>
+              <option value="rh_lider">Líder RH</option>
+              <option value="rh_caixa">Caixa Líder</option>
               <option value="compras">Compras</option>
               <option value="financeiro">Financeiro</option>
             </select>
           </div>
+
+          {perfil === "rh_caixa" && (
+            <div>
+              <label style={labelStyle}>Loja da Caixa Líder</label>
+              <select
+                value={lojaId}
+                onChange={(e) => setLojaId(e.target.value)}
+                style={inputStyle}
+                required
+              >
+                <option value="">Selecione a loja</option>
+                {lojas.map((loja) => (
+                  <option key={loja.id} value={String(loja.id)}>
+                    {loja.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label style={labelStyle}>Status</label>
@@ -315,16 +404,29 @@ export default function Usuarios() {
             </button>
 
             {editingUserId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                style={outlineButtonStyle}
-              >
+              <button type="button" onClick={resetForm} style={outlineButtonStyle}>
                 Cancelar edição
               </button>
             )}
           </div>
         </form>
+
+        <div
+          style={{
+            marginTop: "18px",
+            padding: "12px 14px",
+            borderRadius: "10px",
+            background: "#111111",
+            border: "1px solid rgba(212,160,23,0.35)",
+            color: "#cbd5e1",
+            fontSize: "13px",
+            lineHeight: 1.6,
+          }}
+        >
+          <strong style={{ color: "#facc15" }}>Regra de acesso:</strong>{" "}
+          Caixa Líder fica vinculada a uma única loja e entra somente em “Meu Dia”.
+          Líder RH possui visão gerencial e não fica vinculada a uma loja específica.
+        </div>
 
         {message && (
           <div
@@ -332,7 +434,7 @@ export default function Usuarios() {
               marginTop: "18px",
               padding: "12px 14px",
               borderRadius: "10px",
-              background: "#0b1730",
+              background: "#111111",
               border: "1px solid #d4a017",
               color: "#facc15",
             }}
@@ -375,71 +477,81 @@ export default function Usuarios() {
         )}
 
         <div style={{ display: "grid", gap: "14px" }}>
-          {users.map((user) => (
-            <div
-              key={user.id}
-              style={{
-                border: "1px solid rgba(250, 204, 21, 0.25)",
-                borderRadius: "14px",
-                padding: "16px",
-                background: "#0b1730",
-                display: "flex",
-                justifyContent: "space-between",
-                gap: "16px",
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ flex: 1, minWidth: "220px" }}>
-                <div
-                  style={{
-                    fontSize: "18px",
-                    fontWeight: 700,
-                    color: "#fff",
-                    marginBottom: "6px",
-                  }}
-                >
-                  {user.name || "Sem nome"}
-                </div>
+          {users.map((user) => {
+            const loja = lojas.find((item) => Number(item.id) === Number(user.lojaId));
 
-                <div style={{ color: "#cbd5e1", marginBottom: "4px" }}>
-                  {user.email || "Sem email"}
-                </div>
-
-                <div style={{ color: "#facc15", marginBottom: "4px" }}>
-                  Perfil: {user.role}
-                </div>
-
-                <div style={{ color: user.isActive ? "#86efac" : "#fca5a5" }}>
-                  Status: {user.isActive ? "Ativo" : "Inativo"}
-                </div>
-              </div>
-
+            return (
               <div
+                key={user.id}
                 style={{
+                  border: "1px solid rgba(250, 204, 21, 0.25)",
+                  borderRadius: "14px",
+                  padding: "16px",
+                  background: "#111111",
                   display: "flex",
-                  gap: "10px",
-                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "16px",
                   flexWrap: "wrap",
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => handleEdit(user)}
-                  style={outlineButtonStyle}
-                >
-                  Editar
-                </button>
+                <div style={{ flex: 1, minWidth: "220px" }}>
+                  <div
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: 700,
+                      color: "#fff",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    {user.name || "Sem nome"}
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleDelete(user)}
-                  style={dangerButtonStyle}
+                  <div style={{ color: "#cbd5e1", marginBottom: "4px" }}>
+                    {user.email || "Sem email"}
+                  </div>
+
+                  <div style={{ color: "#facc15", marginBottom: "4px" }}>
+                    Perfil: {nomePerfil(user)}
+                  </div>
+
+                  {user.role === "rh" && Number(user.lojaId || 0) > 0 && (
+                    <div style={{ color: "#cbd5e1", marginBottom: "4px" }}>
+                      Loja: {loja?.nome || `Loja ${user.lojaId}`}
+                    </div>
+                  )}
+
+                  <div style={{ color: user.isActive ? "#86efac" : "#fca5a5" }}>
+                    Status: {user.isActive ? "Ativo" : "Inativo"}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
                 >
-                  Excluir
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(user)}
+                    style={outlineButtonStyle}
+                  >
+                    Editar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(user)}
+                    style={dangerButtonStyle}
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
