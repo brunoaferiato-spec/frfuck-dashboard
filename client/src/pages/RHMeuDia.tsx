@@ -2,6 +2,10 @@ import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import * as pdfjs from "pdfjs-dist";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+
+pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 import {
   AlertTriangle,
   Banknote,
@@ -419,10 +423,6 @@ async function hashArquivo(buffer: ArrayBuffer) {
 }
 
 async function lerPdfPontoDiario(file: File) {
-  const pdfjs = await import("pdfjs-dist");
-  const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-  pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
-
   const buffer = await file.arrayBuffer();
   const hash = await hashArquivo(buffer);
   const bytes = new Uint8Array(buffer);
