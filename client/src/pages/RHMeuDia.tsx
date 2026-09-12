@@ -7,6 +7,7 @@ import {
   Banknote,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   Clock3,
   FileCheck2,
   FileUp,
@@ -680,6 +681,7 @@ export default function RHMeuDia() {
   const [enviandoDocumentoId, setEnviandoDocumentoId] = useState<number | null>(null);
   const [funcionarioVinculoPorNome, setFuncionarioVinculoPorNome] = useState<Record<string, string>>({});
   const [vinculandoNomePdf, setVinculandoNomePdf] = useState<string | null>(null);
+  const [grupoPendenciaAberto, setGrupoPendenciaAberto] = useState<PeriodoPonto | null>(null);
 
   const analisarMutation = trpc.rhPonto.analisarImportacao.useMutation();
   const vincularNomeFuncionarioMutation = trpc.rhPonto.vincularNomeFuncionario.useMutation();
@@ -693,7 +695,7 @@ export default function RHMeuDia() {
       setArquivoNome("");
       setArquivoHash(null);
       setObservacaoConferencia("");
-      await pontoDiaQuery.refetch();
+      await Promise.all([pontoDiaQuery.refetch(), pendenciasQuery.refetch()]);
     },
     onError: (error) => {
       setMensagemModal(error.message || "Erro ao finalizar a conferência.");
@@ -728,6 +730,17 @@ export default function RHMeuDia() {
   const pendenciasDaLoja = useMemo(
     () => pendencias.filter((item) => Number(item.lojaId) === lojaIdAtual),
     [pendencias, lojaIdAtual]
+  );
+
+  const gruposPendencias = useMemo(
+    () =>
+      HORARIOS.map((horario) => ({
+        ...horario,
+        pendencias: pendenciasDaLoja.filter(
+          (pendencia) => String(pendencia.periodo) === horario.periodo
+        ),
+      })).filter((grupo) => grupo.pendencias.length > 0),
+    [pendenciasDaLoja]
   );
 
   const itensResultado = useMemo(() => {
@@ -1291,56 +1304,115 @@ export default function RHMeuDia() {
               </div>
 
               {pendenciasDaLoja.length > 0 ? (
-                <div className="mt-4 max-h-[420px] space-y-2 overflow-y-auto pr-1">
-                  {pendenciasDaLoja.map((pendencia) => (
-                    <div key={pendencia.id} className="rounded-xl border border-rose-400/15 bg-rose-400/[0.05] p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-white">{pendencia.funcionarioNome}</p>
-                          <p className="mt-1 text-xs text-rose-200">{resumoPendencia(pendencia)}</p>
-                          <p className="mt-1 text-[11px] text-gray-500">
-                            {pendencia.dataReferencia?.split("-").reverse().join("/")} • {NOMES_PERIODO_PENDENCIA[String(pendencia.periodo)] || pendencia.periodo}
-                          </p>
-                        </div>
-                      </div>
+                <div className="mt-4 space-y-2">
+                  {gruposPendencias.map((grupo) => {
+                    const aberto = grupoPendenciaAberto === grupo.periodo;
 
-                      {pendencia.fase === "classificar" && (
-                        <Button
+                    return (
+                      <div
+                        key={grupo.periodo}
+                        className="overflow-hidden rounded-xl border border-rose-400/15 bg-rose-400/[0.035]"
+                      >
+                        <button
                           type="button"
-                          size="sm"
-                          onClick={() => abrirTratativa(pendencia)}
-                          className="mt-3 h-9 bg-rose-400 text-xs font-black text-black hover:bg-rose-300"
+                          onClick={() =>
+                            setGrupoPendenciaAberto((atual) =>
+                              atual === grupo.periodo ? null : grupo.periodo
+                            )
+                          }
+                          className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition hover:bg-rose-400/[0.05]"
                         >
-                          Definir tratativa
-                        </Button>
-                      )}
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06]">
+                              <Clock3 className="h-4 w-4 text-[#F2D675]" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-black text-white">
+                                {grupo.horario} • {grupo.titulo}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-gray-500">
+                                Clique para ver os funcionários
+                              </p>
+                            </div>
+                          </div>
 
-                      {pendencia.fase === "documento" && pendencia.tratativaId && (
-                        <label className="mt-3 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#D4AF37] px-3 text-xs font-black text-black hover:bg-[#E6C760]">
-                          {enviandoDocumentoId === pendencia.tratativaId
-                            ? "Enviando..."
-                            : labelDocumentoPendente(pendencia.tratativaTipo)}
-                          <input
-                            type="file"
-                            accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
-                            className="hidden"
-                            disabled={enviandoDocumentoId === pendencia.tratativaId}
-                            onChange={(event) => {
-                              const file = event.target.files?.[0] || null;
-                              void anexarDocumento(pendencia, file);
-                              event.currentTarget.value = "";
-                            }}
-                          />
-                        </label>
-                      )}
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="rounded-lg border border-rose-300/15 bg-rose-300/[0.06] px-2.5 py-1 text-[11px] font-black text-rose-200">
+                              {grupo.pendencias.length} pendência{grupo.pendencias.length === 1 ? "" : "s"}
+                            </span>
+                            <ChevronDown
+                              className={`h-4 w-4 text-gray-500 transition-transform ${
+                                aberto ? "rotate-180" : ""
+                              }`}
+                            />
+                          </div>
+                        </button>
 
-                      {pendencia.fase === "cadastro" && (
-                        <div className="mt-3 rounded-lg border border-amber-400/15 bg-amber-400/[0.05] px-3 py-2 text-[11px] text-amber-200">
-                          Aguardando a Líder de RH concluir o cadastro.
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        {aberto && (
+                          <div className="border-t border-rose-400/10 p-2">
+                            <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                              {grupo.pendencias.map((pendencia) => (
+                                <div
+                                  key={pendencia.id}
+                                  className="rounded-xl border border-rose-400/15 bg-black/20 p-3"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-bold text-white">
+                                        {pendencia.funcionarioNome}
+                                      </p>
+                                      <p className="mt-1 text-xs text-rose-200">
+                                        {resumoPendencia(pendencia)}
+                                      </p>
+                                      <p className="mt-1 text-[11px] text-gray-500">
+                                        {pendencia.dataReferencia?.split("-").reverse().join("/")}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {pendencia.fase === "classificar" && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => abrirTratativa(pendencia)}
+                                      className="mt-3 h-9 bg-rose-400 text-xs font-black text-black hover:bg-rose-300"
+                                    >
+                                      Definir tratativa
+                                    </Button>
+                                  )}
+
+                                  {pendencia.fase === "documento" && pendencia.tratativaId && (
+                                    <label className="mt-3 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#D4AF37] px-3 text-xs font-black text-black hover:bg-[#E6C760]">
+                                      {enviandoDocumentoId === pendencia.tratativaId
+                                        ? "Enviando..."
+                                        : labelDocumentoPendente(pendencia.tratativaTipo)}
+                                      <input
+                                        type="file"
+                                        accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                                        className="hidden"
+                                        disabled={enviandoDocumentoId === pendencia.tratativaId}
+                                        onChange={(event) => {
+                                          const file = event.target.files?.[0] || null;
+                                          void anexarDocumento(pendencia, file);
+                                          event.currentTarget.value = "";
+                                        }}
+                                      />
+                                    </label>
+                                  )}
+
+                                  {pendencia.fase === "cadastro" && (
+                                    <div className="mt-3 rounded-lg border border-amber-400/15 bg-amber-400/[0.05] px-3 py-2 text-[11px] text-amber-200">
+                                      Aguardando a Líder de RH concluir o cadastro.
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="mt-3 text-xs leading-5 text-gray-500 sm:text-sm sm:leading-6">
