@@ -1164,6 +1164,34 @@ export default function RHGestao() {
                                             </span>
                                           </div>
 
+                                          <div className="mt-3 flex flex-wrap gap-2">
+                                            {pendencia.tratativaTipo ? (
+                                              <span className="rounded-lg border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-2.5 py-1 text-[10px] font-bold text-[#F2D675]">
+                                                Tratativa: {labelTratativaHistorico(pendencia.tratativaTipo)}
+                                              </span>
+                                            ) : pendencia.fase === "classificar" ? (
+                                              <span className="rounded-lg border border-rose-400/15 bg-rose-400/[0.05] px-2.5 py-1 text-[10px] font-bold text-rose-300">
+                                                Tratativa ainda não definida
+                                              </span>
+                                            ) : null}
+
+                                            {pendencia.fase === "documento" && (
+                                              <span
+                                                className={`rounded-lg border px-2.5 py-1 text-[10px] font-bold ${
+                                                  statusDocumentoHistorico(pendencia.documentoStatus).classe
+                                                }`}
+                                              >
+                                                {statusDocumentoHistorico(pendencia.documentoStatus).label}
+                                              </span>
+                                            )}
+
+                                            {pendencia.fase === "cadastro" && (
+                                              <span className="rounded-lg border border-amber-400/15 bg-amber-400/[0.05] px-2.5 py-1 text-[10px] font-bold text-amber-300">
+                                                Ação do RH: concluir cadastro
+                                              </span>
+                                            )}
+                                          </div>
+
                                           {pendencia.mensagem && (
                                             <p className="mt-2 text-[11px] leading-5 text-gray-500">
                                               {pendencia.mensagem}
