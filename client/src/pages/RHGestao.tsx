@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -97,6 +97,64 @@ const LOJAS_RH = [
 ] as const;
 
 const LOJAS_COM_CAIXA = LOJAS_RH.filter((loja) => loja.id !== 5);
+
+function horarioEmMinutos(horario: string) {
+  const [hora, minuto] = String(horario || "00:00").split(":").map(Number);
+  return Number(hora || 0) * 60 + Number(minuto || 0);
+}
+
+function statusOperacaoLoja(loja: any) {
+  const conferenciasAtrasadas = (loja.periodos || []).filter(
+    (periodo: any) => periodo.atrasado
+  ).length;
+
+  if (conferenciasAtrasadas > 0) {
+    return {
+      tipo: "atrasada",
+      label: `${conferenciasAtrasadas} conferência${conferenciasAtrasadas === 1 ? "" : "s"} atrasada${conferenciasAtrasadas === 1 ? "" : "s"}`,
+      badge: "border-rose-400/25 bg-rose-400/[0.08] text-rose-300",
+      borda: "border-rose-400/25",
+    };
+  }
+
+  if ((loja.pendenciasHoje || []).length > 0) {
+    return {
+      tipo: "pendencia_hoje",
+      label: `${loja.pendenciasHoje.length} pendência${loja.pendenciasHoje.length === 1 ? "" : "s"} hoje`,
+      badge: "border-amber-400/25 bg-amber-400/[0.08] text-amber-300",
+      borda: "border-amber-400/25",
+    };
+  }
+
+  if ((loja.pendenciasAbertas || []).length > 0) {
+    return {
+      tipo: "pendencia_anterior",
+      label: `${loja.pendenciasAbertas.length} aberta${loja.pendenciasAbertas.length === 1 ? "" : "s"}`,
+      badge: "border-rose-400/20 bg-rose-400/[0.06] text-rose-300",
+      borda: "border-rose-400/15",
+    };
+  }
+
+  const conferidas = (loja.periodos || []).filter(
+    (periodo: any) => Boolean(periodo.conferencia)
+  ).length;
+
+  if (conferidas === PERIODOS_DASHBOARD.length) {
+    return {
+      tipo: "em_dia",
+      label: "Em dia",
+      badge: "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-300",
+      borda: "border-emerald-400/15",
+    };
+  }
+
+  return {
+    tipo: conferidas > 0 ? "em_andamento" : "aguardando",
+    label: conferidas > 0 ? "Em andamento" : "Aguardando",
+    badge: "border-white/10 bg-white/[0.025] text-gray-400",
+    borda: "border-white/10",
+  };
+}
 
 function labelTipoOcorrencia(ocorrencia: any) {
   const tipo = String(ocorrencia?.tipoOcorrencia || "");
@@ -270,6 +328,14 @@ export default function RHGestao() {
     roleAtual === "admin" || roleAtual === "gestor";
 
   const hoje = hojeCivil();
+  const [agora, setAgora] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setAgora(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
 
   const [caixaDataFiltro, setCaixaDataFiltro] = useState(hoje);
   const [caixaLojaFiltro, setCaixaLojaFiltro] = useState("todas");
@@ -426,15 +492,24 @@ export default function RHGestao() {
         pendenciasHoje,
         fechamentoCaixa,
         pendenciasAnteriores: Math.max(0, pendenciasAbertas.length - pendenciasHoje.length),
-        periodos: PERIODOS_DASHBOARD.map((periodo) => ({
-          ...periodo,
-          conferencia: conferenciasHoje.find(
-            (conferencia: any) => String(conferencia.periodo) === periodo.periodo
-          ),
-          pendencias: pendenciasHoje.filter(
+        periodos: PERIODOS_DASHBOARD.map((periodo) => {
+          const conferencia = conferenciasHoje.find(
+            (item: any) => String(item.periodo) === periodo.periodo
+          );
+          const pendencias = pendenciasHoje.filter(
             (pendencia: any) => String(pendencia.periodo) === periodo.periodo
-          ),
-        })),
+          );
+          const atrasado =
+            !conferencia && minutosAgora > horarioEmMinutos(periodo.horario);
+
+          return {
+            ...periodo,
+            conferencia,
+            pendencias,
+            atrasado,
+            aguardando: !conferencia && !atrasado,
+          };
+        }),
       };
     });
   }, [
@@ -442,12 +517,23 @@ export default function RHGestao() {
     dashboardPendencias,
     dashboardPendenciasHoje,
     dashboardCaixas,
+    minutosAgora,
   ]);
 
   const dashboardResumo = useMemo(() => {
-    const lojasComPendenciaHoje = new Set(
-      dashboardPendenciasHoje.map((pendencia: any) => Number(pendencia.lojaId))
-    ).size;
+    const lojasComAtencao = dashboardLojas.filter((loja: any) => {
+      const temPendenciaAberta = loja.pendenciasAbertas.length > 0;
+      const temConferenciaAtrasada = loja.periodos.some(
+        (periodo: any) => periodo.atrasado
+      );
+      return temPendenciaAberta || temConferenciaAtrasada;
+    }).length;
+
+    const conferenciasAtrasadas = dashboardLojas.reduce(
+      (total: number, loja: any) =>
+        total + loja.periodos.filter((periodo: any) => periodo.atrasado).length,
+      0
+    );
 
     const idsComCaixa = new Set<number>(LOJAS_COM_CAIXA.map((loja) => loja.id));
     const caixasValidos = dashboardCaixas.filter((fechamento: any) =>
@@ -461,7 +547,8 @@ export default function RHGestao() {
     return {
       pendenciasAbertas: dashboardPendencias.length,
       pendenciasHoje: dashboardPendenciasHoje.length,
-      lojasComPendenciaHoje,
+      lojasComAtencao,
+      conferenciasAtrasadas,
       documentosPendentes: dashboardPendencias.filter(
         (pendencia: any) => pendencia.fase === "documento"
       ).length,
@@ -479,6 +566,7 @@ export default function RHGestao() {
     dashboardPendenciasHoje,
     dashboardHistorico,
     dashboardCaixas,
+    dashboardLojas,
   ]);
 
   const fechamentosCaixa = useMemo(
@@ -751,10 +839,12 @@ export default function RHGestao() {
                   <ShieldCheck className="h-4 w-4 text-amber-300" />
                 </div>
                 <p className="mt-2 text-3xl font-black text-amber-300">
-                  {dashboardResumo.lojasComPendenciaHoje}
+                  {dashboardResumo.lojasComAtencao}
                 </p>
                 <p className="mt-1 text-xs text-gray-600">
-                  de {lojas.length || 0} loja{lojas.length === 1 ? "" : "s"}
+                  {dashboardResumo.conferenciasAtrasadas > 0
+                    ? `${dashboardResumo.conferenciasAtrasadas} conferência${dashboardResumo.conferenciasAtrasadas === 1 ? "" : "s"} em atraso`
+                    : `de ${LOJAS_RH.length} lojas monitoradas`}
                 </p>
               </div>
 
@@ -861,6 +951,7 @@ export default function RHGestao() {
                   const caixaDentroMargem =
                     Boolean(fechamento) && diferencaCaixa >= 0.005 && diferencaCaixa <= 5;
                   const caixaForaMargem = Boolean(fechamento) && diferencaCaixa > 5;
+                  const statusLoja = statusOperacaoLoja(loja);
 
                   return (
                     <Card
@@ -868,9 +959,7 @@ export default function RHGestao() {
                       className={`overflow-hidden bg-[#0b0b0b] transition ${
                         selecionada
                           ? "border-[#D4AF37]/55 ring-1 ring-[#D4AF37]/20"
-                          : loja.pendenciasHoje.length > 0
-                          ? "border-amber-400/20"
-                          : "border-emerald-400/15"
+                          : statusLoja.borda
                       }`}
                     >
                       <button
@@ -888,17 +977,11 @@ export default function RHGestao() {
                             <h3 className="truncate text-lg font-black text-white">
                               {loja.nome}
                             </h3>
-                            {loja.pendenciasAbertas.length > 0 ? (
-                              <span className="rounded-full border border-rose-400/20 bg-rose-400/[0.06] px-2 py-0.5 text-[10px] font-black text-rose-300">
-                                {loja.pendenciasAbertas.length} aberta{
-                                  loja.pendenciasAbertas.length === 1 ? "" : "s"
-                                }
-                              </span>
-                            ) : (
-                              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.05] px-2 py-0.5 text-[10px] font-black text-emerald-300">
-                                Em dia
-                              </span>
-                            )}
+                            <span
+                              className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${statusLoja.badge}`}
+                            >
+                              {statusLoja.label}
+                            </span>
                           </div>
                           <p className="mt-1 text-[11px] text-gray-600">
                             {loja.pendenciasHoje.length} de hoje
@@ -928,6 +1011,7 @@ export default function RHGestao() {
                         {loja.periodos.map((periodo: any) => {
                           const quantidade = periodo.pendencias.length;
                           const conferido = Boolean(periodo.conferencia);
+                          const atrasado = Boolean(periodo.atrasado);
 
                           return (
                             <div
@@ -937,6 +1021,8 @@ export default function RHGestao() {
                                   ? "bg-amber-400/[0.035]"
                                   : conferido
                                   ? "bg-emerald-400/[0.025]"
+                                  : atrasado
+                                  ? "bg-rose-400/[0.04]"
                                   : "bg-[#090909]"
                               }`}
                             >
@@ -950,6 +1036,8 @@ export default function RHGestao() {
                                   </span>
                                 ) : conferido ? (
                                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                ) : atrasado ? (
+                                  <AlertTriangle className="h-3.5 w-3.5 text-rose-300" />
                                 ) : (
                                   <Clock3 className="h-3.5 w-3.5 text-gray-700" />
                                 )}
@@ -963,6 +1051,8 @@ export default function RHGestao() {
                                     ? "text-amber-300/80"
                                     : conferido
                                     ? "text-emerald-300/70"
+                                    : atrasado
+                                    ? "text-rose-300/80"
                                     : "text-gray-700"
                                 }`}
                               >
@@ -970,7 +1060,9 @@ export default function RHGestao() {
                                   ? `${quantidade} pendência${quantidade === 1 ? "" : "s"}`
                                   : conferido
                                   ? "Conferido"
-                                  : "Não conferido"}
+                                  : atrasado
+                                  ? "Conferência atrasada"
+                                  : "Aguardando horário"}
                               </p>
                             </div>
                           );
