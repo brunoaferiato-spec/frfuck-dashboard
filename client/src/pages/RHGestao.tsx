@@ -3,15 +3,20 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import {
+  AlertTriangle,
   Archive,
   ArrowLeft,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock3,
   ClipboardCheck,
   Download,
   FileWarning,
   LayoutDashboard,
   LogOut,
+  RefreshCw,
   Search,
   ShieldCheck,
   UserRound,
@@ -73,6 +78,23 @@ const NOMES_PERIODO: Record<string, string> = {
   retorno_almoco: "14:30 • Retorno almoço",
   saida: "17:45 • Saída",
 };
+
+const PERIODOS_DASHBOARD = [
+  { periodo: "entrada", horario: "10:00", titulo: "Entrada" },
+  { periodo: "saida_almoco", horario: "12:30", titulo: "Saída almoço" },
+  { periodo: "retorno_almoco", horario: "14:30", titulo: "Retorno almoço" },
+  { periodo: "saida", horario: "17:45", titulo: "Saída" },
+] as const;
+
+const LOJAS_RH = [
+  { id: 1, nome: "Joinville" },
+  { id: 2, nome: "Blumenau" },
+  { id: 3, nome: "São José" },
+  { id: 4, nome: "Florianópolis" },
+  { id: 5, nome: "ACI Promoções" },
+  { id: 6, nome: "São Leopoldo" },
+  { id: 7, nome: "Gravataí" },
+] as const;
 
 function labelTipoOcorrencia(ocorrencia: any) {
   const tipo = String(ocorrencia?.tipoOcorrencia || "");
@@ -212,6 +234,30 @@ function labelPendenciaRh(p: any) {
   return "Tratativa pendente na loja";
 }
 
+function labelTratativaHistorico(tipo: unknown) {
+  const valor = String(tipo || "");
+  if (valor === "advertencia") return "Advertência";
+  if (valor === "atestado") return "Atestado";
+  if (valor === "justificativa") return "Justificativa";
+  if (valor === "falta") return "Falta + advertência";
+  return "Tratativa";
+}
+
+function statusDocumentoHistorico(status: unknown) {
+  const valor = String(status || "");
+  if (valor === "concluida") {
+    return {
+      label: "Documento anexado",
+      classe: "border-emerald-400/15 bg-emerald-400/[0.05] text-emerald-300",
+    };
+  }
+
+  return {
+    label: "Documento pendente",
+    classe: "border-sky-400/15 bg-sky-400/[0.05] text-sky-300",
+  };
+}
+
 export default function RHGestao() {
   const { user, logout } = useAuth();
   const [, navigate] = useLocation();
@@ -236,15 +282,30 @@ export default function RHGestao() {
   const [dataFim, setDataFim] = useState(hoje);
   const [lojaFiltro, setLojaFiltro] = useState("todas");
   const [buscaFuncionario, setBuscaFuncionario] = useState("");
+  const [dashboardLojaAbertaId, setDashboardLojaAbertaId] = useState<number | null>(null);
 
   const lojasQuery = trpc.lojas.list.useQuery(undefined, {
     retry: false,
   });
 
-  const lojas = useMemo(
-    () => ((lojasQuery.data || []) as Array<{ id: number; nome: string }>),
-    [lojasQuery.data]
-  );
+  const lojas = useMemo(() => {
+    const recebidas = (lojasQuery.data || []) as Array<{ id: number; nome: string }>;
+    const porId = new Map(recebidas.map((loja) => [Number(loja.id), loja]));
+    const idsOficiais = new Set<number>(LOJAS_RH.map((loja) => loja.id));
+
+    const oficiais = LOJAS_RH.map((loja) => {
+      const recebida = porId.get(loja.id);
+      return recebida
+        ? { ...loja, ...recebida, id: Number(recebida.id), nome: recebida.nome || loja.nome }
+        : { ...loja };
+    });
+
+    const extras = recebidas
+      .filter((loja) => !idsOficiais.has(Number(loja.id)))
+      .map((loja) => ({ id: Number(loja.id), nome: loja.nome }));
+
+    return [...oficiais, ...extras];
+  }, [lojasQuery.data]);
 
   const periodoValido = dataInicio <= dataFim;
 
@@ -262,6 +323,29 @@ export default function RHGestao() {
 
   const pendenciasQuery = trpc.rhPonto.pendencias.useQuery(
     { lojaId: lojaFiltro === "todas" ? null : Number(lojaFiltro) },
+    { retry: false }
+  );
+
+  const dashboardHistoricoQuery = trpc.rhPonto.historico.useQuery(
+    {
+      dataInicio: hoje,
+      dataFim: hoje,
+      lojaId: null,
+    },
+    { retry: false }
+  );
+
+  const dashboardPendenciasQuery = trpc.rhPonto.pendencias.useQuery(
+    { lojaId: null },
+    { retry: false }
+  );
+
+  const dashboardCaixaQuery = trpc.rhCaixa.historico.useQuery(
+    {
+      dataInicio: hoje,
+      dataFim: hoje,
+      lojaId: null,
+    },
     { retry: false }
   );
 
@@ -289,6 +373,105 @@ export default function RHGestao() {
     () => ((pendenciasQuery.data || []) as any[]),
     [pendenciasQuery.data]
   );
+
+  const dashboardHistorico = useMemo(
+    () => ((dashboardHistoricoQuery.data || []) as any[]),
+    [dashboardHistoricoQuery.data]
+  );
+
+  const dashboardPendencias = useMemo(
+    () => ((dashboardPendenciasQuery.data || []) as any[]),
+    [dashboardPendenciasQuery.data]
+  );
+
+  const dashboardCaixas = useMemo(
+    () => ((dashboardCaixaQuery.data || []) as any[]),
+    [dashboardCaixaQuery.data]
+  );
+
+  const dashboardPendenciasHoje = useMemo(
+    () =>
+      dashboardPendencias.filter(
+        (pendencia: any) => String(pendencia.dataReferencia || "").slice(0, 10) === hoje
+      ),
+    [dashboardPendencias, hoje]
+  );
+
+  const dashboardLojas = useMemo(() => {
+    // O Dashboard da Líder RH deve sempre exibir as 7 unidades oficiais,
+    // mesmo quando alguma delas ainda não possui conferência ou fechamento no dia.
+    return LOJAS_RH.map((loja) => {
+      const conferenciasHoje = dashboardHistorico.filter(
+        (conferencia: any) => Number(conferencia.lojaId) === Number(loja.id)
+      );
+      const pendenciasAbertas = dashboardPendencias.filter(
+        (pendencia: any) => Number(pendencia.lojaId) === Number(loja.id)
+      );
+      const pendenciasHoje = dashboardPendenciasHoje.filter(
+        (pendencia: any) => Number(pendencia.lojaId) === Number(loja.id)
+      );
+
+      const fechamentoCaixa =
+        dashboardCaixas.find(
+          (fechamento: any) => Number(fechamento.lojaId) === Number(loja.id)
+        ) || null;
+
+      return {
+        ...loja,
+        conferenciasHoje,
+        pendenciasAbertas,
+        pendenciasHoje,
+        fechamentoCaixa,
+        pendenciasAnteriores: Math.max(0, pendenciasAbertas.length - pendenciasHoje.length),
+        periodos: PERIODOS_DASHBOARD.map((periodo) => ({
+          ...periodo,
+          conferencia: conferenciasHoje.find(
+            (conferencia: any) => String(conferencia.periodo) === periodo.periodo
+          ),
+          pendencias: pendenciasHoje.filter(
+            (pendencia: any) => String(pendencia.periodo) === periodo.periodo
+          ),
+        })),
+      };
+    });
+  }, [
+    dashboardHistorico,
+    dashboardPendencias,
+    dashboardPendenciasHoje,
+    dashboardCaixas,
+  ]);
+
+  const dashboardResumo = useMemo(() => {
+    const lojasComPendenciaHoje = new Set(
+      dashboardPendenciasHoje.map((pendencia: any) => Number(pendencia.lojaId))
+    ).size;
+
+    const caixasComDiferenca = dashboardCaixas.filter(
+      (fechamento: any) => Math.abs(Number(fechamento.diferenca || 0)) >= 0.005
+    ).length;
+
+    return {
+      pendenciasAbertas: dashboardPendencias.length,
+      pendenciasHoje: dashboardPendenciasHoje.length,
+      lojasComPendenciaHoje,
+      documentosPendentes: dashboardPendencias.filter(
+        (pendencia: any) => pendencia.fase === "documento"
+      ).length,
+      cadastrosPendentes: dashboardPendencias.filter(
+        (pendencia: any) => pendencia.fase === "cadastro"
+      ).length,
+      conferenciasHoje: dashboardHistorico.length,
+      conferenciasPrevistas: LOJAS_RH.length * PERIODOS_DASHBOARD.length,
+      caixasFechados: dashboardCaixas.length,
+      caixasPrevistos: LOJAS_RH.length,
+      caixasComDiferenca,
+    };
+  }, [
+    dashboardPendencias,
+    dashboardPendenciasHoje,
+    dashboardHistorico,
+    dashboardCaixas,
+  ]);
 
   const fechamentosCaixa = useMemo(
     () => ((fechamentosCaixaQuery.data || []) as any[]),
@@ -428,6 +611,14 @@ export default function RHGestao() {
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function abrirCaixaDaLoja(lojaId: number) {
+    const loja = String(lojaId);
+    setCaixaLojaFiltro(loja);
+    setCaixaDataFiltro(hoje);
+    setCaixaFiltroAplicado({ data: hoje, loja });
+    window.setTimeout(() => abrirFechamentosCaixa(), 50);
+  }
+
   return (
     <div className="min-h-screen bg-[#050505] text-white">
       <div className="border-b border-[#D4AF37]/15 bg-[#080808]/95">
@@ -472,74 +663,527 @@ export default function RHGestao() {
       </div>
 
       <main className="mx-auto max-w-7xl px-4 py-5 sm:px-5 sm:py-7 lg:px-8">
-        <section className="grid gap-4 lg:grid-cols-[1.45fr_1fr]">
-          <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#080808]">
-            <CardContent className="p-5 sm:p-6">
-              <div className="flex items-start justify-between gap-4">
+        <section>
+          <div className="overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#090909] to-[#050505]">
+            <div className="border-b border-white/[0.06] p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8f8a80]">
-                    Visão gerencial
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-[#D4AF37]/70">
+                    Dashboard RH • Hoje
                   </p>
-                  <h2 className="mt-2 text-2xl font-black text-white">
-                    Todas as lojas, um único controle
+                  <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">
+                    Visão geral da operação
                   </h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-400">
-                    Esta área será alimentada pelas ações das Caixas Líderes.
-                    Aqui ficarão históricos, documentos, ocorrências, prazos e,
-                    ao final do projeto, o Dashboard completo da Líder de RH.
+                  <p className="mt-2 text-sm text-gray-500">
+                    {formatarData(hoje)} • acompanhe ponto, pendências e documentos sem sair desta tela.
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 p-3">
-                  <ShieldCheck className="h-6 w-6 text-[#F2D675]" />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      dashboardHistoricoQuery.refetch();
+                      dashboardPendenciasQuery.refetch();
+                      dashboardCaixaQuery.refetch();
+                    }}
+                    className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Atualizar
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => navigate("/funcionarios")}
+                    className="bg-[#D4AF37] font-bold text-black hover:bg-[#E6C760]"
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    Funcionários
+                  </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          <div className="grid gap-4">
-            <Card className="border-[#D4AF37]/20 bg-[#0b0b0b]">
-              <CardContent className="p-5 sm:p-6">
-                <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-[#F2D675]" />
-                  <p className="font-bold text-white">Cadastro de Funcionários</p>
+            <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2 xl:grid-cols-6">
+              <div className="bg-[#090909] p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
+                    Pendências abertas
+                  </p>
+                  <AlertTriangle className="h-4 w-4 text-rose-300" />
                 </div>
-
-                <p className="mt-3 text-sm leading-6 text-gray-400">
-                  O cadastro atual de funcionários será reaproveitado como base
-                  de todos os módulos.
+                <p className="mt-2 text-3xl font-black text-rose-300">
+                  {dashboardResumo.pendenciasAbertas}
                 </p>
+                <p className="mt-1 text-xs text-gray-600">
+                  {dashboardResumo.pendenciasHoje} gerada{dashboardResumo.pendenciasHoje === 1 ? "" : "s"} hoje
+                </p>
+              </div>
 
-                <Button
-                  onClick={() => navigate("/funcionarios")}
-                  className="mt-5 bg-[#D4AF37] font-bold text-black hover:bg-[#E6C760]"
-                >
-                  Abrir Funcionários
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="border-[#D4AF37]/20 bg-[#0b0b0b]">
-              <CardContent className="p-5 sm:p-6">
-                <div className="flex items-center gap-3">
-                  <WalletCards className="h-5 w-5 text-[#F2D675]" />
-                  <p className="font-bold text-white">Folha de Pagamento</p>
+              <div className="bg-[#090909] p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
+                    Lojas com atenção
+                  </p>
+                  <ShieldCheck className="h-4 w-4 text-amber-300" />
                 </div>
-
-                <p className="mt-3 text-sm leading-6 text-gray-400">
-                  A Líder de RH também possui acesso à Folha, pois apoia a
-                  operação financeira.
+                <p className="mt-2 text-3xl font-black text-amber-300">
+                  {dashboardResumo.lojasComPendenciaHoje}
                 </p>
+                <p className="mt-1 text-xs text-gray-600">
+                  de {lojas.length || 0} loja{lojas.length === 1 ? "" : "s"}
+                </p>
+              </div>
 
-                <Button
-                  onClick={() => navigate("/folha-pagamento")}
-                  className="mt-5 bg-[#D4AF37] font-bold text-black hover:bg-[#E6C760]"
-                >
-                  Abrir Folha de Pagamento
-                </Button>
-              </CardContent>
-            </Card>
+              <div className="bg-[#090909] p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
+                    Documentos pendentes
+                  </p>
+                  <Archive className="h-4 w-4 text-sky-300" />
+                </div>
+                <p className="mt-2 text-3xl font-black text-sky-300">
+                  {dashboardResumo.documentosPendentes}
+                </p>
+                <p className="mt-1 text-xs text-gray-600">
+                  {dashboardResumo.cadastrosPendentes} cadastro{dashboardResumo.cadastrosPendentes === 1 ? "" : "s"} RH pendente{dashboardResumo.cadastrosPendentes === 1 ? "" : "s"}
+                </p>
+              </div>
+
+              <div className="bg-[#090909] p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
+                    Conferências hoje
+                  </p>
+                  <ClipboardCheck className="h-4 w-4 text-emerald-300" />
+                </div>
+                <p className="mt-2 text-3xl font-black text-white">
+                  {dashboardResumo.conferenciasHoje}
+                  <span className="ml-1 text-sm font-bold text-gray-600">
+                    / {dashboardResumo.conferenciasPrevistas}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-gray-600">
+                  conferências realizadas
+                </p>
+              </div>
+
+              <div className="bg-[#090909] p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
+                    Caixas fechados
+                  </p>
+                  <WalletCards className="h-4 w-4 text-[#F2D675]" />
+                </div>
+                <p className="mt-2 text-3xl font-black text-white">
+                  {dashboardResumo.caixasFechados}
+                  <span className="ml-1 text-sm font-bold text-gray-600">
+                    / {dashboardResumo.caixasPrevistos}
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-gray-600">
+                  fechamentos realizados hoje
+                </p>
+              </div>
+
+              <div className="bg-[#090909] p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
+                    Caixa com diferença
+                  </p>
+                  <AlertTriangle className="h-4 w-4 text-amber-300" />
+                </div>
+                <p className={`mt-2 text-3xl font-black ${dashboardResumo.caixasComDiferenca > 0 ? "text-amber-300" : "text-emerald-300"}`}>
+                  {dashboardResumo.caixasComDiferenca}
+                </p>
+                <p className="mt-1 text-xs text-gray-600">
+                  fechamento{dashboardResumo.caixasComDiferenca === 1 ? "" : "s"} com divergência
+                </p>
+              </div>
+            </div>
           </div>
+
+          <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xl font-black text-white">Operação por loja</p>
+              <p className="mt-1 text-sm text-gray-500">
+                7 unidades monitoradas • cada quadrante mostra os quatro horários do ponto, pendências e o fechamento de caixa de hoje.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={abrirHistoricoPonto}
+              className="border-white/10 bg-white/[0.025] text-gray-300 hover:bg-white/[0.06] hover:text-white"
+            >
+              Ver histórico completo
+            </Button>
+          </div>
+
+          {dashboardHistoricoQuery.error || dashboardPendenciasQuery.error || dashboardCaixaQuery.error ? (
+            <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/[0.05] p-4 text-sm text-rose-200">
+              Não foi possível carregar o Dashboard RH. Atualize a tela e tente novamente.
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {dashboardLojas.map((loja) => {
+                  const selecionada = dashboardLojaAbertaId === Number(loja.id);
+                  const fechamento = loja.fechamentoCaixa;
+                  const diferencaCaixa = Math.abs(Number(fechamento?.diferenca || 0));
+                  const caixaCorreto = Boolean(fechamento) && diferencaCaixa < 0.005;
+                  const caixaDentroMargem =
+                    Boolean(fechamento) && diferencaCaixa >= 0.005 && diferencaCaixa <= 5;
+                  const caixaForaMargem = Boolean(fechamento) && diferencaCaixa > 5;
+
+                  return (
+                    <Card
+                      key={loja.id}
+                      className={`overflow-hidden bg-[#0b0b0b] transition ${
+                        selecionada
+                          ? "border-[#D4AF37]/55 ring-1 ring-[#D4AF37]/20"
+                          : loja.pendenciasHoje.length > 0
+                          ? "border-amber-400/20"
+                          : "border-emerald-400/15"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDashboardLojaAbertaId(selecionada ? null : Number(loja.id))
+                        }
+                        className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-white/[0.025]"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="truncate text-lg font-black text-white">
+                              {loja.nome}
+                            </h3>
+                            {loja.pendenciasAbertas.length > 0 ? (
+                              <span className="rounded-full border border-rose-400/20 bg-rose-400/[0.06] px-2 py-0.5 text-[10px] font-black text-rose-300">
+                                {loja.pendenciasAbertas.length} aberta{
+                                  loja.pendenciasAbertas.length === 1 ? "" : "s"
+                                }
+                              </span>
+                            ) : (
+                              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.05] px-2 py-0.5 text-[10px] font-black text-emerald-300">
+                                Em dia
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-[11px] text-gray-600">
+                            {loja.pendenciasHoje.length} de hoje
+                            {loja.pendenciasAnteriores > 0
+                              ? ` • ${loja.pendenciasAnteriores} anterior${
+                                  loja.pendenciasAnteriores === 1 ? "" : "es"
+                                }`
+                              : ""}
+                          </p>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-bold text-[#F2D675]">
+                          {selecionada ? "Selecionada" : "Detalhes"}
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${
+                              selecionada ? "rotate-180" : ""
+                            }`}
+                          />
+                        </div>
+                      </button>
+
+                      <div className="grid grid-cols-2 gap-px border-t border-white/[0.06] bg-white/[0.06]">
+                        {loja.periodos.map((periodo: any) => {
+                          const quantidade = periodo.pendencias.length;
+                          const conferido = Boolean(periodo.conferencia);
+
+                          return (
+                            <div
+                              key={periodo.periodo}
+                              className={`p-3 ${
+                                quantidade > 0
+                                  ? "bg-amber-400/[0.035]"
+                                  : conferido
+                                  ? "bg-emerald-400/[0.025]"
+                                  : "bg-[#090909]"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-black text-[#F2D675]">
+                                  {periodo.horario}
+                                </span>
+                                {quantidade > 0 ? (
+                                  <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.06] px-1.5 py-0.5 text-[9px] font-black text-amber-300">
+                                    {quantidade}
+                                  </span>
+                                ) : conferido ? (
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                                ) : (
+                                  <Clock3 className="h-3.5 w-3.5 text-gray-700" />
+                                )}
+                              </div>
+                              <p className="mt-1 truncate text-[10px] font-bold text-gray-500">
+                                {periodo.titulo}
+                              </p>
+                              <p
+                                className={`mt-0.5 text-[9px] ${
+                                  quantidade > 0
+                                    ? "text-amber-300/80"
+                                    : conferido
+                                    ? "text-emerald-300/70"
+                                    : "text-gray-700"
+                                }`}
+                              >
+                                {quantidade > 0
+                                  ? `${quantidade} pendência${quantidade === 1 ? "" : "s"}`
+                                  : conferido
+                                  ? "Conferido"
+                                  : "Não conferido"}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => abrirCaixaDaLoja(Number(loja.id))}
+                        className={`flex w-full items-center justify-between gap-3 border-t border-white/[0.06] px-3.5 py-3 text-left transition hover:bg-white/[0.035] ${
+                          caixaCorreto
+                            ? "bg-emerald-400/[0.035]"
+                            : caixaDentroMargem
+                            ? "bg-amber-400/[0.035]"
+                            : caixaForaMargem
+                            ? "bg-rose-400/[0.035]"
+                            : "bg-[#090909]"
+                        }`}
+                      >
+                        <div>
+                          <p className="text-xs font-black text-[#F2D675]">Caixa</p>
+                          <p
+                            className={`mt-0.5 text-[10px] ${
+                              caixaCorreto
+                                ? "text-emerald-300/80"
+                                : caixaDentroMargem
+                                ? "text-amber-300/80"
+                                : caixaForaMargem
+                                ? "text-rose-300/80"
+                                : "text-gray-700"
+                            }`}
+                          >
+                            {caixaCorreto
+                              ? "Fechado • correto"
+                              : caixaDentroMargem
+                              ? `Diferença ${formatarMoeda(fechamento.diferenca)}`
+                              : caixaForaMargem
+                              ? `Diferença ${formatarMoeda(fechamento.diferenca)}`
+                              : "Não fechado"}
+                          </p>
+                        </div>
+                        {caixaCorreto ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                        ) : caixaDentroMargem ? (
+                          <AlertTriangle className="h-4 w-4 text-amber-300" />
+                        ) : caixaForaMargem ? (
+                          <AlertTriangle className="h-4 w-4 text-rose-300" />
+                        ) : (
+                          <WalletCards className="h-4 w-4 text-gray-700" />
+                        )}
+                      </button>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {dashboardLojaAbertaId !== null &&
+                (() => {
+                  const loja = dashboardLojas.find(
+                    (item: any) => Number(item.id) === Number(dashboardLojaAbertaId)
+                  );
+
+                  if (!loja) return null;
+
+                  const grupos = [
+                    ...loja.periodos.map((periodo: any) => ({
+                      chave: periodo.periodo,
+                      titulo: `${periodo.horario} • ${periodo.titulo}`,
+                      pendencias: periodo.pendencias,
+                      anterior: false,
+                    })),
+                    ...(loja.pendenciasAnteriores > 0
+                      ? [
+                          {
+                            chave: "anteriores",
+                            titulo: "Pendências anteriores",
+                            pendencias: loja.pendenciasAbertas.filter(
+                              (pendencia: any) =>
+                                String(pendencia.dataReferencia || "").slice(0, 10) !== hoje
+                            ),
+                            anterior: true,
+                          },
+                        ]
+                      : []),
+                  ];
+
+                  return (
+                    <Card className="mt-5 overflow-hidden border-[#D4AF37]/25 bg-[#0b0b0b]">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] p-5">
+                        <div>
+                          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#8f8a80]">
+                            Detalhes da unidade
+                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <h3 className="text-xl font-black text-white">{loja.nome}</h3>
+                            <span className="rounded-full border border-rose-400/20 bg-rose-400/[0.05] px-2.5 py-1 text-[10px] font-black text-rose-300">
+                              {loja.pendenciasAbertas.length} pendência{
+                                loja.pendenciasAbertas.length === 1 ? "" : "s"
+                              }
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-600">
+                            Abra apenas o horário que deseja consultar. As outras lojas continuam visíveis acima.
+                          </p>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setDashboardLojaAbertaId(null)}
+                          className="border-white/10 bg-white/[0.025] text-gray-300 hover:bg-white/[0.06] hover:text-white"
+                        >
+                          Fechar detalhes
+                        </Button>
+                      </div>
+
+                      <CardContent className="p-4 sm:p-5">
+                        {loja.pendenciasAbertas.length === 0 ? (
+                          <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.035] p-4 text-sm text-emerald-200">
+                            Nenhuma pendência aberta nesta loja.
+                          </div>
+                        ) : (
+                          <div className="space-y-2.5">
+                            {grupos.map((grupo: any) => {
+                              const quantidade = grupo.pendencias.length;
+
+                              return (
+                                <details
+                                  key={grupo.chave}
+                                  className={`group overflow-hidden rounded-xl border ${
+                                    quantidade > 0
+                                      ? grupo.anterior
+                                        ? "border-amber-400/15 bg-amber-400/[0.025]"
+                                        : "border-rose-400/15 bg-rose-400/[0.025]"
+                                      : "border-emerald-400/10 bg-emerald-400/[0.02]"
+                                  }`}
+                                >
+                                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-white/[0.025] [&::-webkit-details-marker]:hidden">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                      <div
+                                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
+                                          quantidade > 0
+                                            ? grupo.anterior
+                                              ? "border-amber-400/20 bg-amber-400/[0.06] text-amber-300"
+                                              : "border-rose-400/20 bg-rose-400/[0.06] text-rose-300"
+                                            : "border-emerald-400/15 bg-emerald-400/[0.05] text-emerald-300"
+                                        }`}
+                                      >
+                                        {quantidade > 0 ? (
+                                          <Clock3 className="h-4 w-4" />
+                                        ) : (
+                                          <CheckCircle2 className="h-4 w-4" />
+                                        )}
+                                      </div>
+
+                                      <div className="min-w-0">
+                                        <p className="truncate text-sm font-black text-white">
+                                          {grupo.titulo}
+                                        </p>
+                                        <p
+                                          className={`mt-0.5 text-[11px] ${
+                                            quantidade > 0
+                                              ? grupo.anterior
+                                                ? "text-amber-300/75"
+                                                : "text-rose-300/75"
+                                              : "text-emerald-300/70"
+                                          }`}
+                                        >
+                                          {quantidade > 0
+                                            ? "Clique para ver os funcionários"
+                                            : "Nenhuma pendência"}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      <span
+                                        className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${
+                                          quantidade > 0
+                                            ? grupo.anterior
+                                              ? "border-amber-400/20 bg-amber-400/[0.06] text-amber-300"
+                                              : "border-rose-400/20 bg-rose-400/[0.06] text-rose-300"
+                                            : "border-emerald-400/15 bg-emerald-400/[0.05] text-emerald-300"
+                                        }`}
+                                      >
+                                        {quantidade > 0
+                                          ? `${quantidade} pendência${quantidade === 1 ? "" : "s"}`
+                                          : "Completo"}
+                                      </span>
+                                      <ChevronDown className="h-4 w-4 text-gray-600 transition-transform group-open:rotate-180" />
+                                    </div>
+                                  </summary>
+
+                                  {quantidade > 0 && (
+                                    <div className="grid gap-2 border-t border-white/[0.06] p-3 md:grid-cols-2">
+                                      {grupo.pendencias.map((pendencia: any) => (
+                                        <div
+                                          key={`${pendencia.fase}-${pendencia.id}`}
+                                          className="rounded-xl border border-white/[0.08] bg-black/30 p-3.5"
+                                        >
+                                          <div className="flex flex-wrap items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                              <p className="truncate text-sm font-black text-white">
+                                                {pendencia.funcionarioNome}
+                                              </p>
+                                              <p
+                                                className={`mt-1 text-xs font-bold ${
+                                                  pendencia.fase === "cadastro"
+                                                    ? "text-amber-300"
+                                                    : pendencia.fase === "documento"
+                                                    ? "text-sky-300"
+                                                    : "text-rose-200"
+                                                }`}
+                                              >
+                                                {labelPendenciaRh(pendencia)}
+                                              </p>
+                                            </div>
+                                            <span className="shrink-0 rounded-lg border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-2 py-1 text-[10px] font-black text-[#F2D675]">
+                                              {formatarData(
+                                                String(pendencia.dataReferencia || "").slice(0, 10)
+                                              )}
+                                            </span>
+                                          </div>
+
+                                          {pendencia.mensagem && (
+                                            <p className="mt-2 text-[11px] leading-5 text-gray-500">
+                                              {pendencia.mensagem}
+                                            </p>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </details>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
+            </>
+          )}
         </section>
 
         <section className="mt-7">
@@ -1154,6 +1798,19 @@ export default function RHGestao() {
                                       {ocorrencia.observacao}
                                     </p>
                                   )}
+
+                                  {ocorrencia.tratativaId && (
+                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                      <span className="rounded-lg border border-[#D4AF37]/15 bg-[#D4AF37]/[0.05] px-2.5 py-1 text-[11px] font-bold text-[#F2D675]">
+                                        Tratativa: {labelTratativaHistorico(ocorrencia.tratativaTipo)}
+                                      </span>
+                                      <span
+                                        className={`rounded-lg border px-2.5 py-1 text-[11px] font-bold ${statusDocumentoHistorico(ocorrencia.documentoStatus).classe}`}
+                                      >
+                                        {statusDocumentoHistorico(ocorrencia.documentoStatus).label}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 
@@ -1165,12 +1822,6 @@ export default function RHGestao() {
                                 >
                                   {labelTipoOcorrencia(ocorrencia)}
                                 </span>
-
-                                {ocorrencia.advertenciaStatus === "pendente" && (
-                                  <span className="rounded-lg border border-rose-400/15 bg-rose-400/[0.05] px-2.5 py-1 text-xs font-black text-rose-300">
-                                    Advertência pendente
-                                  </span>
-                                )}
                               </div>
                             </div>
                           </div>
