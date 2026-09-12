@@ -96,6 +96,8 @@ const LOJAS_RH = [
   { id: 7, nome: "Gravataí" },
 ] as const;
 
+const LOJAS_COM_CAIXA = LOJAS_RH.filter((loja) => loja.id !== 5);
+
 function labelTipoOcorrencia(ocorrencia: any) {
   const tipo = String(ocorrencia?.tipoOcorrencia || "");
   if (tipo === "atraso") return `${Number(ocorrencia?.minutosAtraso || 0)} min atraso`;
@@ -283,6 +285,7 @@ export default function RHGestao() {
   const [lojaFiltro, setLojaFiltro] = useState("todas");
   const [buscaFuncionario, setBuscaFuncionario] = useState("");
   const [dashboardLojaAbertaId, setDashboardLojaAbertaId] = useState<number | null>(null);
+  const [dashboardCaixaAbertoLojaId, setDashboardCaixaAbertoLojaId] = useState<number | null>(null);
 
   const lojasQuery = trpc.lojas.list.useQuery(undefined, {
     retry: false,
@@ -446,7 +449,12 @@ export default function RHGestao() {
       dashboardPendenciasHoje.map((pendencia: any) => Number(pendencia.lojaId))
     ).size;
 
-    const caixasComDiferenca = dashboardCaixas.filter(
+    const idsComCaixa = new Set<number>(LOJAS_COM_CAIXA.map((loja) => loja.id));
+    const caixasValidos = dashboardCaixas.filter((fechamento: any) =>
+      idsComCaixa.has(Number(fechamento.lojaId))
+    );
+
+    const caixasComDiferenca = caixasValidos.filter(
       (fechamento: any) => Math.abs(Number(fechamento.diferenca || 0)) >= 0.005
     ).length;
 
@@ -462,8 +470,8 @@ export default function RHGestao() {
       ).length,
       conferenciasHoje: dashboardHistorico.length,
       conferenciasPrevistas: LOJAS_RH.length * PERIODOS_DASHBOARD.length,
-      caixasFechados: dashboardCaixas.length,
-      caixasPrevistos: LOJAS_RH.length,
+      caixasFechados: caixasValidos.length,
+      caixasPrevistos: LOJAS_COM_CAIXA.length,
       caixasComDiferenca,
     };
   }, [
@@ -617,6 +625,20 @@ export default function RHGestao() {
     setCaixaDataFiltro(hoje);
     setCaixaFiltroAplicado({ data: hoje, loja });
     window.setTimeout(() => abrirFechamentosCaixa(), 50);
+  }
+
+  function abrirDetalheCaixaDashboard(lojaId: number) {
+    if (Number(lojaId) === 5) return;
+
+    setDashboardLojaAbertaId(null);
+    setDashboardCaixaAbertoLojaId((atual) =>
+      Number(atual) === Number(lojaId) ? null : Number(lojaId)
+    );
+    window.setTimeout(() => {
+      document
+        .getElementById("detalhe-caixa-dashboard")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   }
 
   return (
@@ -830,7 +852,9 @@ export default function RHGestao() {
             <>
               <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                 {dashboardLojas.map((loja) => {
-                  const selecionada = dashboardLojaAbertaId === Number(loja.id);
+                  const selecionadaPonto = dashboardLojaAbertaId === Number(loja.id);
+                  const selecionadaCaixa = dashboardCaixaAbertoLojaId === Number(loja.id);
+                  const selecionada = selecionadaPonto || selecionadaCaixa;
                   const fechamento = loja.fechamentoCaixa;
                   const diferencaCaixa = Math.abs(Number(fechamento?.diferenca || 0));
                   const caixaCorreto = Boolean(fechamento) && diferencaCaixa < 0.005;
@@ -851,9 +875,12 @@ export default function RHGestao() {
                     >
                       <button
                         type="button"
-                        onClick={() =>
-                          setDashboardLojaAbertaId(selecionada ? null : Number(loja.id))
-                        }
+                        onClick={() => {
+                          setDashboardCaixaAbertoLojaId(null);
+                          setDashboardLojaAbertaId(
+                            selecionadaPonto ? null : Number(loja.id)
+                          );
+                        }}
                         className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-white/[0.025]"
                       >
                         <div className="min-w-0">
@@ -884,10 +911,14 @@ export default function RHGestao() {
                         </div>
 
                         <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-bold text-[#F2D675]">
-                          {selecionada ? "Selecionada" : "Detalhes"}
+                          {selecionadaPonto
+                            ? "Selecionada"
+                            : selecionadaCaixa
+                            ? "Caixa aberto"
+                            : "Detalhes"}
                           <ChevronDown
                             className={`h-4 w-4 transition-transform ${
-                              selecionada ? "rotate-180" : ""
+                              selecionadaPonto ? "rotate-180" : ""
                             }`}
                           />
                         </div>
@@ -946,10 +977,24 @@ export default function RHGestao() {
                         })}
                       </div>
 
+                      {Number(loja.id) === 5 ? (
+                        <div className="flex w-full items-center justify-between gap-3 border-t border-white/[0.06] bg-white/[0.015] px-3.5 py-3 text-left">
+                          <div>
+                            <p className="text-xs font-black text-gray-400">Administrativo</p>
+                            <p className="mt-0.5 text-[10px] text-gray-600">
+                              Conferência de caixa não se aplica
+                            </p>
+                          </div>
+                          <ShieldCheck className="h-4 w-4 text-gray-700" />
+                        </div>
+                      ) : (
                       <button
                         type="button"
-                        onClick={() => abrirCaixaDaLoja(Number(loja.id))}
+                        onClick={() => abrirDetalheCaixaDashboard(Number(loja.id))}
                         className={`flex w-full items-center justify-between gap-3 border-t border-white/[0.06] px-3.5 py-3 text-left transition hover:bg-white/[0.035] ${
+                          selecionadaCaixa
+                            ? "ring-1 ring-inset ring-[#D4AF37]/40 bg-[#D4AF37]/[0.055]"
+                            :
                           caixaCorreto
                             ? "bg-emerald-400/[0.035]"
                             : caixaDentroMargem
@@ -991,10 +1036,188 @@ export default function RHGestao() {
                           <WalletCards className="h-4 w-4 text-gray-700" />
                         )}
                       </button>
+                      )}
                     </Card>
                   );
                 })}
               </div>
+
+              {dashboardCaixaAbertoLojaId !== null &&
+                (() => {
+                  const loja = dashboardLojas.find(
+                    (item: any) => Number(item.id) === Number(dashboardCaixaAbertoLojaId)
+                  );
+
+                  if (!loja) return null;
+
+                  const fechamento = loja.fechamentoCaixa;
+                  const status = fechamento ? statusCaixa(fechamento) : null;
+                  const diferenca = Number(fechamento?.diferenca || 0);
+
+                  return (
+                    <Card
+                      id="detalhe-caixa-dashboard"
+                      className="mt-6 scroll-mt-6 overflow-hidden border-[#D4AF37]/30 bg-[#0b0b0b]"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.06] p-5">
+                        <div>
+                          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#8f8a80]">
+                            Detalhe do Caixa
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <h3 className="text-xl font-black text-white">{loja.nome}</h3>
+                            <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] px-2.5 py-1 text-[10px] font-black text-[#F2D675]">
+                              {formatarData(hoje)}
+                            </span>
+                            {status && (
+                              <span
+                                className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${status.classe}`}
+                              >
+                                {status.label}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-xs text-gray-600">
+                            Visão gerencial do fechamento diário sem sair do Dashboard.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => abrirCaixaDaLoja(Number(loja.id))}
+                            className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                          >
+                            Ver histórico do Caixa
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDashboardCaixaAbertoLojaId(null)}
+                            className="border-white/10 bg-white/[0.025] text-gray-300 hover:bg-white/[0.06] hover:text-white"
+                          >
+                            Fechar detalhe
+                          </Button>
+                        </div>
+                      </div>
+
+                      <CardContent className="p-4 sm:p-5">
+                        {!fechamento ? (
+                          <div className="rounded-2xl border border-white/[0.08] bg-black/20 p-5">
+                            <div className="flex items-start gap-3">
+                              <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-2.5">
+                                <WalletCards className="h-5 w-5 text-gray-600" />
+                              </div>
+                              <div>
+                                <p className="font-black text-white">Caixa ainda não fechado</p>
+                                <p className="mt-1 text-sm leading-6 text-gray-500">
+                                  Ainda não existe fechamento de caixa para {loja.nome} em {formatarData(hoje)}.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="grid gap-3 md:grid-cols-3">
+                              <div className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                                  Saldo Final esperado
+                                </p>
+                                <p className="mt-2 text-2xl font-black text-white">
+                                  {formatarMoeda(fechamento.saldoFinal)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                                  Dinheiro contado
+                                </p>
+                                <p className="mt-2 text-2xl font-black text-white">
+                                  {formatarMoeda(fechamento.totalFisico)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                                  Diferença
+                                </p>
+                                <p
+                                  className={`mt-2 text-2xl font-black ${
+                                    Math.abs(diferenca) < 0.005
+                                      ? "text-emerald-300"
+                                      : Math.abs(diferenca) <= 5
+                                      ? "text-amber-300"
+                                      : "text-rose-300"
+                                  }`}
+                                >
+                                  {formatarMoeda(diferenca)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                                  Motivo
+                                </p>
+                                <p className="mt-2 text-sm font-bold text-gray-200">
+                                  {labelMotivoCaixa(fechamento.justificativaTipo)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                                  Observação
+                                </p>
+                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-300">
+                                  {fechamento.justificativaObservacao || "—"}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                                  Fechado por
+                                </p>
+                                <p className="mt-2 text-sm font-bold text-white">
+                                  {fechamento.fechadoPorNome || "Usuário não informado"}
+                                </p>
+                                <p className="mt-1 text-xs text-gray-500">
+                                  {fechamento.fechadoEm
+                                    ? formatarDataHora(fechamento.fechadoEm)
+                                    : "Horário não informado"}
+                                </p>
+                              </div>
+
+                              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                                  Relatório original
+                                </p>
+                                <p className="mt-2 truncate text-xs font-bold text-[#F2D675]/80">
+                                  {fechamento.relatorioNome || "relatorio-caixa.xlsx"}
+                                </p>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => baixarRelatorioCaixa(fechamento)}
+                                  disabled={caixaBaixandoId === Number(fechamento.id)}
+                                  className="mt-3 border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                                >
+                                  <Download className="mr-2 h-4 w-4" />
+                                  {caixaBaixandoId === Number(fechamento.id)
+                                    ? "Abrindo..."
+                                    : "Baixar XLSX"}
+                                </Button>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
 
               {dashboardLojaAbertaId !== null &&
                 (() => {
@@ -1300,11 +1523,13 @@ export default function RHGestao() {
                     </SelectTrigger>
                     <SelectContent className="border-white/10 bg-[#111111] text-white">
                       <SelectItem value="todas">Todas as lojas</SelectItem>
-                      {lojas.map((loja) => (
-                        <SelectItem key={loja.id} value={String(loja.id)}>
-                          {loja.nome}
-                        </SelectItem>
-                      ))}
+                      {lojas
+                        .filter((loja) => Number(loja.id) !== 5)
+                        .map((loja) => (
+                          <SelectItem key={loja.id} value={String(loja.id)}>
+                            {loja.nome}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
