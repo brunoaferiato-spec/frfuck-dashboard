@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import RHEpiAlertas from "@/components/RHEpiAlertas";
 import * as pdfjs from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
@@ -1039,6 +1040,15 @@ export default function RHMeuDia() {
             </Button>
 
             <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate("/rh/epis")}
+              className="h-10 border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-3 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+            >
+              <span className="text-sm">EPIs</span>
+            </Button>
+
+            <Button
               variant="ghost"
               onClick={sair}
               className="h-10 px-3 text-gray-400 hover:bg-red-500/10 hover:text-rose-300"
@@ -1051,6 +1061,7 @@ export default function RHMeuDia() {
       </header>
 
       <main className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-5 sm:py-6 lg:px-8">
+        <RHEpiAlertas />
         <section className="grid gap-3 lg:grid-cols-[1.35fr_1fr] lg:gap-4">
           <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#080808]">
             <CardContent className="p-4 sm:p-6">

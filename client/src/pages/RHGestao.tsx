@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import RHEpiAlertas from "@/components/RHEpiAlertas";
 import {
   AlertTriangle,
   Archive,
@@ -49,6 +50,12 @@ const MODULOS = [
   {
     titulo: "Documentos RH",
     descricao: "Advertências avulsas, adiantamentos, folhas de pagamento e cartões-ponto assinados.",
+    icon: Archive,
+    ativo: true,
+  },
+  {
+    titulo: "Entrega de EPIs",
+    descricao: "Historico de entregas, tamanhos, quantidades e termos assinados por colaborador.",
     icon: Archive,
     ativo: true,
   },
@@ -773,6 +780,7 @@ export default function RHGestao() {
       </div>
 
       <main className="mx-auto max-w-7xl px-4 py-5 sm:px-5 sm:py-7 lg:px-8">
+        <RHEpiAlertas />
         <section>
           <div className="overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#090909] to-[#050505]">
             <div className="border-b border-white/[0.06] p-5 sm:p-6">
@@ -1551,6 +1559,8 @@ export default function RHGestao() {
                        ? abrirFechamentosCaixa
                        : modulo.titulo === "Documentos RH"
                        ? () => navigate("/rh/documentos")
+                       : modulo.titulo === "Entrega de EPIs"
+                       ? () => navigate("/rh/epis")
                        : undefined
                   }
                   className={`border-white/[0.08] bg-[#0b0b0b] transition hover:border-[#D4AF37]/25 ${
