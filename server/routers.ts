@@ -74,6 +74,8 @@ import * as XLSX from "xlsx";
 
 import { rhDocumentosRouter } from "./rhDocumentos";
 import { rhEpisRouter } from "./rhEpis";
+import { rhFeriasRouter } from "./rhFerias";
+import { rhExperienciaRouter } from "./rhExperiencia";
 
 const funcaoSchema = z.enum([
   "mecanico",
@@ -515,6 +517,8 @@ export const appRouter = router({
   system: systemRouter,
   rhDocumentos: rhDocumentosRouter,
   rhEpis: rhEpisRouter,
+  rhFerias: rhFeriasRouter,
+  rhExperiencia: rhExperienciaRouter,
 
   auth: router({
     me: publicProcedure.query(({ ctx }) => {

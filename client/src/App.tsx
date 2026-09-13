@@ -19,6 +19,9 @@ import RHGestao from "./pages/RHGestao";
 import RHCaixa from "./pages/RHCaixa";
 import RHDocumentos from "./pages/RHDocumentos";
 import RHEpis from "./pages/RHEpis";
+import RHFerias from "./pages/RHFerias";
+import RHExperiencia from "./pages/RHExperiencia";
+import RHFeriasPlanejamento from "./pages/RHFeriasPlanejamento";
 
 function TelaCarregando() {
   return (
@@ -202,6 +205,24 @@ function Router() {
         <RotaCaixaRh>
           <RHEpis />
         </RotaCaixaRh>
+      </Route>
+
+      <Route path="/rh/ferias">
+        <RotaSemCaixaLider>
+          <RHFerias />
+        </RotaSemCaixaLider>
+      </Route>
+
+      <Route path="/rh/experiencia">
+        <RotaSemCaixaLider>
+          <RHExperiencia />
+        </RotaSemCaixaLider>
+      </Route>
+
+      <Route path="/rh/ferias/planejamento">
+        <RotaSemCaixaLider>
+          <RHFeriasPlanejamento />
+        </RotaSemCaixaLider>
       </Route>
 
       <Route path="/folha-pagamento">

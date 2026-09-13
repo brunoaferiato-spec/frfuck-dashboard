@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import RHEpiAlertas from "@/components/RHEpiAlertas";
+import RHFeriasAlertas from "@/components/RHFeriasAlertas";
+import RHExperienciaDashboard from "@/components/RHExperienciaDashboard";
 import {
   AlertTriangle,
   Archive,
@@ -69,7 +71,7 @@ const MODULOS = [
     titulo: "Férias",
     descricao: "Ciclos, avisos, pagamento, saída, retorno e conclusão.",
     icon: CalendarDays,
-    ativo: false,
+    ativo: true,
   },
   {
     titulo: "Dashboard RH",
@@ -781,6 +783,8 @@ export default function RHGestao() {
 
       <main className="mx-auto max-w-7xl px-4 py-5 sm:px-5 sm:py-7 lg:px-8">
         <RHEpiAlertas />
+        <RHFeriasAlertas />
+        <RHExperienciaDashboard />
         <section>
           <div className="overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#090909] to-[#050505]">
             <div className="border-b border-white/[0.06] p-5 sm:p-6">
@@ -1561,6 +1565,8 @@ export default function RHGestao() {
                        ? () => navigate("/rh/documentos")
                        : modulo.titulo === "Entrega de EPIs"
                        ? () => navigate("/rh/epis")
+                       : modulo.titulo === "Férias"
+                       ? () => navigate("/rh/ferias")
                        : undefined
                   }
                   className={`border-white/[0.08] bg-[#0b0b0b] transition hover:border-[#D4AF37]/25 ${
