@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import RHFeriasCaixaPendencias from "@/components/RHFeriasCaixaPendencias";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -127,12 +128,56 @@ const HORARIOS: Array<{
   },
  ];
 
+const HORARIOS_SABADO: Array<{
+  periodo: PeriodoPonto;
+  horario: string;
+  titulo: string;
+  descricao: string;
+}> = [
+  {
+    periodo: "entrada",
+    horario: "10:00",
+    titulo: "Entrada",
+    descricao:
+      "Confira as entradas de sábado: 07:30 para a jornada padrão e 09:00 para auxiliares.",
+  },
+  {
+    periodo: "saida",
+    horario: "13:00",
+    titulo: "Saída",
+    descricao:
+      "Confira as saídas de sábado: 11:30 para a jornada padrão e 13:00 para auxiliares.",
+  },
+];
+
 const NOMES_PERIODO_PENDENCIA: Record<string, string> = {
   entrada: "10:00 • Entrada",
   saida_almoco: "12:30 • Saída almoço",
   retorno_almoco: "14:30 • Retorno almoço",
   saida: "17:45 • Saída",
 };
+
+function diaSemanaDataCivilTela(dataCivil: string) {
+  const [ano, mes, dia] = String(dataCivil || "").split("-").map(Number);
+  if (!ano || !mes || !dia) return -1;
+  return new Date(ano, mes - 1, dia, 12, 0, 0).getDay();
+}
+
+function horariosParaData(dataCivil: string) {
+  const diaSemana = diaSemanaDataCivilTela(dataCivil);
+  if (diaSemana === 0) return [];
+  if (diaSemana === 6) return HORARIOS_SABADO;
+  return HORARIOS;
+}
+
+function nomePeriodoPendencia(periodo: string, dataCivil?: string | null) {
+  if (dataCivil && diaSemanaDataCivilTela(dataCivil) === 6) {
+    if (periodo === "entrada") return "10:00 • Entrada";
+    if (periodo === "saida") return "13:00 • Saída";
+  }
+
+  return NOMES_PERIODO_PENDENCIA[periodo] || periodo;
+}
 
 function dataHojeCivil() {
   const agora = new Date();
@@ -596,6 +641,10 @@ export default function RHMeuDia() {
   const [lojaTeste, setLojaTeste] = useState("1");
   const [dataTeste, setDataTeste] = useState(hoje);
   const dataReferencia = ehAdminTeste ? dataTeste : hoje;
+  const diaSemanaReferencia = diaSemanaDataCivilTela(dataReferencia);
+  const domingoFechado = diaSemanaReferencia === 0;
+  const sabadoOperacao = diaSemanaReferencia === 6;
+  const horariosDoDia = horariosParaData(dataReferencia);
 
   const lojasQuery = trpc.lojas.list.useQuery(undefined, {
     retry: false,
@@ -716,13 +765,13 @@ export default function RHMeuDia() {
     },
   });
 
-  const horarioConfigAberto = HORARIOS.find(
+  const horarioConfigAberto = horariosDoDia.find(
     (item) => item.periodo === periodoAberto
   );
 
   const agoraMinutos = minutosHorario(horarioAgora());
 
-  const conferenciasPendentesAgora = HORARIOS.filter((item) => {
+  const conferenciasPendentesAgora = horariosDoDia.filter((item) => {
     if (dataReferencia !== hoje) return false;
     if (conferenciaPorPeriodo.has(item.periodo)) return false;
     return agoraMinutos >= minutosHorario(item.horario);
@@ -1061,6 +1110,7 @@ export default function RHMeuDia() {
       </header>
 
       <main className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-5 sm:py-6 lg:px-8">
+        <RHFeriasCaixaPendencias />
         <RHEpiAlertas />
         <section className="grid gap-3 lg:grid-cols-[1.35fr_1fr] lg:gap-4">
           <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#080808]">
@@ -1192,12 +1242,16 @@ export default function RHMeuDia() {
               Conferência de ponto
             </p>
             <p className="mt-1 text-xs text-gray-500 sm:text-sm">
-              Baixe o Ponto Diário atualizado em cada horário e importe o PDF.
+              {domingoFechado
+                ? "Domingo • loja fechada • sem conferência de ponto."
+                : sabadoOperacao
+                ? "Sábado: somente Entrada e Saída. Sem conferência de almoço."
+                : "Baixe o Ponto Diário atualizado em cada horário e importe o PDF."}
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {HORARIOS.map((item) => {
+            {horariosDoDia.map((item) => {
               const existente = conferenciaPorPeriodo.get(item.periodo);
               const horarioLiberado =
                 ehAdminTeste ||
@@ -1755,7 +1809,10 @@ export default function RHMeuDia() {
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8f8a80]">Definir tratativa</p>
                 <h3 className="mt-1 text-xl font-black text-[#F2D675]">{tratativaAlvo.funcionarioNome}</h3>
                 <p className="mt-1 text-xs text-gray-500">
-                  {tratativaAlvo.dataReferencia?.split("-").reverse().join("/")} • {NOMES_PERIODO_PENDENCIA[String(tratativaAlvo.periodo)] || tratativaAlvo.periodo}
+                  {tratativaAlvo.dataReferencia?.split("-").reverse().join("/")} • {nomePeriodoPendencia(
+    String(tratativaAlvo.periodo),
+    tratativaAlvo.dataReferencia
+  )}
                 </p>
               </div>
               <Button

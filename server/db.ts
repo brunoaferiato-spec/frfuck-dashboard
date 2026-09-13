@@ -2823,6 +2823,44 @@ function somarDiasDataCivilRh(dataCivil: string, dias: number) {
   ).padStart(2, "0")}`;
 }
 
+function diaSemanaDataCivilRh(dataCivil: string) {
+  const [ano, mes, dia] = normalizarDataCivilRh(dataCivil).split("-").map(Number);
+  return new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
+}
+
+function jornadaSabadoPelaEntradaRh(entradaSemana?: string | null) {
+  const entrada = String(entradaSemana || "").trim();
+
+  if (entrada === "07:30") {
+    return { entrada: "07:30", saida: "11:30" };
+  }
+
+  if (entrada === "09:00") {
+    return { entrada: "09:00", saida: "13:00" };
+  }
+
+  return null;
+}
+
+function horarioConferenciaRh(periodo: RhPontoPeriodo, dataReferencia: string) {
+  const diaSemana = diaSemanaDataCivilRh(dataReferencia);
+
+  if (diaSemana === 0) {
+    throw new Error("Domingo: loja fechada. Nao existe conferencia de ponto.");
+  }
+
+  if (diaSemana === 6) {
+    if (periodo === "entrada") return "10:00";
+    if (periodo === "saida") return "13:00";
+
+    throw new Error(
+      "No sabado existem somente as conferencias de Entrada e Saida."
+    );
+  }
+
+  return RH_PONTO_HORARIOS[periodo];
+}
+
 function minutosDoHorarioRh(horario: string) {
   const match = String(horario || "").match(/^([01]\d|2[0-3]):([0-5]\d)$/);
 
@@ -3243,10 +3281,16 @@ export async function analisarRhPontoImportacao(data: {
 
   const lojaId = Number(data.lojaId);
   const dataReferencia = normalizarDataCivilRh(data.dataReferencia);
+  const diaSemana = diaSemanaDataCivilRh(dataReferencia);
+  const sabado = diaSemana === 6;
   const config = RH_PONTO_CAMPOS[data.periodo];
-  const horarioConferencia = RH_PONTO_HORARIOS[data.periodo];
+  const horarioConferencia = horarioConferenciaRh(data.periodo, dataReferencia);
+  const registroEfetivo =
+    sabado && data.periodo === "saida" ? "saida1" : config?.registro;
 
-  if (!config || !horarioConferencia) throw new Error("Período de conferência inválido");
+  if (!config || !horarioConferencia || !registroEfetivo) {
+    throw new Error("Período de conferência inválido");
+  }
   if (!Array.isArray(data.registros) || data.registros.length === 0) {
     throw new Error("O PDF não possui registros de ponto para analisar");
   }
@@ -3374,7 +3418,7 @@ export async function analisarRhPontoImportacao(data: {
     if ((contagemNomesPdf.get(nomeNormalizado) || 0) > 1) {
       itens.push({
         ...baseItem(registro, null, {
-          horarioBatida: (registro as any)[config.registro] ?? null,
+          horarioBatida: (registro as any)[registroEfetivo] ?? null,
         }),
         status: "duplicado_relatorio" as RhPontoStatusAnalise,
         bloqueiaFinalizacao: true,
@@ -3393,7 +3437,7 @@ export async function analisarRhPontoImportacao(data: {
     if (candidatos.length !== 1) {
       itens.push({
         ...baseItem(registro, null, {
-          horarioBatida: (registro as any)[config.registro] ?? null,
+          horarioBatida: (registro as any)[registroEfetivo] ?? null,
         }),
         status: "nao_identificado" as RhPontoStatusAnalise,
         bloqueiaFinalizacao: false,
@@ -3439,6 +3483,15 @@ export async function analisarRhPontoImportacao(data: {
 
     const entradaFixa = normalizarBatidaRhPonto(String(funcionario.horarioEntrada1 || "").trim());
     const saidaFixa = normalizarBatidaRhPonto(String(funcionario.horarioSaida2 || "").trim());
+    const jornadaSabado = sabado
+      ? jornadaSabadoPelaEntradaRh(entradaFixa)
+      : null;
+    const entradaPrevista = sabado
+      ? jornadaSabado?.entrada ?? null
+      : entradaFixa;
+    const saidaPrevista = sabado
+      ? jornadaSabado?.saida ?? null
+      : saidaFixa;
     const duracaoAlmocoMinutos =
       funcionario.duracaoAlmocoMinutos === null || funcionario.duracaoAlmocoMinutos === undefined
         ? null
@@ -3450,13 +3503,15 @@ export async function analisarRhPontoImportacao(data: {
     const saida2 = registro.saida2;
 
     if (config.tipo === "entrada_fixa") {
-      const horarioPrevisto = entradaFixa;
+      const horarioPrevisto = entradaPrevista;
       if (!horarioPrevisto || horarioPrevisto === "FALTA") {
         itens.push({
           ...baseItem(registro, funcionario, { horarioBatida: entrada1 }),
           status: "jornada_nao_cadastrada" as RhPontoStatusAnalise,
           bloqueiaFinalizacao: false,
-          mensagem: "Horário fixo de entrada ainda não cadastrado. Ficará pendente para o RH.",
+          mensagem: sabado
+            ? "Jornada de sábado não identificada. O RH deve revisar a jornada do funcionário."
+            : "Horário fixo de entrada ainda não cadastrado. Ficará pendente para o RH.",
         });
         continue;
       }
@@ -3664,19 +3719,22 @@ export async function analisarRhPontoImportacao(data: {
       continue;
     }
 
-    const horarioPrevisto = saidaFixa;
+    const horarioPrevisto = saidaPrevista;
+    const saidaDoDia = sabado ? saida1 : saida2;
     if (!horarioPrevisto || horarioPrevisto === "FALTA") {
       itens.push({
-        ...baseItem(registro, funcionario, { horarioBatida: saida2 }),
+        ...baseItem(registro, funcionario, { horarioBatida: saidaDoDia }),
         status: "jornada_nao_cadastrada" as RhPontoStatusAnalise,
         bloqueiaFinalizacao: false,
-        mensagem: "Horário fixo de saída ainda não cadastrado. Ficará pendente para o RH.",
+        mensagem: sabado
+          ? "Jornada de sábado não identificada. O RH deve revisar a jornada do funcionário."
+          : "Horário fixo de saída ainda não cadastrado. Ficará pendente para o RH.",
       });
       continue;
     }
 
     const previstoMinutos = minutosDoHorarioRh(horarioPrevisto);
-    if (!saida2) {
+    if (!saidaDoDia) {
       if (previstoMinutos > checkpointMinutos) {
         itens.push({
           ...baseItem(registro, funcionario, { horarioPrevisto }),
@@ -3695,12 +3753,15 @@ export async function analisarRhPontoImportacao(data: {
       continue;
     }
 
-    const minutosAntecipados = Math.max(0, previstoMinutos - minutosDoHorarioRh(saida2));
+    const minutosAntecipados = Math.max(
+      0,
+      previstoMinutos - minutosDoHorarioRh(saidaDoDia)
+    );
     if (minutosAntecipados > 0) {
       itens.push({
         ...baseItem(registro, funcionario, {
           horarioPrevisto,
-          horarioBatida: saida2,
+          horarioBatida: saidaDoDia,
           minutosAntecipados,
           tratativaObrigatoria: true,
         }),
@@ -3712,7 +3773,10 @@ export async function analisarRhPontoImportacao(data: {
     }
 
     itens.push({
-      ...baseItem(registro, funcionario, { horarioPrevisto, horarioBatida: saida2 }),
+      ...baseItem(registro, funcionario, {
+        horarioPrevisto,
+        horarioBatida: saidaDoDia,
+      }),
       status: "ok" as RhPontoStatusAnalise,
       bloqueiaFinalizacao: false,
       mensagem: "Saída dentro do horário.",
@@ -3744,17 +3808,26 @@ export async function analisarRhPontoImportacao(data: {
 
     const entradaFixa = normalizarBatidaRhPonto(String(funcionario.horarioEntrada1 || "").trim());
     const saidaFixa = normalizarBatidaRhPonto(String(funcionario.horarioSaida2 || "").trim());
+    const jornadaSabado = sabado
+      ? jornadaSabadoPelaEntradaRh(entradaFixa)
+      : null;
+    const entradaPrevista = sabado
+      ? jornadaSabado?.entrada ?? null
+      : entradaFixa;
+    const saidaPrevista = sabado
+      ? jornadaSabado?.saida ?? null
+      : saidaFixa;
     const duracaoAlmocoMinutos =
       funcionario.duracaoAlmocoMinutos === null || funcionario.duracaoAlmocoMinutos === undefined
         ? null
         : Number(funcionario.duracaoAlmocoMinutos);
 
     if (config.tipo === "entrada_fixa") {
-      if (!entradaFixa || entradaFixa === "FALTA") continue;
-      if (minutosDoHorarioRh(entradaFixa) > checkpointMinutos) continue;
+      if (!entradaPrevista || entradaPrevista === "FALTA") continue;
+      if (minutosDoHorarioRh(entradaPrevista) > checkpointMinutos) continue;
       itens.push({
         ...baseItem({ data: dataReferencia, nomePdf: funcionario.nome }, funcionario, {
-          horarioPrevisto: entradaFixa,
+          horarioPrevisto: entradaPrevista,
           tratativaObrigatoria: true,
         }),
         status: "ausente_relatorio" as RhPontoStatusAnalise,
@@ -3765,11 +3838,11 @@ export async function analisarRhPontoImportacao(data: {
     }
 
     if (config.tipo === "saida_fixa") {
-      if (!saidaFixa || saidaFixa === "FALTA") continue;
-      if (minutosDoHorarioRh(saidaFixa) > checkpointMinutos) continue;
+      if (!saidaPrevista || saidaPrevista === "FALTA") continue;
+      if (minutosDoHorarioRh(saidaPrevista) > checkpointMinutos) continue;
       itens.push({
         ...baseItem({ data: dataReferencia, nomePdf: funcionario.nome }, funcionario, {
-          horarioPrevisto: saidaFixa,
+          horarioPrevisto: saidaPrevista,
           tratativaObrigatoria: true,
         }),
         status: "ausente_relatorio" as RhPontoStatusAnalise,
@@ -3860,7 +3933,10 @@ export async function salvarRhPontoImportacao(data: {
 
   const lojaId = Number(data.lojaId);
   const dataReferencia = normalizarDataCivilRh(data.dataReferencia);
-  const horarioPrevistoConferencia = RH_PONTO_HORARIOS[data.periodo];
+  const horarioPrevistoConferencia = horarioConferenciaRh(
+    data.periodo,
+    dataReferencia
+  );
   const connection = await _pool.getConnection();
 
   try {
@@ -4427,7 +4503,10 @@ export async function salvarRhPontoConferencia(data: {
 
   const lojaId = Number(data.lojaId);
   const dataReferencia = normalizarDataCivilRh(data.dataReferencia);
-  const horarioPrevisto = RH_PONTO_HORARIOS[data.periodo];
+  const horarioPrevisto = horarioConferenciaRh(
+    data.periodo,
+    dataReferencia
+  );
   if (!horarioPrevisto) throw new Error("Período inválido");
 
   const connection = await _pool.getConnection();

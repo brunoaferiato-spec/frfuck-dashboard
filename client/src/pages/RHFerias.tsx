@@ -16,7 +16,6 @@ import {
   Search,
   ShieldCheck,
   UserRound,
-  WalletCards,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -64,6 +63,9 @@ type ProcessoFerias = {
   status: StatusFerias;
   avisoPendente: boolean;
   pagamentoSolicitado: boolean;
+  contasAPagarLancado: boolean;
+  contasAPagarPorNome?: string | null;
+  contasAPagarEm?: string | null;
   pagamentoPendente: boolean;
   avisoNome?: string | null;
   avisoTamanho?: number | null;
@@ -414,18 +416,6 @@ export default function RHFerias() {
     onError: (error) => {
       setMensagem("");
       setErro(error.message || "Não foi possível cancelar o processo.");
-    },
-  });
-
-  const liberarPagamentoMutation = trpc.rhFerias.liberarPagamento.useMutation({
-    onSuccess: async () => {
-      setErro("");
-      setMensagem("Pendência de pagamento liberada para a Caixa da loja.");
-      await utils.rhFerias.listar.invalidate();
-    },
-    onError: (error) => {
-      setMensagem("");
-      setErro(error.message || "Não foi possível liberar o pagamento para a Caixa.");
     },
   });
 
@@ -1098,11 +1088,20 @@ export default function RHFerias() {
                                       : "text-emerald-200"
                                   }`}>
                                     {!processo.pagamentoSolicitado
-                                      ? "A Líder de RH ainda não liberou esta pendência."
+                                      ? "A etapa financeira abre automaticamente após o aviso assinado."
+                                      : !processo.contasAPagarLancado
+                                      ? "Aguardando a Caixa confirmar o lançamento no Contas a Pagar."
                                       : processo.pagamentoPendente
-                                      ? "Aguardando a Caixa anexar o pagamento."
-                                      : "Documento recebido."}
+                                      ? "Contas a Pagar confirmado. Aguardando o documento assinado."
+                                      : "Contas a Pagar confirmado e documento recebido."}
                                   </p>
+
+                                  {processo.contasAPagarLancado && (
+                                    <p className="mt-1 text-[10px] font-bold text-emerald-300">
+                                      ✓ Lançado no Contas a Pagar
+                                      {processo.contasAPagarPorNome ? ` por ${processo.contasAPagarPorNome}` : ""}
+                                    </p>
+                                  )}
 
                                   {!processo.pagamentoPendente && processo.pagamentoNome && (
                                     <p className="mt-1 text-[10px] text-gray-600">
@@ -1112,18 +1111,7 @@ export default function RHFerias() {
                                   )}
                                 </div>
 
-                                {!processo.pagamentoSolicitado && !processo.avisoPendente ? (
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={() => liberarPagamentoMutation.mutate({ id: processo.id })}
-                                    disabled={liberarPagamentoMutation.isPending}
-                                    className="bg-[#D4AF37] text-xs font-black text-black hover:bg-[#E6C760]"
-                                  >
-                                    <WalletCards className="mr-1.5 h-3.5 w-3.5" />
-                                    Solicitar
-                                  </Button>
-                                ) : processo.pagamentoSolicitado && !processo.pagamentoPendente ? (
+                                {processo.pagamentoSolicitado && !processo.pagamentoPendente ? (
                                   <Button
                                     type="button"
                                     size="sm"

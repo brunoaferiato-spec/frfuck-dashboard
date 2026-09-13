@@ -165,6 +165,21 @@ function statusOperacaoLoja(loja: any) {
   };
 }
 
+function diaSemanaDataCivilGestao(dataCivil: string) {
+  const [ano, mes, dia] = String(dataCivil || "").split("-").map(Number);
+  if (!ano || !mes || !dia) return -1;
+  return new Date(ano, mes - 1, dia, 12, 0, 0).getDay();
+}
+
+function nomePeriodoGestao(periodo: string, dataCivil?: string | null) {
+  if (dataCivil && diaSemanaDataCivilGestao(dataCivil) === 6) {
+    if (periodo === "entrada") return "10:00 • Entrada";
+    if (periodo === "saida") return "13:00 • Saída";
+  }
+
+  return NOMES_PERIODO[periodo] || periodo;
+}
+
 function labelTipoOcorrencia(ocorrencia: any) {
   const tipo = String(ocorrencia?.tipoOcorrencia || "");
   if (tipo === "atraso") return `${Number(ocorrencia?.minutosAtraso || 0)} min atraso`;
@@ -2102,8 +2117,10 @@ export default function RHGestao() {
                       </div>
 
                       <p className="mt-3 text-lg font-black text-white">
-                        {NOMES_PERIODO[conferencia.periodo] ||
-                          conferencia.periodo}
+                        {nomePeriodoGestao(
+                          String(conferencia.periodo),
+                          conferencia.dataReferencia
+                        )}
                       </p>
 
                       <p className="mt-1 text-xs text-gray-500">

@@ -53,6 +53,34 @@ function getPoolFerias() {
   return poolFerias;
 }
 
+async function colunaExiste(
+  pool: mysql.Pool,
+  coluna: string
+) {
+  const [rows] = await pool.query<any[]>(
+    `SELECT COUNT(*) AS total
+       FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'rh_ferias_processos'
+        AND COLUMN_NAME = ?`,
+    [coluna]
+  );
+
+  return Number(rows?.[0]?.total || 0) > 0;
+}
+
+async function garantirColuna(
+  pool: mysql.Pool,
+  coluna: string,
+  definicao: string
+) {
+  if (await colunaExiste(pool, coluna)) return;
+
+  await pool.query(
+    `ALTER TABLE rh_ferias_processos ADD COLUMN ${coluna} ${definicao}`
+  );
+}
+
 async function ensureRhFeriasTable() {
   if (estruturaFeriasPronta) return;
 
@@ -82,6 +110,11 @@ async function ensureRhFeriasTable() {
       avisoAnexadoEm DATETIME NULL,
 
       pagamentoSolicitado TINYINT(1) NOT NULL DEFAULT 0,
+      contasAPagarLancado TINYINT(1) NOT NULL DEFAULT 0,
+      contasAPagarPorUsuarioId INT NULL,
+      contasAPagarPorNome VARCHAR(255) NULL,
+      contasAPagarEm DATETIME NULL,
+
       pagamentoNome VARCHAR(255) NULL,
       pagamentoMime VARCHAR(120) NULL,
       pagamentoTamanho INT UNSIGNED NULL,
@@ -107,6 +140,38 @@ async function ensureRhFeriasTable() {
       KEY idx_rh_ferias_retorno (dataRetorno)
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `);
+
+  await garantirColuna(
+    pool,
+    "contasAPagarLancado",
+    "TINYINT(1) NOT NULL DEFAULT 0 AFTER pagamentoSolicitado"
+  );
+  await garantirColuna(
+    pool,
+    "contasAPagarPorUsuarioId",
+    "INT NULL AFTER contasAPagarLancado"
+  );
+  await garantirColuna(
+    pool,
+    "contasAPagarPorNome",
+    "VARCHAR(255) NULL AFTER contasAPagarPorUsuarioId"
+  );
+  await garantirColuna(
+    pool,
+    "contasAPagarEm",
+    "DATETIME NULL AFTER contasAPagarPorNome"
+  );
+
+  // Compatibilidade com processos que ja tinham aviso anexado antes deste fluxo:
+  // ao existir aviso assinado, a etapa de pagamento fica automaticamente aberta.
+  await pool.query(
+    `UPDATE rh_ferias_processos
+        SET pagamentoSolicitado = 1
+      WHERE cancelado = 0
+        AND avisoConteudo IS NOT NULL
+        AND avisoNome IS NOT NULL
+        AND pagamentoSolicitado = 0`
+  );
 
   estruturaFeriasPronta = true;
 }
@@ -223,8 +288,16 @@ function statusProcesso(row: any) {
     return "aguardando_liberacao_pagamento";
   }
 
-  const pagamentoPendente = !Boolean(Number(row.pagamentoTemConteudo ?? (row.pagamentoConteudo ? 1 : 0))) || !row.pagamentoNome;
-  if (pagamentoPendente) {
+  const contasAPagarLancado = Boolean(Number(row.contasAPagarLancado || 0));
+  const pagamentoPendente =
+    !Boolean(
+      Number(
+        row.pagamentoTemConteudo ??
+          (row.pagamentoConteudo ? 1 : 0)
+      )
+    ) || !row.pagamentoNome;
+
+  if (!contasAPagarLancado || pagamentoPendente) {
     return "aguardando_pagamento";
   }
 
@@ -714,6 +787,10 @@ export const rhFeriasRouter = router({
            p.avisoAnexadoEm,
            CASE WHEN p.avisoConteudo IS NULL THEN 0 ELSE 1 END AS avisoTemConteudo,
            p.pagamentoSolicitado,
+           p.contasAPagarLancado,
+           p.contasAPagarPorUsuarioId,
+           p.contasAPagarPorNome,
+           p.contasAPagarEm,
            p.pagamentoNome,
            p.pagamentoMime,
            p.pagamentoTamanho,
@@ -734,6 +811,7 @@ export const rhFeriasRouter = router({
            DATE_FORMAT(p.dataInicio, '%Y-%m-%d') AS dataInicioFmt,
            DATE_FORMAT(p.dataRetorno, '%Y-%m-%d') AS dataRetornoFmt,
            DATE_FORMAT(p.avisoAnexadoEm, '%Y-%m-%dT%H:%i:%s') AS avisoAnexadoEmFmt,
+           DATE_FORMAT(p.contasAPagarEm, '%Y-%m-%dT%H:%i:%s') AS contasAPagarEmFmt,
            DATE_FORMAT(p.pagamentoAnexadoEm, '%Y-%m-%dT%H:%i:%s') AS pagamentoAnexadoEmFmt,
            DATE_FORMAT(p.createdAt, '%Y-%m-%dT%H:%i:%s') AS criadoEmFmt,
            DATE_FORMAT(p.updatedAt, '%Y-%m-%dT%H:%i:%s') AS atualizadoEmFmt
@@ -775,6 +853,9 @@ export const rhFeriasRouter = router({
           avisoAnexadoEm: row.avisoAnexadoEmFmt ?? null,
 
           pagamentoSolicitado: Boolean(Number(row.pagamentoSolicitado || 0)),
+          contasAPagarLancado: Boolean(Number(row.contasAPagarLancado || 0)),
+          contasAPagarPorNome: row.contasAPagarPorNome ?? null,
+          contasAPagarEm: row.contasAPagarEmFmt ?? null,
           pagamentoPendente:
             !Boolean(Number(row.pagamentoTemConteudo || 0)) || !row.pagamentoNome,
           pagamentoNome: row.pagamentoNome ?? null,
@@ -1024,6 +1105,76 @@ export const rhFeriasRouter = router({
       return { success: true };
     }),
 
+  marcarContasAPagar: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        lancado: z.boolean(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await ensureRhFeriasTable();
+
+      const pool = getPoolFerias();
+      const processo = await buscarProcesso(pool, input.id);
+      assertCaixaOuGestao(ctx, Number(processo.lojaId));
+
+      if (Boolean(Number(processo.cancelado || 0))) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "O processo está cancelado.",
+        });
+      }
+
+      if (!processo.avisoConteudo || !processo.avisoNome) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "O aviso assinado precisa ser anexado antes do Contas a Pagar.",
+        });
+      }
+
+      if (!Boolean(Number(processo.pagamentoSolicitado || 0))) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A etapa de pagamento ainda não está aberta.",
+        });
+      }
+
+      if (
+        !input.lancado &&
+        (processo.pagamentoConteudo || processo.pagamentoNome)
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "O pagamento assinado já foi anexado. O lançamento no Contas a Pagar não pode ser desmarcado.",
+        });
+      }
+
+      await pool.query(
+        `UPDATE rh_ferias_processos
+            SET contasAPagarLancado = ?,
+                contasAPagarPorUsuarioId = ?,
+                contasAPagarPorNome = ?,
+                contasAPagarEm = ?
+          WHERE id = ?`,
+        input.lancado
+          ? [
+              1,
+              Number(ctx.user?.id || 0) || null,
+              String(ctx.user?.name || ctx.user?.email || "Usuário"),
+              new Date(),
+              input.id,
+            ]
+          : [0, null, null, null, input.id]
+      );
+
+      return {
+        success: true,
+        lancado: input.lancado,
+      };
+    }),
+
   pendenciasCaixa: protectedProcedure.query(async ({ ctx }) => {
     await ensureRhFeriasTable();
 
@@ -1048,6 +1199,9 @@ export const rhFeriasRouter = router({
          p.avisoSolicitado,
          CASE WHEN p.avisoConteudo IS NULL OR p.avisoNome IS NULL THEN 1 ELSE 0 END AS avisoPendente,
          p.pagamentoSolicitado,
+         p.contasAPagarLancado,
+         p.contasAPagarPorNome,
+         DATE_FORMAT(p.contasAPagarEm, '%Y-%m-%dT%H:%i:%s') AS contasAPagarEm,
          CASE WHEN p.pagamentoConteudo IS NULL OR p.pagamentoNome IS NULL THEN 1 ELSE 0 END AS pagamentoPendente
        FROM rh_ferias_processos p
        LEFT JOIN funcionarios f ON f.id = p.funcionarioId
@@ -1056,7 +1210,14 @@ export const rhFeriasRouter = router({
          AND (
            (p.avisoSolicitado = 1 AND (p.avisoConteudo IS NULL OR p.avisoNome IS NULL))
            OR
-           (p.pagamentoSolicitado = 1 AND (p.pagamentoConteudo IS NULL OR p.pagamentoNome IS NULL))
+           (
+             p.pagamentoSolicitado = 1
+             AND (
+               p.contasAPagarLancado = 0
+               OR p.pagamentoConteudo IS NULL
+               OR p.pagamentoNome IS NULL
+             )
+           )
          )
        ORDER BY p.dataInicio ASC, p.id DESC`,
       [perfil.lojaId]
@@ -1071,6 +1232,9 @@ export const rhFeriasRouter = router({
       dataRetorno: row.dataRetorno,
       avisoPendente: Boolean(Number(row.avisoPendente || 0)),
       pagamentoSolicitado: Boolean(Number(row.pagamentoSolicitado || 0)),
+      contasAPagarLancado: Boolean(Number(row.contasAPagarLancado || 0)),
+      contasAPagarPorNome: row.contasAPagarPorNome ?? null,
+      contasAPagarEm: row.contasAPagarEm ?? null,
       pagamentoPendente: Boolean(Number(row.pagamentoPendente || 0)),
     }));
   }),
@@ -1114,9 +1278,19 @@ export const rhFeriasRouter = router({
         ) {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: "O pagamento ainda não foi solicitado pelo RH.",
+            message: "A etapa de pagamento ainda não está aberta.",
           });
         }
+      }
+
+      if (
+        input.tipo === "pagamento" &&
+        !Boolean(Number(processo.contasAPagarLancado || 0))
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Marque primeiro que foi lançado no Contas a Pagar.",
+        });
       }
 
       validarMime(input.arquivoMime);
@@ -1125,16 +1299,47 @@ export const rhFeriasRouter = router({
 
       const prefixo = input.tipo === "aviso" ? "aviso" : "pagamento";
 
+      if (input.tipo === "aviso") {
+        await pool.query(
+          `UPDATE rh_ferias_processos
+              SET avisoNome = ?,
+                  avisoMime = ?,
+                  avisoTamanho = ?,
+                  avisoHash = ?,
+                  avisoConteudo = ?,
+                  avisoPorUsuarioId = ?,
+                  avisoPorNome = ?,
+                  avisoAnexadoEm = NOW(),
+                  pagamentoSolicitado = 1
+            WHERE id = ?`,
+          [
+            nomeArquivoSeguro(input.arquivoNome),
+            input.arquivoMime,
+            arquivo.length,
+            hash,
+            arquivo,
+            Number(ctx.user?.id || 0) || null,
+            String(ctx.user?.name || ctx.user?.email || "Usuário"),
+            input.id,
+          ]
+        );
+
+        return {
+          success: true,
+          pagamentoAberto: true,
+        };
+      }
+
       await pool.query(
         `UPDATE rh_ferias_processos
-            SET ${prefixo}Nome = ?,
-                ${prefixo}Mime = ?,
-                ${prefixo}Tamanho = ?,
-                ${prefixo}Hash = ?,
-                ${prefixo}Conteudo = ?,
-                ${prefixo}PorUsuarioId = ?,
-                ${prefixo}PorNome = ?,
-                ${prefixo}AnexadoEm = NOW()
+            SET pagamentoNome = ?,
+                pagamentoMime = ?,
+                pagamentoTamanho = ?,
+                pagamentoHash = ?,
+                pagamentoConteudo = ?,
+                pagamentoPorUsuarioId = ?,
+                pagamentoPorNome = ?,
+                pagamentoAnexadoEm = NOW()
           WHERE id = ?`,
         [
           nomeArquivoSeguro(input.arquivoNome),
@@ -1148,7 +1353,10 @@ export const rhFeriasRouter = router({
         ]
       );
 
-      return { success: true };
+      return {
+        success: true,
+        pagamentoAberto: false,
+      };
     }),
 
   arquivo: protectedProcedure
