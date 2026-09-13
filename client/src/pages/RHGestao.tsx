@@ -47,10 +47,10 @@ const MODULOS = [
     ativo: true,
   },
   {
-    titulo: "Documentos, EPIs e Advertências",
-    descricao: "Dossiê do funcionário, comprovantes, trocas e documentos pendentes.",
+    titulo: "Documentos RH",
+    descricao: "Advertências avulsas, adiantamentos, folhas de pagamento e cartões-ponto assinados.",
     icon: Archive,
-    ativo: false,
+    ativo: true,
   },
   {
     titulo: "Rescisões",
@@ -1548,8 +1548,10 @@ export default function RHGestao() {
                     modulo.titulo === "Conferência de Ponto"
                       ? abrirHistoricoPonto
                       : modulo.titulo === "Conferência de Caixa"
-                      ? abrirFechamentosCaixa
-                      : undefined
+                       ? abrirFechamentosCaixa
+                       : modulo.titulo === "Documentos RH"
+                       ? () => navigate("/rh/documentos")
+                       : undefined
                   }
                   className={`border-white/[0.08] bg-[#0b0b0b] transition hover:border-[#D4AF37]/25 ${
                     modulo.ativo ? "cursor-pointer border-emerald-400/15" : ""
@@ -1579,9 +1581,9 @@ export default function RHGestao() {
 
                     {modulo.ativo && (
                       <p className="mt-3 text-xs font-bold text-[#F2D675]">
-                        {modulo.titulo === "Conferência de Caixa"
-                          ? "Abrir módulo →"
-                          : "Ver histórico ↓"}
+                        {modulo.titulo === "Conferência de Caixa" || modulo.titulo === "Documentos RH"
+                           ? "Abrir módulo →"
+                           : "Ver histórico ↓"}
                       </p>
                     )}
                   </CardContent>

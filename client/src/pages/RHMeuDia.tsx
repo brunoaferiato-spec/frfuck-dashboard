@@ -1028,6 +1028,17 @@ export default function RHMeuDia() {
             </Button>
 
             <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate("/rh/documentos")}
+              className="h-10 border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-3 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+            >
+              <FileCheck2 className="mr-2 h-4 w-4" />
+              <span className="hidden text-sm sm:inline">Documentos</span>
+              <span className="text-sm sm:hidden">Docs</span>
+            </Button>
+
+            <Button
               variant="ghost"
               onClick={sair}
               className="h-10 px-3 text-gray-400 hover:bg-red-500/10 hover:text-rose-300"

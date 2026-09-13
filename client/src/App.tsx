@@ -17,6 +17,7 @@ import Usuarios from "./pages/Usuarios";
 import RHMeuDia from "./pages/RHMeuDia";
 import RHGestao from "./pages/RHGestao";
 import RHCaixa from "./pages/RHCaixa";
+import RHDocumentos from "./pages/RHDocumentos";
 
 function TelaCarregando() {
   return (
@@ -187,6 +188,12 @@ function Router() {
       <Route path="/rh/caixa">
         <RotaCaixaRh>
           <RHCaixa />
+        </RotaCaixaRh>
+      </Route>
+
+      <Route path="/rh/documentos">
+        <RotaCaixaRh>
+          <RHDocumentos />
         </RotaCaixaRh>
       </Route>
 

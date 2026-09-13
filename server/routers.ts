@@ -72,6 +72,8 @@ import { storageGet, storagePut } from "./storage";
 import { createHash } from "node:crypto";
 import * as XLSX from "xlsx";
 
+import { rhDocumentosRouter } from "./rhDocumentos";
+
 const funcaoSchema = z.enum([
   "mecanico",
   "vendedor",
@@ -510,6 +512,7 @@ function parsearRelatorioRhCaixa(buffer: Buffer) {
 
 export const appRouter = router({
   system: systemRouter,
+  rhDocumentos: rhDocumentosRouter,
 
   auth: router({
     me: publicProcedure.query(({ ctx }) => {
