@@ -16,6 +16,8 @@ import AnaliseFuncionario from "./pages/AnaliseFuncionario";
 import Usuarios from "./pages/Usuarios";
 import RHMeuDia from "./pages/RHMeuDia";
 import RHGestao from "./pages/RHGestao";
+import RHPainelOperacional from "./pages/RHPainelOperacional";
+import RHGestaoShell from "./components/RHGestaoShell";
 import RHCaixa from "./pages/RHCaixa";
 import RHDocumentos from "./pages/RHDocumentos";
 import RHEpis from "./pages/RHEpis";
@@ -150,7 +152,9 @@ function RotaCaixaRh({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  if (perfil.caixaLider) return <>{children}</>;
+
+  return <RHGestaoShell>{children}</RHGestaoShell>;
 }
 
 function RotaGestaoRh({ children }: { children: ReactNode }) {
@@ -170,7 +174,7 @@ function RotaGestaoRh({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return <RHGestaoShell>{children}</RHGestaoShell>;
 }
 
 function Router() {
@@ -184,9 +188,15 @@ function Router() {
         </RotaMeuDia>
       </Route>
 
-      <Route path="/rh/gestao">
+      <Route path="/rh/gestao/detalhes">
         <RotaGestaoRh>
           <RHGestao />
+        </RotaGestaoRh>
+      </Route>
+
+      <Route path="/rh/gestao">
+        <RotaGestaoRh>
+          <RHPainelOperacional />
         </RotaGestaoRh>
       </Route>
 
@@ -209,9 +219,9 @@ function Router() {
       </Route>
 
       <Route path="/rh/ferias">
-        <RotaSemCaixaLider>
+        <RotaGestaoRh>
           <RHFerias />
-        </RotaSemCaixaLider>
+        </RotaGestaoRh>
       </Route>
       <Route path="/rh/rescisoes">
         <RotaGestaoRh>
@@ -221,15 +231,15 @@ function Router() {
 
 
       <Route path="/rh/experiencia">
-        <RotaSemCaixaLider>
+        <RotaGestaoRh>
           <RHExperiencia />
-        </RotaSemCaixaLider>
+        </RotaGestaoRh>
       </Route>
 
       <Route path="/rh/ferias/planejamento">
-        <RotaSemCaixaLider>
+        <RotaGestaoRh>
           <RHFeriasPlanejamento />
-        </RotaSemCaixaLider>
+        </RotaGestaoRh>
       </Route>
 
       <Route path="/folha-pagamento">
@@ -244,6 +254,12 @@ function Router() {
         </RotaSemCaixaLider>
       </Route>
 
+
+      <Route path="/rh/funcionarios">
+        <RotaGestaoRh>
+          <GestaoFuncionarios />
+        </RotaGestaoRh>
+      </Route>
       <Route path="/funcionarios">
         <RotaSemCaixaLider>
           <GestaoFuncionarios />

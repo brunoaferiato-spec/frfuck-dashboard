@@ -6,6 +6,7 @@ import RHEpiAlertas from "@/components/RHEpiAlertas";
 import RHFeriasAlertas from "@/components/RHFeriasAlertas";
 import RHExperienciaDashboard from "@/components/RHExperienciaDashboard";
 import RHRescisaoAlertas from "@/components/RHRescisaoAlertas";
+import RHDashboardGeral from "@/components/RHDashboardGeral";
 import {
   AlertTriangle,
   Archive,
@@ -798,6 +799,7 @@ export default function RHGestao() {
       </div>
 
       <main className="mx-auto max-w-7xl px-4 py-5 sm:px-5 sm:py-7 lg:px-8">
+        <RHDashboardGeral />
         <RHEpiAlertas />
         <RHFeriasAlertas />
         <RHExperienciaDashboard />
