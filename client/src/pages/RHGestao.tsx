@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import RHEpiAlertas from "@/components/RHEpiAlertas";
 import RHFeriasAlertas from "@/components/RHFeriasAlertas";
 import RHExperienciaDashboard from "@/components/RHExperienciaDashboard";
+import RHRescisaoAlertas from "@/components/RHRescisaoAlertas";
 import {
   AlertTriangle,
   Archive,
@@ -800,6 +801,7 @@ export default function RHGestao() {
         <RHEpiAlertas />
         <RHFeriasAlertas />
         <RHExperienciaDashboard />
+        <RHRescisaoAlertas />
         <section>
           <div className="overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#090909] to-[#050505]">
             <div className="border-b border-white/[0.06] p-5 sm:p-6">

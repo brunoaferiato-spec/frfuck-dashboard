@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import RHFeriasCaixaPendencias from "@/components/RHFeriasCaixaPendencias";
+import RHRescisaoCaixa from "@/components/RHRescisaoCaixa";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -1111,6 +1112,10 @@ export default function RHMeuDia() {
 
       <main className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-5 sm:py-6 lg:px-8">
         <RHFeriasCaixaPendencias />
+        <RHRescisaoCaixa
+          lojaIdOverride={lojaIdAtual}
+          modoTeste={ehAdminTeste}
+        />
         <RHEpiAlertas />
         <section className="grid gap-3 lg:grid-cols-[1.35fr_1fr] lg:gap-4">
           <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#080808]">

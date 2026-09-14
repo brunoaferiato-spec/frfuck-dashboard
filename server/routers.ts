@@ -76,6 +76,7 @@ import { rhDocumentosRouter } from "./rhDocumentos";
 import { rhEpisRouter } from "./rhEpis";
 import { rhFeriasRouter } from "./rhFerias";
 import { rhExperienciaRouter } from "./rhExperiencia";
+import { rhRescisoesRouter } from "./rhRescisoes";
 
 const funcaoSchema = z.enum([
   "mecanico",
@@ -519,6 +520,7 @@ export const appRouter = router({
   rhEpis: rhEpisRouter,
   rhFerias: rhFeriasRouter,
   rhExperiencia: rhExperienciaRouter,
+  rhRescisoes: rhRescisoesRouter,
 
   auth: router({
     me: publicProcedure.query(({ ctx }) => {

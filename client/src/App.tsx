@@ -21,6 +21,7 @@ import RHDocumentos from "./pages/RHDocumentos";
 import RHEpis from "./pages/RHEpis";
 import RHFerias from "./pages/RHFerias";
 import RHExperiencia from "./pages/RHExperiencia";
+import RHRescisoes from "./pages/RHRescisoes";
 import RHFeriasPlanejamento from "./pages/RHFeriasPlanejamento";
 
 function TelaCarregando() {
@@ -212,6 +213,12 @@ function Router() {
           <RHFerias />
         </RotaSemCaixaLider>
       </Route>
+      <Route path="/rh/rescisoes">
+        <RotaGestaoRh>
+          <RHRescisoes />
+        </RotaGestaoRh>
+      </Route>
+
 
       <Route path="/rh/experiencia">
         <RotaSemCaixaLider>
