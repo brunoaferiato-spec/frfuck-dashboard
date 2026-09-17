@@ -57,6 +57,11 @@ type EntregaEpi = {
   funcionarioFuncao?: string | null;
   item: ItemEpi;
   quantidade: number;
+  uniformeCamiseta?: number | null;
+  uniformeCalca?: number | null;
+  uniformeMoletom?: number | null;
+  uniformeCamisa?: number | null;
+  uniformeCamisetaPolo?: number | null;
   tamanho?: string | null;
   dataEntrega: string;
   observacao?: string | null;
@@ -223,6 +228,11 @@ export default function RHEpis() {
   const [funcionarioEnvio, setFuncionarioEnvio] = useState("");
   const [itemEnvio, setItemEnvio] = useState<ItemEpi>("luva");
   const [quantidade, setQuantidade] = useState("1");
+  const [uniformeCamiseta, setUniformeCamiseta] = useState("0");
+  const [uniformeCalca, setUniformeCalca] = useState("0");
+  const [uniformeMoletom, setUniformeMoletom] = useState("0");
+  const [uniformeCamisa, setUniformeCamisa] = useState("0");
+  const [uniformeCamisetaPolo, setUniformeCamisetaPolo] = useState("0");
   const [tamanho, setTamanho] = useState("");
   const [dataEntrega, setDataEntrega] = useState(hoje);
   const [observacao, setObservacao] = useState("");
@@ -338,6 +348,11 @@ export default function RHEpis() {
       setMensagem("Entrega de EPI registrada com sucesso.");
       setFuncionarioEnvio("");
       setQuantidade("1");
+      setUniformeCamiseta("0");
+      setUniformeCalca("0");
+      setUniformeMoletom("0");
+      setUniformeCamisa("0");
+      setUniformeCamisetaPolo("0");
       setTamanho("");
       setObservacao("");
       setArquivo(null);
@@ -369,7 +384,24 @@ export default function RHEpis() {
 
     const lojaId = caixaLider ? lojaUsuario : Number(lojaEnvio || 0);
     const funcionarioId = Number(funcionarioEnvio || 0);
-    const quantidadeNumero = Number(quantidade || 0);
+    const uniformeSelecionado = itemEnvio === "uniforme";
+    const uniformeCampos = [
+      uniformeCamiseta,
+      uniformeCalca,
+      uniformeMoletom,
+      uniformeCamisa,
+      uniformeCamisetaPolo,
+    ];
+    const uniformeQuantidades = {
+      camiseta: Number(uniformeCamiseta),
+      calca: Number(uniformeCalca),
+      moletom: Number(uniformeMoletom),
+      camisa: Number(uniformeCamisa),
+      camisetaPolo: Number(uniformeCamisetaPolo),
+    };
+    const quantidadeNumero = uniformeSelecionado
+      ? Object.values(uniformeQuantidades).reduce((total, valor) => total + valor, 0)
+      : Number(quantidade || 0);
 
     if (!lojaId) {
       setErro("Selecione a loja.");
@@ -381,7 +413,33 @@ export default function RHEpis() {
       return;
     }
 
-    if (!Number.isInteger(quantidadeNumero) || quantidadeNumero <= 0 || quantidadeNumero > 99) {
+    if (uniformeSelecionado) {
+      const algumVazio = uniformeCampos.some((valor) => valor.trim() === "");
+      const algumInvalido = Object.values(uniformeQuantidades).some(
+        (valor) => !Number.isInteger(valor) || valor < 0 || valor > 99
+      );
+
+      if (algumVazio || algumInvalido) {
+        setErro(
+          "Preencha camiseta, calça, moletom, camisa e camiseta polo com valores entre 0 e 99."
+        );
+        return;
+      }
+
+      if (quantidadeNumero <= 0) {
+        setErro("Informe pelo menos uma peça de uniforme entregue.");
+        return;
+      }
+
+      if (!arquivo) {
+        setErro("Para uniforme, anexe a ficha assinada antes de registrar.");
+        return;
+      }
+    } else if (
+      !Number.isInteger(quantidadeNumero) ||
+      quantidadeNumero <= 0 ||
+      quantidadeNumero > 99
+    ) {
       setErro("Informe uma quantidade válida entre 1 e 99.");
       return;
     }
@@ -428,7 +486,14 @@ export default function RHEpis() {
         funcionarioId,
         item: itemEnvio,
         quantidade: quantidadeNumero,
-        tamanho: tamanho.trim() || null,
+        uniformeCamiseta: uniformeSelecionado ? uniformeQuantidades.camiseta : null,
+        uniformeCalca: uniformeSelecionado ? uniformeQuantidades.calca : null,
+        uniformeMoletom: uniformeSelecionado ? uniformeQuantidades.moletom : null,
+        uniformeCamisa: uniformeSelecionado ? uniformeQuantidades.camisa : null,
+        uniformeCamisetaPolo: uniformeSelecionado
+          ? uniformeQuantidades.camisetaPolo
+          : null,
+        tamanho: uniformeSelecionado ? null : tamanho.trim() || null,
         dataEntrega,
         observacao: observacao.trim() || null,
         ...arquivoPayload,
@@ -611,16 +676,51 @@ export default function RHEpis() {
                   </p>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-bold text-gray-400">Quantidade</label>
-                    <input type="number" min={1} max={99} value={quantidade} onChange={(event) => setQuantidade(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                {itemEnvio === "uniforme" ? (
+                  <div className="rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.035] p-4">
+                    <div className="mb-3">
+                      <p className="text-xs font-black uppercase tracking-[0.14em] text-[#F2D675]">
+                        Peças do uniforme
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-gray-500">
+                        Todos os campos são obrigatórios. Informe 0 quando o colaborador não receber determinada peça.
+                      </p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camiseta</label>
+                        <input type="number" min={0} max={99} value={uniformeCamiseta} onChange={(event) => setUniformeCamiseta(event.target.value)} placeholder="0" className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Calça</label>
+                        <input type="number" min={0} max={99} value={uniformeCalca} onChange={(event) => setUniformeCalca(event.target.value)} placeholder="0" className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Moletom</label>
+                        <input type="number" min={0} max={99} value={uniformeMoletom} onChange={(event) => setUniformeMoletom(event.target.value)} placeholder="0" className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camisa</label>
+                        <input type="number" min={0} max={99} value={uniformeCamisa} onChange={(event) => setUniformeCamisa(event.target.value)} placeholder="0" className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camiseta polo</label>
+                        <input type="number" min={0} max={99} value={uniformeCamisetaPolo} onChange={(event) => setUniformeCamisetaPolo(event.target.value)} placeholder="0" className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-xs font-bold text-gray-400">Tamanho / numeração</label>
-                    <input value={tamanho} onChange={(event) => setTamanho(event.target.value)} placeholder="Opcional" maxLength={80} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-gray-400">Quantidade</label>
+                      <input type="number" min={1} max={99} value={quantidade} onChange={(event) => setQuantidade(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-gray-400">Tamanho / numeração</label>
+                      <input value={tamanho} onChange={(event) => setTamanho(event.target.value)} placeholder="Opcional" maxLength={80} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-gray-400">Data da entrega</label>
@@ -639,8 +739,14 @@ export default function RHEpis() {
                       <FileUp className="h-5 w-5 text-[#F2D675]" />
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-white">{arquivo ? arquivo.name : "Anexar termo assinado (opcional agora)"}</p>
-                      <p className="mt-0.5 text-xs text-gray-500">PDF ou foto • máximo 6 MB. Sem anexo, a entrega fica com documento pendente.</p>
+                      <p className="truncate text-sm font-black text-white">{arquivo
+                        ? arquivo.name
+                        : itemEnvio === "uniforme"
+                        ? "Anexar ficha de uniforme assinada (obrigatório)"
+                        : "Anexar termo assinado (opcional agora)"}</p>
+                      <p className="mt-0.5 text-xs text-gray-500">{itemEnvio === "uniforme"
+                        ? "PDF ou foto • máximo 6 MB. A ficha assinada é obrigatória para uniforme."
+                        : "PDF ou foto • máximo 6 MB. Sem anexo, a entrega fica com documento pendente."}</p>
                     </div>
                   </div>
                 </label>
@@ -733,7 +839,25 @@ export default function RHEpis() {
                           </div>
                           <p className="mt-2 text-sm font-black text-gray-200">{labelItem(entrega.item)}</p>
                           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                            <span>Quantidade: {entrega.quantidade}</span>
+                            {entrega.item === "uniforme" &&
+                            [
+                              entrega.uniformeCamiseta,
+                              entrega.uniformeCalca,
+                              entrega.uniformeMoletom,
+                              entrega.uniformeCamisa,
+                              entrega.uniformeCamisetaPolo,
+                            ].some((valor) => valor !== null && valor !== undefined) ? (
+                              <>
+                                <span>Camiseta: {entrega.uniformeCamiseta ?? 0}</span>
+                                <span>Calça: {entrega.uniformeCalca ?? 0}</span>
+                                <span>Moletom: {entrega.uniformeMoletom ?? 0}</span>
+                                <span>Camisa: {entrega.uniformeCamisa ?? 0}</span>
+                                <span>Camiseta polo: {entrega.uniformeCamisetaPolo ?? 0}</span>
+                                <span>Total: {entrega.quantidade}</span>
+                              </>
+                            ) : (
+                              <span>Quantidade: {entrega.quantidade}</span>
+                            )}
                             {entrega.tamanho && <span>Tamanho: {entrega.tamanho}</span>}
                             <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Entrega: {formatarData(entrega.dataEntrega)}</span>
                             {entrega.proximaTroca && (

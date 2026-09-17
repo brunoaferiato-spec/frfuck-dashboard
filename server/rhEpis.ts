@@ -87,6 +87,32 @@ async function ensureRhEpisTable() {
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `);
 
+  const colunasUniforme = [
+    "uniformeCamiseta",
+    "uniformeCalca",
+    "uniformeMoletom",
+    "uniformeCamisa",
+    "uniformeCamisetaPolo",
+  ] as const;
+
+  for (const nomeColuna of colunasUniforme) {
+    const [existentes] = await pool.query<any[]>(
+      `SELECT COLUMN_NAME
+         FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'rh_epi_entregas'
+          AND COLUMN_NAME = ?
+        LIMIT 1`,
+      [nomeColuna]
+    );
+
+    if (!existentes.length) {
+      await pool.query(
+        `ALTER TABLE rh_epi_entregas ADD COLUMN \`${nomeColuna}\` INT UNSIGNED NULL`
+      );
+    }
+  }
+
   estruturaEpisPronta = true;
 }
 
@@ -223,6 +249,11 @@ export const rhEpisRouter = router({
            f.funcao AS funcionarioFuncao,
            e.item,
            e.quantidade,
+           e.uniformeCamiseta,
+           e.uniformeCalca,
+           e.uniformeMoletom,
+           e.uniformeCamisa,
+           e.uniformeCamisetaPolo,
            e.tamanho,
            DATE_FORMAT(e.dataEntrega, '%Y-%m-%d') AS dataEntrega,
            DATE_FORMAT(
@@ -262,6 +293,26 @@ export const rhEpisRouter = router({
         lojaId: Number(row.lojaId),
         funcionarioId: Number(row.funcionarioId),
         quantidade: Number(row.quantidade || 0),
+        uniformeCamiseta:
+          row.uniformeCamiseta === null || row.uniformeCamiseta === undefined
+            ? null
+            : Number(row.uniformeCamiseta),
+        uniformeCalca:
+          row.uniformeCalca === null || row.uniformeCalca === undefined
+            ? null
+            : Number(row.uniformeCalca),
+        uniformeMoletom:
+          row.uniformeMoletom === null || row.uniformeMoletom === undefined
+            ? null
+            : Number(row.uniformeMoletom),
+        uniformeCamisa:
+          row.uniformeCamisa === null || row.uniformeCamisa === undefined
+            ? null
+            : Number(row.uniformeCamisa),
+        uniformeCamisetaPolo:
+          row.uniformeCamisetaPolo === null || row.uniformeCamisetaPolo === undefined
+            ? null
+            : Number(row.uniformeCamisetaPolo),
         comprovanteTamanho:
           row.comprovanteTamanho === null || row.comprovanteTamanho === undefined
             ? null
@@ -276,7 +327,12 @@ export const rhEpisRouter = router({
         lojaId: z.number().int().positive(),
         funcionarioId: z.number().int().positive(),
         item: itemEpiSchema,
-        quantidade: z.number().int().min(1).max(99),
+        quantidade: z.number().int().min(1).max(495),
+        uniformeCamiseta: z.number().int().min(0).max(99).nullable().optional(),
+        uniformeCalca: z.number().int().min(0).max(99).nullable().optional(),
+        uniformeMoletom: z.number().int().min(0).max(99).nullable().optional(),
+        uniformeCamisa: z.number().int().min(0).max(99).nullable().optional(),
+        uniformeCamisetaPolo: z.number().int().min(0).max(99).nullable().optional(),
         tamanho: z.string().trim().max(80).nullable().optional(),
         dataEntrega: dataCivilSchema,
         observacao: z.string().trim().max(2000).nullable().optional(),
@@ -312,6 +368,54 @@ export const rhEpisRouter = router({
         });
       }
 
+      const uniformeQuantidades = {
+        camiseta: input.uniformeCamiseta,
+        calca: input.uniformeCalca,
+        moletom: input.uniformeMoletom,
+        camisa: input.uniformeCamisa,
+        camisetaPolo: input.uniformeCamisetaPolo,
+      };
+
+      const valoresUniforme = Object.values(uniformeQuantidades);
+      const uniformeCompleto = valoresUniforme.every(
+        (valor) =>
+          typeof valor === "number" &&
+          Number.isInteger(valor) &&
+          valor >= 0 &&
+          valor <= 99
+      );
+      const totalUniformes = valoresUniforme.reduce(
+        (total, valor) => total + (typeof valor === "number" ? valor : 0),
+        0
+      );
+
+      if (input.item === "uniforme") {
+        if (!uniformeCompleto) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Informe a quantidade de camiseta, calça, moletom, camisa e camiseta polo. Use 0 quando não houver a peça.",
+          });
+        }
+
+        if (totalUniformes <= 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Informe pelo menos uma peça de uniforme entregue.",
+          });
+        }
+
+        if (!temArquivoCompleto) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Para uniforme, a ficha assinada é obrigatória.",
+          });
+        }
+      }
+
+      const quantidadeGravada =
+        input.item === "uniforme" ? totalUniformes : input.quantidade;
+
       let comprovanteNome: string | null = null;
       let comprovanteMime: string | null = null;
       let comprovanteTamanho: number | null = null;
@@ -337,16 +441,23 @@ export const rhEpisRouter = router({
 
       const [resultado] = await pool.query<any>(
         `INSERT INTO rh_epi_entregas (
-           lojaId, funcionarioId, item, quantidade, tamanho, dataEntrega, observacao,
+           lojaId, funcionarioId, item, quantidade,
+           uniformeCamiseta, uniformeCalca, uniformeMoletom, uniformeCamisa, uniformeCamisetaPolo,
+           tamanho, dataEntrega, observacao,
            comprovanteNome, comprovanteMime, comprovanteTamanho, comprovanteHash,
            comprovanteConteudo, comprovantePorUsuarioId, comprovantePorNome,
            comprovanteAnexadoEm, entreguePorUsuarioId, entreguePorNome
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           input.lojaId,
           input.funcionarioId,
           input.item,
-          input.quantidade,
+          quantidadeGravada,
+          input.item === "uniforme" ? uniformeQuantidades.camiseta : null,
+          input.item === "uniforme" ? uniformeQuantidades.calca : null,
+          input.item === "uniforme" ? uniformeQuantidades.moletom : null,
+          input.item === "uniforme" ? uniformeQuantidades.camisa : null,
+          input.item === "uniforme" ? uniformeQuantidades.camisetaPolo : null,
           input.tamanho || null,
           input.dataEntrega,
           input.observacao || null,
