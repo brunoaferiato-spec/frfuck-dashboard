@@ -113,6 +113,37 @@ async function ensureRhEpisTable() {
     }
   }
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rh_uniforme_movimentacoes (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      lojaId INT NOT NULL,
+      funcionarioId INT NOT NULL,
+      tipo VARCHAR(20) NOT NULL,
+      dataMovimentacao DATE NOT NULL,
+
+      devolvidoCamiseta INT UNSIGNED NOT NULL DEFAULT 0,
+      devolvidoCalca INT UNSIGNED NOT NULL DEFAULT 0,
+      devolvidoMoletom INT UNSIGNED NOT NULL DEFAULT 0,
+      devolvidoCamisa INT UNSIGNED NOT NULL DEFAULT 0,
+      devolvidoCamisetaPolo INT UNSIGNED NOT NULL DEFAULT 0,
+
+      recebidoCamiseta INT UNSIGNED NOT NULL DEFAULT 0,
+      recebidoCalca INT UNSIGNED NOT NULL DEFAULT 0,
+      recebidoMoletom INT UNSIGNED NOT NULL DEFAULT 0,
+      recebidoCamisa INT UNSIGNED NOT NULL DEFAULT 0,
+      recebidoCamisetaPolo INT UNSIGNED NOT NULL DEFAULT 0,
+
+      observacao TEXT NULL,
+      registradoPorUsuarioId INT NULL,
+      registradoPorNome VARCHAR(255) NULL,
+      createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+      PRIMARY KEY (id),
+      KEY idx_rh_uniforme_mov_funcionario (funcionarioId),
+      KEY idx_rh_uniforme_mov_loja_data (lojaId, dataMovimentacao)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
   estruturaEpisPronta = true;
 }
 
@@ -196,6 +227,60 @@ async function validarFuncionarioDaLoja(pool: mysql.Pool, funcionarioId: number,
       message: "Funcionário não pertence à loja selecionada.",
     });
   }
+}
+
+export type SaldoUniformeFuncionario = {
+  camiseta: number;
+  calca: number;
+  moletom: number;
+  camisa: number;
+  camisetaPolo: number;
+};
+
+export async function obterSaldoUniformeFuncionario(
+  funcionarioId: number,
+  lojaId: number
+): Promise<SaldoUniformeFuncionario> {
+  await ensureRhEpisTable();
+  const pool = getPoolEpis();
+
+  const [entregas] = await pool.query<any[]>(
+    `SELECT
+       COALESCE(SUM(uniformeCamiseta), 0) AS camiseta,
+       COALESCE(SUM(uniformeCalca), 0) AS calca,
+       COALESCE(SUM(uniformeMoletom), 0) AS moletom,
+       COALESCE(SUM(uniformeCamisa), 0) AS camisa,
+       COALESCE(SUM(uniformeCamisetaPolo), 0) AS camisetaPolo
+     FROM rh_epi_entregas
+     WHERE funcionarioId = ?
+       AND lojaId = ?
+       AND item = 'uniforme'`,
+    [funcionarioId, lojaId]
+  );
+
+  const [movimentacoes] = await pool.query<any[]>(
+    `SELECT
+       COALESCE(SUM(recebidoCamiseta), 0) - COALESCE(SUM(devolvidoCamiseta), 0) AS camiseta,
+       COALESCE(SUM(recebidoCalca), 0) - COALESCE(SUM(devolvidoCalca), 0) AS calca,
+       COALESCE(SUM(recebidoMoletom), 0) - COALESCE(SUM(devolvidoMoletom), 0) AS moletom,
+       COALESCE(SUM(recebidoCamisa), 0) - COALESCE(SUM(devolvidoCamisa), 0) AS camisa,
+       COALESCE(SUM(recebidoCamisetaPolo), 0) - COALESCE(SUM(devolvidoCamisetaPolo), 0) AS camisetaPolo
+     FROM rh_uniforme_movimentacoes
+     WHERE funcionarioId = ?
+       AND lojaId = ?`,
+    [funcionarioId, lojaId]
+  );
+
+  const base = entregas?.[0] || {};
+  const mov = movimentacoes?.[0] || {};
+
+  return {
+    camiseta: Number(base.camiseta || 0) + Number(mov.camiseta || 0),
+    calca: Number(base.calca || 0) + Number(mov.calca || 0),
+    moletom: Number(base.moletom || 0) + Number(mov.moletom || 0),
+    camisa: Number(base.camisa || 0) + Number(mov.camisa || 0),
+    camisetaPolo: Number(base.camisetaPolo || 0) + Number(mov.camisetaPolo || 0),
+  };
 }
 
 export const rhEpisRouter = router({
@@ -319,6 +404,153 @@ export const rhEpisRouter = router({
             : Number(row.comprovanteTamanho),
         comprovantePendente: Boolean(Number(row.comprovantePendente || 0)),
       }));
+    }),
+
+  saldoUniforme: protectedProcedure
+    .input(
+      z.object({
+        lojaId: z.number().int().positive(),
+        funcionarioId: z.number().int().positive(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await ensureRhEpisTable();
+      assertAcessoRhEpis(ctx, input.lojaId);
+
+      const pool = getPoolEpis();
+      await validarFuncionarioDaLoja(pool, input.funcionarioId, input.lojaId);
+
+      return obterSaldoUniformeFuncionario(input.funcionarioId, input.lojaId);
+    }),
+
+  movimentarUniforme: protectedProcedure
+    .input(
+      z.object({
+        lojaId: z.number().int().positive(),
+        funcionarioId: z.number().int().positive(),
+        tipo: z.enum(["troca", "devolucao"]),
+        dataMovimentacao: dataCivilSchema,
+        devolvido: z.object({
+          camiseta: z.number().int().min(0).max(99),
+          calca: z.number().int().min(0).max(99),
+          moletom: z.number().int().min(0).max(99),
+          camisa: z.number().int().min(0).max(99),
+          camisetaPolo: z.number().int().min(0).max(99),
+        }),
+        recebido: z.object({
+          camiseta: z.number().int().min(0).max(99),
+          calca: z.number().int().min(0).max(99),
+          moletom: z.number().int().min(0).max(99),
+          camisa: z.number().int().min(0).max(99),
+          camisetaPolo: z.number().int().min(0).max(99),
+        }),
+        observacao: z.string().trim().max(2000).nullable().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await ensureRhEpisTable();
+      assertAcessoRhEpis(ctx, input.lojaId);
+
+      const pool = getPoolEpis();
+      await validarFuncionarioDaLoja(pool, input.funcionarioId, input.lojaId);
+
+      const saldoAtual = await obterSaldoUniformeFuncionario(
+        input.funcionarioId,
+        input.lojaId
+      );
+
+      const totalDevolvido = Object.values(input.devolvido).reduce(
+        (total, valor) => total + valor,
+        0
+      );
+      const totalRecebido = Object.values(input.recebido).reduce(
+        (total, valor) => total + valor,
+        0
+      );
+
+      if (totalDevolvido <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Informe pelo menos uma peça devolvida.",
+        });
+      }
+
+      if (input.tipo === "devolucao" && totalRecebido > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Na devolução avulsa não pode haver novas peças entregues.",
+        });
+      }
+
+      const conferir: Array<{
+        chave: keyof SaldoUniformeFuncionario;
+        rotulo: string;
+      }> = [
+        { chave: "camiseta", rotulo: "camiseta" },
+        { chave: "calca", rotulo: "calça" },
+        { chave: "moletom", rotulo: "moletom" },
+        { chave: "camisa", rotulo: "camisa" },
+        { chave: "camisetaPolo", rotulo: "camiseta polo" },
+      ];
+
+      for (const item of conferir) {
+        if (input.devolvido[item.chave] > saldoAtual[item.chave]) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Não é possível devolver ${input.devolvido[item.chave]} de ${item.rotulo}. Saldo atual: ${saldoAtual[item.chave]}.`,
+          });
+        }
+      }
+
+      await pool.query(
+        `INSERT INTO rh_uniforme_movimentacoes (
+           lojaId,
+           funcionarioId,
+           tipo,
+           dataMovimentacao,
+           devolvidoCamiseta,
+           devolvidoCalca,
+           devolvidoMoletom,
+           devolvidoCamisa,
+           devolvidoCamisetaPolo,
+           recebidoCamiseta,
+           recebidoCalca,
+           recebidoMoletom,
+           recebidoCamisa,
+           recebidoCamisetaPolo,
+           observacao,
+           registradoPorUsuarioId,
+           registradoPorNome
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          input.lojaId,
+          input.funcionarioId,
+          input.tipo,
+          input.dataMovimentacao,
+          input.devolvido.camiseta,
+          input.devolvido.calca,
+          input.devolvido.moletom,
+          input.devolvido.camisa,
+          input.devolvido.camisetaPolo,
+          input.recebido.camiseta,
+          input.recebido.calca,
+          input.recebido.moletom,
+          input.recebido.camisa,
+          input.recebido.camisetaPolo,
+          input.observacao || null,
+          Number(ctx.user?.id || 0) || null,
+          String(ctx.user?.name || ctx.user?.email || "Usuário"),
+        ]
+      );
+
+      return {
+        success: true,
+        saldoAnterior: saldoAtual,
+        saldoAtual: await obterSaldoUniformeFuncionario(
+          input.funcionarioId,
+          input.lojaId
+        ),
+      };
     }),
 
   salvar: protectedProcedure

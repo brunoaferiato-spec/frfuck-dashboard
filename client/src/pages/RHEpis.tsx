@@ -211,6 +211,74 @@ async function arquivoParaBase64(file: File) {
   return btoa(binario);
 }
 
+function SaldoUniformeAtualCard({
+  lojaId,
+  funcionarioId,
+}: {
+  lojaId: number;
+  funcionarioId: number;
+}) {
+  const saldoQuery = trpc.rhEpis.saldoUniforme.useQuery(
+    { lojaId, funcionarioId },
+    { retry: false }
+  );
+
+  if (saldoQuery.isLoading) {
+    return (
+      <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-gray-600">
+          Saldo atual
+        </p>
+        <p className="mt-1 text-xs text-gray-600">Atualizando...</p>
+      </div>
+    );
+  }
+
+  if (saldoQuery.error) {
+    return null;
+  }
+
+  const saldo = saldoQuery.data || {
+    camiseta: 0,
+    calca: 0,
+    moletom: 0,
+    camisa: 0,
+    camisetaPolo: 0,
+  };
+
+  const itens = [
+    ["Camiseta", Number(saldo.camiseta || 0)],
+    ["Calça", Number(saldo.calca || 0)],
+    ["Moletom", Number(saldo.moletom || 0)],
+    ["Camisa", Number(saldo.camisa || 0)],
+    ["Camiseta polo", Number(saldo.camisetaPolo || 0)],
+  ] as const;
+
+  const ativos = itens.filter(([, quantidade]) => quantidade > 0);
+
+  return (
+    <div className="mt-3 rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.035] px-3 py-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#F2D675]">
+        Saldo atual com o funcionário
+      </p>
+
+      {ativos.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-gray-300">
+          {ativos.map(([rotulo, quantidade]) => (
+            <span key={rotulo}>
+              {rotulo}: <strong className="text-white">{quantidade}</strong>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-2 text-xs font-bold text-emerald-300">
+          Nenhuma peça pendente com o funcionário.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function RHEpis() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -228,11 +296,17 @@ export default function RHEpis() {
   const [funcionarioEnvio, setFuncionarioEnvio] = useState("");
   const [itemEnvio, setItemEnvio] = useState<ItemEpi>("luva");
   const [quantidade, setQuantidade] = useState("1");
+  const [modoUniforme, setModoUniforme] = useState<"entrega" | "troca" | "devolucao">("entrega");
   const [uniformeCamiseta, setUniformeCamiseta] = useState("0");
   const [uniformeCalca, setUniformeCalca] = useState("0");
   const [uniformeMoletom, setUniformeMoletom] = useState("0");
   const [uniformeCamisa, setUniformeCamisa] = useState("0");
   const [uniformeCamisetaPolo, setUniformeCamisetaPolo] = useState("0");
+  const [devolveCamiseta, setDevolveCamiseta] = useState("0");
+  const [devolveCalca, setDevolveCalca] = useState("0");
+  const [devolveMoletom, setDevolveMoletom] = useState("0");
+  const [devolveCamisa, setDevolveCamisa] = useState("0");
+  const [devolveCamisetaPolo, setDevolveCamisetaPolo] = useState("0");
   const [tamanho, setTamanho] = useState("");
   const [dataEntrega, setDataEntrega] = useState(hoje);
   const [observacao, setObservacao] = useState("");
@@ -293,6 +367,33 @@ export default function RHEpis() {
     },
     { retry: false }
   );
+
+  const saldoUniformeLojaId = caixaLider
+    ? lojaUsuario
+    : Number(lojaEnvio || 0);
+  const saldoUniformeFuncionarioId = Number(funcionarioEnvio || 0);
+
+  const saldoUniformeQuery = trpc.rhEpis.saldoUniforme.useQuery(
+    {
+      lojaId: saldoUniformeLojaId,
+      funcionarioId: saldoUniformeFuncionarioId,
+    },
+    {
+      enabled:
+        itemEnvio === "uniforme" &&
+        saldoUniformeLojaId > 0 &&
+        saldoUniformeFuncionarioId > 0,
+      retry: false,
+    }
+  );
+
+  const saldoUniforme = saldoUniformeQuery.data || {
+    camiseta: 0,
+    calca: 0,
+    moletom: 0,
+    camisa: 0,
+    camisetaPolo: 0,
+  };
 
   const entregas = useMemo(
     () => ((entregasQuery.data || []) as EntregaEpi[]),
@@ -364,6 +465,41 @@ export default function RHEpis() {
     },
   });
 
+  const movimentarUniformeMutation = trpc.rhEpis.movimentarUniforme.useMutation({
+    onSuccess: async () => {
+      setErro("");
+      setMensagem(
+        modoUniforme === "troca"
+          ? "Movimentação de uniforme registrada com sucesso."
+          : "Devolução de uniforme registrada com sucesso."
+      );
+
+      setUniformeCamiseta("0");
+      setUniformeCalca("0");
+      setUniformeMoletom("0");
+      setUniformeCamisa("0");
+      setUniformeCamisetaPolo("0");
+      setDevolveCamiseta("0");
+      setDevolveCalca("0");
+      setDevolveMoletom("0");
+      setDevolveCamisa("0");
+      setDevolveCamisetaPolo("0");
+      setObservacao("");
+
+      await Promise.all([
+        utils.rhEpis.saldoUniforme.invalidate(),
+        utils.rhEpis.listar.invalidate(),
+      ]);
+    },
+    onError: (error) => {
+      setMensagem("");
+      setErro(
+        error.message ||
+          "Não foi possível registrar a movimentação do uniforme."
+      );
+    },
+  });
+
   const anexarMutation = trpc.rhEpis.anexarComprovante.useMutation({
     onSuccess: async () => {
       setAnexandoId(null);
@@ -377,6 +513,39 @@ export default function RHEpis() {
       setErro(error.message || "Não foi possível anexar o comprovante.");
     },
   });
+
+  function abrirMovimentacaoUniforme(
+    entrega: EntregaEpi,
+    modo: "troca" | "devolucao"
+  ) {
+    setErro("");
+    setMensagem("");
+
+    setLojaEnvio(String(entrega.lojaId));
+    setFuncionarioEnvio(String(entrega.funcionarioId));
+    setItemEnvio("uniforme");
+    setModoUniforme(modo);
+
+    setUniformeCamiseta("0");
+    setUniformeCalca("0");
+    setUniformeMoletom("0");
+    setUniformeCamisa("0");
+    setUniformeCamisetaPolo("0");
+
+    setDevolveCamiseta("0");
+    setDevolveCalca("0");
+    setDevolveMoletom("0");
+    setDevolveCamisa("0");
+    setDevolveCamisetaPolo("0");
+
+    setDataEntrega(hoje);
+    setObservacao("");
+    setArquivo(null);
+
+    window.setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 50);
+  }
 
   async function registrarEntrega() {
     setErro("");
@@ -399,6 +568,17 @@ export default function RHEpis() {
       camisa: Number(uniformeCamisa),
       camisetaPolo: Number(uniformeCamisetaPolo),
     };
+    const devolucaoQuantidades = {
+      camiseta: Number(devolveCamiseta),
+      calca: Number(devolveCalca),
+      moletom: Number(devolveMoletom),
+      camisa: Number(devolveCamisa),
+      camisetaPolo: Number(devolveCamisetaPolo),
+    };
+    const quantidadeDevolvida = Object.values(devolucaoQuantidades).reduce(
+      (total, valor) => total + valor,
+      0
+    );
     const quantidadeNumero = uniformeSelecionado
       ? Object.values(uniformeQuantidades).reduce((total, valor) => total + valor, 0)
       : Number(quantidade || 0);
@@ -414,26 +594,64 @@ export default function RHEpis() {
     }
 
     if (uniformeSelecionado) {
-      const algumVazio = uniformeCampos.some((valor) => valor.trim() === "");
-      const algumInvalido = Object.values(uniformeQuantidades).some(
-        (valor) => !Number.isInteger(valor) || valor < 0 || valor > 99
-      );
-
-      if (algumVazio || algumInvalido) {
-        setErro(
-          "Preencha camiseta, calça, moletom, camisa e camiseta polo com valores entre 0 e 99."
+      if (modoUniforme === "entrega") {
+        const algumVazio = uniformeCampos.some((valor) => valor.trim() === "");
+        const algumInvalido = Object.values(uniformeQuantidades).some(
+          (valor) => !Number.isInteger(valor) || valor < 0 || valor > 99
         );
-        return;
-      }
 
-      if (quantidadeNumero <= 0) {
-        setErro("Informe pelo menos uma peça de uniforme entregue.");
-        return;
-      }
+        if (algumVazio || algumInvalido) {
+          setErro(
+            "Preencha camiseta, calça, moletom, camisa e camiseta polo com valores entre 0 e 99."
+          );
+          return;
+        }
 
-      if (!arquivo) {
-        setErro("Para uniforme, anexe a ficha assinada antes de registrar.");
-        return;
+        if (quantidadeNumero <= 0) {
+          setErro("Informe pelo menos uma peça de uniforme entregue.");
+          return;
+        }
+
+        if (!arquivo) {
+          setErro("Para uniforme, anexe a ficha assinada antes de registrar.");
+          return;
+        }
+      } else {
+        const devolucaoInvalida = Object.values(devolucaoQuantidades).some(
+          (valor) => !Number.isInteger(valor) || valor < 0 || valor > 99
+        );
+
+        if (devolucaoInvalida || quantidadeDevolvida <= 0) {
+          setErro("Informe pelo menos uma peça devolvida, usando valores de 0 a 99.");
+          return;
+        }
+
+        const excedeSaldo =
+          devolucaoQuantidades.camiseta > Number(saldoUniforme.camiseta || 0) ||
+          devolucaoQuantidades.calca > Number(saldoUniforme.calca || 0) ||
+          devolucaoQuantidades.moletom > Number(saldoUniforme.moletom || 0) ||
+          devolucaoQuantidades.camisa > Number(saldoUniforme.camisa || 0) ||
+          devolucaoQuantidades.camisetaPolo >
+            Number(saldoUniforme.camisetaPolo || 0);
+
+        if (excedeSaldo) {
+          setErro("A devolução não pode ser maior que o saldo atual do funcionário.");
+          return;
+        }
+
+        if (modoUniforme === "troca") {
+          const algumVazio = uniformeCampos.some((valor) => valor.trim() === "");
+          const algumInvalido = Object.values(uniformeQuantidades).some(
+            (valor) => !Number.isInteger(valor) || valor < 0 || valor > 99
+          );
+
+          if (algumVazio || algumInvalido) {
+            setErro(
+              "Na troca, preencha as novas peças com valores de 0 a 99. Se não houver novas peças, mantenha todos os campos em 0."
+            );
+            return;
+          }
+        }
       }
     } else if (
       !Number.isInteger(quantidadeNumero) ||
@@ -445,7 +663,36 @@ export default function RHEpis() {
     }
 
     if (!dataEntrega) {
-      setErro("Informe a data da entrega.");
+      setErro(
+        itemEnvio === "uniforme" && modoUniforme !== "entrega"
+          ? "Informe a data da movimentação."
+          : "Informe a data da entrega."
+      );
+      return;
+    }
+
+    if (uniformeSelecionado && modoUniforme !== "entrega") {
+      movimentarUniformeMutation.mutate({
+        lojaId,
+        funcionarioId,
+        tipo:
+          modoUniforme === "troca" && quantidadeNumero === 0
+            ? "devolucao"
+            : modoUniforme,
+        dataMovimentacao: dataEntrega,
+        devolvido: devolucaoQuantidades,
+        recebido:
+          modoUniforme === "troca"
+            ? uniformeQuantidades
+            : {
+                camiseta: 0,
+                calca: 0,
+                moletom: 0,
+                camisa: 0,
+                camisetaPolo: 0,
+              },
+        observacao: observacao.trim() || null,
+      });
       return;
     }
 
@@ -663,7 +910,10 @@ export default function RHEpis() {
 
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-gray-400">EPI / item entregue</label>
-                  <Select value={itemEnvio} onValueChange={(valor) => setItemEnvio(valor as ItemEpi)}>
+                  <Select value={itemEnvio} onValueChange={(valor) => {
+                    setItemEnvio(valor as ItemEpi);
+                    setModoUniforme("entrega");
+                  }}>
                     <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white"><SelectValue /></SelectTrigger>
                     <SelectContent className="border-white/10 bg-[#111111] text-white">
                       {ITENS_EPI.map((item) => (
@@ -677,37 +927,164 @@ export default function RHEpis() {
                 </div>
 
                 {itemEnvio === "uniforme" ? (
-                  <div className="rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.035] p-4">
-                    <div className="mb-3">
-                      <p className="text-xs font-black uppercase tracking-[0.14em] text-[#F2D675]">
-                        Peças do uniforme
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-gray-500">
-                        Todos os campos são obrigatórios. Informe 0 quando o colaborador não receber determinada peça.
-                      </p>
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#F2D675]">
+                            Saldo atual de uniformes
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Quantidade que o funcionário está com ele neste momento. Use Trocar uniforme ou Registrar devolução no histórico para movimentar este saldo.
+                          </p>
+                        </div>
+                        {saldoUniformeQuery.isLoading && funcionarioEnvio && (
+                          <span className="text-xs text-gray-500">Atualizando saldo...</span>
+                        )}
+                      </div>
+
+                      {funcionarioEnvio ? (
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+                          <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3"><p className="text-[10px] font-bold uppercase text-gray-600">Camiseta</p><p className="mt-1 text-xl font-black text-white">{saldoUniforme.camiseta}</p></div>
+                          <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3"><p className="text-[10px] font-bold uppercase text-gray-600">Calça</p><p className="mt-1 text-xl font-black text-white">{saldoUniforme.calca}</p></div>
+                          <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3"><p className="text-[10px] font-bold uppercase text-gray-600">Moletom</p><p className="mt-1 text-xl font-black text-white">{saldoUniforme.moletom}</p></div>
+                          <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3"><p className="text-[10px] font-bold uppercase text-gray-600">Camisa</p><p className="mt-1 text-xl font-black text-white">{saldoUniforme.camisa}</p></div>
+                          <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3"><p className="text-[10px] font-bold uppercase text-gray-600">Camiseta polo</p><p className="mt-1 text-xl font-black text-white">{saldoUniforme.camisetaPolo}</p></div>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-sm text-gray-500">
+                          Selecione o funcionário para consultar o saldo.
+                        </p>
+                      )}
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <button type="button" onClick={() => setModoUniforme("entrega")} className={`h-10 rounded-xl border px-3 text-xs font-black transition ${modoUniforme === "entrega" ? "border-[#D4AF37]/50 bg-[#D4AF37]/10 text-[#F2D675]" : "border-white/10 bg-black/20 text-gray-500 hover:text-white"}`}>
+                        Nova entrega
+                      </button>
+                      <button type="button" onClick={() => setModoUniforme("troca")} className={`h-10 rounded-xl border px-3 text-xs font-black transition ${modoUniforme === "troca" ? "border-[#D4AF37]/50 bg-[#D4AF37]/10 text-[#F2D675]" : "border-white/10 bg-black/20 text-gray-500 hover:text-white"}`}>
+                        Troca de uniforme
+                      </button>
+                      <button type="button" onClick={() => setModoUniforme("devolucao")} className={`h-10 rounded-xl border px-3 text-xs font-black transition ${modoUniforme === "devolucao" ? "border-[#D4AF37]/50 bg-[#D4AF37]/10 text-[#F2D675]" : "border-white/10 bg-black/20 text-gray-500 hover:text-white"}`}>
+                        Devolução avulsa
+                      </button>
+                    </div>
+
+                    {modoUniforme === "entrega" && (
+                      <div className="rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.035] p-4">
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-[#F2D675]">Peças entregues</p>
+                        <p className="mb-3 mt-1 text-xs text-gray-500">Informe 0 quando não houver determinada peça.</p>
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                       <div>
                         <label className="mb-1.5 block text-xs font-bold text-gray-400">Camiseta</label>
-                        <input type="number" min={0} max={99} value={uniformeCamiseta} onChange={(event) => setUniformeCamiseta(event.target.value)} placeholder="0" className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                        <input type="number" min={0} max={99} value={uniformeCamiseta} onChange={(event) => setUniformeCamiseta(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
                       </div>
                       <div>
                         <label className="mb-1.5 block text-xs font-bold text-gray-400">Calça</label>
-                        <input type="number" min={0} max={99} value={uniformeCalca} onChange={(event) => setUniformeCalca(event.target.value)} placeholder="0" className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                        <input type="number" min={0} max={99} value={uniformeCalca} onChange={(event) => setUniformeCalca(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
                       </div>
                       <div>
                         <label className="mb-1.5 block text-xs font-bold text-gray-400">Moletom</label>
-                        <input type="number" min={0} max={99} value={uniformeMoletom} onChange={(event) => setUniformeMoletom(event.target.value)} placeholder="0" className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                        <input type="number" min={0} max={99} value={uniformeMoletom} onChange={(event) => setUniformeMoletom(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
                       </div>
                       <div>
                         <label className="mb-1.5 block text-xs font-bold text-gray-400">Camisa</label>
-                        <input type="number" min={0} max={99} value={uniformeCamisa} onChange={(event) => setUniformeCamisa(event.target.value)} placeholder="0" className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                        <input type="number" min={0} max={99} value={uniformeCamisa} onChange={(event) => setUniformeCamisa(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
                       </div>
                       <div>
                         <label className="mb-1.5 block text-xs font-bold text-gray-400">Camiseta polo</label>
-                        <input type="number" min={0} max={99} value={uniformeCamisetaPolo} onChange={(event) => setUniformeCamisetaPolo(event.target.value)} placeholder="0" className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
+                        <input type="number" min={0} max={99} value={uniformeCamisetaPolo} onChange={(event) => setUniformeCamisetaPolo(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
                       </div>
-                    </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {modoUniforme === "troca" && (
+                      <div className="space-y-4">
+                        <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[0.025] p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-rose-200">Peças devolvidas</p>
+                          <p className="mb-3 mt-1 text-xs text-gray-500">Informe o que voltou para a empresa.</p>
+                          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camiseta</label>
+                        <input type="number" min={0} max={Number(saldoUniforme.camiseta || 0)} value={devolveCamiseta} onChange={(event) => setDevolveCamiseta(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Calça</label>
+                        <input type="number" min={0} max={Number(saldoUniforme.calca || 0)} value={devolveCalca} onChange={(event) => setDevolveCalca(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Moletom</label>
+                        <input type="number" min={0} max={Number(saldoUniforme.moletom || 0)} value={devolveMoletom} onChange={(event) => setDevolveMoletom(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camisa</label>
+                        <input type="number" min={0} max={Number(saldoUniforme.camisa || 0)} value={devolveCamisa} onChange={(event) => setDevolveCamisa(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camiseta polo</label>
+                        <input type="number" min={0} max={Number(saldoUniforme.camisetaPolo || 0)} value={devolveCamisetaPolo} onChange={(event) => setDevolveCamisetaPolo(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.025] p-4">
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-200">Novas peças entregues</p>
+                          <p className="mb-3 mt-1 text-xs text-gray-500">Pode ser diferente da quantidade devolvida.</p>
+                          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camiseta</label>
+                        <input type="number" min={0} max={99} value={uniformeCamiseta} onChange={(event) => setUniformeCamiseta(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Calça</label>
+                        <input type="number" min={0} max={99} value={uniformeCalca} onChange={(event) => setUniformeCalca(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Moletom</label>
+                        <input type="number" min={0} max={99} value={uniformeMoletom} onChange={(event) => setUniformeMoletom(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camisa</label>
+                        <input type="number" min={0} max={99} value={uniformeCamisa} onChange={(event) => setUniformeCamisa(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camiseta polo</label>
+                        <input type="number" min={0} max={99} value={uniformeCamisetaPolo} onChange={(event) => setUniformeCamisetaPolo(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {modoUniforme === "devolucao" && (
+                      <div className="rounded-2xl border border-rose-400/15 bg-rose-400/[0.025] p-4">
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-rose-200">Peças devolvidas</p>
+                        <p className="mb-3 mt-1 text-xs text-gray-500">O saldo será reduzido automaticamente.</p>
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camiseta</label>
+                        <input type="number" min={0} max={Number(saldoUniforme.camiseta || 0)} value={devolveCamiseta} onChange={(event) => setDevolveCamiseta(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Calça</label>
+                        <input type="number" min={0} max={Number(saldoUniforme.calca || 0)} value={devolveCalca} onChange={(event) => setDevolveCalca(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Moletom</label>
+                        <input type="number" min={0} max={Number(saldoUniforme.moletom || 0)} value={devolveMoletom} onChange={(event) => setDevolveMoletom(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camisa</label>
+                        <input type="number" min={0} max={Number(saldoUniforme.camisa || 0)} value={devolveCamisa} onChange={(event) => setDevolveCamisa(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold text-gray-400">Camiseta polo</label>
+                        <input type="number" min={0} max={Number(saldoUniforme.camisetaPolo || 0)} value={devolveCamisetaPolo} onChange={(event) => setDevolveCamisetaPolo(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
+                      </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -723,7 +1100,13 @@ export default function RHEpis() {
                 )}
 
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold text-gray-400">Data da entrega</label>
+                  <label className="mb-1.5 block text-xs font-bold text-gray-400">
+                    {itemEnvio === "uniforme" && modoUniforme === "troca"
+                      ? "Data da troca"
+                      : itemEnvio === "uniforme" && modoUniforme === "devolucao"
+                      ? "Data da devolução"
+                      : "Data da entrega"}
+                  </label>
                   <input type="date" value={dataEntrega} onChange={(event) => setDataEntrega(event.target.value)} className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50" />
                 </div>
 
@@ -732,6 +1115,8 @@ export default function RHEpis() {
                   <textarea value={observacao} onChange={(event) => setObservacao(event.target.value)} placeholder="Opcional" rows={3} className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
                 </div>
 
+                {(itemEnvio !== "uniforme" || modoUniforme === "entrega") && (
+                  <>
                 <label className="block cursor-pointer rounded-2xl border border-dashed border-[#D4AF37]/30 bg-[#D4AF37]/[0.035] p-4 transition hover:bg-[#D4AF37]/[0.07]">
                   <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif" className="hidden" onChange={(event) => setArquivo(event.target.files?.[0] || null)} />
                   <div className="flex items-center gap-3">
@@ -751,12 +1136,21 @@ export default function RHEpis() {
                   </div>
                 </label>
 
+                  </>
+                )}
+
                 {erro && <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.06] px-3 py-2.5 text-sm text-rose-200">{erro}</div>}
                 {mensagem && <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] px-3 py-2.5 text-sm text-emerald-200"><CheckCircle2 className="h-4 w-4 shrink-0" />{mensagem}</div>}
 
-                <Button type="button" onClick={registrarEntrega} disabled={salvarMutation.isPending} className="h-12 w-full bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]">
+                <Button type="button" onClick={registrarEntrega} disabled={salvarMutation.isPending || movimentarUniformeMutation.isPending} className="h-12 w-full bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]">
                   <FileCheck2 className="mr-2 h-4 w-4" />
-                  {salvarMutation.isPending ? "Registrando..." : "Registrar entrega"}
+                  {salvarMutation.isPending || movimentarUniformeMutation.isPending
+                    ? "Registrando..."
+                    : itemEnvio === "uniforme" && modoUniforme === "troca"
+                    ? "Registrar troca"
+                    : itemEnvio === "uniforme" && modoUniforme === "devolucao"
+                    ? "Registrar devolução"
+                    : "Registrar entrega"}
                 </Button>
               </div>
             </CardContent>
@@ -838,6 +1232,11 @@ export default function RHEpis() {
                             </span>
                           </div>
                           <p className="mt-2 text-sm font-black text-gray-200">{labelItem(entrega.item)}</p>
+                          {entrega.item === "uniforme" && (
+                            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-gray-600">
+                              Registro desta entrega
+                            </p>
+                          )}
                           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
                             {entrega.item === "uniforme" &&
                             [
@@ -866,12 +1265,40 @@ export default function RHEpis() {
                               </span>
                             )}
                           </div>
+
+                          {entrega.item === "uniforme" && (
+                            <SaldoUniformeAtualCard
+                              lojaId={Number(entrega.lojaId)}
+                              funcionarioId={Number(entrega.funcionarioId)}
+                            />
+                          )}
+
                           {entrega.observacao && <p className="mt-2 text-xs leading-5 text-gray-500">{entrega.observacao}</p>}
                           <p className="mt-2 text-[10px] text-gray-700">Registrado por {entrega.entreguePorNome || "Usuário"} • {formatarDataHora(entrega.criadoEm)}</p>
                           {!entrega.comprovantePendente && entrega.comprovanteNome && <p className="mt-1 text-[10px] text-[#b9a46a]">{entrega.comprovanteNome}{entrega.comprovanteTamanho ? ` • ${formatarTamanho(entrega.comprovanteTamanho)}` : ""}</p>}
                         </div>
 
                         <div className="flex shrink-0 flex-wrap gap-2">
+                          {entrega.item === "uniforme" && (
+                            <>
+                              <Button
+                                type="button"
+                                onClick={() => abrirMovimentacaoUniforme(entrega, "troca")}
+                                className="border border-[#D4AF37]/30 bg-[#D4AF37]/10 font-black text-[#F2D675] hover:bg-[#D4AF37]/20 hover:text-[#F2D675]"
+                              >
+                                Trocar uniforme
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => abrirMovimentacaoUniforme(entrega, "devolucao")}
+                                className="border-white/15 bg-white/[0.03] font-bold text-gray-300 hover:bg-white/[0.07] hover:text-white"
+                              >
+                                Registrar devolução
+                              </Button>
+                            </>
+                          )}
+
                           {entrega.comprovantePendente ? (
                             <label className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-amber-400/25 bg-amber-400/[0.05] px-4 text-sm font-bold text-amber-200 transition hover:bg-amber-400/[0.1]">
                               <FileUp className="mr-2 h-4 w-4" />
