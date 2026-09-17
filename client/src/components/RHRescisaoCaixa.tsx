@@ -35,7 +35,8 @@ const MIME_PERMITIDOS = new Set([
 type TipoDocumentoOperacional =
   | "cartao_ponto"
   | "ficha_demissional"
-  | "rescisao_contabilidade";
+  | "rescisao_contabilidade"
+  | "comprovante_pagamento";
 
 function dataHojeCivil() {
   const agora = new Date();
@@ -56,7 +57,9 @@ function labelFase(fase?: string | null) {
   if (fase === "aguardando_contabilidade") return "Aguardando retorno da contabilidade";
   if (fase === "conferir_rescisao") return "Conferir rescisão";
   if (fase === "lancar_contas_pagar") return "Lançar no Contas a Pagar";
-  if (fase === "operacional_concluido") return "Processo operacional concluído";
+  if (fase === "anexar_comprovante_pagamento") return "Aguardando finalização do RH";
+  if (fase === "confirmar_pagamento") return "Aguardando finalização do RH";
+  if (fase === "operacional_concluido") return "Processo finalizado";
   return fase || "Em andamento";
 }
 
@@ -261,7 +264,7 @@ export default function RHRescisaoCaixa({
   const contasMutation = trpc.rhRescisoes.marcarContasPagar.useMutation({
     onSuccess: async () => {
       setErro("");
-      setMensagem("Lançamento no Contas a Pagar confirmado. Processo operacional concluído.");
+      setMensagem("Lançamento no Contas a Pagar confirmado. Etapas da Caixa concluídas; aguardando a Líder de RH finalizar o pagamento.");
       setAcaoPendente(null);
       await atualizarLista();
     },
@@ -271,6 +274,8 @@ export default function RHRescisaoCaixa({
       setErro(error.message || "Não foi possível concluir o Contas a Pagar.");
     },
   });
+
+
 
   async function enviarPedido() {
     setErro("");
@@ -381,6 +386,8 @@ export default function RHRescisaoCaixa({
       ...inputBase(),
     });
   }
+
+
 
   if (!podeUsar) return null;
 
@@ -828,7 +835,7 @@ export default function RHRescisaoCaixa({
                         {item.funcionarioNome}
                       </p>
                       <p className="mt-1 text-xs font-bold text-emerald-300">
-                        Processo operacional concluído
+                        Pagamento efetuado • processo finalizado
                       </p>
                     </div>
                   ))}

@@ -7,6 +7,7 @@ import {
   Download,
   FileCheck2,
   FileWarning,
+  FileUp,
   Search,
   ShieldCheck,
   Trash2,
@@ -69,8 +70,40 @@ function labelFaseOperacional(fase?: string | null) {
   if (fase === "aguardando_contabilidade") return "Aguardando retorno da contabilidade";
   if (fase === "conferir_rescisao") return "Conferir rescisão";
   if (fase === "lancar_contas_pagar") return "Lançar no Contas a Pagar";
+  if (fase === "anexar_comprovante_pagamento") return "Anexar comprovante de pagamento";
+  if (fase === "confirmar_pagamento") return "Confirmar pagamento";
   if (fase === "operacional_concluido") return "Operacional concluído";
   return fase || "Em andamento";
+}
+
+async function arquivoPagamentoParaBase64(file: File) {
+  if (file.size > 6 * 1024 * 1024) {
+    throw new Error("O comprovante deve ter no máximo 6 MB.");
+  }
+
+  const permitidos = new Set([
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+  ]);
+
+  if (!permitidos.has(String(file.type || "").toLowerCase())) {
+    throw new Error("Envie o comprovante em PDF, JPG, PNG, WEBP, HEIC ou HEIF.");
+  }
+
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binario = "";
+  const bloco = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += bloco) {
+    binario += String.fromCharCode(...bytes.subarray(i, i + bloco));
+  }
+
+  return btoa(binario);
 }
 
 export default function RHRescisoes() {
@@ -100,6 +133,7 @@ export default function RHRescisoes() {
   const [mensagem, setMensagem] = useState("");
   const [baixandoId, setBaixandoId] = useState<number | null>(null);
   const [excluindoId, setExcluindoId] = useState<number | null>(null);
+  const [acaoPagamentoId, setAcaoPagamentoId] = useState<string | null>(null);
 
   const processosQuery = trpc.rhRescisoes.listar.useQuery(undefined, {
     enabled: podeGerenciar,
@@ -223,6 +257,40 @@ export default function RHRescisoes() {
     });
   }
 
+  const comprovantePagamentoMutation =
+    trpc.rhRescisoes.anexarComprovantePagamentoRh.useMutation({
+      onSuccess: async () => {
+        setAcaoPagamentoId(null);
+        setErro("");
+        setMensagem("Comprovante de pagamento anexado com sucesso.");
+        await utils.rhRescisoes.listar.invalidate();
+      },
+      onError: (error) => {
+        setAcaoPagamentoId(null);
+        setMensagem("");
+        setErro(
+          error.message || "Não foi possível anexar o comprovante de pagamento."
+        );
+      },
+    });
+
+  const pagamentoMutation =
+    trpc.rhRescisoes.marcarPagamentoEfetuado.useMutation({
+      onSuccess: async () => {
+        setAcaoPagamentoId(null);
+        setErro("");
+        setMensagem("Pagamento confirmado. Rescisão finalizada com sucesso.");
+        await utils.rhRescisoes.listar.invalidate();
+      },
+      onError: (error) => {
+        setAcaoPagamentoId(null);
+        setMensagem("");
+        setErro(
+          error.message || "Não foi possível finalizar o pagamento da rescisão."
+        );
+      },
+    });
+
   const excluirMutation = trpc.rhRescisoes.excluir.useMutation({
     onSuccess: async (data) => {
       setExcluindoId(null);
@@ -256,6 +324,54 @@ export default function RHRescisoes() {
     excluirMutation.mutate({ id: Number(item.id) });
   }
 
+  async function anexarComprovantePagamentoRh(
+    item: any,
+    file: File | null
+  ) {
+    if (!file) return;
+
+    setErro("");
+    setMensagem("");
+    setAcaoPagamentoId(`${item.id}-comprovante`);
+
+    try {
+      const arquivoBase64 = await arquivoPagamentoParaBase64(file);
+
+      comprovantePagamentoMutation.mutate({
+        id: Number(item.id),
+        arquivoNome: file.name,
+        arquivoMime: file.type || "application/octet-stream",
+        arquivoBase64,
+      });
+    } catch (error: any) {
+      setAcaoPagamentoId(null);
+      setErro(error?.message || "Não foi possível preparar o comprovante.");
+    }
+  }
+
+  function finalizarPagamentoRh(item: any) {
+    setErro("");
+    setMensagem("");
+
+    if (!item.comprovantePagamentoNome) {
+      setErro("Anexe o comprovante de pagamento antes de finalizar.");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Confirma que o pagamento da rescisão de ${item.funcionarioNome} foi efetuado e deseja finalizar o processo?`
+      )
+    ) {
+      return;
+    }
+
+    setAcaoPagamentoId(`${item.id}-finalizar`);
+    pagamentoMutation.mutate({
+      id: Number(item.id),
+    });
+  }
+
   async function baixarDocumento(
     id: number,
     tipo:
@@ -263,6 +379,7 @@ export default function RHRescisoes() {
       | "cartao_ponto"
       | "ficha_demissional"
       | "rescisao_contabilidade"
+      | "comprovante_pagamento"
   ) {
     setBaixandoId(id);
     setErro("");
@@ -669,6 +786,20 @@ export default function RHRescisoes() {
                           Contas a Pagar lançado
                         </span>
                       </div>
+
+                      <div className="flex items-center gap-2 text-xs">
+                        <FileCheck2 className={`h-4 w-4 ${item.comprovantePagamentoNome ? "text-emerald-300" : "text-gray-700"}`} />
+                        <span className={item.comprovantePagamentoNome ? "text-emerald-200" : "text-gray-500"}>
+                          Comprovante de pagamento
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs">
+                        <FileCheck2 className={`h-4 w-4 ${item.pagamentoEfetuado ? "text-emerald-300" : "text-gray-700"}`} />
+                        <span className={item.pagamentoEfetuado ? "text-emerald-200" : "text-gray-500"}>
+                          Pagamento efetuado
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -724,7 +855,117 @@ export default function RHRescisoes() {
                         Rescisão da contabilidade
                       </Button>
                     )}
+
+                    {item.comprovantePagamentoNome && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void baixarDocumento(item.id, "comprovante_pagamento")}
+                        disabled={baixandoId === item.id}
+                        className="border-emerald-400/15 bg-emerald-400/[0.03] text-emerald-200 hover:bg-emerald-400/[0.07]"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Comprovante de pagamento
+                      </Button>
+                    )}
                   </div>
+
+                  {item.contasPagarLancado && !item.pagamentoEfetuado && (
+                    <div className="rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.045] p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.12em] text-[#F2D675]">
+                            FINALIZAÇÃO FINANCEIRA • LÍDER RH
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-gray-500">
+                            A Caixa concluiu as etapas operacionais. Agora anexe o comprovante do pagamento e finalize a rescisão.
+                          </p>
+                        </div>
+
+                        <span className="rounded-full border border-amber-400/20 bg-amber-400/[0.05] px-2.5 py-1 text-[10px] font-black text-amber-200">
+                          Aguardando RH
+                        </span>
+                      </div>
+
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        <label
+                          className={
+                            item.comprovantePagamentoNome
+                              ? "flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/[0.04] px-3 text-sm font-black text-emerald-200 transition hover:bg-emerald-400/[0.08]"
+                              : "flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-black/20 px-3 text-sm font-black text-[#F2D675] transition hover:bg-[#D4AF37]/[0.08]"
+                          }
+                        >
+                          <FileUp className="mr-2 h-4 w-4" />
+                          {item.comprovantePagamentoNome
+                            ? "Substituir comprovante"
+                            : "Anexar comprovante de pagamento"}
+
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                            className="hidden"
+                            disabled={
+                              acaoPagamentoId ===
+                              String(item.id) + "-comprovante"
+                            }
+                            onChange={(event) => {
+                              const file = event.target.files?.[0] || null;
+                              void anexarComprovantePagamentoRh(item, file);
+                              event.currentTarget.value = "";
+                            }}
+                          />
+                        </label>
+
+                        <Button
+                          type="button"
+                          disabled={
+                            !item.comprovantePagamentoNome ||
+                            acaoPagamentoId ===
+                              String(item.id) + "-finalizar"
+                          }
+                          onClick={() => finalizarPagamentoRh(item)}
+                          className="min-h-11 bg-emerald-400 font-black text-black hover:bg-emerald-300 disabled:opacity-40"
+                        >
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          Pagamento efetuado e finalizar
+                        </Button>
+                      </div>
+
+                      {item.comprovantePagamentoNome && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            void baixarDocumento(
+                              item.id,
+                              "comprovante_pagamento"
+                            )
+                          }
+                          disabled={baixandoId === item.id}
+                          className="mt-2 w-full border-emerald-400/15 bg-emerald-400/[0.03] text-emerald-200 hover:bg-emerald-400/[0.07]"
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Baixar comprovante de pagamento
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {item.pagamentoEfetuado && (
+                    <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.04] p-4">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+                        <div>
+                          <p className="text-sm font-black text-emerald-200">
+                            Pagamento efetuado • rescisão finalizada
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Finalizado por {item.pagamentoPorNome || "Líder de RH"}.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {item.status === "aguardando_rh" && (
                     <Button

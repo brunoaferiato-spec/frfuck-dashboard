@@ -18,6 +18,8 @@ function labelFase(fase?: string | null) {
   if (fase === "aguardando_contabilidade") return "Aguardando retorno da contabilidade";
   if (fase === "conferir_rescisao") return "Conferir rescisão";
   if (fase === "lancar_contas_pagar") return "Lançar no Contas a Pagar";
+  if (fase === "anexar_comprovante_pagamento") return "Anexar comprovante de pagamento";
+  if (fase === "confirmar_pagamento") return "Confirmar pagamento";
   if (fase === "operacional_concluido") return "Operacional concluído";
   return fase || "Em andamento";
 }

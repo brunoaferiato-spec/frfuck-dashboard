@@ -4286,8 +4286,9 @@ export async function getRhPontoPendencias(args: { lojaId?: number | null } = {}
      WHERE (
        (t.id IS NULL AND o.tipoOcorrencia IN ('atraso','almoco_excedido','sem_batida','falta','saida_antecipada','ausente_relatorio'))
        OR
-       (t.id IS NOT NULL AND t.documentoStatus = 'pendente_documento')
+       (t.id IS NOT NULL AND t.documentoStatus IN ('pendente_documento','documento_anexado'))
      )
+     AND (t.tipo IS NULL OR t.tipo <> 'justificativa')
      ${filtroOc}
      ORDER BY c.dataReferencia ASC, c.horarioPrevisto ASC, f.nome ASC`,
     paramsOc
@@ -4309,7 +4310,7 @@ export async function getRhPontoPendencias(args: { lojaId?: number | null } = {}
 
   const itensOcorrencia = (ocorrencias || []).map((row: any) => ({
     id: `oc-${row.ocorrenciaId}`,
-    fase: row.tratativaId ? "documento" : "classificar",
+    fase: row.tratativaId ? (row.documentoStatus === "documento_anexado" ? "concluir" : "documento") : "classificar",
     ocorrenciaId: Number(row.ocorrenciaId),
     conferenciaId: Number(row.conferenciaId),
     lojaId: Number(row.lojaId),
@@ -4390,6 +4391,9 @@ export async function criarRhPontoTratativa(data: {
   let dataInicioAtestado: string | null = null;
   let dataFimAtestado: string | null = null;
 
+  const documentoStatusInicial =
+    tipo === "justificativa" ? "concluida" : "pendente_documento";
+
   if (tipo === "atestado") {
     diasAtestado = Math.max(1, Math.min(60, Number(data.diasAtestado || 1)));
     if (!Number.isInteger(diasAtestado)) throw new Error("Quantidade de dias do atestado inválida");
@@ -4402,7 +4406,7 @@ export async function criarRhPontoTratativa(data: {
        ocorrenciaId, conferenciaId, lojaId, funcionarioId,
        tipo, observacao, diasAtestado, dataInicioAtestado, dataFimAtestado,
        documentoStatus, criadoPorUsuarioId, criadoPorNome, criadoEm
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente_documento', ?, ?, NOW())
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
      ON DUPLICATE KEY UPDATE
        tipo = VALUES(tipo), observacao = VALUES(observacao),
        diasAtestado = VALUES(diasAtestado),
@@ -4420,6 +4424,7 @@ export async function criarRhPontoTratativa(data: {
       diasAtestado,
       dataInicioAtestado,
       dataFimAtestado,
+      documentoStatusInicial,
       Number(data.usuarioId),
       data.usuarioNome,
     ]
@@ -4453,7 +4458,7 @@ export async function salvarDocumentoRhPontoTratativa(data: {
   const [result] = await _pool.query<any>(
     `UPDATE rh_ponto_tratativas
         SET documentoKey = ?, documentoNome = ?, documentoMime = ?, documentoTamanho = ?,
-            documentoStatus = 'concluida', documentoAnexadoPorUsuarioId = ?,
+            documentoStatus = 'documento_anexado', documentoAnexadoPorUsuarioId = ?,
             documentoAnexadoPorNome = ?, documentoAnexadoEm = NOW(), updatedAt = NOW()
       WHERE id = ? AND lojaId = ?`,
     [
@@ -4472,6 +4477,69 @@ export async function salvarDocumentoRhPontoTratativa(data: {
   return { success: true };
 }
 
+export async function excluirRhPontoJustificativa(data: {
+  tratativaId: number;
+  motivo: string;
+  usuarioId: number;
+  usuarioNome: string;
+}) {
+  await ensureRhPontoTables();
+  if (!_pool) throw new Error("Pool do banco nao disponivel");
+
+  // AJUSTE_AUTOMATICO_JUSTIFICATIVAS_ANTIGAS
+  // Justificativa nao exige anexo. Registros antigos que ficaram
+  // aguardando comprovante sao encerrados automaticamente.
+  await _pool.query(
+    `UPDATE rh_ponto_tratativas
+        SET documentoStatus = 'concluida',
+            updatedAt = NOW()
+      WHERE tipo = 'justificativa'
+        AND documentoStatus IN ('pendente_documento', 'documento_anexado')`
+  );
+
+
+  const motivo = String(data.motivo || "").trim();
+  if (motivo.length < 5) {
+    throw new Error("Informe o motivo da exclusao com pelo menos 5 caracteres");
+  }
+
+  const [rows] = await _pool.query<any[]>(
+    `SELECT id, tipo, documentoStatus, observacao
+       FROM rh_ponto_tratativas
+      WHERE id = ?
+      LIMIT 1`,
+    [Number(data.tratativaId)]
+  );
+
+  const tratativa = rows?.[0];
+  if (!tratativa) throw new Error("Justificativa nao encontrada");
+  if (String(tratativa.tipo || "") !== "justificativa") {
+    throw new Error("Somente justificativas podem ser excluidas por este fluxo");
+  }
+  if (String(tratativa.documentoStatus || "") === "excluida") {
+    throw new Error("Esta justificativa ja foi excluida");
+  }
+
+  const registro =
+    `[EXCLUIDA PELO RH] Motivo: ${motivo} | Responsavel: ${String(
+      data.usuarioNome || "Lider RH"
+    )}`;
+
+  await _pool.query(
+    `UPDATE rh_ponto_tratativas
+        SET documentoStatus = 'excluida',
+            observacao = CASE
+              WHEN COALESCE(TRIM(observacao), '') = '' THEN ?
+              ELSE CONCAT(observacao, '\n', ?)
+            END,
+            updatedAt = NOW()
+      WHERE id = ?`,
+    [registro, registro, Number(data.tratativaId)]
+  );
+
+  return { success: true };
+}
+
 export async function getRhPontoTratativaDocumento(tratativaId: number, lojaId: number) {
   await ensureRhPontoTables();
   if (!_pool) throw new Error("Pool do banco não disponível");
@@ -4483,6 +4551,43 @@ export async function getRhPontoTratativaDocumento(tratativaId: number, lojaId: 
     [Number(tratativaId), Number(lojaId)]
   );
   return rows?.[0] || null;
+}
+
+
+export async function concluirRhPontoTratativa(data: {
+  tratativaId: number;
+  lojaId: number;
+}) {
+  await ensureRhPontoTables();
+  if (!_pool) throw new Error("Pool do banco nao disponivel");
+
+  const [rows] = await _pool.query<any[]>(
+    `SELECT id, documentoKey, documentoStatus
+       FROM rh_ponto_tratativas
+      WHERE id = ? AND lojaId = ?
+      LIMIT 1`,
+    [Number(data.tratativaId), Number(data.lojaId)]
+  );
+
+  const tratativa = rows?.[0];
+
+  if (!tratativa) {
+    throw new Error("Tratativa nao encontrada");
+  }
+
+  if (!tratativa.documentoKey) {
+    throw new Error("Anexe o documento antes de concluir a pendencia");
+  }
+
+  await _pool.query(
+    `UPDATE rh_ponto_tratativas
+        SET documentoStatus = 'concluida',
+            updatedAt = NOW()
+      WHERE id = ? AND lojaId = ?`,
+    [Number(data.tratativaId), Number(data.lojaId)]
+  );
+
+  return { success: true };
 }
 
 export async function salvarRhPontoConferencia(data: {
@@ -4632,6 +4737,7 @@ async function ensureRhCaixaTables() {
       status ENUM('correto','diferenca_justificada') NOT NULL DEFAULT 'correto',
       justificativaTipo VARCHAR(60) NULL,
       justificativaObservacao TEXT NULL,
+      motivoNaoDeposito TEXT NULL,
       fechadoPorUsuarioId INT NOT NULL,
       fechadoPorNome VARCHAR(255) NOT NULL,
       fechadoEm DATETIME NOT NULL,
@@ -4658,6 +4764,16 @@ async function ensureRhCaixaTables() {
     try {
       await _pool.query(
         `ALTER TABLE rh_caixa_fechamentos ADD COLUMN relatorioBase64 LONGTEXT NULL AFTER relatorioKey`
+      );
+    } catch (error: any) {
+      if (String(error?.code || "") !== "ER_DUP_FIELDNAME") throw error;
+    }
+  }
+
+  if (!colunasRhCaixaExistentes.has("motivoNaoDeposito")) {
+    try {
+      await _pool.query(
+        `ALTER TABLE rh_caixa_fechamentos ADD COLUMN motivoNaoDeposito TEXT NULL AFTER justificativaObservacao`
       );
     } catch (error: any) {
       if (String(error?.code || "") !== "ER_DUP_FIELDNAME") throw error;
@@ -4715,6 +4831,7 @@ function mapearRhCaixaFechamento(row: any) {
     status: row.status || "correto",
     justificativaTipo: row.justificativaTipo || null,
     justificativaObservacao: row.justificativaObservacao || null,
+    motivoNaoDeposito: row.motivoNaoDeposito || null,
     fechadoPorUsuarioId: Number(row.fechadoPorUsuarioId || 0),
     fechadoPorNome: row.fechadoPorNome || "",
     fechadoEm: row.fechadoEm || null,
@@ -4791,6 +4908,7 @@ export async function salvarRhCaixaFechamento(data: {
   contagem: RhCaixaContagem;
   justificativaTipo?: string | null;
   justificativaObservacao?: string | null;
+  motivoNaoDeposito?: string | null;
   usuarioId: number;
   usuarioNome: string;
 }) {
@@ -4809,8 +4927,15 @@ export async function salvarRhCaixaFechamento(data: {
 
   let justificativaTipo = String(data.justificativaTipo || "").trim();
   const justificativaObservacao = String(data.justificativaObservacao || "").trim();
+  const motivoNaoDeposito = String(data.motivoNaoDeposito || "").trim();
   const diferencaAbsolutaCentavos = Math.abs(diferencaCentavos);
   const dentroMargem = diferencaCentavos !== 0 && diferencaAbsolutaCentavos <= 500;
+  if (totalFisicoCentavos > 200000 && motivoNaoDeposito.length < 5) {
+    throw new Error(
+      "O caixa fisico esta acima de R$ 2.000,00. Informe por que o deposito nao foi realizado"
+    );
+  }
+
   const motivosForaMargem = new Set([
     "uber_aberto",
     "pagamento_dinheiro_pix_aberto",
@@ -4839,9 +4964,9 @@ export async function salvarRhCaixaFechamento(data: {
        relatorioTamanho, relatorioTotalMovimentos,
        saldoInicial, totalCreditos, totalDebitos, saldoFinal,
        contagemJson, totalFisico, diferenca, status,
-       justificativaTipo, justificativaObservacao,
+       justificativaTipo, justificativaObservacao, motivoNaoDeposito,
        fechadoPorUsuarioId, fechadoPorNome, fechadoEm
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
      ON DUPLICATE KEY UPDATE
        contaNome = VALUES(contaNome),
        relatorioNome = VALUES(relatorioNome),
@@ -4861,6 +4986,7 @@ export async function salvarRhCaixaFechamento(data: {
        status = VALUES(status),
        justificativaTipo = VALUES(justificativaTipo),
        justificativaObservacao = VALUES(justificativaObservacao),
+       motivoNaoDeposito = VALUES(motivoNaoDeposito),
        fechadoPorUsuarioId = VALUES(fechadoPorUsuarioId),
        fechadoPorNome = VALUES(fechadoPorNome),
        fechadoEm = NOW(),
@@ -4886,6 +5012,7 @@ export async function salvarRhCaixaFechamento(data: {
       status,
       diferencaCentavos === 0 ? null : justificativaTipo,
       diferencaCentavos === 0 ? null : justificativaObservacao,
+      totalFisicoCentavos > 200000 ? motivoNaoDeposito : null,
       Number(data.usuarioId),
       data.usuarioNome,
     ]

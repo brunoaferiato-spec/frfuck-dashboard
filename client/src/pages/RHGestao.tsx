@@ -2,11 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import RHEpiAlertas from "@/components/RHEpiAlertas";
-import RHFeriasAlertas from "@/components/RHFeriasAlertas";
-import RHExperienciaDashboard from "@/components/RHExperienciaDashboard";
-import RHRescisaoAlertas from "@/components/RHRescisaoAlertas";
-import RHDashboardGeral from "@/components/RHDashboardGeral";
 import {
   AlertTriangle,
   Archive,
@@ -311,6 +306,9 @@ function labelPendenciaRh(p: any) {
       ? "Jornada pendente de cadastro"
       : "Funcionário pendente de cadastro";
   }
+  if (p.fase === "concluir") {
+    return "Documento anexado • aguardando conclusão da Caixa";
+  }
   if (p.fase === "documento") {
     if (p.tratativaTipo === "atestado") return "Atestado informado • documento pendente";
     if (p.tratativaTipo === "justificativa") return "Justificativa • comprovante pendente";
@@ -458,6 +456,20 @@ export default function RHGestao() {
       retry: false,
     }
   );
+
+  const excluirJustificativaMutation = trpc.rhPonto.excluirJustificativa.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        historicoQuery.refetch(),
+        pendenciasQuery.refetch(),
+      ]);
+    },
+    onError: (error) => {
+      window.alert(
+        error.message || "Nao foi possivel excluir a justificativa."
+      );
+    },
+  });
 
   const historico = useMemo(
     () => ((historicoQuery.data || []) as any[]),
@@ -799,1060 +811,22 @@ export default function RHGestao() {
       </div>
 
       <main className="mx-auto max-w-7xl px-4 py-5 sm:px-5 sm:py-7 lg:px-8">
-        <RHDashboardGeral />
-        <RHEpiAlertas />
-        <RHFeriasAlertas />
-        <RHExperienciaDashboard />
-        <RHRescisaoAlertas />
-        <section>
-          <div className="overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#090909] to-[#050505]">
-            <div className="border-b border-white/[0.06] p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-[#D4AF37]/70">
-                    Dashboard RH • Hoje
-                  </p>
-                  <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">
-                    Visão geral da operação
-                  </h2>
-                  <p className="mt-2 text-sm text-gray-500">
-                    {formatarData(hoje)} • acompanhe ponto, pendências e documentos sem sair desta tela.
-                  </p>
-                </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      dashboardHistoricoQuery.refetch();
-                      dashboardPendenciasQuery.refetch();
-                      dashboardCaixaQuery.refetch();
-                    }}
-                    className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
-                  >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Atualizar
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => navigate("/funcionarios")}
-                    className="bg-[#D4AF37] font-bold text-black hover:bg-[#E6C760]"
-                  >
-                    <Users className="mr-2 h-4 w-4" />
-                    Funcionários
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2 xl:grid-cols-6">
-              <div className="bg-[#090909] p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
-                    Pendências abertas
-                  </p>
-                  <AlertTriangle className="h-4 w-4 text-rose-300" />
-                </div>
-                <p className="mt-2 text-3xl font-black text-rose-300">
-                  {dashboardResumo.pendenciasAbertas}
-                </p>
-                <p className="mt-1 text-xs text-gray-600">
-                  {dashboardResumo.pendenciasHoje} gerada{dashboardResumo.pendenciasHoje === 1 ? "" : "s"} hoje
-                </p>
-              </div>
-
-              <div className="bg-[#090909] p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
-                    Lojas com atenção
-                  </p>
-                  <ShieldCheck className="h-4 w-4 text-amber-300" />
-                </div>
-                <p className="mt-2 text-3xl font-black text-amber-300">
-                  {dashboardResumo.lojasComAtencao}
-                </p>
-                <p className="mt-1 text-xs text-gray-600">
-                  {dashboardResumo.conferenciasAtrasadas > 0
-                    ? `${dashboardResumo.conferenciasAtrasadas} conferência${dashboardResumo.conferenciasAtrasadas === 1 ? "" : "s"} em atraso`
-                    : `de ${LOJAS_RH.length} lojas monitoradas`}
-                </p>
-              </div>
-
-              <div className="bg-[#090909] p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
-                    Documentos pendentes
-                  </p>
-                  <Archive className="h-4 w-4 text-sky-300" />
-                </div>
-                <p className="mt-2 text-3xl font-black text-sky-300">
-                  {dashboardResumo.documentosPendentes}
-                </p>
-                <p className="mt-1 text-xs text-gray-600">
-                  {dashboardResumo.cadastrosPendentes} cadastro{dashboardResumo.cadastrosPendentes === 1 ? "" : "s"} RH pendente{dashboardResumo.cadastrosPendentes === 1 ? "" : "s"}
-                </p>
-              </div>
-
-              <div className="bg-[#090909] p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
-                    Conferências hoje
-                  </p>
-                  <ClipboardCheck className="h-4 w-4 text-emerald-300" />
-                </div>
-                <p className="mt-2 text-3xl font-black text-white">
-                  {dashboardResumo.conferenciasHoje}
-                  <span className="ml-1 text-sm font-bold text-gray-600">
-                    / {dashboardResumo.conferenciasPrevistas}
-                  </span>
-                </p>
-                <p className="mt-1 text-xs text-gray-600">
-                  conferências realizadas
-                </p>
-              </div>
-
-              <div className="bg-[#090909] p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
-                    Caixas fechados
-                  </p>
-                  <WalletCards className="h-4 w-4 text-[#F2D675]" />
-                </div>
-                <p className="mt-2 text-3xl font-black text-white">
-                  {dashboardResumo.caixasFechados}
-                  <span className="ml-1 text-sm font-bold text-gray-600">
-                    / {dashboardResumo.caixasPrevistos}
-                  </span>
-                </p>
-                <p className="mt-1 text-xs text-gray-600">
-                  fechamentos realizados hoje
-                </p>
-              </div>
-
-              <div className="bg-[#090909] p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-500">
-                    Caixa com diferença
-                  </p>
-                  <AlertTriangle className="h-4 w-4 text-amber-300" />
-                </div>
-                <p className={`mt-2 text-3xl font-black ${dashboardResumo.caixasComDiferenca > 0 ? "text-amber-300" : "text-emerald-300"}`}>
-                  {dashboardResumo.caixasComDiferenca}
-                </p>
-                <p className="mt-1 text-xs text-gray-600">
-                  fechamento{dashboardResumo.caixasComDiferenca === 1 ? "" : "s"} com divergência
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-xl font-black text-white">Operação por loja</p>
-              <p className="mt-1 text-sm text-gray-500">
-                7 unidades monitoradas • cada quadrante mostra os quatro horários do ponto, pendências e o fechamento de caixa de hoje.
-              </p>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={abrirHistoricoPonto}
-              className="border-white/10 bg-white/[0.025] text-gray-300 hover:bg-white/[0.06] hover:text-white"
-            >
-              Ver histórico completo
-            </Button>
-          </div>
-
-          {dashboardHistoricoQuery.error || dashboardPendenciasQuery.error || dashboardCaixaQuery.error ? (
-            <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/[0.05] p-4 text-sm text-rose-200">
-              Não foi possível carregar o Dashboard RH. Atualize a tela e tente novamente.
-            </div>
-          ) : (
-            <>
-              <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                {dashboardLojas.map((loja) => {
-                  const selecionadaPonto = dashboardLojaAbertaId === Number(loja.id);
-                  const selecionadaCaixa = dashboardCaixaAbertoLojaId === Number(loja.id);
-                  const selecionada = selecionadaPonto || selecionadaCaixa;
-                  const fechamento = loja.fechamentoCaixa;
-                  const diferencaCaixa = Math.abs(Number(fechamento?.diferenca || 0));
-                  const caixaCorreto = Boolean(fechamento) && diferencaCaixa < 0.005;
-                  const caixaDentroMargem =
-                    Boolean(fechamento) && diferencaCaixa >= 0.005 && diferencaCaixa <= 5;
-                  const caixaForaMargem = Boolean(fechamento) && diferencaCaixa > 5;
-                  const statusLoja = statusOperacaoLoja(loja);
-
-                  return (
-                    <Card
-                      key={loja.id}
-                      className={`overflow-hidden bg-[#0b0b0b] transition ${
-                        selecionada
-                          ? "border-[#D4AF37]/55 ring-1 ring-[#D4AF37]/20"
-                          : statusLoja.borda
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDashboardCaixaAbertoLojaId(null);
-                          setDashboardLojaAbertaId(
-                            selecionadaPonto ? null : Number(loja.id)
-                          );
-                        }}
-                        className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-white/[0.025]"
-                      >
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="truncate text-lg font-black text-white">
-                              {loja.nome}
-                            </h3>
-                            <span
-                              className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${statusLoja.badge}`}
-                            >
-                              {statusLoja.label}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-[11px] text-gray-600">
-                            {loja.pendenciasHoje.length} de hoje
-                            {loja.pendenciasAnteriores > 0
-                              ? ` • ${loja.pendenciasAnteriores} anterior${
-                                  loja.pendenciasAnteriores === 1 ? "" : "es"
-                                }`
-                              : ""}
-                          </p>
-                        </div>
-
-                        <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-bold text-[#F2D675]">
-                          {selecionadaPonto
-                            ? "Selecionada"
-                            : selecionadaCaixa
-                            ? "Caixa aberto"
-                            : "Detalhes"}
-                          <ChevronDown
-                            className={`h-4 w-4 transition-transform ${
-                              selecionadaPonto ? "rotate-180" : ""
-                            }`}
-                          />
-                        </div>
-                      </button>
-
-                      <div className="grid grid-cols-2 gap-px border-t border-white/[0.06] bg-white/[0.06]">
-                        {loja.periodos.map((periodo: any) => {
-                          const quantidade = periodo.pendencias.length;
-                          const conferido = Boolean(periodo.conferencia);
-                          const atrasado = Boolean(periodo.atrasado);
-
-                          return (
-                            <div
-                              key={periodo.periodo}
-                              className={`p-3 ${
-                                quantidade > 0
-                                  ? "bg-amber-400/[0.035]"
-                                  : conferido
-                                  ? "bg-emerald-400/[0.025]"
-                                  : atrasado
-                                  ? "bg-rose-400/[0.04]"
-                                  : "bg-[#090909]"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-black text-[#F2D675]">
-                                  {periodo.horario}
-                                </span>
-                                {quantidade > 0 ? (
-                                  <span className="rounded-md border border-amber-400/20 bg-amber-400/[0.06] px-1.5 py-0.5 text-[9px] font-black text-amber-300">
-                                    {quantidade}
-                                  </span>
-                                ) : conferido ? (
-                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                                ) : atrasado ? (
-                                  <AlertTriangle className="h-3.5 w-3.5 text-rose-300" />
-                                ) : (
-                                  <Clock3 className="h-3.5 w-3.5 text-gray-700" />
-                                )}
-                              </div>
-                              <p className="mt-1 truncate text-[10px] font-bold text-gray-500">
-                                {periodo.titulo}
-                              </p>
-                              <p
-                                className={`mt-0.5 text-[9px] ${
-                                  quantidade > 0
-                                    ? "text-amber-300/80"
-                                    : conferido
-                                    ? "text-emerald-300/70"
-                                    : atrasado
-                                    ? "text-rose-300/80"
-                                    : "text-gray-700"
-                                }`}
-                              >
-                                {quantidade > 0
-                                  ? `${quantidade} pendência${quantidade === 1 ? "" : "s"}`
-                                  : conferido
-                                  ? "Conferido"
-                                  : atrasado
-                                  ? "Conferência atrasada"
-                                  : "Aguardando horário"}
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {Number(loja.id) === 5 ? (
-                        <div className="flex w-full items-center justify-between gap-3 border-t border-white/[0.06] bg-white/[0.015] px-3.5 py-3 text-left">
-                          <div>
-                            <p className="text-xs font-black text-gray-400">Administrativo</p>
-                            <p className="mt-0.5 text-[10px] text-gray-600">
-                              Conferência de caixa não se aplica
-                            </p>
-                          </div>
-                          <ShieldCheck className="h-4 w-4 text-gray-700" />
-                        </div>
-                      ) : (
-                      <button
-                        type="button"
-                        onClick={() => abrirDetalheCaixaDashboard(Number(loja.id))}
-                        className={`flex w-full items-center justify-between gap-3 border-t border-white/[0.06] px-3.5 py-3 text-left transition hover:bg-white/[0.035] ${
-                          selecionadaCaixa
-                            ? "ring-1 ring-inset ring-[#D4AF37]/40 bg-[#D4AF37]/[0.055]"
-                            :
-                          caixaCorreto
-                            ? "bg-emerald-400/[0.035]"
-                            : caixaDentroMargem
-                            ? "bg-amber-400/[0.035]"
-                            : caixaForaMargem
-                            ? "bg-rose-400/[0.035]"
-                            : "bg-[#090909]"
-                        }`}
-                      >
-                        <div>
-                          <p className="text-xs font-black text-[#F2D675]">Caixa</p>
-                          <p
-                            className={`mt-0.5 text-[10px] ${
-                              caixaCorreto
-                                ? "text-emerald-300/80"
-                                : caixaDentroMargem
-                                ? "text-amber-300/80"
-                                : caixaForaMargem
-                                ? "text-rose-300/80"
-                                : "text-gray-700"
-                            }`}
-                          >
-                            {caixaCorreto
-                              ? "Fechado • correto"
-                              : caixaDentroMargem
-                              ? `Diferença ${formatarMoeda(fechamento.diferenca)}`
-                              : caixaForaMargem
-                              ? `Diferença ${formatarMoeda(fechamento.diferenca)}`
-                              : "Não fechado"}
-                          </p>
-                        </div>
-                        {caixaCorreto ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                        ) : caixaDentroMargem ? (
-                          <AlertTriangle className="h-4 w-4 text-amber-300" />
-                        ) : caixaForaMargem ? (
-                          <AlertTriangle className="h-4 w-4 text-rose-300" />
-                        ) : (
-                          <WalletCards className="h-4 w-4 text-gray-700" />
-                        )}
-                      </button>
-                      )}
-                    </Card>
-                  );
-                })}
-              </div>
-
-              {dashboardCaixaAbertoLojaId !== null &&
-                (() => {
-                  const loja = dashboardLojas.find(
-                    (item: any) => Number(item.id) === Number(dashboardCaixaAbertoLojaId)
-                  );
-
-                  if (!loja) return null;
-
-                  const fechamento = loja.fechamentoCaixa;
-                  const status = fechamento ? statusCaixa(fechamento) : null;
-                  const diferenca = Number(fechamento?.diferenca || 0);
-
-                  return (
-                    <Card
-                      id="detalhe-caixa-dashboard"
-                      className="mt-6 scroll-mt-6 overflow-hidden border-[#D4AF37]/30 bg-[#0b0b0b]"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.06] p-5">
-                        <div>
-                          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#8f8a80]">
-                            Detalhe do Caixa
-                          </p>
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <h3 className="text-xl font-black text-white">{loja.nome}</h3>
-                            <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] px-2.5 py-1 text-[10px] font-black text-[#F2D675]">
-                              {formatarData(hoje)}
-                            </span>
-                            {status && (
-                              <span
-                                className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${status.classe}`}
-                              >
-                                {status.label}
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-1 text-xs text-gray-600">
-                            Visão gerencial do fechamento diário sem sair do Dashboard.
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => abrirCaixaDaLoja(Number(loja.id))}
-                            className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
-                          >
-                            Ver histórico do Caixa
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setDashboardCaixaAbertoLojaId(null)}
-                            className="border-white/10 bg-white/[0.025] text-gray-300 hover:bg-white/[0.06] hover:text-white"
-                          >
-                            Fechar detalhe
-                          </Button>
-                        </div>
-                      </div>
-
-                      <CardContent className="p-4 sm:p-5">
-                        {!fechamento ? (
-                          <div className="rounded-2xl border border-white/[0.08] bg-black/20 p-5">
-                            <div className="flex items-start gap-3">
-                              <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-2.5">
-                                <WalletCards className="h-5 w-5 text-gray-600" />
-                              </div>
-                              <div>
-                                <p className="font-black text-white">Caixa ainda não fechado</p>
-                                <p className="mt-1 text-sm leading-6 text-gray-500">
-                                  Ainda não existe fechamento de caixa para {loja.nome} em {formatarData(hoje)}.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="grid gap-3 md:grid-cols-3">
-                              <div className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
-                                  Saldo Final esperado
-                                </p>
-                                <p className="mt-2 text-2xl font-black text-white">
-                                  {formatarMoeda(fechamento.saldoFinal)}
-                                </p>
-                              </div>
-
-                              <div className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
-                                  Dinheiro contado
-                                </p>
-                                <p className="mt-2 text-2xl font-black text-white">
-                                  {formatarMoeda(fechamento.totalFisico)}
-                                </p>
-                              </div>
-
-                              <div className="rounded-2xl border border-white/[0.08] bg-black/20 p-4">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
-                                  Diferença
-                                </p>
-                                <p
-                                  className={`mt-2 text-2xl font-black ${
-                                    Math.abs(diferenca) < 0.005
-                                      ? "text-emerald-300"
-                                      : Math.abs(diferenca) <= 5
-                                      ? "text-amber-300"
-                                      : "text-rose-300"
-                                  }`}
-                                >
-                                  {formatarMoeda(diferenca)}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
-                                  Motivo
-                                </p>
-                                <p className="mt-2 text-sm font-bold text-gray-200">
-                                  {labelMotivoCaixa(fechamento.justificativaTipo)}
-                                </p>
-                              </div>
-
-                              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
-                                  Observação
-                                </p>
-                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-300">
-                                  {fechamento.justificativaObservacao || "—"}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
-                                  Fechado por
-                                </p>
-                                <p className="mt-2 text-sm font-bold text-white">
-                                  {fechamento.fechadoPorNome || "Usuário não informado"}
-                                </p>
-                                <p className="mt-1 text-xs text-gray-500">
-                                  {fechamento.fechadoEm
-                                    ? formatarDataHora(fechamento.fechadoEm)
-                                    : "Horário não informado"}
-                                </p>
-                              </div>
-
-                              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
-                                <p className="text-[10px] font-black uppercase tracking-wider text-gray-500">
-                                  Relatório original
-                                </p>
-                                <p className="mt-2 truncate text-xs font-bold text-[#F2D675]/80">
-                                  {fechamento.relatorioNome || "relatorio-caixa.xlsx"}
-                                </p>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={() => baixarRelatorioCaixa(fechamento)}
-                                  disabled={caixaBaixandoId === Number(fechamento.id)}
-                                  className="mt-3 border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
-                                >
-                                  <Download className="mr-2 h-4 w-4" />
-                                  {caixaBaixandoId === Number(fechamento.id)
-                                    ? "Abrindo..."
-                                    : "Baixar XLSX"}
-                                </Button>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })()}
-
-              {dashboardLojaAbertaId !== null &&
-                (() => {
-                  const loja = dashboardLojas.find(
-                    (item: any) => Number(item.id) === Number(dashboardLojaAbertaId)
-                  );
-
-                  if (!loja) return null;
-
-                  const grupos = [
-                    ...loja.periodos.map((periodo: any) => ({
-                      chave: periodo.periodo,
-                      titulo: `${periodo.horario} • ${periodo.titulo}`,
-                      pendencias: periodo.pendencias,
-                      anterior: false,
-                    })),
-                    ...(loja.pendenciasAnteriores > 0
-                      ? [
-                          {
-                            chave: "anteriores",
-                            titulo: "Pendências anteriores",
-                            pendencias: loja.pendenciasAbertas.filter(
-                              (pendencia: any) =>
-                                String(pendencia.dataReferencia || "").slice(0, 10) !== hoje
-                            ),
-                            anterior: true,
-                          },
-                        ]
-                      : []),
-                  ];
-
-                  return (
-                    <Card className="mt-5 overflow-hidden border-[#D4AF37]/25 bg-[#0b0b0b]">
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] p-5">
-                        <div>
-                          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#8f8a80]">
-                            Detalhes da unidade
-                          </p>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
-                            <h3 className="text-xl font-black text-white">{loja.nome}</h3>
-                            <span className="rounded-full border border-rose-400/20 bg-rose-400/[0.05] px-2.5 py-1 text-[10px] font-black text-rose-300">
-                              {loja.pendenciasAbertas.length} pendência{
-                                loja.pendenciasAbertas.length === 1 ? "" : "s"
-                              }
-                            </span>
-                          </div>
-                          <p className="mt-1 text-xs text-gray-600">
-                            Abra apenas o horário que deseja consultar. As outras lojas continuam visíveis acima.
-                          </p>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setDashboardLojaAbertaId(null)}
-                          className="border-white/10 bg-white/[0.025] text-gray-300 hover:bg-white/[0.06] hover:text-white"
-                        >
-                          Fechar detalhes
-                        </Button>
-                      </div>
-
-                      <CardContent className="p-4 sm:p-5">
-                        {loja.pendenciasAbertas.length === 0 ? (
-                          <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.035] p-4 text-sm text-emerald-200">
-                            Nenhuma pendência aberta nesta loja.
-                          </div>
-                        ) : (
-                          <div className="space-y-2.5">
-                            {grupos.map((grupo: any) => {
-                              const quantidade = grupo.pendencias.length;
-
-                              return (
-                                <details
-                                  key={grupo.chave}
-                                  className={`group overflow-hidden rounded-xl border ${
-                                    quantidade > 0
-                                      ? grupo.anterior
-                                        ? "border-amber-400/15 bg-amber-400/[0.025]"
-                                        : "border-rose-400/15 bg-rose-400/[0.025]"
-                                      : "border-emerald-400/10 bg-emerald-400/[0.02]"
-                                  }`}
-                                >
-                                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 transition hover:bg-white/[0.025] [&::-webkit-details-marker]:hidden">
-                                    <div className="flex min-w-0 items-center gap-3">
-                                      <div
-                                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
-                                          quantidade > 0
-                                            ? grupo.anterior
-                                              ? "border-amber-400/20 bg-amber-400/[0.06] text-amber-300"
-                                              : "border-rose-400/20 bg-rose-400/[0.06] text-rose-300"
-                                            : "border-emerald-400/15 bg-emerald-400/[0.05] text-emerald-300"
-                                        }`}
-                                      >
-                                        {quantidade > 0 ? (
-                                          <Clock3 className="h-4 w-4" />
-                                        ) : (
-                                          <CheckCircle2 className="h-4 w-4" />
-                                        )}
-                                      </div>
-
-                                      <div className="min-w-0">
-                                        <p className="truncate text-sm font-black text-white">
-                                          {grupo.titulo}
-                                        </p>
-                                        <p
-                                          className={`mt-0.5 text-[11px] ${
-                                            quantidade > 0
-                                              ? grupo.anterior
-                                                ? "text-amber-300/75"
-                                                : "text-rose-300/75"
-                                              : "text-emerald-300/70"
-                                          }`}
-                                        >
-                                          {quantidade > 0
-                                            ? "Clique para ver os funcionários"
-                                            : "Nenhuma pendência"}
-                                        </p>
-                                      </div>
-                                    </div>
-
-                                    <div className="flex shrink-0 items-center gap-2">
-                                      <span
-                                        className={`rounded-full border px-2.5 py-1 text-[10px] font-black ${
-                                          quantidade > 0
-                                            ? grupo.anterior
-                                              ? "border-amber-400/20 bg-amber-400/[0.06] text-amber-300"
-                                              : "border-rose-400/20 bg-rose-400/[0.06] text-rose-300"
-                                            : "border-emerald-400/15 bg-emerald-400/[0.05] text-emerald-300"
-                                        }`}
-                                      >
-                                        {quantidade > 0
-                                          ? `${quantidade} pendência${quantidade === 1 ? "" : "s"}`
-                                          : "Completo"}
-                                      </span>
-                                      <ChevronDown className="h-4 w-4 text-gray-600 transition-transform group-open:rotate-180" />
-                                    </div>
-                                  </summary>
-
-                                  {quantidade > 0 && (
-                                    <div className="grid gap-2 border-t border-white/[0.06] p-3 md:grid-cols-2">
-                                      {grupo.pendencias.map((pendencia: any) => (
-                                        <div
-                                          key={`${pendencia.fase}-${pendencia.id}`}
-                                          className="rounded-xl border border-white/[0.08] bg-black/30 p-3.5"
-                                        >
-                                          <div className="flex flex-wrap items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                              <p className="truncate text-sm font-black text-white">
-                                                {pendencia.funcionarioNome}
-                                              </p>
-                                              <p
-                                                className={`mt-1 text-xs font-bold ${
-                                                  pendencia.fase === "cadastro"
-                                                    ? "text-amber-300"
-                                                    : pendencia.fase === "documento"
-                                                    ? "text-sky-300"
-                                                    : "text-rose-200"
-                                                }`}
-                                              >
-                                                {labelPendenciaRh(pendencia)}
-                                              </p>
-                                            </div>
-                                            <span className="shrink-0 rounded-lg border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-2 py-1 text-[10px] font-black text-[#F2D675]">
-                                              {formatarData(
-                                                String(pendencia.dataReferencia || "").slice(0, 10)
-                                              )}
-                                            </span>
-                                          </div>
-
-                                          <div className="mt-3 flex flex-wrap gap-2">
-                                            {pendencia.tratativaTipo ? (
-                                              <span className="rounded-lg border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-2.5 py-1 text-[10px] font-bold text-[#F2D675]">
-                                                Tratativa: {labelTratativaHistorico(pendencia.tratativaTipo)}
-                                              </span>
-                                            ) : pendencia.fase === "classificar" ? (
-                                              <span className="rounded-lg border border-rose-400/15 bg-rose-400/[0.05] px-2.5 py-1 text-[10px] font-bold text-rose-300">
-                                                Tratativa ainda não definida
-                                              </span>
-                                            ) : null}
-
-                                            {pendencia.fase === "documento" && (
-                                              <span
-                                                className={`rounded-lg border px-2.5 py-1 text-[10px] font-bold ${
-                                                  statusDocumentoHistorico(pendencia.documentoStatus).classe
-                                                }`}
-                                              >
-                                                {statusDocumentoHistorico(pendencia.documentoStatus).label}
-                                              </span>
-                                            )}
-
-                                            {pendencia.fase === "cadastro" && (
-                                              <span className="rounded-lg border border-amber-400/15 bg-amber-400/[0.05] px-2.5 py-1 text-[10px] font-bold text-amber-300">
-                                                Ação do RH: concluir cadastro
-                                              </span>
-                                            )}
-                                          </div>
-
-                                          {pendencia.mensagem && (
-                                            <p className="mt-2 text-[11px] leading-5 text-gray-500">
-                                              {pendencia.mensagem}
-                                            </p>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </details>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  );
-                })()}
-            </>
-          )}
-        </section>
-
-        <section className="mt-7">
-          <div className="mb-4">
-            <p className="text-lg font-black text-white">Estrutura do RH</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Vamos ativar um módulo por vez e validar com situações reais.
+        <section className="mb-6">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#D4AF37]/70">
+              Gestão de Ponto
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-white">
+              Conferências, pendências e histórico
+            </h2>
+            <p className="mt-2 text-sm text-gray-500">
+              Controle exclusivo do ponto das lojas e das tratativas registradas pelas Caixas Líderes.
             </p>
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {MODULOS.map((modulo) => {
-              const Icon = modulo.icon;
-
-              return (
-                <Card
-                  key={modulo.titulo}
-                  onClick={
-                    modulo.titulo === "Conferência de Ponto"
-                      ? abrirHistoricoPonto
-                      : modulo.titulo === "Conferência de Caixa"
-                       ? abrirFechamentosCaixa
-                       : modulo.titulo === "Documentos RH"
-                       ? () => navigate("/rh/documentos")
-                       : modulo.titulo === "Entrega de EPIs"
-                       ? () => navigate("/rh/epis")
-                       : modulo.titulo === "Férias"
-                       ? () => navigate("/rh/ferias")
-                       : undefined
-                  }
-                  className={`border-white/[0.08] bg-[#0b0b0b] transition hover:border-[#D4AF37]/25 ${
-                    modulo.ativo ? "cursor-pointer border-emerald-400/15" : ""
-                  }`}
-                >
-                  <CardContent className="p-5">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2.5">
-                        <Icon className="h-5 w-5 text-[#F2D675]" />
-                      </div>
-
-                      <span
-                        className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${
-                          modulo.ativo
-                            ? "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-300"
-                            : "border-white/[0.08] bg-white/[0.03] text-gray-500"
-                        }`}
-                      >
-                        {modulo.ativo ? "Ativo" : "Em construção"}
-                      </span>
-                    </div>
-
-                    <p className="mt-4 font-bold text-white">{modulo.titulo}</p>
-                    <p className="mt-2 text-sm leading-6 text-gray-500">
-                      {modulo.descricao}
-                    </p>
-
-                    {modulo.ativo && (
-                      <p className="mt-3 text-xs font-bold text-[#F2D675]">
-                        {modulo.titulo === "Conferência de Caixa" || modulo.titulo === "Documentos RH"
-                           ? "Abrir módulo →"
-                           : "Ver histórico ↓"}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
         </section>
 
-        <section id="fechamentos-caixa" className="mt-8 scroll-mt-6">
-          <div className="mb-4">
-            <p className="text-xl font-black text-white">Fechamentos de Caixa</p>
-            <p className="mt-1 text-sm text-gray-500">
-              Consulte o fechamento realizado pela Caixa Líder por loja e data.
-            </p>
-          </div>
-
-          <Card className="border-[#D4AF37]/15 bg-[#0b0b0b]">
-            <CardContent className="p-4 sm:p-5">
-              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-gray-400">
-                    Loja
-                  </label>
-                  <Select
-                    value={caixaLojaFiltro}
-                    onValueChange={setCaixaLojaFiltro}
-                  >
-                    <SelectTrigger className="h-11 w-full border-white/10 bg-black/30 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="border-white/10 bg-[#111111] text-white">
-                      <SelectItem value="todas">Todas as lojas</SelectItem>
-                      {lojas
-                        .filter((loja) => Number(loja.id) !== 5)
-                        .map((loja) => (
-                          <SelectItem key={loja.id} value={String(loja.id)}>
-                            {loja.nome}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-gray-400">
-                    Data
-                  </label>
-                  <input
-                    type="date"
-                    value={caixaDataFiltro}
-                    onChange={(event) => setCaixaDataFiltro(event.target.value)}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50"
-                  />
-                </div>
-
-                <Button
-                  type="button"
-                  onClick={buscarFechamentosCaixa}
-                  disabled={!caixaDataFiltro || fechamentosCaixaQuery.isFetching}
-                  className="h-11 bg-[#D4AF37] px-6 font-bold text-black hover:bg-[#E6C760]"
-                >
-                  <Search className="mr-2 h-4 w-4" />
-                  {fechamentosCaixaQuery.isFetching ? "Buscando..." : "Buscar"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {caixaErroRelatorio && (
-            <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/[0.05] p-4 text-sm text-rose-200">
-              {caixaErroRelatorio}
-            </div>
-          )}
-
-          <div className="mt-4 space-y-3">
-            {!caixaFiltroAplicado && (
-              <div className="rounded-2xl border border-white/[0.08] bg-[#0b0b0b] p-5 text-sm text-gray-500">
-                Selecione a loja e a data e clique em Buscar.
-              </div>
-            )}
-
-            {caixaFiltroAplicado && fechamentosCaixaQuery.isLoading && (
-              <div className="rounded-2xl border border-white/[0.08] bg-[#0b0b0b] p-5 text-sm text-gray-500">
-                Carregando fechamentos...
-              </div>
-            )}
-
-            {caixaFiltroAplicado && fechamentosCaixaQuery.error && (
-              <div className="rounded-2xl border border-rose-400/20 bg-rose-400/[0.05] p-5 text-sm text-rose-200">
-                {fechamentosCaixaQuery.error.message}
-              </div>
-            )}
-
-            {caixaFiltroAplicado &&
-              !fechamentosCaixaQuery.isLoading &&
-              !fechamentosCaixaQuery.error &&
-              fechamentosCaixa.length === 0 && (
-                <div className="rounded-2xl border border-white/[0.08] bg-[#0b0b0b] p-5 text-sm text-gray-500">
-                  Nenhum fechamento encontrado para a loja e data selecionadas.
-                </div>
-              )}
-
-            {fechamentosCaixa.map((fechamento: any) => {
-              const status = statusCaixa(fechamento);
-              const diferenca = Number(fechamento.diferenca || 0);
-
-              return (
-                <Card
-                  key={fechamento.id}
-                  className="border-white/[0.08] bg-[#0b0b0b]"
-                >
-                  <CardContent className="p-4 sm:p-5">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] px-2.5 py-1 text-xs font-black text-[#F2D675]">
-                            {fechamento.lojaNome}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {formatarData(fechamento.dataReferencia)}
-                          </span>
-                        </div>
-
-                        <p className="mt-3 text-lg font-black text-white">
-                          {fechamento.contaNome || "CAIXA"}
-                        </p>
-
-                        <p className="mt-1 text-xs text-gray-500">
-                          Fechado por{" "}
-                          <strong className="text-gray-300">
-                            {fechamento.fechadoPorNome || "Usuário não informado"}
-                          </strong>
-                          {fechamento.fechadoEm
-                            ? ` • ${formatarDataHora(fechamento.fechadoEm)}`
-                            : ""}
-                        </p>
-                      </div>
-
-                      <span
-                        className={`rounded-full border px-3 py-1.5 text-xs font-black ${status.classe}`}
-                      >
-                        {status.label}
-                      </span>
-                    </div>
-
-                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                          Saldo Final esperado
-                        </p>
-                        <p className="mt-1 text-lg font-black text-white">
-                          {formatarMoeda(fechamento.saldoFinal)}
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                          Dinheiro contado
-                        </p>
-                        <p className="mt-1 text-lg font-black text-white">
-                          {formatarMoeda(fechamento.totalFisico)}
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                          Diferença
-                        </p>
-                        <p
-                          className={`mt-1 text-lg font-black ${
-                            Math.abs(diferenca) < 0.005
-                              ? "text-emerald-300"
-                              : Math.abs(diferenca) <= 5
-                              ? "text-amber-300"
-                              : "text-rose-300"
-                          }`}
-                        >
-                          {formatarMoeda(diferenca)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                          Motivo
-                        </p>
-                        <p className="mt-1 text-sm font-bold text-gray-200">
-                          {labelMotivoCaixa(fechamento.justificativaTipo)}
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.025] p-3">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                          Observação
-                        </p>
-                        <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-gray-300">
-                          {fechamento.justificativaObservacao || "—"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-4">
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                          Relatório original
-                        </p>
-                        <p className="mt-1 max-w-xl truncate text-xs text-[#F2D675]/70">
-                          {fechamento.relatorioNome || "relatorio-caixa.xlsx"}
-                        </p>
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => baixarRelatorioCaixa(fechamento)}
-                        disabled={caixaBaixandoId === Number(fechamento.id)}
-                        className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        {caixaBaixandoId === Number(fechamento.id)
-                          ? "Abrindo..."
-                          : "Baixar relatório XLSX"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="mt-8">
+<section className="mt-8">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-xl font-black text-white">Pendências do Ponto</p>
@@ -2183,6 +1157,12 @@ export default function RHGestao() {
                                     </p>
                                   )}
 
+                                   {ocorrencia.tratativaObservacao && (
+                                     <p className="mt-1 whitespace-pre-line text-xs text-[#F2D675]/70">
+                                       Tratativa: {ocorrencia.tratativaObservacao}
+                                     </p>
+                                   )}
+
                                   {ocorrencia.tratativaId && (
                                     <div className="mt-2 flex flex-wrap items-center gap-2">
                                       <span className="rounded-lg border border-[#D4AF37]/15 bg-[#D4AF37]/[0.05] px-2.5 py-1 text-[11px] font-bold text-[#F2D675]">
@@ -2206,6 +1186,52 @@ export default function RHGestao() {
                                 >
                                   {labelTipoOcorrencia(ocorrencia)}
                                 </span>
+
+                                {ocorrencia.tratativaTipo === "justificativa" &&
+                                  ocorrencia.documentoStatus !== "excluida" &&
+                                  ocorrencia.tratativaId && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={excluirJustificativaMutation.isPending}
+                                      onClick={() => {
+                                        const motivo = window.prompt(
+                                          "Informe o motivo da exclusao desta justificativa.\n\nO motivo e obrigatorio e a ocorrencia nao voltara como pendencia para a Caixa."
+                                        );
+
+                                        if (motivo === null) return;
+
+                                        const motivoLimpo = motivo.trim();
+                                        if (motivoLimpo.length < 5) {
+                                          window.alert(
+                                            "Informe um motivo com pelo menos 5 caracteres."
+                                          );
+                                          return;
+                                        }
+
+                                        const confirmar = window.confirm(
+                                          "Confirma a exclusao? O registro ficara no historico como excluido e NAO voltara para as pendencias."
+                                        );
+                                        if (!confirmar) return;
+
+                                        excluirJustificativaMutation.mutate({
+                                          tratativaId: Number(ocorrencia.tratativaId),
+                                          motivo: motivoLimpo,
+                                        });
+                                      }}
+                                      className="h-7 border-rose-400/25 bg-rose-400/[0.05] px-2.5 text-[11px] font-black text-rose-200 hover:bg-rose-400/[0.10] hover:text-rose-100"
+                                    >
+                                      Excluir justificativa
+                                    </Button>
+                                  )}
+
+                                {ocorrencia.tratativaTipo === "justificativa" &&
+                                  ocorrencia.documentoStatus === "excluida" && (
+                                    <span className="rounded-lg border border-gray-500/20 bg-gray-500/[0.05] px-2.5 py-1 text-xs font-black text-gray-400">
+                                      Justificativa excluida pelo RH
+                                    </span>
+                                  )}
                               </div>
                             </div>
                           </div>

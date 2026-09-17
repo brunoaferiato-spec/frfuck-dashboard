@@ -54,11 +54,13 @@ import {
   vincularRhPontoNomeFuncionario,
   criarRhPontoTratativa,
   salvarDocumentoRhPontoTratativa,
+  concluirRhPontoTratativa,
   getRhPontoTratativaDocumento,
   getRhCaixaDia,
   getRhCaixaHistorico,
   salvarRhCaixaFechamento,
   getRhCaixaRelatorioArquivo,
+  excluirRhPontoJustificativa,
 } from "./db";
 
 import { signAuthToken, comparePassword, hashPassword } from "./auth";
@@ -1547,7 +1549,17 @@ export const appRouter = router({
           ? null
           : Number(input.lojaId);
 
-        return getRhPontoPendencias({ lojaId });
+        const pendencias = await getRhPontoPendencias({ lojaId });
+
+        // Caixa Lider nao deve receber pendencias de cadastro/jornada.
+        // Essas pendencias pertencem somente a Lider de RH/Admin/Gestor.
+        if (caixaLider) {
+          return (pendencias || []).filter(
+            (pendencia: any) => String(pendencia.fase || "") !== "cadastro"
+          );
+        }
+
+        return pendencias;
       }),
 
     vincularNomeFuncionario: protectedProcedure
@@ -1658,6 +1670,53 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    excluirJustificativa: protectedProcedure
+      .input(
+        z.object({
+          tratativaId: z.number().int().positive(),
+          motivo: z.string().trim().min(5).max(1000),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        const role = String(ctx.user.role || "");
+        const usuarioLojaId = Number(ctx.user.lojaId || 0);
+        const liderRh = role === "rh" && usuarioLojaId <= 0;
+        const adminOuGestor = role === "admin" || role === "gestor";
+
+        if (!liderRh && !adminOuGestor) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Somente a Lider de RH pode excluir justificativas.",
+          });
+        }
+
+        return excluirRhPontoJustificativa({
+          tratativaId: input.tratativaId,
+          motivo: input.motivo,
+          usuarioId: Number(ctx.user.id),
+          usuarioNome:
+            ctx.user.name ||
+            ctx.user.email ||
+            `Usuario ${ctx.user.id}`,
+        });
+      }),
+
+    concluirTratativa: protectedProcedure
+      .input(
+        z.object({
+          tratativaId: z.number().int().positive(),
+          lojaId: z.number().int().positive(),
+        })
+      )
+      .mutation(async ({ input, ctx }) => {
+        assertAcessoRhPontoPendencia(ctx, input.lojaId);
+
+        return concluirRhPontoTratativa({
+          tratativaId: input.tratativaId,
+          lojaId: input.lojaId,
+        });
+      }),
+
     documentoTratativaUrl: protectedProcedure
       .input(
         z.object({
@@ -1753,6 +1812,7 @@ export const appRouter = router({
           contagem: rhCaixaContagemSchema,
           justificativaTipo: z.string().trim().max(60).nullable().optional(),
           justificativaObservacao: z.string().trim().max(2000).nullable().optional(),
+          motivoNaoDeposito: z.string().trim().max(2000).nullable().optional(),
         })
       )
       .mutation(async ({ input, ctx }) => {
@@ -1796,6 +1856,7 @@ export const appRouter = router({
           contagem: input.contagem,
           justificativaTipo: input.justificativaTipo ?? null,
           justificativaObservacao: input.justificativaObservacao ?? null,
+          motivoNaoDeposito: input.motivoNaoDeposito ?? null,
           usuarioId: Number(ctx.user.id),
           usuarioNome:
             ctx.user.name ||

@@ -183,6 +183,10 @@ type FormEdicaoFuncionario = {
   funcao: FuncaoFuncionarioId;
   tipoMeta: TipoMetaFuncionario;
   dataAdmissao: string;
+  cargoConfianca: boolean;
+  horarioEntrada1: string;
+  duracaoAlmocoMinutos: string;
+  horarioSaida2: string;
 };
 
 function criarFormEdicaoFuncionarioVazio(): FormEdicaoFuncionario {
@@ -194,6 +198,10 @@ function criarFormEdicaoFuncionarioVazio(): FormEdicaoFuncionario {
     funcao: "mecanico",
     tipoMeta: "",
     dataAdmissao: "",
+    cargoConfianca: false,
+    horarioEntrada1: "",
+    duracaoAlmocoMinutos: "",
+    horarioSaida2: "",
   };
 }
 
@@ -3602,6 +3610,20 @@ function abrirEdicaoFuncionarioDetalhe() {
     dataAdmissao: formatarDataInputFuncionario(
       funcionario.dataAdmissao || funcionario.data_admissao
     ),
+    cargoConfianca: Boolean(
+      Number(funcionario.cargoConfianca ?? funcionario.cargo_confianca ?? 0)
+    ),
+    horarioEntrada1: String(
+      funcionario.horarioEntrada1 || funcionario.horario_entrada_1 || ""
+    ),
+    duracaoAlmocoMinutos:
+      funcionario.duracaoAlmocoMinutos !== null &&
+      funcionario.duracaoAlmocoMinutos !== undefined
+        ? String(funcionario.duracaoAlmocoMinutos)
+        : "",
+    horarioSaida2: String(
+      funcionario.horarioSaida2 || funcionario.horario_saida_2 || ""
+    ),
   });
   setTentouSalvarFuncionarioDetalhe(false);
   setEditandoFuncionarioDetalhe(true);
@@ -3654,6 +3676,14 @@ async function salvarEdicaoFuncionarioDetalhe() {
             : (funcionarioEdicaoForm.tipoMeta as "meta1" | "meta2")
           : null,
       dataAdmissao: dataFuncionarioParaApi(funcionarioEdicaoForm.dataAdmissao),
+      cargoConfianca: funcionarioEdicaoForm.cargoConfianca,
+      horarioEntrada1: funcionarioEdicaoForm.horarioEntrada1 || null,
+      duracaoAlmocoMinutos: funcionarioEdicaoForm.duracaoAlmocoMinutos
+        ? Number(funcionarioEdicaoForm.duracaoAlmocoMinutos)
+        : null,
+      horarioSaida1: null,
+      horarioEntrada2: null,
+      horarioSaida2: funcionarioEdicaoForm.horarioSaida2 || null,
     });
   } catch (error: any) {
     console.error(error);
@@ -10968,6 +10998,107 @@ if (
                     </div>
                   </div>
 
+                  <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] p-4">
+                    <div className="mb-4">
+                      <p className="text-sm font-bold text-[#F2D675]">
+                        Jornada de trabalho
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-gray-400">
+                        Cadastre a entrada fixa, o tempo obrigatório de almoço e a saída fixa.
+                        O horário de início do almoço pode variar.
+                      </p>
+                    </div>
+
+                    <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/18 bg-[#D4AF37]/[0.05] p-3">
+                      <input
+                        type="checkbox"
+                        checked={funcionarioEdicaoForm.cargoConfianca}
+                        onChange={(e) =>
+                          setFuncionarioEdicaoForm((prev) => ({
+                            ...prev,
+                            cargoConfianca: e.target.checked,
+                          }))
+                        }
+                        className="mt-0.5 h-4 w-4 accent-[#D4AF37]"
+                      />
+                      <span>
+                        <span className="block text-sm font-semibold text-[#F2D675]">
+                          Cargo de confiança
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-5 text-gray-400">
+                          Não bate ponto e será excluído automaticamente da conferência do PDF.
+                        </span>
+                      </span>
+                    </label>
+
+                    {funcionarioEdicaoForm.cargoConfianca ? (
+                      <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] px-4 py-3 text-xs leading-5 text-emerald-200/80">
+                        Ponto dispensado. Este funcionário não terá cobrança de entrada, almoço ou saída.
+                      </div>
+                    ) : (
+                    <>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <div>
+                        <Label className="text-gray-300">Entrada fixa</Label>
+                        <Input
+                          type="time"
+                          className="mt-1 border-[#D4AF37]/20 bg-[#0b0b0b] text-white"
+                          value={funcionarioEdicaoForm.horarioEntrada1}
+                          onChange={(e) =>
+                            setFuncionarioEdicaoForm((prev) => ({
+                              ...prev,
+                              horarioEntrada1: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-gray-300">Tempo de almoço</Label>
+                        <select
+                          className="mt-1 h-10 w-full rounded-md border border-[#D4AF37]/20 bg-[#0b0b0b] px-3 text-sm text-white"
+                          value={funcionarioEdicaoForm.duracaoAlmocoMinutos}
+                          onChange={(e) =>
+                            setFuncionarioEdicaoForm((prev) => ({
+                              ...prev,
+                              duracaoAlmocoMinutos: e.target.value,
+                            }))
+                          }
+                        >
+                          <option value="">Selecione</option>
+                          <option value="30">30 minutos</option>
+                          <option value="45">45 minutos</option>
+                          <option value="60">1 hora</option>
+                          <option value="90">1h30</option>
+                          <option value="120">2 horas</option>
+                          <option value="150">2h30</option>
+                          <option value="180">3 horas</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <Label className="text-gray-300">Saída fixa</Label>
+                        <Input
+                          type="time"
+                          className="mt-1 border-[#D4AF37]/20 bg-[#0b0b0b] text-white"
+                          value={funcionarioEdicaoForm.horarioSaida2}
+                          onChange={(e) =>
+                            setFuncionarioEdicaoForm((prev) => ({
+                              ...prev,
+                              horarioSaida2: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <p className="mt-3 text-[11px] leading-4 text-gray-500">
+                      Exemplo: 09:00 • almoço 1 hora • 18:00.
+                    </p>
+                    </>
+                    )}
+                  </div>
+
                   {tentouSalvarFuncionarioDetalhe && !funcionarioEdicaoValida && (
                     <div className="rounded-md border border-red-500/30 bg-red-950/20 p-3 text-sm text-red-300">
                       Preencha todos os campos obrigatórios destacados antes de salvar.
@@ -11044,6 +11175,51 @@ if (
                       funcionario.dataAdmissao || funcionario.data_admissao
                     )}
                   />
+                </div>
+
+                <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] p-4">
+                  <p className="text-sm font-bold text-[#F2D675]">
+                    Jornada de trabalho
+                  </p>
+
+                  {Boolean(
+                    Number(funcionario.cargoConfianca ?? funcionario.cargo_confianca ?? 0)
+                  ) ? (
+                    <div className="mt-3 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] px-4 py-3 text-sm font-semibold text-emerald-300">
+                      Cargo de confiança • não bate ponto
+                    </div>
+                  ) : (
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <Campo
+                      label="Entrada fixa"
+                      valor={
+                        funcionario.horarioEntrada1 ||
+                        funcionario.horario_entrada_1 ||
+                        "Não cadastrada"
+                      }
+                    />
+                    <Campo
+                      label="Tempo de almoço"
+                      valor={
+                        funcionario.duracaoAlmocoMinutos
+                          ? `${Math.floor(Number(funcionario.duracaoAlmocoMinutos) / 60)}h${
+                              Number(funcionario.duracaoAlmocoMinutos) % 60
+                                ? String(Number(funcionario.duracaoAlmocoMinutos) % 60).padStart(2, "0")
+                                : ""
+                            }`
+                          : "Não cadastrado"
+                      }
+                    />
+                    <Campo
+                      label="Saída fixa"
+                      valor={
+                        funcionario.horarioSaida2 ||
+                        funcionario.horario_saida_2 ||
+                        "Não cadastrada"
+                      }
+                    />
+                  </div>
+                  )}
                 </div>
               </div>
             );

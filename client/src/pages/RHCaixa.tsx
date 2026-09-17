@@ -182,6 +182,28 @@ export default function RHCaixa() {
   const [contagem, setContagem] = useState<ContagemCaixa>(contagemZerada());
   const [justificativaTipo, setJustificativaTipo] = useState("");
   const [justificativaObservacao, setJustificativaObservacao] = useState("");
+  const [motivoNaoDeposito, setMotivoNaoDeposito] = useState("");
+
+  const totalFisicoParaLimite = useMemo(
+    () =>
+      Number(contagem.cedula200 || 0) * 200 +
+      Number(contagem.cedula100 || 0) * 100 +
+      Number(contagem.cedula50 || 0) * 50 +
+      Number(contagem.cedula20 || 0) * 20 +
+      Number(contagem.cedula10 || 0) * 10 +
+      Number(contagem.cedula5 || 0) * 5 +
+      Number(contagem.cedula2 || 0) * 2 +
+      Number(contagem.moeda1 || 0) * 1 +
+      Number(contagem.moeda050 || 0) * 0.5 +
+      Number(contagem.moeda025 || 0) * 0.25 +
+      Number(contagem.moeda010 || 0) * 0.1 +
+      Number(contagem.moeda005 || 0) * 0.05 +
+      Number(contagem.moeda001 || 0) * 0.01,
+    [contagem]
+  );
+
+  const exigeMotivoNaoDeposito = totalFisicoParaLimite > 2000;
+
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
   const [processandoArquivo, setProcessandoArquivo] = useState(false);
@@ -190,11 +212,19 @@ export default function RHCaixa() {
   const [dataFimHistorico, setDataFimHistorico] = useState(hoje);
   const [lojaHistorico, setLojaHistorico] = useState("todas");
 
-  const lojasQuery = trpc.lojas.list.useQuery(undefined, { retry: false });
-  const lojas = useMemo(
-    () => ((lojasQuery.data || []) as Array<{ id: number; nome: string }>),
-    [lojasQuery.data]
-  );
+  // As seis lojas operacionais deste modulo sao fixas.
+  // ACI Promocoes (ID 5) nao participa do fechamento de caixa do RH.
+  const lojas = [
+    { id: 1, nome: "Joinville" },
+    { id: 2, nome: "Blumenau" },
+    { id: 3, nome: "São José" },
+    { id: 4, nome: "Florianópolis" },
+    { id: 6, nome: "São Leopoldo" },
+    { id: 7, nome: "Gravataí" },
+  ] as const;
+
+  // Mantem compatibilidade com o painel gerencial criado anteriormente.
+  const lojasOperacionais = lojas;
 
   const lojaIdOperacional = caixaLider
     ? usuarioLojaId
@@ -277,6 +307,7 @@ export default function RHCaixa() {
     setContagem(contagemZerada());
     setJustificativaTipo("");
     setJustificativaObservacao("");
+    setMotivoNaoDeposito(""); // LIMITE_CAIXA_2000_RESET
     setMensagem("");
     setErro("");
   }
@@ -332,6 +363,7 @@ export default function RHCaixa() {
       setContagem(contagemZerada());
       setJustificativaTipo("");
       setJustificativaObservacao("");
+    setMotivoNaoDeposito(""); // LIMITE_CAIXA_2000_RESET
     } catch (error: any) {
       setErro(error?.message || "Não foi possível interpretar o relatório.");
       setArquivoNome("");
@@ -374,7 +406,17 @@ export default function RHCaixa() {
         ? "diferenca_caixa"
         : justificativaTipo;
 
-    await salvarMutation.mutateAsync({
+        if (
+      exigeMotivoNaoDeposito &&
+      motivoNaoDeposito.trim().length < 5
+    ) {
+      setErro(
+        "O caixa esta acima de R$ 2.000,00. Informe por que o deposito nao foi realizado."
+      );
+      return;
+    }
+
+await salvarMutation.mutateAsync({
       lojaId: lojaIdOperacional,
       dataReferencia: dataOperacional,
       arquivoNome,
@@ -384,7 +426,10 @@ export default function RHCaixa() {
       justificativaTipo: motivoFinal,
       justificativaObservacao:
         diferencaCentavos === 0 ? null : justificativaObservacao.trim(),
-    });
+            motivoNaoDeposito: exigeMotivoNaoDeposito
+          ? motivoNaoDeposito.trim()
+          : null,
+});
   }
 
   async function abrirRelatorio(fechamento: any) {
@@ -867,7 +912,42 @@ export default function RHCaixa() {
                         </div>
                       )}
 
-                      <Button
+
+              {exigeMotivoNaoDeposito && (
+                <div className="mb-4 rounded-2xl border border-amber-400/25 bg-amber-400/[0.06] p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-xl border border-amber-400/20 bg-amber-400/[0.08] p-2 text-amber-300">
+                      <AlertTriangle className="h-4 w-4" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="font-black text-amber-200">
+                        Caixa acima do limite de R$ 2.000,00
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-amber-100/70">
+                        Dinheiro físico contado: {formatarMoeda(totalFisicoParaLimite)}.
+                        Informe por que o depósito não foi realizado.
+                      </p>
+
+                      <label className="mt-3 block text-[10px] font-black uppercase tracking-[0.14em] text-amber-200/80">
+                        Motivo do depósito não realizado
+                      </label>
+                      <textarea
+                        value={motivoNaoDeposito}
+                        onChange={(event) =>
+                          setMotivoNaoDeposito(event.target.value)
+                        }
+                        maxLength={2000}
+                        rows={3}
+                        placeholder="Ex.: depósito não realizado porque..."
+                        className="mt-1.5 w-full resize-y rounded-xl border border-amber-400/25 bg-[#111111] px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400/60"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+<Button
                         type="button"
                         onClick={salvarFechamento}
                         disabled={salvarMutation.isPending}

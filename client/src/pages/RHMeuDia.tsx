@@ -576,7 +576,7 @@ function classeStatus(status: string) {
 
 type PendenciaPonto = {
   id: string;
-  fase: "classificar" | "documento" | "cadastro";
+  fase: "classificar" | "documento" | "concluir" | "cadastro";
   ocorrenciaId?: number;
   conferenciaId?: number;
   cadastroPendenteId?: number;
@@ -763,6 +763,15 @@ export default function RHMeuDia() {
     onError: (error) => {
       setEnviandoDocumentoId(null);
       window.alert(error.message || "Não foi possível anexar o documento.");
+    },
+  });
+
+  const concluirTratativaMutation = trpc.rhPonto.concluirTratativa.useMutation({
+    onSuccess: async () => {
+      await Promise.all([pendenciasQuery.refetch(), pontoDiaQuery.refetch()]);
+    },
+    onError: (error) => {
+      window.alert(error.message || "Nao foi possivel concluir a pendencia.");
     },
   });
 
@@ -1043,6 +1052,9 @@ export default function RHMeuDia() {
       return pendencia.tipoCadastro === "jornada"
         ? "Jornada pendente de cadastro pelo RH"
         : "Funcionário pendente de cadastro pelo RH";
+    }
+    if (pendencia.fase === "concluir") {
+      return `${labelTratativa(pendencia.tratativaTipo)} • documento anexado • aguardando conclusão`;
     }
     if (pendencia.fase === "documento") {
       if (pendencia.tratativaTipo === "atestado" && pendencia.dataFimAtestado) {
@@ -1481,7 +1493,37 @@ export default function RHMeuDia() {
                                     </label>
                                   )}
 
-                                  {pendencia.fase === "cadastro" && (
+                                  {pendencia.fase === "concluir" && pendencia.tratativaId && (
+                        <div className="mt-3 space-y-2">
+                          <div className="rounded-lg border border-emerald-400/15 bg-emerald-400/[0.05] px-3 py-2 text-[11px] text-emerald-200">
+                            Documento anexado com sucesso. Confira e conclua para retirar esta ocorrência das pendências.
+                          </div>
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              const confirmar = window.confirm(
+                                `Concluir a pendência de ${pendencia.funcionarioNome}? Ela sairá da lista de pendências.`
+                              );
+                              if (!confirmar) return;
+
+                              concluirTratativaMutation.mutate({
+                                tratativaId: Number(pendencia.tratativaId),
+                                lojaId: Number(pendencia.lojaId),
+                              });
+                            }}
+                            disabled={concluirTratativaMutation.isPending}
+                            className="h-9 bg-emerald-400 text-xs font-black text-black hover:bg-emerald-300"
+                          >
+                            {concluirTratativaMutation.isPending
+                              ? "Concluindo..."
+                              : "Concluir pendência"}
+                          </Button>
+                        </div>
+                      )}
+
+                      {pendencia.fase === "cadastro" && (
                                     <div className="mt-3 rounded-lg border border-amber-400/15 bg-amber-400/[0.05] px-3 py-2 text-[11px] text-amber-200">
                                       Aguardando a Líder de RH concluir o cadastro.
                                     </div>

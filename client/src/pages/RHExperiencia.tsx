@@ -5,6 +5,9 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock3,
+  FileUp,
+  FileSpreadsheet,
+  Download,
   Search,
   ShieldCheck,
   Store,
@@ -60,6 +63,54 @@ type FiltroStatus =
   | "segundo"
   | "atencao"
   | "concluidos";
+
+async function arquivoExperienciaParaBase64(file: File) {
+  if (file.size > 8 * 1024 * 1024) {
+    throw new Error("O arquivo da contabilidade deve ter no maximo 8 MB.");
+  }
+
+  const extensao = file.name.toLowerCase().split(".").pop() || "";
+  if (!["pdf", "xlsx", "xls", "csv"].includes(extensao)) {
+    throw new Error("Envie o arquivo em PDF, XLSX, XLS ou CSV.");
+  }
+
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binario = "";
+  const bloco = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += bloco) {
+    binario += String.fromCharCode(...bytes.subarray(i, i + bloco));
+  }
+
+  return btoa(binario);
+}
+
+function baixarArquivoBase64(
+  arquivoNome: string,
+  arquivoMime: string,
+  arquivoBase64: string
+) {
+  const binario = atob(arquivoBase64);
+  const bytes = new Uint8Array(binario.length);
+
+  for (let i = 0; i < binario.length; i += 1) {
+    bytes[i] = binario.charCodeAt(i);
+  }
+
+  const blob = new Blob([bytes], {
+    type: arquivoMime || "application/octet-stream",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = arquivoNome || "arquivo-experiencia";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 function parseDataCivil(valor?: string | null) {
   if (!valor) return null;
@@ -123,11 +174,24 @@ function prazoAtual(item: RegistroExperiencia) {
     : item.fimPrimeiroPeriodo;
 }
 
+// Regularizacao historica disponivel
+function podeEfetivarHistorico(item: RegistroExperiencia) {
+  if (concluido(item)) return false;
+  if (item.primeiraDecisao || item.segundaDecisao) return false;
+
+  const dias90 = diasAte(item.fimSegundoPeriodo);
+  return dias90 !== null && dias90 <= 0;
+}
+
 function textoPrazo(item: RegistroExperiencia) {
   if (concluido(item)) {
     if (item.primeiraDecisao === "encerrar") return "Decisão registrada no 1º período";
     if (item.segundaDecisao === "efetivar") return "Efetivação registrada";
     return "Encerramento registrado";
+  }
+
+  if (podeEfetivarHistorico(item)) {
+    return "Regularização pendente";
   }
 
   const dias = diasAte(prazoAtual(item));
@@ -180,6 +244,13 @@ export default function RHExperiencia() {
     retry: false,
     refetchOnWindowFocus: true,
   });
+
+  const arquivosContabilidadeQuery =
+    trpc.rhExperiencia.listarArquivosContabilidade.useQuery(undefined, {
+      enabled: podeGerenciar,
+      retry: false,
+      refetchOnWindowFocus: true,
+    });
 
   const lojas = useMemo(() => {
     const recebidas = (lojasQuery.data || []) as Array<{ id: number; nome: string }>;
@@ -264,6 +335,76 @@ export default function RHExperiencia() {
     return { primeiro, segundo, atencao, hoje, atrasados, concluidos };
   }, [registros]);
 
+  const anexarArquivoContabilidadeMutation =
+    trpc.rhExperiencia.anexarArquivoContabilidade.useMutation({
+      onSuccess: async () => {
+        setErro("");
+        setMensagem("Arquivo de vencimentos da contabilidade arquivado com sucesso.");
+        await utils.rhExperiencia.listarArquivosContabilidade.invalidate();
+      },
+      onError: (error) => {
+        setMensagem("");
+        setErro(error.message || "Nao foi possivel arquivar o arquivo da contabilidade.");
+      },
+    });
+
+  const baixarArquivoContabilidadeMutation =
+    trpc.rhExperiencia.baixarArquivoContabilidade.useMutation({
+      onSuccess: (arquivo) => {
+        setErro("");
+        baixarArquivoBase64(
+          arquivo.arquivoNome,
+          arquivo.arquivoMime,
+          arquivo.arquivoBase64
+        );
+      },
+      onError: (error) => {
+        setMensagem("");
+        setErro(error.message || "Nao foi possivel baixar o arquivo da contabilidade.");
+      },
+    });
+
+  async function anexarArquivoContabilidade(file: File | null) {
+    if (!file) return;
+
+    setErro("");
+    setMensagem("");
+
+    try {
+      const arquivoBase64 = await arquivoExperienciaParaBase64(file);
+
+      anexarArquivoContabilidadeMutation.mutate({
+        arquivoNome: file.name,
+        arquivoMime: file.type || "application/octet-stream",
+        arquivoBase64,
+      });
+    } catch (error: any) {
+      setErro(error?.message || "Nao foi possivel preparar o arquivo.");
+    }
+  }
+
+  const efetivarHistoricoMutation =
+    trpc.rhExperiencia.efetivarHistorico.useMutation({
+      onSuccess: async (_, variables) => {
+        setErro("");
+        setMensagem("Funcionario antigo efetivado e regularizado no historico.");
+        setObservacoes((atual) => ({
+          ...atual,
+          [variables.funcionarioId]: "",
+        }));
+        await utils.rhExperiencia.listar.invalidate();
+        await listaQuery.refetch(); // REFRESH_EXPERIENCIA_HISTORICO
+      await listaQuery.refetch(); // REFRESH_EXPERIENCIA_DECISAO
+      },
+      onError: (error) => {
+        setMensagem("");
+        setErro(
+          error.message ||
+            "Nao foi possivel efetivar este funcionario antigo."
+        );
+      },
+    });
+
   const decisaoMutation = trpc.rhExperiencia.registrarDecisao.useMutation({
     onSuccess: async (_, variables) => {
       setErro("");
@@ -284,6 +425,24 @@ export default function RHExperiencia() {
       setErro(error.message || "Não foi possível registrar a decisão.");
     },
   });
+
+  function efetivarFuncionarioHistorico(item: RegistroExperiencia) {
+    setErro("");
+    setMensagem("");
+
+    if (
+      !window.confirm(
+        `Confirma a efetivacao de ${item.funcionarioNome}?\n\nEste registro sera tratado como regularizacao historica, pois o 90o dia ja passou e nao havia decisao cadastrada no sistema.`
+      )
+    ) {
+      return;
+    }
+
+    efetivarHistoricoMutation.mutate({
+      funcionarioId: item.funcionarioId,
+      observacao: observacoes[item.funcionarioId]?.trim() || null,
+    });
+  }
 
   function registrar(
     item: RegistroExperiencia,
@@ -566,7 +725,9 @@ export default function RHExperiencia() {
                             </p>
                             <p className="mt-1 text-[11px] leading-5 text-gray-500">
                               {fase === "primeiro"
-                                ? `Até ${formatarData(item.fimPrimeiroPeriodo)}: prorrogar por mais 45 dias ou encerrar ao término do primeiro período.`
+                                ? podeEfetivarHistorico(item)
+                                  ? `O 90º dia foi em ${formatarData(item.fimSegundoPeriodo)}. Regularização histórica disponível: você pode efetivar diretamente sem inventar uma decisão do 45º dia.`
+                                  : `Até ${formatarData(item.fimPrimeiroPeriodo)}: prorrogar por mais 45 dias ou encerrar ao término do primeiro período.`
                                 : `Até ${formatarData(item.fimSegundoPeriodo)}: efetivar ou encerrar ao término da experiência.`}
                             </p>
                           </div>
@@ -585,52 +746,100 @@ export default function RHExperiencia() {
                           />
 
                           {fase === "primeiro" ? (
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              <Button
-                                type="button"
-                                onClick={() => registrar(item, 1, "prorrogar")}
-                                disabled={decisaoMutation.isPending}
-                                className="bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
-                              >
-                                <Clock3 className="mr-2 h-4 w-4" />
-                                Prorrogar +45 dias
-                              </Button>
+                            <div className="space-y-2">
+                              {podeEfetivarHistorico(item) && (
+                                <Button
+                                  type="button"
+                                  onClick={() => efetivarFuncionarioHistorico(item)}
+                                  disabled={
+                                    decisaoMutation.isPending ||
+                                    efetivarHistoricoMutation.isPending
+                                  }
+                                  className="h-12 w-full bg-emerald-300 font-black text-black hover:bg-emerald-200"
+                                >
+                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  Efetivar funcionário
+                                </Button>
+                              )}
 
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => registrar(item, 1, "encerrar")}
-                                disabled={decisaoMutation.isPending}
-                                className="border-rose-400/20 bg-rose-400/[0.04] font-black text-rose-200 hover:bg-rose-400/[0.08] hover:text-rose-100"
-                              >
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Encerrar no 45º dia
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              <Button
-                                type="button"
-                                onClick={() => registrar(item, 2, "efetivar")}
-                                disabled={decisaoMutation.isPending}
-                                className="bg-emerald-300 font-black text-black hover:bg-emerald-200"
-                              >
-                                <UserCheck className="mr-2 h-4 w-4" />
-                                Efetivar
-                              </Button>
+                              {podeEfetivarHistorico(item) && (
+                                <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.04] px-3 py-2.5 text-[11px] leading-5 text-emerald-200/80">
+                                  Regularizar como efetivado encerra esta pendência sem registrar uma prorrogação fictícia no 45º dia.
+                                </div>
+                              )}
 
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => registrar(item, 2, "encerrar")}
-                                disabled={decisaoMutation.isPending}
-                                className="border-rose-400/20 bg-rose-400/[0.04] font-black text-rose-200 hover:bg-rose-400/[0.08] hover:text-rose-100"
-                              >
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Encerrar no 90º dia
-                              </Button>
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                <Button
+                                  type="button"
+                                  onClick={() => registrar(item, 1, "prorrogar")}
+                                  disabled={
+                                    decisaoMutation.isPending ||
+                                    efetivarHistoricoMutation.isPending
+                                  }
+                                  className="h-12 bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+                                >
+                                  <Clock3 className="mr-2 h-4 w-4" />
+                                  Prorrogar +45 dias
+                                </Button>
+
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => registrar(item, 1, "encerrar")}
+                                  disabled={
+                                    decisaoMutation.isPending ||
+                                    efetivarHistoricoMutation.isPending
+                                  }
+                                  className="h-12 border-rose-300/20 bg-transparent font-black text-rose-200 hover:bg-rose-300/[0.06]"
+                                >
+                                  <XCircle className="mr-2 h-4 w-4" />
+                                  Encerrar no 45º dia
+                                </Button>
+                              </div>
                             </div>
-                          )}
+                          ) : fase === "segundo" ? (
+                            <div className="space-y-3">
+                              <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.04] px-3 py-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div>
+                                    <p className="text-xs font-black text-emerald-200">
+                                      1º período prorrogado por +45 dias
+                                    </p>
+                                    <p className="mt-1 text-[11px] leading-5 text-gray-500">
+                                      Agora a decisão final deve ser registrada até {formatarData(item.fimSegundoPeriodo)}.
+                                    </p>
+                                  </div>
+
+                                  <span className="rounded-full border border-emerald-400/15 bg-emerald-400/[0.05] px-2.5 py-1 text-[10px] font-black text-emerald-200">
+                                    90º dia
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                <Button
+                                  type="button"
+                                  onClick={() => registrar(item, 2, "efetivar")}
+                                  disabled={decisaoMutation.isPending}
+                                  className="h-12 bg-emerald-300 font-black text-black hover:bg-emerald-200"
+                                >
+                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  Efetivar funcionário
+                                </Button>
+
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => registrar(item, 2, "encerrar")}
+                                  disabled={decisaoMutation.isPending}
+                                  className="h-12 border-rose-300/20 bg-transparent font-black text-rose-200 hover:bg-rose-300/[0.06]"
+                                >
+                                  <XCircle className="mr-2 h-4 w-4" />
+                                  Encerrar no 90º dia
+                                </Button>
+                              </div>
+                            </div>
+                          ) : null}
 
                           {emAtraso && (
                             <div className="flex items-start gap-2 rounded-xl border border-rose-400/20 bg-rose-400/[0.06] px-3 py-2.5 text-xs leading-5 text-rose-200">

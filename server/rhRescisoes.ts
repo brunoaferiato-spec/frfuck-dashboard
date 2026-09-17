@@ -19,7 +19,8 @@ const MIME_PERMITIDOS = new Set([
 type TipoDocumentoOperacional =
   | "cartao_ponto"
   | "ficha_demissional"
-  | "rescisao_contabilidade";
+  | "rescisao_contabilidade"
+  | "comprovante_pagamento";
 
 let poolRescisoes: mysql.Pool | null = null;
 let estruturaPronta = false;
@@ -145,6 +146,21 @@ async function ensureRhRescisoesTable() {
     "contasPagarPorUsuarioId INT NULL",
     "contasPagarPorNome VARCHAR(255) NULL",
     "contasPagarLancadoEm DATETIME NULL",
+
+    "comprovantePagamentoNome VARCHAR(255) NULL",
+    "comprovantePagamentoMime VARCHAR(120) NULL",
+    "comprovantePagamentoTamanho INT UNSIGNED NULL",
+    "comprovantePagamentoHash CHAR(64) NULL",
+    "comprovantePagamentoConteudo LONGBLOB NULL",
+    "comprovantePagamentoPorUsuarioId INT NULL",
+    "comprovantePagamentoPorNome VARCHAR(255) NULL",
+    "comprovantePagamentoAnexadaEm DATETIME NULL",
+
+    "pagamentoEfetuado TINYINT(1) NOT NULL DEFAULT 0",
+    "pagamentoPorUsuarioId INT NULL",
+    "pagamentoPorNome VARCHAR(255) NULL",
+    "pagamentoEfetuadoEm DATETIME NULL",
+
     "operacionalConcluidoEm DATETIME NULL",
   ];
 
@@ -332,6 +348,14 @@ function faseOperacional(row: any) {
     return "lancar_contas_pagar";
   }
 
+  if (!row.comprovantePagamentoNome) {
+    return "anexar_comprovante_pagamento";
+  }
+
+  if (!Boolean(Number(row.pagamentoEfetuado || 0))) {
+    return "confirmar_pagamento";
+  }
+
   return "operacional_concluido";
 }
 
@@ -341,6 +365,8 @@ function labelFaseOperacional(fase: string) {
   if (fase === "aguardando_contabilidade") return "Aguardando retorno da contabilidade";
   if (fase === "conferir_rescisao") return "Conferir rescisão";
   if (fase === "lancar_contas_pagar") return "Lançar no Contas a Pagar";
+  if (fase === "anexar_comprovante_pagamento") return "Anexar comprovante de pagamento";
+  if (fase === "confirmar_pagamento") return "Confirmar pagamento";
   if (fase === "operacional_concluido") return "Processo operacional concluído";
   if (fase === "cancelada") return "Cancelada";
   return fase;
@@ -412,6 +438,16 @@ async function selecionarProcessos(
        r.contasPagarLancado,
        r.contasPagarPorNome,
        DATE_FORMAT(r.contasPagarLancadoEm, '%Y-%m-%dT%H:%i:%s') AS contasPagarLancadoEm,
+
+       r.comprovantePagamentoNome,
+       r.comprovantePagamentoMime,
+       r.comprovantePagamentoTamanho,
+       r.comprovantePagamentoPorNome,
+       DATE_FORMAT(r.comprovantePagamentoAnexadaEm, '%Y-%m-%dT%H:%i:%s') AS comprovantePagamentoAnexadaEm,
+
+       r.pagamentoEfetuado,
+       r.pagamentoPorNome,
+       DATE_FORMAT(r.pagamentoEfetuadoEm, '%Y-%m-%dT%H:%i:%s') AS pagamentoEfetuadoEm,
        DATE_FORMAT(r.operacionalConcluidoEm, '%Y-%m-%dT%H:%i:%s') AS operacionalConcluidoEm,
 
        r.recebidoRhPorNome,
@@ -492,6 +528,16 @@ async function selecionarProcessos(
       contasPagarLancado: Boolean(Number(row.contasPagarLancado || 0)),
       contasPagarPorNome: row.contasPagarPorNome ?? null,
       contasPagarLancadoEm: row.contasPagarLancadoEm ?? null,
+
+      comprovantePagamentoNome: row.comprovantePagamentoNome ?? null,
+      comprovantePagamentoMime: row.comprovantePagamentoMime ?? null,
+      comprovantePagamentoTamanho: row.comprovantePagamentoTamanho ? Number(row.comprovantePagamentoTamanho) : null,
+      comprovantePagamentoPorNome: row.comprovantePagamentoPorNome ?? null,
+      comprovantePagamentoAnexadaEm: row.comprovantePagamentoAnexadaEm ?? null,
+
+      pagamentoEfetuado: Boolean(Number(row.pagamentoEfetuado || 0)),
+      pagamentoPorNome: row.pagamentoPorNome ?? null,
+      pagamentoEfetuadoEm: row.pagamentoEfetuadoEm ?? null,
       operacionalConcluidoEm: row.operacionalConcluidoEm ?? null,
 
       faseOperacional: fase,
@@ -547,6 +593,14 @@ function camposDocumento(tipo: TipoDocumentoOperacional) {
       prefixo: "fichaDemissional",
       nomePadrao: "ficha-demissional",
       label: "Ficha demissional",
+    };
+  }
+
+  if (tipo === "comprovante_pagamento") {
+    return {
+      prefixo: "comprovantePagamento",
+      nomePadrao: "comprovante-pagamento",
+      label: "Comprovante de pagamento",
     };
   }
 
@@ -772,6 +826,7 @@ export const rhRescisoesRouter = router({
           "cartao_ponto",
           "ficha_demissional",
           "rescisao_contabilidade",
+          "comprovante_pagamento",
         ]),
         lojaIdTeste: z.number().int().positive().optional(),
         arquivoNome: z.string().trim().min(1).max(255),
@@ -781,6 +836,16 @@ export const rhRescisoesRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
+
+      // COMPROVANTE_PAGAMENTO_EXCLUSIVO_RH
+      if (input.tipo === "comprovante_pagamento") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "O comprovante de pagamento da rescisão é exclusivo da Líder de RH.",
+        });
+      }
+
       await ensureRhRescisoesTable();
       const perfil = assertCaixa(ctx, input.lojaIdTeste);
       const pool = getPoolRescisoes();
@@ -808,6 +873,16 @@ export const rhRescisoesRouter = router({
         });
       }
 
+      if (
+        input.tipo === "comprovante_pagamento" &&
+        !Boolean(Number(processo.contasPagarLancado || 0))
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Confirme primeiro o lançamento da rescisão no Contas a Pagar.",
+        });
+      }
+
       validarMime(input.arquivoMime);
       const arquivo = bufferArquivo(input.arquivoBase64);
       const hash = createHash("sha256").update(arquivo).digest("hex");
@@ -829,6 +904,18 @@ export const rhRescisoesRouter = router({
                 contasPagarPorUsuarioId = NULL,
                 contasPagarPorNome = NULL,
                 contasPagarLancadoEm = NULL,
+                comprovantePagamentoNome = NULL,
+                comprovantePagamentoMime = NULL,
+                comprovantePagamentoTamanho = NULL,
+                comprovantePagamentoHash = NULL,
+                comprovantePagamentoConteudo = NULL,
+                comprovantePagamentoPorUsuarioId = NULL,
+                comprovantePagamentoPorNome = NULL,
+                comprovantePagamentoAnexadaEm = NULL,
+                pagamentoEfetuado = 0,
+                pagamentoPorUsuarioId = NULL,
+                pagamentoPorNome = NULL,
+                pagamentoEfetuadoEm = NULL,
                 operacionalConcluidoEm = NULL`
           : "";
 
@@ -988,10 +1075,236 @@ export const rhRescisoesRouter = router({
                 contasPagarPorUsuarioId = ?,
                 contasPagarPorNome = ?,
                 contasPagarLancadoEm = NOW(),
-                operacionalConcluidoEm = NOW()
+                operacionalConcluidoEm = NULL
           WHERE id = ?
             AND lojaId = ?`,
         [usuarioId, usuarioNome, input.id, perfil.lojaIdOperacao]
+      );
+
+      return { success: true };
+    }),
+
+  anexarComprovantePagamentoRh: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        arquivoNome: z.string().trim().min(1).max(255),
+        arquivoMime: z.string().trim().min(1).max(120),
+        arquivoBase64: z.string().min(1),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await ensureRhRescisoesTable();
+
+      const role = String(ctx.user?.role || "");
+      const usuarioLojaId = Number(ctx.user?.lojaId || 0);
+      const liderRh = role === "rh" && usuarioLojaId <= 0;
+      const adminOuGestor = role === "admin" || role === "gestor";
+
+      if (!liderRh && !adminOuGestor) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Somente a Líder de RH, Admin ou Gestor pode anexar o comprovante de pagamento.",
+        });
+      }
+
+      const pool = getPoolRescisoes();
+
+      const [rows] = await pool.query<any[]>(
+        `SELECT *
+           FROM rh_rescisoes_processos
+          WHERE id = ?
+          LIMIT 1`,
+        [Number(input.id)]
+      );
+
+      const processo = rows?.[0];
+
+      if (!processo) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Processo de rescisão não encontrado.",
+        });
+      }
+
+      if (!Boolean(Number(processo.contasPagarLancado || 0))) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "A Caixa precisa confirmar o lançamento no Contas a Pagar antes do comprovante de pagamento.",
+        });
+      }
+
+      if (Boolean(Number(processo.pagamentoEfetuado || 0))) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Esta rescisão já foi finalizada como paga.",
+        });
+      }
+
+      const mime = String(input.arquivoMime || "").toLowerCase();
+      const permitidos = new Set([
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/heic",
+        "image/heif",
+      ]);
+
+      if (!permitidos.has(mime)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Envie o comprovante em PDF, JPG, PNG, WEBP, HEIC ou HEIF.",
+        });
+      }
+
+      const base64Limpo = String(input.arquivoBase64 || "").includes(",")
+        ? String(input.arquivoBase64).split(",").pop() || ""
+        : String(input.arquivoBase64 || "");
+
+      let buffer: Buffer;
+
+      try {
+        buffer = Buffer.from(base64Limpo, "base64");
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Arquivo de comprovante inválido.",
+        });
+      }
+
+      if (!buffer.length || buffer.length > 6 * 1024 * 1024) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "O comprovante deve ter no máximo 6 MB.",
+        });
+      }
+
+      const nomeSeguro =
+        String(input.arquivoNome || "comprovante-pagamento")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^A-Za-z0-9._-]+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^[-.]+|[-.]+$/g, "")
+          .slice(-150) || "comprovante-pagamento";
+
+      const hash = createHash("sha256").update(buffer).digest("hex");
+      const usuarioId = Number(ctx.user?.id || 0) || null;
+      const usuarioNome = String(
+        ctx.user?.name || ctx.user?.email || "Líder de RH"
+      );
+
+      await pool.query(
+        `UPDATE rh_rescisoes_processos
+            SET comprovantePagamentoNome = ?,
+                comprovantePagamentoMime = ?,
+                comprovantePagamentoTamanho = ?,
+                comprovantePagamentoHash = ?,
+                comprovantePagamentoConteudo = ?,
+                comprovantePagamentoPorUsuarioId = ?,
+                comprovantePagamentoPorNome = ?,
+                comprovantePagamentoAnexadaEm = NOW(),
+                pagamentoEfetuado = 0,
+                pagamentoPorUsuarioId = NULL,
+                pagamentoPorNome = NULL,
+                pagamentoEfetuadoEm = NULL,
+                operacionalConcluidoEm = NULL,
+                updatedAt = NOW()
+          WHERE id = ?`,
+        [
+          nomeSeguro,
+          mime,
+          buffer.length,
+          hash,
+          buffer,
+          usuarioId,
+          usuarioNome,
+          Number(input.id),
+        ]
+      );
+
+      return {
+        success: true,
+        arquivoNome: nomeSeguro,
+      };
+    }),
+
+  marcarPagamentoEfetuado: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await ensureRhRescisoesTable();
+
+      const role = String(ctx.user?.role || "");
+      const usuarioLojaId = Number(ctx.user?.lojaId || 0);
+      const liderRh = role === "rh" && usuarioLojaId <= 0;
+      const adminOuGestor = role === "admin" || role === "gestor";
+
+      if (!liderRh && !adminOuGestor) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Somente a Líder de RH, Admin ou Gestor pode confirmar o pagamento e finalizar a rescisão.",
+        });
+      }
+
+      const pool = getPoolRescisoes();
+
+      const [rows] = await pool.query<any[]>(
+        `SELECT *
+           FROM rh_rescisoes_processos
+          WHERE id = ?
+          LIMIT 1`,
+        [Number(input.id)]
+      );
+
+      const processo = rows?.[0];
+
+      if (!processo) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Processo de rescisão não encontrado.",
+        });
+      }
+
+      if (!Boolean(Number(processo.contasPagarLancado || 0))) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A Caixa ainda não confirmou o lançamento no Contas a Pagar.",
+        });
+      }
+
+      if (!processo.comprovantePagamentoNome) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Anexe o comprovante de pagamento antes de finalizar a rescisão.",
+        });
+      }
+
+      const usuarioId = Number(ctx.user?.id || 0) || null;
+      const usuarioNome = String(
+        ctx.user?.name || ctx.user?.email || "Líder de RH"
+      );
+
+      await pool.query(
+        `UPDATE rh_rescisoes_processos
+            SET pagamentoEfetuado = 1,
+                pagamentoPorUsuarioId = ?,
+                pagamentoPorNome = ?,
+                pagamentoEfetuadoEm = NOW(),
+                operacionalConcluidoEm = NOW(),
+                status = 'concluida',
+                updatedAt = NOW()
+          WHERE id = ?`,
+        [usuarioId, usuarioNome, Number(input.id)]
       );
 
       return { success: true };
@@ -1006,10 +1319,28 @@ export const rhRescisoesRouter = router({
           "cartao_ponto",
           "ficha_demissional",
           "rescisao_contabilidade",
+          "comprovante_pagamento",
         ]),
       })
     )
     .query(async ({ input, ctx }) => {
+
+      // DOWNLOAD_COMPROVANTE_EXCLUSIVO_RH
+      if (input.tipo === "comprovante_pagamento") {
+        const role = String(ctx.user?.role || "");
+        const usuarioLojaId = Number(ctx.user?.lojaId || 0);
+        const liderRh = role === "rh" && usuarioLojaId <= 0;
+        const adminOuGestor = role === "admin" || role === "gestor";
+
+        if (!liderRh && !adminOuGestor) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "O comprovante de pagamento é exclusivo da Líder de RH.",
+          });
+        }
+      }
+
       await ensureRhRescisoesTable();
       const perfil = perfilRh(ctx);
 
@@ -1040,6 +1371,11 @@ export const rhRescisoesRouter = router({
           nome: "rescisaoNome",
           mime: "rescisaoMime",
           conteudo: "rescisaoConteudo",
+        },
+        comprovante_pagamento: {
+          nome: "comprovantePagamentoNome",
+          mime: "comprovantePagamentoMime",
+          conteudo: "comprovantePagamentoConteudo",
         },
       } as const;
 
