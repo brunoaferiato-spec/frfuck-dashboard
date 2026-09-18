@@ -95,6 +95,468 @@ async function arquivoParaBase64(file: File) {
   return btoa(binario);
 }
 
+function UniformesRescisaoSaldo({
+  processoId,
+  lojaId,
+  funcionarioId,
+  contasOk,
+}: {
+  processoId: number;
+  lojaId: number;
+  funcionarioId: number;
+  contasOk: boolean;
+}) {
+  const [foto, setFoto] = useState<File | null>(null);
+  const [observacaoUniforme, setObservacaoUniforme] = useState("");
+  const [erroUniforme, setErroUniforme] = useState("");
+  const [mensagemUniforme, setMensagemUniforme] = useState("");
+
+  const saldoQuery = trpc.rhEpis.saldoUniforme.useQuery(
+    {
+      lojaId,
+      funcionarioId,
+    },
+    {
+      enabled: lojaId > 0 && funcionarioId > 0,
+      retry: false,
+    }
+  );
+
+  const statusQuery = trpc.rhRescisoes.statusUniformeRescisao.useQuery(
+    {
+      id: processoId,
+      lojaId,
+    },
+    {
+      enabled: processoId > 0 && lojaId > 0,
+      retry: false,
+    }
+  );
+
+  const registrarMutation =
+    trpc.rhRescisoes.registrarUniformeDevolvido.useMutation({
+      onSuccess: async (resultado) => {
+        setErroUniforme("");
+        setMensagemUniforme(
+          resultado.totalDevolvido > 0
+            ? "Uniformes devolvidos e foto registrada com sucesso."
+            : "Confirmado: o funcionário não possui uniformes pendentes."
+        );
+        setFoto(null);
+        setObservacaoUniforme("");
+        await Promise.all([saldoQuery.refetch(), statusQuery.refetch()]);
+      },
+      onError: (error) => {
+        setMensagemUniforme("");
+        setErroUniforme(
+          error.message || "Não foi possível confirmar a devolução dos uniformes."
+        );
+      },
+    });
+
+  if (!lojaId || !funcionarioId || !processoId) return null;
+
+  const saldo = saldoQuery.data || {
+    camiseta: 0,
+    calca: 0,
+    moletom: 0,
+    camisa: 0,
+    camisetaPolo: 0,
+  };
+
+  const itens = [
+    ["Camiseta", Number(saldo.camiseta || 0)],
+    ["Calça", Number(saldo.calca || 0)],
+    ["Moletom", Number(saldo.moletom || 0)],
+    ["Camisa", Number(saldo.camisa || 0)],
+    ["Camiseta polo", Number(saldo.camisetaPolo || 0)],
+  ] as const;
+
+  const pendentes = itens.filter(([, quantidade]) => quantidade > 0);
+  const total = pendentes.reduce((soma, [, quantidade]) => soma + quantidade, 0);
+  const concluido = Boolean(statusQuery.data?.concluido);
+
+  async function confirmarDevolucaoUniforme() {
+    setErroUniforme("");
+    setMensagemUniforme("");
+
+    if (!contasOk) {
+      setErroUniforme("Confirme primeiro o lançamento no Contas a Pagar.");
+      return;
+    }
+
+    if (total > 0 && !foto) {
+      setErroUniforme("Anexe a foto dos uniformes devolvidos.");
+      return;
+    }
+
+    try {
+      let arquivoBase64: string | null = null;
+
+      if (foto) {
+        arquivoBase64 = await arquivoParaBase64(foto);
+      }
+
+      registrarMutation.mutate({
+        id: processoId,
+        lojaId,
+        arquivoNome: foto?.name || null,
+        arquivoMime: foto?.type || null,
+        arquivoTamanho: foto?.size || null,
+        arquivoBase64,
+        observacao: observacaoUniforme.trim() || null,
+      });
+    } catch (error: any) {
+      setErroUniforme(
+        error?.message || "Não foi possível preparar a foto dos uniformes."
+      );
+    }
+  }
+
+  return (
+    <div
+      className={
+        "sm:col-span-2 rounded-xl border p-3 " +
+        (concluido
+          ? "border-emerald-400/20 bg-emerald-400/[0.035]"
+          : contasOk
+          ? "border-[#D4AF37]/20 bg-[#D4AF37]/[0.035]"
+          : "border-white/[0.07] bg-white/[0.02]")
+      }
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p
+            className={
+              "text-[10px] font-black uppercase tracking-[0.12em] " +
+              (concluido
+                ? "text-emerald-300"
+                : contasOk
+                ? "text-[#F2D675]"
+                : "text-gray-600")
+            }
+          >
+            {concluido ? "Uniforme devolvido" : "Uniformes a devolver"}
+          </p>
+          <p className="mt-1 text-[11px] leading-5 text-gray-600">
+            {concluido
+              ? "Devolução confirmada pela Caixa."
+              : "Saldo atual do funcionário no controle de Uniformes."}
+          </p>
+        </div>
+
+        {saldoQuery.isLoading || statusQuery.isLoading ? (
+          <span className="text-[10px] font-bold text-gray-600">
+            Consultando...
+          </span>
+        ) : (
+          <span
+            className={
+              "rounded-full border px-2 py-1 text-[10px] font-black " +
+              (concluido || total === 0
+                ? "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-200"
+                : "border-amber-400/20 bg-amber-400/[0.05] text-amber-200")
+            }
+          >
+            {concluido
+              ? "OK"
+              : total > 0
+              ? total + " peça(s)"
+              : "Sem pendência"}
+          </span>
+        )}
+      </div>
+
+      {!concluido && pendentes.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {pendentes.map(([rotulo, quantidade]) => (
+            <span
+              key={rotulo}
+              className="rounded-lg border border-white/[0.08] bg-black/25 px-2.5 py-1.5 text-xs font-bold text-gray-300"
+            >
+              {quantidade} {rotulo}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {!concluido && !saldoQuery.isLoading && total === 0 && (
+        <p className="mt-3 text-xs font-bold text-emerald-300">
+          Nenhum uniforme pendente com o funcionário.
+        </p>
+      )}
+
+      {concluido ? (
+        <div className="mt-3 space-y-1">
+          {statusQuery.data?.fotoNome && (
+            <p className="text-xs font-bold text-emerald-200">
+              Foto: {statusQuery.data.fotoNome}
+            </p>
+          )}
+          {statusQuery.data?.confirmadoPorNome && (
+            <p className="text-[11px] text-gray-600">
+              Confirmado por {statusQuery.data.confirmadoPorNome}
+            </p>
+          )}
+        </div>
+      ) : contasOk ? (
+        <div className="mt-4 space-y-3">
+          {total > 0 && (
+            <label className="block cursor-pointer rounded-xl border border-dashed border-[#D4AF37]/30 bg-black/20 p-3 transition hover:bg-[#D4AF37]/[0.04]">
+              <span className="text-xs font-black text-[#F2D675]">
+                {foto ? foto.name : "Anexar foto dos uniformes devolvidos"}
+              </span>
+              <span className="mt-1 block text-[11px] text-gray-600">
+                Foto obrigatória para confirmar a devolução.
+              </span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                className="hidden"
+                onChange={(event) => {
+                  setFoto(event.target.files?.[0] || null);
+                  event.currentTarget.value = "";
+                }}
+              />
+            </label>
+          )}
+
+          <textarea
+            value={observacaoUniforme}
+            onChange={(event) => setObservacaoUniforme(event.target.value)}
+            placeholder="Observação (opcional)"
+            maxLength={2000}
+            className="min-h-[74px] w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50"
+          />
+
+          {erroUniforme && (
+            <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.05] px-3 py-2 text-xs text-rose-200">
+              {erroUniforme}
+            </div>
+          )}
+
+          {mensagemUniforme && (
+            <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] px-3 py-2 text-xs text-emerald-200">
+              {mensagemUniforme}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            onClick={() => void confirmarDevolucaoUniforme()}
+            disabled={registrarMutation.isPending}
+            className="bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+          >
+            {registrarMutation.isPending
+              ? "Confirmando..."
+              : total > 0
+              ? "OK • Uniforme devolvido"
+              : "OK • Sem uniforme pendente"}
+          </Button>
+        </div>
+      ) : (
+        <p className="mt-3 text-[11px] font-bold text-gray-700">
+          Esta etapa será liberada após o Contas a Pagar.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function RescisaoAssinadaEtapa({
+  processoId,
+  lojaId,
+  onAtualizar,
+}: {
+  processoId: number;
+  lojaId: number;
+  onAtualizar: () => Promise<any>;
+}) {
+  const [arquivoAssinado, setArquivoAssinado] = useState<File | null>(null);
+  const [erroAssinada, setErroAssinada] = useState("");
+  const [mensagemAssinada, setMensagemAssinada] = useState("");
+
+  const uniformeStatusQuery = trpc.rhRescisoes.statusUniformeRescisao.useQuery(
+    {
+      id: processoId,
+      lojaId,
+    },
+    {
+      enabled: processoId > 0 && lojaId > 0,
+      retry: false,
+    }
+  );
+
+  const assinadaStatusQuery = trpc.rhRescisoes.statusRescisaoAssinada.useQuery(
+    {
+      id: processoId,
+      lojaId,
+    },
+    {
+      enabled: processoId > 0 && lojaId > 0,
+      retry: false,
+    }
+  );
+
+  const anexarMutation = trpc.rhRescisoes.anexarRescisaoAssinada.useMutation({
+    onSuccess: async () => {
+      setErroAssinada("");
+      setMensagemAssinada(
+        "Rescisão assinada anexada. Etapas da Caixa concluídas; aguardando o RH."
+      );
+      setArquivoAssinado(null);
+      await assinadaStatusQuery.refetch();
+      await onAtualizar();
+    },
+    onError: (error) => {
+      setMensagemAssinada("");
+      setErroAssinada(
+        error.message || "Não foi possível anexar a rescisão assinada."
+      );
+    },
+  });
+
+  const uniformeOk = Boolean(uniformeStatusQuery.data?.concluido);
+  const concluida = Boolean(assinadaStatusQuery.data?.concluido);
+
+  async function enviarRescisaoAssinada() {
+    setErroAssinada("");
+    setMensagemAssinada("");
+
+    if (!uniformeOk) {
+      setErroAssinada("Confirme primeiro a etapa de uniformes.");
+      return;
+    }
+
+    if (!arquivoAssinado) {
+      setErroAssinada("Anexe a rescisão assinada pelo funcionário.");
+      return;
+    }
+
+    try {
+      const arquivoBase64 = await arquivoParaBase64(arquivoAssinado);
+
+      anexarMutation.mutate({
+        id: processoId,
+        lojaId,
+        arquivoNome: arquivoAssinado.name,
+        arquivoMime: arquivoAssinado.type,
+        arquivoTamanho: arquivoAssinado.size,
+        arquivoBase64,
+      });
+    } catch (error: any) {
+      setErroAssinada(
+        error?.message || "Não foi possível preparar a rescisão assinada."
+      );
+    }
+  }
+
+  return (
+    <div
+      className={
+        "sm:col-span-2 rounded-xl border p-3 " +
+        (concluida
+          ? "border-emerald-400/20 bg-emerald-400/[0.035]"
+          : uniformeOk
+          ? "border-[#D4AF37]/20 bg-[#D4AF37]/[0.035]"
+          : "border-white/[0.07] bg-white/[0.02]")
+      }
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p
+            className={
+              "text-[10px] font-black uppercase tracking-[0.12em] " +
+              (concluida
+                ? "text-emerald-300"
+                : uniformeOk
+                ? "text-[#F2D675]"
+                : "text-gray-600")
+            }
+          >
+            Rescisão assinada
+          </p>
+          <p className="mt-1 text-[11px] leading-5 text-gray-600">
+            Documento final assinado pelo funcionário.
+          </p>
+        </div>
+
+        <span
+          className={
+            "rounded-full border px-2 py-1 text-[10px] font-black " +
+            (concluida
+              ? "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-200"
+              : "border-white/[0.08] bg-white/[0.02] text-gray-600")
+          }
+        >
+          {concluida ? "OK" : "Pendente"}
+        </span>
+      </div>
+
+      {concluida ? (
+        <div className="mt-3 space-y-1">
+          <p className="text-xs font-bold text-emerald-200">
+            Arquivo: {assinadaStatusQuery.data?.arquivoNome}
+          </p>
+          {assinadaStatusQuery.data?.anexadoPorNome && (
+            <p className="text-[11px] text-gray-600">
+              Anexado por {assinadaStatusQuery.data.anexadoPorNome}
+            </p>
+          )}
+          {mensagemAssinada && (
+            <div className="mt-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] px-3 py-2 text-xs text-emerald-200">
+              {mensagemAssinada}
+            </div>
+          )}
+        </div>
+      ) : uniformeOk ? (
+        <div className="mt-4 space-y-3">
+          <label className="block cursor-pointer rounded-xl border border-dashed border-[#D4AF37]/30 bg-black/20 p-3 transition hover:bg-[#D4AF37]/[0.04]">
+            <span className="text-xs font-black text-[#F2D675]">
+              {arquivoAssinado
+                ? arquivoAssinado.name
+                : "Anexar rescisão assinada"}
+            </span>
+            <span className="mt-1 block text-[11px] text-gray-600">
+              PDF ou foto • máximo 6 MB.
+            </span>
+            <input
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
+              className="hidden"
+              onChange={(event) => {
+                setArquivoAssinado(event.target.files?.[0] || null);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+
+          {erroAssinada && (
+            <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.05] px-3 py-2 text-xs text-rose-200">
+              {erroAssinada}
+            </div>
+          )}
+
+          <Button
+            type="button"
+            onClick={() => void enviarRescisaoAssinada()}
+            disabled={anexarMutation.isPending}
+            className="bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+          >
+            {anexarMutation.isPending
+              ? "Anexando..."
+              : "Anexar rescisão assinada"}
+          </Button>
+        </div>
+      ) : (
+        <p className="mt-3 text-[11px] font-bold text-gray-700">
+          Libera após confirmar a devolução dos uniformes.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ItemChecklist({
   ok,
   titulo,
@@ -264,7 +726,7 @@ export default function RHRescisaoCaixa({
   const contasMutation = trpc.rhRescisoes.marcarContasPagar.useMutation({
     onSuccess: async () => {
       setErro("");
-      setMensagem("Lançamento no Contas a Pagar confirmado. Etapas da Caixa concluídas; aguardando a Líder de RH finalizar o pagamento.");
+      setMensagem("Lançamento no Contas a Pagar confirmado. Agora confira os uniformes que o funcionário precisa devolver.");
       setAcaoPendente(null);
       await atualizarLista();
     },
@@ -645,6 +1107,17 @@ export default function RHRescisaoCaixa({
                         <ItemChecklist
                           ok={contasOk}
                           titulo="Contas a Pagar"
+                        />
+                        <UniformesRescisaoSaldo
+                          processoId={Number(item.id || 0)}
+                          lojaId={Number(item.lojaId || 0)}
+                          funcionarioId={Number(item.funcionarioId || 0)}
+                          contasOk={contasOk}
+                        />
+                        <RescisaoAssinadaEtapa
+                          processoId={Number(item.id || 0)}
+                          lojaId={Number(item.lojaId || 0)}
+                          onAtualizar={atualizarLista}
                         />
                       </div>
 

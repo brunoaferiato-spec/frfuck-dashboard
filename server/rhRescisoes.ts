@@ -611,6 +611,77 @@ function camposDocumento(tipo: TipoDocumentoOperacional) {
   };
 }
 
+async function ensureRhRescisaoUniformeTable() {
+  const pool = getPoolRescisoes();
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rh_rescisao_uniformes (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      rescisaoId BIGINT UNSIGNED NOT NULL,
+      lojaId INT NOT NULL,
+      funcionarioId INT NOT NULL,
+
+      esperadoCamiseta INT UNSIGNED NOT NULL DEFAULT 0,
+      esperadoCalca INT UNSIGNED NOT NULL DEFAULT 0,
+      esperadoMoletom INT UNSIGNED NOT NULL DEFAULT 0,
+      esperadoCamisa INT UNSIGNED NOT NULL DEFAULT 0,
+      esperadoCamisetaPolo INT UNSIGNED NOT NULL DEFAULT 0,
+
+      devolvidoCamiseta INT UNSIGNED NOT NULL DEFAULT 0,
+      devolvidoCalca INT UNSIGNED NOT NULL DEFAULT 0,
+      devolvidoMoletom INT UNSIGNED NOT NULL DEFAULT 0,
+      devolvidoCamisa INT UNSIGNED NOT NULL DEFAULT 0,
+      devolvidoCamisetaPolo INT UNSIGNED NOT NULL DEFAULT 0,
+
+      fotoNome VARCHAR(255) NULL,
+      fotoMime VARCHAR(120) NULL,
+      fotoTamanho INT UNSIGNED NULL,
+      fotoHash CHAR(64) NULL,
+      fotoConteudo LONGBLOB NULL,
+
+      observacao TEXT NULL,
+      confirmadoPorUsuarioId INT NULL,
+      confirmadoPorNome VARCHAR(255) NULL,
+      confirmadoEm DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_rh_rescisao_uniforme_rescisao (rescisaoId),
+      KEY idx_rh_rescisao_uniforme_funcionario (funcionarioId),
+      KEY idx_rh_rescisao_uniforme_loja (lojaId)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+}
+
+async function ensureRhRescisaoAssinadaTable() {
+  const pool = getPoolRescisoes();
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rh_rescisao_assinadas (
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      rescisaoId BIGINT UNSIGNED NOT NULL,
+      lojaId INT NOT NULL,
+      funcionarioId INT NOT NULL,
+
+      arquivoNome VARCHAR(255) NOT NULL,
+      arquivoMime VARCHAR(120) NOT NULL,
+      arquivoTamanho INT UNSIGNED NOT NULL,
+      arquivoHash CHAR(64) NOT NULL,
+      arquivoConteudo LONGBLOB NOT NULL,
+
+      anexadoPorUsuarioId INT NULL,
+      anexadoPorNome VARCHAR(255) NULL,
+      anexadoEm DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_rh_rescisao_assinada_rescisao (rescisaoId),
+      KEY idx_rh_rescisao_assinada_funcionario (funcionarioId),
+      KEY idx_rh_rescisao_assinada_loja (lojaId)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+}
+
 export const rhRescisoesRouter = router({
   minhaLoja: protectedProcedure
     .input(
@@ -1084,6 +1155,416 @@ export const rhRescisoesRouter = router({
       return { success: true };
     }),
 
+  statusUniformeRescisao: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        lojaId: z.number().int().positive(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await ensureRhRescisoesTable();
+      await ensureRhRescisaoUniformeTable();
+
+      const perfil = assertCaixa(ctx, input.lojaId);
+      const pool = getPoolRescisoes();
+      const processo = await buscarProcessoDaLoja(
+        pool,
+        input.id,
+        perfil.lojaIdOperacao
+      );
+
+      const [rows] = await pool.query<any[]>(
+        `SELECT *
+           FROM rh_rescisao_uniformes
+          WHERE rescisaoId = ?
+          LIMIT 1`,
+        [Number(processo.id)]
+      );
+
+      const registro = rows?.[0];
+
+      return {
+        concluido: Boolean(registro),
+        fotoNome: registro?.fotoNome || null,
+        confirmadoPorNome: registro?.confirmadoPorNome || null,
+        confirmadoEm: registro?.confirmadoEm || null,
+      };
+    }),
+
+  registrarUniformeDevolvido: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        lojaId: z.number().int().positive(),
+        arquivoNome: z.string().trim().max(255).nullable().optional(),
+        arquivoMime: z.string().trim().max(120).nullable().optional(),
+        arquivoTamanho: z.number().int().positive().max(TAMANHO_MAXIMO).nullable().optional(),
+        arquivoBase64: z.string().nullable().optional(),
+        observacao: z.string().trim().max(2000).nullable().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await ensureRhRescisoesTable();
+      await ensureRhRescisaoUniformeTable();
+
+      const perfil = assertCaixa(ctx, input.lojaId);
+      const pool = getPoolRescisoes();
+      const processo = await buscarProcessoDaLoja(
+        pool,
+        input.id,
+        perfil.lojaIdOperacao
+      );
+
+      if (!Boolean(Number(processo.contasPagarLancado || 0))) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Confirme primeiro o lançamento no Contas a Pagar.",
+        });
+      }
+
+      const [jaRegistrado] = await pool.query<any[]>(
+        `SELECT id
+           FROM rh_rescisao_uniformes
+          WHERE rescisaoId = ?
+          LIMIT 1`,
+        [Number(processo.id)]
+      );
+
+      if (jaRegistrado.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A devolução de uniformes desta rescisão já foi confirmada.",
+        });
+      }
+
+      const [entregas] = await pool.query<any[]>(
+        `SELECT
+           COALESCE(SUM(uniformeCamiseta), 0) AS camiseta,
+           COALESCE(SUM(uniformeCalca), 0) AS calca,
+           COALESCE(SUM(uniformeMoletom), 0) AS moletom,
+           COALESCE(SUM(uniformeCamisa), 0) AS camisa,
+           COALESCE(SUM(uniformeCamisetaPolo), 0) AS camisetaPolo
+         FROM rh_epi_entregas
+         WHERE funcionarioId = ?
+           AND lojaId = ?
+           AND item = 'uniforme'`,
+        [Number(processo.funcionarioId), Number(processo.lojaId)]
+      );
+
+      const [movimentacoes] = await pool.query<any[]>(
+        `SELECT
+           COALESCE(SUM(recebidoCamiseta), 0) - COALESCE(SUM(devolvidoCamiseta), 0) AS camiseta,
+           COALESCE(SUM(recebidoCalca), 0) - COALESCE(SUM(devolvidoCalca), 0) AS calca,
+           COALESCE(SUM(recebidoMoletom), 0) - COALESCE(SUM(devolvidoMoletom), 0) AS moletom,
+           COALESCE(SUM(recebidoCamisa), 0) - COALESCE(SUM(devolvidoCamisa), 0) AS camisa,
+           COALESCE(SUM(recebidoCamisetaPolo), 0) - COALESCE(SUM(devolvidoCamisetaPolo), 0) AS camisetaPolo
+         FROM rh_uniforme_movimentacoes
+         WHERE funcionarioId = ?
+           AND lojaId = ?`,
+        [Number(processo.funcionarioId), Number(processo.lojaId)]
+      );
+
+      const base = entregas?.[0] || {};
+      const mov = movimentacoes?.[0] || {};
+
+      const saldo = {
+        camiseta: Number(base.camiseta || 0) + Number(mov.camiseta || 0),
+        calca: Number(base.calca || 0) + Number(mov.calca || 0),
+        moletom: Number(base.moletom || 0) + Number(mov.moletom || 0),
+        camisa: Number(base.camisa || 0) + Number(mov.camisa || 0),
+        camisetaPolo: Number(base.camisetaPolo || 0) + Number(mov.camisetaPolo || 0),
+      };
+
+      for (const [chave, valor] of Object.entries(saldo)) {
+        if (!Number.isFinite(valor) || valor < 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Saldo inválido de uniforme em ${chave}. Confira o controle de uniformes antes de continuar.`,
+          });
+        }
+      }
+
+      const total = Object.values(saldo).reduce(
+        (soma, quantidade) => soma + Number(quantidade || 0),
+        0
+      );
+
+      const temArquivo =
+        Boolean(input.arquivoNome) &&
+        Boolean(input.arquivoMime) &&
+        Boolean(input.arquivoTamanho) &&
+        Boolean(input.arquivoBase64);
+
+      if (total > 0 && !temArquivo) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Anexe uma foto dos uniformes devolvidos antes de confirmar.",
+        });
+      }
+
+      let arquivo: Buffer | null = null;
+      let hash: string | null = null;
+      let nome: string | null = null;
+
+      if (temArquivo) {
+        validarMime(String(input.arquivoMime));
+        arquivo = bufferArquivo(String(input.arquivoBase64));
+        hash = createHash("sha256").update(arquivo).digest("hex");
+        nome = nomeArquivoSeguro(String(input.arquivoNome || "uniformes-devolvidos"));
+      }
+
+      const usuarioId = Number(ctx.user?.id || 0) || null;
+      const usuarioNome = String(
+        ctx.user?.name || ctx.user?.email || "Caixa Líder"
+      );
+
+      const conexao = await pool.getConnection();
+
+      try {
+        await conexao.beginTransaction();
+
+        if (total > 0) {
+          await conexao.query(
+            `INSERT INTO rh_uniforme_movimentacoes (
+               lojaId,
+               funcionarioId,
+               tipo,
+               dataMovimentacao,
+               devolvidoCamiseta,
+               devolvidoCalca,
+               devolvidoMoletom,
+               devolvidoCamisa,
+               devolvidoCamisetaPolo,
+               recebidoCamiseta,
+               recebidoCalca,
+               recebidoMoletom,
+               recebidoCamisa,
+               recebidoCamisetaPolo,
+               observacao,
+               registradoPorUsuarioId,
+               registradoPorNome
+             ) VALUES (?, ?, 'devolucao', CURDATE(), ?, ?, ?, ?, ?, 0, 0, 0, 0, 0, ?, ?, ?)`,
+            [
+              Number(processo.lojaId),
+              Number(processo.funcionarioId),
+              saldo.camiseta,
+              saldo.calca,
+              saldo.moletom,
+              saldo.camisa,
+              saldo.camisetaPolo,
+              input.observacao || "Devolução registrada durante a rescisão.",
+              usuarioId,
+              usuarioNome,
+            ]
+          );
+        }
+
+        await conexao.query(
+          `INSERT INTO rh_rescisao_uniformes (
+             rescisaoId,
+             lojaId,
+             funcionarioId,
+             esperadoCamiseta,
+             esperadoCalca,
+             esperadoMoletom,
+             esperadoCamisa,
+             esperadoCamisetaPolo,
+             devolvidoCamiseta,
+             devolvidoCalca,
+             devolvidoMoletom,
+             devolvidoCamisa,
+             devolvidoCamisetaPolo,
+             fotoNome,
+             fotoMime,
+             fotoTamanho,
+             fotoHash,
+             fotoConteudo,
+             observacao,
+             confirmadoPorUsuarioId,
+             confirmadoPorNome,
+             confirmadoEm
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          [
+            Number(processo.id),
+            Number(processo.lojaId),
+            Number(processo.funcionarioId),
+            saldo.camiseta,
+            saldo.calca,
+            saldo.moletom,
+            saldo.camisa,
+            saldo.camisetaPolo,
+            saldo.camiseta,
+            saldo.calca,
+            saldo.moletom,
+            saldo.camisa,
+            saldo.camisetaPolo,
+            nome,
+            temArquivo ? String(input.arquivoMime) : null,
+            arquivo ? arquivo.length : null,
+            hash,
+            arquivo,
+            input.observacao || null,
+            usuarioId,
+            usuarioNome,
+          ]
+        );
+
+        await conexao.commit();
+      } catch (error) {
+        await conexao.rollback();
+        throw error;
+      } finally {
+        conexao.release();
+      }
+
+      return {
+        success: true,
+        totalDevolvido: total,
+      };
+    }),
+
+  statusRescisaoAssinada: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        lojaId: z.number().int().positive(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      await ensureRhRescisoesTable();
+      await ensureRhRescisaoAssinadaTable();
+
+      const perfil = assertCaixa(ctx, input.lojaId);
+      const pool = getPoolRescisoes();
+      const processo = await buscarProcessoDaLoja(
+        pool,
+        input.id,
+        perfil.lojaIdOperacao
+      );
+
+      const [rows] = await pool.query<any[]>(
+        `SELECT arquivoNome, anexadoPorNome, anexadoEm
+           FROM rh_rescisao_assinadas
+          WHERE rescisaoId = ?
+          LIMIT 1`,
+        [Number(processo.id)]
+      );
+
+      const registro = rows?.[0];
+
+      return {
+        concluido: Boolean(registro),
+        arquivoNome: registro?.arquivoNome || null,
+        anexadoPorNome: registro?.anexadoPorNome || null,
+        anexadoEm: registro?.anexadoEm || null,
+      };
+    }),
+
+  anexarRescisaoAssinada: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        lojaId: z.number().int().positive(),
+        arquivoNome: z.string().trim().min(1).max(255),
+        arquivoMime: z.string().trim().min(1).max(120),
+        arquivoTamanho: z.number().int().positive().max(TAMANHO_MAXIMO),
+        arquivoBase64: z.string().min(1),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await ensureRhRescisoesTable();
+      await ensureRhRescisaoUniformeTable();
+      await ensureRhRescisaoAssinadaTable();
+
+      const perfil = assertCaixa(ctx, input.lojaId);
+      const pool = getPoolRescisoes();
+      const processo = await buscarProcessoDaLoja(
+        pool,
+        input.id,
+        perfil.lojaIdOperacao
+      );
+
+      if (!Boolean(Number(processo.contasPagarLancado || 0))) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Confirme primeiro o lançamento no Contas a Pagar.",
+        });
+      }
+
+      const [uniformes] = await pool.query<any[]>(
+        `SELECT id
+           FROM rh_rescisao_uniformes
+          WHERE rescisaoId = ?
+          LIMIT 1`,
+        [Number(processo.id)]
+      );
+
+      if (!uniformes.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Confirme primeiro a etapa de uniformes.",
+        });
+      }
+
+      const [jaAnexada] = await pool.query<any[]>(
+        `SELECT id
+           FROM rh_rescisao_assinadas
+          WHERE rescisaoId = ?
+          LIMIT 1`,
+        [Number(processo.id)]
+      );
+
+      if (jaAnexada.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A rescisão assinada já foi anexada.",
+        });
+      }
+
+      validarMime(input.arquivoMime);
+      const arquivo = bufferArquivo(input.arquivoBase64);
+      const hash = createHash("sha256").update(arquivo).digest("hex");
+      const nome = nomeArquivoSeguro(input.arquivoNome);
+      const usuarioId = Number(ctx.user?.id || 0) || null;
+      const usuarioNome = String(
+        ctx.user?.name || ctx.user?.email || "Caixa Líder"
+      );
+
+      await pool.query(
+        `INSERT INTO rh_rescisao_assinadas (
+           rescisaoId,
+           lojaId,
+           funcionarioId,
+           arquivoNome,
+           arquivoMime,
+           arquivoTamanho,
+           arquivoHash,
+           arquivoConteudo,
+           anexadoPorUsuarioId,
+           anexadoPorNome,
+           anexadoEm
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          Number(processo.id),
+          Number(processo.lojaId),
+          Number(processo.funcionarioId),
+          nome,
+          input.arquivoMime,
+          arquivo.length,
+          hash,
+          arquivo,
+          usuarioId,
+          usuarioNome,
+        ]
+      );
+
+      return {
+        success: true,
+        arquivoNome: nome,
+      };
+    }),
+
   anexarComprovantePagamentoRh: protectedProcedure
     .input(
       z.object({
@@ -1133,6 +1614,24 @@ export const rhRescisoesRouter = router({
           code: "BAD_REQUEST",
           message:
             "A Caixa precisa confirmar o lançamento no Contas a Pagar antes do comprovante de pagamento.",
+        });
+      }
+
+      await ensureRhRescisaoAssinadaTable();
+
+      const [assinadas] = await pool.query<any[]>(
+        `SELECT id
+           FROM rh_rescisao_assinadas
+          WHERE rescisaoId = ?
+          LIMIT 1`,
+        [Number(processo.id)]
+      );
+
+      if (!assinadas.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "A Caixa precisa anexar a rescisão assinada antes do comprovante de pagamento.",
         });
       }
 
@@ -1278,6 +1777,23 @@ export const rhRescisoesRouter = router({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "A Caixa ainda não confirmou o lançamento no Contas a Pagar.",
+        });
+      }
+
+      await ensureRhRescisaoAssinadaTable();
+
+      const [assinadas] = await pool.query<any[]>(
+        `SELECT id
+           FROM rh_rescisao_assinadas
+          WHERE rescisaoId = ?
+          LIMIT 1`,
+        [Number(processo.id)]
+      );
+
+      if (!assinadas.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A Caixa ainda não anexou a rescisão assinada.",
         });
       }
 
