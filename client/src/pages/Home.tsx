@@ -26,8 +26,6 @@ import {
   ReceiptText,
   ShieldCheck,
   TrendingUp,
-  UserRoundSearch,
-  Users,
   WalletCards,
 } from "lucide-react";
 import {
@@ -1186,9 +1184,7 @@ export default function Home() {
   const menu = [
     { label: "Dashboard", icon: LayoutDashboard, rota: "/", ativo: true },
     { label: "Folha de Pagamento", icon: WalletCards, rota: "/folha-pagamento" },
-    { label: "RH / Funcionários", icon: Users, rota: "/funcionarios" },
     { label: "Gestão RH", icon: ShieldCheck, rota: "/rh/gestao", adminOnly: true },
-    { label: "Análise de Funcionários", icon: UserRoundSearch, rota: "/analise-funcionario" },
     { label: "Usuários", icon: ShieldCheck, rota: "/usuarios", adminOnly: true },
   ];
 
