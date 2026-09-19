@@ -160,6 +160,8 @@ export default function RHDocumentos() {
     caixaLider ? String(lojaUsuario) : "todas"
   );
   const [tipoConsulta, setTipoConsulta] = useState("todos");
+  const [funcionarioConsulta, setFuncionarioConsulta] = useState("todos");
+  const [competenciaConsulta, setCompetenciaConsulta] = useState("");
   const [busca, setBusca] = useState("");
 
   const [lojaEnvio, setLojaEnvio] = useState(
@@ -204,6 +206,25 @@ export default function RHDocumentos() {
     [funcionariosQuery.data]
   );
 
+  const lojaConsultaNumero = caixaLider
+    ? lojaUsuario
+    : lojaConsulta === "todas"
+    ? 0
+    : Number(lojaConsulta || 0);
+
+  const funcionariosConsultaQuery = trpc.funcionarios.listByLoja.useQuery(
+    { lojaId: lojaConsultaNumero },
+    {
+      enabled: lojaConsultaNumero > 0,
+      retry: false,
+    }
+  );
+
+  const funcionariosConsulta = useMemo(
+    () => ((funcionariosConsultaQuery.data || []) as Array<any>),
+    [funcionariosConsultaQuery.data]
+  );
+
   const documentosQuery = trpc.rhDocumentos.listar.useQuery(
     {
       lojaId:
@@ -212,9 +233,10 @@ export default function RHDocumentos() {
           : lojaConsulta === "todas"
           ? null
           : Number(lojaConsulta),
-      funcionarioId: null,
+      funcionarioId:
+        funcionarioConsulta === "todos" ? null : Number(funcionarioConsulta),
       tipo: tipoConsulta === "todos" ? null : (tipoConsulta as TipoDocumento),
-      competencia: null,
+      competencia: competenciaConsulta || null,
       dataInicio: null,
       dataFim: null,
     },
@@ -599,7 +621,10 @@ export default function RHDocumentos() {
                     <label className="mb-1.5 block text-xs font-bold text-gray-400">Loja</label>
                     <Select
                       value={caixaLider ? String(lojaUsuario) : lojaConsulta}
-                      onValueChange={setLojaConsulta}
+                      onValueChange={(valor) => {
+                        setLojaConsulta(valor);
+                        setFuncionarioConsulta("todos");
+                      }}
                       disabled={caixaLider}
                     >
                       <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
@@ -614,6 +639,40 @@ export default function RHDocumentos() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="min-w-[220px] flex-1">
+                    <label className="mb-1.5 block text-xs font-bold text-gray-400">Funcionário</label>
+                    <Select
+                      value={funcionarioConsulta}
+                      onValueChange={setFuncionarioConsulta}
+                      disabled={!lojaConsultaNumero || funcionariosConsultaQuery.isLoading}
+                    >
+                      <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
+                        <SelectValue
+                          placeholder={
+                            lojaConsultaNumero
+                              ? funcionariosConsultaQuery.isLoading
+                                ? "Carregando funcionários..."
+                                : "Todos os funcionários"
+                              : "Selecione uma loja"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-72 border-white/10 bg-[#111111] text-white">
+                        <SelectItem value="todos">Todos os funcionários</SelectItem>
+                        {funcionariosConsulta.map((funcionario: any) => (
+                          <SelectItem key={funcionario.id} value={String(funcionario.id)}>
+                            {funcionario.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {!lojaConsultaNumero && (
+                      <p className="mt-1 text-[11px] text-gray-600">
+                        Selecione uma loja para filtrar por funcionário.
+                      </p>
+                    )}
                   </div>
 
                   <div className="min-w-[220px] flex-1">
@@ -633,12 +692,33 @@ export default function RHDocumentos() {
                     </Select>
                   </div>
 
+                  <div className="min-w-[190px] flex-1">
+                    <label className="mb-1.5 block text-xs font-bold text-gray-400">Competência</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="month"
+                        value={competenciaConsulta}
+                        onChange={(event) => setCompetenciaConsulta(event.target.value)}
+                        className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/45"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setCompetenciaConsulta("")}
+                        disabled={!competenciaConsulta}
+                        className="h-11 shrink-0 border-white/10 bg-black/20 px-3 text-xs font-bold text-gray-400 hover:bg-white/[0.05] hover:text-white disabled:opacity-35"
+                      >
+                        Todas
+                      </Button>
+                    </div>
+                  </div>
+
                   <div className="relative min-w-[240px] flex-[1.3]">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
                     <input
                       value={busca}
                       onChange={(event) => setBusca(event.target.value)}
-                      placeholder="Buscar funcionário ou arquivo"
+                      placeholder="Buscar funcionário, arquivo ou competência"
                       className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-10 pr-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/45"
                     />
                   </div>
