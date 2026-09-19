@@ -341,6 +341,56 @@ export const rhDocumentosRouter = router({
       }
     }),
 
+  excluir: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await ensureRhDocumentosTable();
+
+      const pool = getPoolDocumentos();
+
+      const [rows] = await pool.query<any[]>(
+        `SELECT id, lojaId, funcionarioId, tipo, arquivoNome
+           FROM rh_documentos_funcionarios
+          WHERE id = ?
+          LIMIT 1`,
+        [input.id]
+      );
+
+      const documento = rows?.[0];
+
+      if (!documento) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Documento não encontrado.",
+        });
+      }
+
+      assertAcessoRhDocumentos(ctx, Number(documento.lojaId));
+
+      const [resultado] = await pool.query<any>(
+        `DELETE FROM rh_documentos_funcionarios
+          WHERE id = ?
+            AND lojaId = ?`,
+        [input.id, Number(documento.lojaId)]
+      );
+
+      if (Number(resultado?.affectedRows || 0) !== 1) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "O documento não foi encontrado para exclusão.",
+        });
+      }
+
+      return {
+        success: true,
+        id: Number(documento.id),
+      };
+    }),
+
   arquivo: protectedProcedure
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ input, ctx }) => {

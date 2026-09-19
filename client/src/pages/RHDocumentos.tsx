@@ -14,6 +14,7 @@ import {
   FileUp,
   Search,
   ShieldCheck,
+  Trash2,
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -176,6 +177,7 @@ export default function RHDocumentos() {
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
   const [abrindoId, setAbrindoId] = useState<number | null>(null);
+  const [excluindoId, setExcluindoId] = useState<number | null>(null);
 
   const lojasQuery = trpc.lojas.list.useQuery(undefined, { retry: false });
 
@@ -286,6 +288,20 @@ export default function RHDocumentos() {
     },
   });
 
+  const excluirDocumentoMutation = trpc.rhDocumentos.excluir.useMutation({
+    onSuccess: async () => {
+      setExcluindoId(null);
+      setErro("");
+      setMensagem("Documento excluído com sucesso.");
+      await utils.rhDocumentos.listar.invalidate();
+    },
+    onError: (error) => {
+      setExcluindoId(null);
+      setMensagem("");
+      setErro(error.message || "Não foi possível excluir o documento.");
+    },
+  });
+
   async function salvarDocumento() {
     setErro("");
     setMensagem("");
@@ -336,6 +352,30 @@ export default function RHDocumentos() {
     } catch (error: any) {
       setErro(error?.message || "Não foi possível preparar o documento.");
     }
+  }
+
+  function excluirDocumento(documento: DocumentoRh) {
+    const confirmou = window.confirm(
+      [
+        "Esta ação excluirá permanentemente este documento.",
+        "",
+        `Funcionário: ${documento.funcionarioNome}`,
+        `Documento: ${labelTipo(documento.tipo)}`,
+        `Arquivo: ${documento.arquivoNome}`,
+        "",
+        "Essa ação não pode ser desfeita. Deseja continuar?",
+      ].join("\n")
+    );
+
+    if (!confirmou) return;
+
+    setErro("");
+    setMensagem("");
+    setExcluindoId(documento.id);
+
+    excluirDocumentoMutation.mutate({
+      id: documento.id,
+    });
   }
 
   async function abrirDocumento(documento: DocumentoRh) {
@@ -792,16 +832,37 @@ export default function RHDocumentos() {
                           </p>
                         </div>
 
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => void abrirDocumento(documento)}
-                          disabled={abrindoId === documento.id}
-                          className="shrink-0 border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
-                        >
-                          <Download className="mr-2 h-4 w-4" />
-                          {abrindoId === documento.id ? "Abrindo..." : "Abrir arquivo"}
-                        </Button>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => void abrirDocumento(documento)}
+                            disabled={
+                              abrindoId === documento.id ||
+                              excluindoId === documento.id
+                            }
+                            className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                          >
+                            <Download className="mr-2 h-4 w-4" />
+                            {abrindoId === documento.id ? "Abrindo..." : "Abrir arquivo"}
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => excluirDocumento(documento)}
+                            disabled={
+                              excluindoId === documento.id ||
+                              abrindoId === documento.id
+                            }
+                            className="border-rose-400/25 bg-rose-400/[0.04] text-rose-200 hover:bg-rose-400/[0.1] hover:text-rose-100"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            {excluindoId === documento.id
+                              ? "Excluindo..."
+                              : "Excluir documento"}
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
