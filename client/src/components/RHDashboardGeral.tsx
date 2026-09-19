@@ -173,10 +173,15 @@ export default function RHDashboardGeral() {
       }
     }
 
-    const episVencidos = Array.from(epiMaisRecente.values()).filter((entrega) => {
-      const dias = diasAte(entrega.proximaTroca);
-      return dias !== null && dias <= -1;
-    }).length;
+    const episPrazos = Array.from(epiMaisRecente.values())
+      .map((entrega) => diasAte(entrega.proximaTroca))
+      .filter((dias): dias is number => dias !== null && dias <= 30);
+
+    const episVencidos = episPrazos.filter((dias) => dias <= -1).length;
+    const episAte7 = episPrazos.filter((dias) => dias >= 0 && dias <= 7).length;
+    const episAte15 = episPrazos.filter((dias) => dias >= 8 && dias <= 15).length;
+    const episAte30 = episPrazos.filter((dias) => dias >= 16 && dias <= 30).length;
+    const episAlertas = episVencidos + episAte7 + episAte15 + episAte30;
 
     const feriasCriticas = ferias.filter((item) => {
       const diasLimite = Number(item.diasAteLimiteRetorno);
@@ -219,6 +224,10 @@ export default function RHDashboardGeral() {
       caixasComDiferenca,
       documentosMes,
       episVencidos,
+      episAte7,
+      episAte15,
+      episAte30,
+      episAlertas,
       feriasCriticas,
       experienciasPendentes,
       rescisoesAbertas,
@@ -278,10 +287,19 @@ export default function RHDashboardGeral() {
       {
         id: "epis",
         titulo: "EPIs",
-        valor: resumo.episVencidos,
+        valor: resumo.episAlertas,
         detalhe:
-          resumo.episVencidos === 1 ? "troca vencida" : "trocas vencidas",
-        prioridade: resumo.episVencidos > 0 ? 3 : 0,
+          resumo.episAlertas > 0
+            ? `${resumo.episVencidos} venc. • ${resumo.episAte7} até 7d • ${resumo.episAte15} 8–15d • ${resumo.episAte30} 16–30d`
+            : "sem trocas nos próximos 30 dias",
+        prioridade:
+          resumo.episVencidos > 0
+            ? 3
+            : resumo.episAte7 > 0
+            ? 2
+            : resumo.episAlertas > 0
+            ? 1
+            : 0,
         rota: "/rh/epis",
         icon: HardHat,
       },

@@ -48,8 +48,15 @@ const ITENS_EPI = [
 
 type ItemEpi = (typeof ITENS_EPI)[number]["value"];
 
+type ItemLoteEpi = {
+  item: Exclude<ItemEpi, "uniforme">;
+  quantidade: number;
+  tamanho: string;
+};
+
 type EntregaEpi = {
   id: number;
+  loteId?: number | null;
   lojaId: number;
   lojaNome: string;
   funcionarioId: number;
@@ -308,6 +315,7 @@ export default function RHEpis() {
   const [devolveCamisa, setDevolveCamisa] = useState("0");
   const [devolveCamisetaPolo, setDevolveCamisetaPolo] = useState("0");
   const [tamanho, setTamanho] = useState("");
+  const [itensLote, setItensLote] = useState<ItemLoteEpi[]>([]);
   const [dataEntrega, setDataEntrega] = useState(hoje);
   const [observacao, setObservacao] = useState("");
   const [arquivo, setArquivo] = useState<File | null>(null);
@@ -416,17 +424,53 @@ export default function RHEpis() {
     );
   }, [entregas, busca]);
 
+  const gruposHistorico = useMemo(() => {
+    const mapa = new Map<
+      string,
+      { chave: string; loteId: number | null; itens: EntregaEpi[] }
+    >();
+
+    for (const entrega of entregasFiltradas) {
+      const loteId = Number(entrega.loteId || 0) || null;
+      const chave = loteId ? `lote-${loteId}` : `entrega-${entrega.id}`;
+
+      const grupo = mapa.get(chave);
+      if (grupo) {
+        grupo.itens.push(entrega);
+      } else {
+        mapa.set(chave, {
+          chave,
+          loteId,
+          itens: [entrega],
+        });
+      }
+    }
+
+    return Array.from(mapa.values()).map((grupo) => ({
+      ...grupo,
+      itens: [...grupo.itens].sort((a, b) => Number(a.id) - Number(b.id)),
+    }));
+  }, [entregasFiltradas]);
+
   const resumo = useMemo(() => {
     const colaboradores = new Set<number>();
+    const registros = new Set<string>();
+    const pendencias = new Set<string>();
     let quantidadeTotal = 0;
-    let pendentes = 0;
     let vencidas = 0;
     let proximas = 0;
 
     for (const entrega of entregas) {
       colaboradores.add(Number(entrega.funcionarioId));
       quantidadeTotal += Number(entrega.quantidade || 0);
-      if (entrega.comprovantePendente) pendentes += 1;
+
+      const loteId = Number(entrega.loteId || 0) || null;
+      const chaveRegistro = loteId ? `lote-${loteId}` : `entrega-${entrega.id}`;
+      registros.add(chaveRegistro);
+
+      if (entrega.comprovantePendente) {
+        pendencias.add(chaveRegistro);
+      }
 
       const dias = diasAte(entrega.proximaTroca);
       if (dias !== null && dias < 0) vencidas += 1;
@@ -434,10 +478,10 @@ export default function RHEpis() {
     }
 
     return {
-      entregas: entregas.length,
+      entregas: registros.size,
       quantidadeTotal,
       colaboradores: colaboradores.size,
-      pendentes,
+      pendentes: pendencias.size,
       vencidas,
       proximas,
     };
@@ -455,6 +499,7 @@ export default function RHEpis() {
       setUniformeCamisa("0");
       setUniformeCamisetaPolo("0");
       setTamanho("");
+      setItensLote([]);
       setObservacao("");
       setArquivo(null);
       await utils.rhEpis.listar.invalidate();
@@ -462,6 +507,36 @@ export default function RHEpis() {
     onError: (error) => {
       setMensagem("");
       setErro(error.message || "Não foi possível registrar a entrega.");
+    },
+  });
+
+  const salvarLoteMutation = trpc.rhEpis.salvarLote.useMutation({
+    onSuccess: async () => {
+      setErro("");
+      setMensagem("Entrega de EPI registrada com sucesso.");
+      setFuncionarioEnvio("");
+      setQuantidade("1");
+      setTamanho("");
+      setItensLote([]);
+      setObservacao("");
+      setArquivo(null);
+      await utils.rhEpis.listar.invalidate();
+    },
+    onError: (error) => {
+      setMensagem("");
+      setErro(error.message || "Não foi possível registrar a entrega em lote.");
+    },
+  });
+
+  const excluirEntregaMutation = trpc.rhEpis.excluirEntrega.useMutation({
+    onSuccess: async () => {
+      setErro("");
+      setMensagem("Entrega excluída com sucesso.");
+      await utils.rhEpis.listar.invalidate();
+    },
+    onError: (error) => {
+      setMensagem("");
+      setErro(error.message || "Não foi possível excluir a entrega.");
     },
   });
 
@@ -547,6 +622,49 @@ export default function RHEpis() {
     }, 50);
   }
 
+  function adicionarItemAoLote() {
+    setErro("");
+    setMensagem("");
+
+    if (itemEnvio === "uniforme") {
+      setErro("Uniforme possui fluxo próprio e não pode entrar no lote de EPI.");
+      return;
+    }
+
+    const quantidadeNumero = Number(quantidade || 0);
+    if (
+      !Number.isInteger(quantidadeNumero) ||
+      quantidadeNumero <= 0 ||
+      quantidadeNumero > 99
+    ) {
+      setErro("Informe uma quantidade válida entre 1 e 99.");
+      return;
+    }
+
+    const novoItem: ItemLoteEpi = {
+      item: itemEnvio,
+      quantidade: quantidadeNumero,
+      tamanho: tamanho.trim(),
+    };
+
+    setItensLote((atuais) => {
+      const existe = atuais.some((item) => item.item === novoItem.item);
+      if (existe) {
+        return atuais.map((item) =>
+          item.item === novoItem.item ? novoItem : item
+        );
+      }
+      return [...atuais, novoItem];
+    });
+
+    setQuantidade("1");
+    setTamanho("");
+  }
+
+  function removerItemDoLote(item: ItemLoteEpi["item"]) {
+    setItensLote((atuais) => atuais.filter((registro) => registro.item !== item));
+  }
+
   async function registrarEntrega() {
     setErro("");
     setMensagem("");
@@ -582,6 +700,18 @@ export default function RHEpis() {
     const quantidadeNumero = uniformeSelecionado
       ? Object.values(uniformeQuantidades).reduce((total, valor) => total + valor, 0)
       : Number(quantidade || 0);
+
+    const itensParaSalvar: ItemLoteEpi[] = uniformeSelecionado
+      ? []
+      : itensLote.length > 0
+        ? itensLote
+        : [
+            {
+              item: itemEnvio as Exclude<ItemEpi, "uniforme">,
+              quantidade: quantidadeNumero,
+              tamanho: tamanho.trim(),
+            },
+          ];
 
     if (!lojaId) {
       setErro("Selecione a loja.");
@@ -654,11 +784,26 @@ export default function RHEpis() {
         }
       }
     } else if (
-      !Number.isInteger(quantidadeNumero) ||
-      quantidadeNumero <= 0 ||
-      quantidadeNumero > 99
+      itensLote.length === 0 &&
+      (!Number.isInteger(quantidadeNumero) ||
+        quantidadeNumero <= 0 ||
+        quantidadeNumero > 99)
     ) {
       setErro("Informe uma quantidade válida entre 1 e 99.");
+      return;
+    }
+
+    if (
+      !uniformeSelecionado &&
+      (itensParaSalvar.length === 0 ||
+        itensParaSalvar.some(
+          (item) =>
+            !Number.isInteger(item.quantidade) ||
+            item.quantidade <= 0 ||
+            item.quantidade > 99
+        ))
+    ) {
+      setErro("Revise os EPIs do lote e suas quantidades.");
       return;
     }
 
@@ -726,6 +871,22 @@ export default function RHEpis() {
           comprovanteTamanho: null,
           comprovanteBase64: null,
         };
+      }
+
+      if (!uniformeSelecionado) {
+        salvarLoteMutation.mutate({
+          lojaId,
+          funcionarioId,
+          itens: itensParaSalvar.map((item) => ({
+            item: item.item,
+            quantidade: item.quantidade,
+            tamanho: item.tamanho.trim() || null,
+          })),
+          dataEntrega,
+          observacao: observacao.trim() || null,
+          ...arquivoPayload,
+        });
+        return;
       }
 
       salvarMutation.mutate({
@@ -806,6 +967,35 @@ export default function RHEpis() {
     } finally {
       setAbrindoId(null);
     }
+  }
+
+  function excluirEntrega(
+    entrega: EntregaEpi,
+    emLote: boolean,
+    totalItens: number
+  ) {
+    if (!emLote && entrega.item === "uniforme") {
+      setErro("Uniforme possui fluxo próprio e não pode ser excluído por esta ação.");
+      return;
+    }
+
+    const mensagemConfirmacao = emLote
+      ? `Esta ação excluirá permanentemente o lote inteiro com ${totalItens} EPI${totalItens === 1 ? "" : "s"}, incluindo todos os itens e o termo anexado.`
+      : `Esta ação excluirá permanentemente a entrega de ${labelItem(entrega.item)} e o termo anexado.`;
+
+    const confirmou = window.confirm(
+      `${mensagemConfirmacao}\n\nEssa ação não pode ser desfeita. Deseja continuar?`
+    );
+
+    if (!confirmou) return;
+
+    setErro("");
+    setMensagem("");
+
+    excluirEntregaMutation.mutate({
+      id: entrega.id,
+      lojaId: entrega.lojaId,
+    });
   }
 
   const destinoVoltar = caixaLider ? "/rh/meu-dia" : "/rh/gestao";
@@ -1115,6 +1305,62 @@ export default function RHEpis() {
                   <textarea value={observacao} onChange={(event) => setObservacao(event.target.value)} placeholder="Opcional" rows={3} className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50" />
                 </div>
 
+                {itemEnvio !== "uniforme" && (
+                  <div className="rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.035] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-[#F2D675]">
+                          EPIs desta entrega
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Adicione os EPIs que serão entregues juntos. Quantidade e tamanho ficam por item.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={adicionarItemAoLote}
+                        className="h-10 rounded-xl border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 text-xs font-black text-[#F2D675] transition hover:bg-[#D4AF37]/20"
+                      >
+                        Adicionar / atualizar EPI
+                      </button>
+                    </div>
+
+                    {itensLote.length === 0 ? (
+                      <p className="mt-3 text-xs text-gray-600">
+                        Nenhum item adicionado ao lote. Se registrar agora, o EPI selecionado acima será salvo como uma entrega de 1 item.
+                      </p>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        {itensLote.map((item) => (
+                          <div
+                            key={item.item}
+                            className="flex flex-col gap-2 rounded-xl border border-white/[0.08] bg-black/20 p-3 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-black text-white">
+                                {labelItem(item.item)}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500">
+                                Quantidade: {item.quantidade}
+                                {item.tamanho ? ` • Tamanho: ${item.tamanho}` : ""}
+                                {" • "}
+                                {prazoItem(item.item)}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removerItemDoLote(item.item)}
+                              className="text-xs font-bold text-rose-300 hover:text-rose-200"
+                            >
+                              Remover
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {(itemEnvio !== "uniforme" || modoUniforme === "entrega") && (
                   <>
                 <label className="block cursor-pointer rounded-2xl border border-dashed border-[#D4AF37]/30 bg-[#D4AF37]/[0.035] p-4 transition hover:bg-[#D4AF37]/[0.07]">
@@ -1142,9 +1388,9 @@ export default function RHEpis() {
                 {erro && <div className="rounded-xl border border-rose-400/20 bg-rose-400/[0.06] px-3 py-2.5 text-sm text-rose-200">{erro}</div>}
                 {mensagem && <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] px-3 py-2.5 text-sm text-emerald-200"><CheckCircle2 className="h-4 w-4 shrink-0" />{mensagem}</div>}
 
-                <Button type="button" onClick={registrarEntrega} disabled={salvarMutation.isPending || movimentarUniformeMutation.isPending} className="h-12 w-full bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]">
+                <Button type="button" onClick={registrarEntrega} disabled={salvarMutation.isPending || salvarLoteMutation.isPending || movimentarUniformeMutation.isPending} className="h-12 w-full bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]">
                   <FileCheck2 className="mr-2 h-4 w-4" />
-                  {salvarMutation.isPending || movimentarUniformeMutation.isPending
+                  {salvarMutation.isPending || salvarLoteMutation.isPending || movimentarUniformeMutation.isPending
                     ? "Registrando..."
                     : itemEnvio === "uniforme" && modoUniforme === "troca"
                     ? "Registrar troca"
@@ -1204,7 +1450,7 @@ export default function RHEpis() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-xl font-black text-white">Histórico de entregas</h2>
-                <p className="mt-1 text-sm text-gray-500">{entregasFiltradas.length} registro{entregasFiltradas.length === 1 ? "" : "s"} encontrado{entregasFiltradas.length === 1 ? "" : "s"}.</p>
+                <p className="mt-1 text-sm text-gray-500">{gruposHistorico.length} entrega{gruposHistorico.length === 1 ? "" : "s"} encontrada{gruposHistorico.length === 1 ? "" : "s"}.</p>
               </div>
               <PackageCheck className="h-6 w-6 text-[#F2D675]" />
             </div>
@@ -1213,108 +1459,234 @@ export default function RHEpis() {
               <Card className="border-white/[0.08] bg-[#0b0b0b]"><CardContent className="p-6 text-sm text-gray-500">Carregando entregas...</CardContent></Card>
             ) : entregasQuery.error ? (
               <Card className="border-rose-400/20 bg-rose-400/[0.04]"><CardContent className="p-6 text-sm text-rose-200">Não foi possível carregar as entregas. {entregasQuery.error.message}</CardContent></Card>
-            ) : entregasFiltradas.length === 0 ? (
+            ) : gruposHistorico.length === 0 ? (
               <Card className="border-white/[0.08] bg-[#0b0b0b]"><CardContent className="p-8 text-center"><FileText className="mx-auto h-8 w-8 text-gray-700" /><p className="mt-3 font-bold text-gray-300">Nenhuma entrega encontrada</p><p className="mt-1 text-sm text-gray-600">As entregas de EPI aparecerão aqui.</p></CardContent></Card>
             ) : (
               <div className="space-y-3">
-                {entregasFiltradas.map((entrega) => (
-                  <Card key={entrega.id} className={`bg-[#0b0b0b] ${entrega.comprovantePendente ? "border-amber-400/20" : "border-white/[0.08] hover:border-[#D4AF37]/20"}`}>
-                    <CardContent className="p-4 sm:p-5">
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <UserRound className="h-4 w-4 text-[#F2D675]" />
-                            <p className="font-black text-white">{entrega.funcionarioNome}</p>
-                            <span className="rounded-full border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-2 py-0.5 text-[10px] font-black text-[#F2D675]">{entrega.lojaNome}</span>
-                            {entrega.comprovantePendente ? <span className="rounded-full border border-amber-400/20 bg-amber-400/[0.06] px-2 py-0.5 text-[10px] font-black text-amber-200">Termo pendente</span> : <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.05] px-2 py-0.5 text-[10px] font-black text-emerald-200">Completo</span>}
-                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${statusPrazo(entrega.proximaTroca).classe}`}>
-                              {statusPrazo(entrega.proximaTroca).label}
-                            </span>
-                          </div>
-                          <p className="mt-2 text-sm font-black text-gray-200">{labelItem(entrega.item)}</p>
-                          {entrega.item === "uniforme" && (
-                            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-gray-600">
-                              Registro desta entrega
-                            </p>
-                          )}
-                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                            {entrega.item === "uniforme" &&
-                            [
-                              entrega.uniformeCamiseta,
-                              entrega.uniformeCalca,
-                              entrega.uniformeMoletom,
-                              entrega.uniformeCamisa,
-                              entrega.uniformeCamisetaPolo,
-                            ].some((valor) => valor !== null && valor !== undefined) ? (
-                              <>
-                                <span>Camiseta: {entrega.uniformeCamiseta ?? 0}</span>
-                                <span>Calça: {entrega.uniformeCalca ?? 0}</span>
-                                <span>Moletom: {entrega.uniformeMoletom ?? 0}</span>
-                                <span>Camisa: {entrega.uniformeCamisa ?? 0}</span>
-                                <span>Camiseta polo: {entrega.uniformeCamisetaPolo ?? 0}</span>
-                                <span>Total: {entrega.quantidade}</span>
-                              </>
-                            ) : (
-                              <span>Quantidade: {entrega.quantidade}</span>
-                            )}
-                            {entrega.tamanho && <span>Tamanho: {entrega.tamanho}</span>}
-                            <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Entrega: {formatarData(entrega.dataEntrega)}</span>
-                            {entrega.proximaTroca && (
-                              <span className="inline-flex items-center gap-1.5 text-[#b9a46a]">
-                                Próxima troca: {formatarData(entrega.proximaTroca)}
+                {gruposHistorico.map((grupo) => {
+                  const entrega = grupo.itens[0];
+                  const emLote = Boolean(grupo.loteId);
+                  const entregaDocumento: EntregaEpi = grupo.loteId
+                    ? { ...entrega, id: grupo.loteId }
+                    : entrega;
+
+                  return (
+                    <Card
+                      key={grupo.chave}
+                      className={`bg-[#0b0b0b] ${entrega.comprovantePendente ? "border-amber-400/20" : "border-white/[0.08] hover:border-[#D4AF37]/20"}`}
+                    >
+                      <CardContent className="p-4 sm:p-5">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <UserRound className="h-4 w-4 text-[#F2D675]" />
+                              <p className="font-black text-white">{entrega.funcionarioNome}</p>
+                              <span className="rounded-full border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-2 py-0.5 text-[10px] font-black text-[#F2D675]">
+                                {entrega.lojaNome}
                               </span>
+                              {entrega.comprovantePendente ? (
+                                <span className="rounded-full border border-amber-400/20 bg-amber-400/[0.06] px-2 py-0.5 text-[10px] font-black text-amber-200">
+                                  Termo pendente
+                                </span>
+                              ) : (
+                                <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[0.05] px-2 py-0.5 text-[10px] font-black text-emerald-200">
+                                  Completo
+                                </span>
+                              )}
+                              {emLote && (
+                                <span className="rounded-full border border-sky-400/20 bg-sky-400/[0.05] px-2 py-0.5 text-[10px] font-black text-sky-200">
+                                  {grupo.itens.length === 1
+                                    ? "Entrega de 1 EPI"
+                                    : `Lote com ${grupo.itens.length} EPIs`}
+                                </span>
+                              )}
+                              {!emLote && (
+                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${statusPrazo(entrega.proximaTroca).classe}`}>
+                                  {statusPrazo(entrega.proximaTroca).label}
+                                </span>
+                              )}
+                            </div>
+
+                            {emLote ? (
+                              <div className="mt-3 space-y-2">
+                                {grupo.itens.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3"
+                                  >
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-black text-gray-200">
+                                          {labelItem(item.item)}
+                                        </p>
+                                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                                          <span>Quantidade: {item.quantidade}</span>
+                                          {item.tamanho && <span>Tamanho: {item.tamanho}</span>}
+                                          {item.proximaTroca && (
+                                            <span className="text-[#b9a46a]">
+                                              Próxima troca: {formatarData(item.proximaTroca)}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <span className={`w-fit rounded-full border px-2 py-0.5 text-[10px] font-black ${statusPrazo(item.proximaTroca).classe}`}>
+                                        {statusPrazo(item.proximaTroca).label}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <>
+                                <p className="mt-2 text-sm font-black text-gray-200">
+                                  {labelItem(entrega.item)}
+                                </p>
+
+                                {entrega.item === "uniforme" && (
+                                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-gray-600">
+                                    Registro desta entrega
+                                  </p>
+                                )}
+
+                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                                  {entrega.item === "uniforme" &&
+                                  [
+                                    entrega.uniformeCamiseta,
+                                    entrega.uniformeCalca,
+                                    entrega.uniformeMoletom,
+                                    entrega.uniformeCamisa,
+                                    entrega.uniformeCamisetaPolo,
+                                  ].some((valor) => valor !== null && valor !== undefined) ? (
+                                    <>
+                                      <span>Camiseta: {entrega.uniformeCamiseta ?? 0}</span>
+                                      <span>Calça: {entrega.uniformeCalca ?? 0}</span>
+                                      <span>Moletom: {entrega.uniformeMoletom ?? 0}</span>
+                                      <span>Camisa: {entrega.uniformeCamisa ?? 0}</span>
+                                      <span>Camiseta polo: {entrega.uniformeCamisetaPolo ?? 0}</span>
+                                      <span>Total: {entrega.quantidade}</span>
+                                    </>
+                                  ) : (
+                                    <span>Quantidade: {entrega.quantidade}</span>
+                                  )}
+                                  {entrega.tamanho && <span>Tamanho: {entrega.tamanho}</span>}
+                                  {entrega.proximaTroca && (
+                                    <span className="text-[#b9a46a]">
+                                      Próxima troca: {formatarData(entrega.proximaTroca)}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {entrega.item === "uniforme" && (
+                                  <SaldoUniformeAtualCard
+                                    lojaId={Number(entrega.lojaId)}
+                                    funcionarioId={Number(entrega.funcionarioId)}
+                                  />
+                                )}
+                              </>
+                            )}
+
+                            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                              <span className="inline-flex items-center gap-1.5">
+                                <CalendarDays className="h-3.5 w-3.5" />
+                                Entrega: {formatarData(entrega.dataEntrega)}
+                              </span>
+                            </div>
+
+                            {entrega.observacao && (
+                              <p className="mt-2 text-xs leading-5 text-gray-500">
+                                {entrega.observacao}
+                              </p>
+                            )}
+
+                            <p className="mt-2 text-[10px] text-gray-700">
+                              Registrado por {entrega.entreguePorNome || "Usuário"} • {formatarDataHora(entrega.criadoEm)}
+                            </p>
+
+                            {!entrega.comprovantePendente && entrega.comprovanteNome && (
+                              <p className="mt-1 text-[10px] text-[#b9a46a]">
+                                {entrega.comprovanteNome}
+                                {entrega.comprovanteTamanho
+                                  ? ` • ${formatarTamanho(entrega.comprovanteTamanho)}`
+                                  : ""}
+                              </p>
                             )}
                           </div>
 
-                          {entrega.item === "uniforme" && (
-                            <SaldoUniformeAtualCard
-                              lojaId={Number(entrega.lojaId)}
-                              funcionarioId={Number(entrega.funcionarioId)}
-                            />
-                          )}
+                          <div className="flex shrink-0 flex-wrap gap-2">
+                            {!emLote && entrega.item === "uniforme" && (
+                              <>
+                                <Button
+                                  type="button"
+                                  onClick={() => abrirMovimentacaoUniforme(entrega, "troca")}
+                                  className="border border-[#D4AF37]/30 bg-[#D4AF37]/10 font-black text-[#F2D675] hover:bg-[#D4AF37]/20 hover:text-[#F2D675]"
+                                >
+                                  Trocar uniforme
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => abrirMovimentacaoUniforme(entrega, "devolucao")}
+                                  className="border-white/15 bg-white/[0.03] font-bold text-gray-300 hover:bg-white/[0.07] hover:text-white"
+                                >
+                                  Registrar devolução
+                                </Button>
+                              </>
+                            )}
 
-                          {entrega.observacao && <p className="mt-2 text-xs leading-5 text-gray-500">{entrega.observacao}</p>}
-                          <p className="mt-2 text-[10px] text-gray-700">Registrado por {entrega.entreguePorNome || "Usuário"} • {formatarDataHora(entrega.criadoEm)}</p>
-                          {!entrega.comprovantePendente && entrega.comprovanteNome && <p className="mt-1 text-[10px] text-[#b9a46a]">{entrega.comprovanteNome}{entrega.comprovanteTamanho ? ` • ${formatarTamanho(entrega.comprovanteTamanho)}` : ""}</p>}
-                        </div>
-
-                        <div className="flex shrink-0 flex-wrap gap-2">
-                          {entrega.item === "uniforme" && (
-                            <>
-                              <Button
-                                type="button"
-                                onClick={() => abrirMovimentacaoUniforme(entrega, "troca")}
-                                className="border border-[#D4AF37]/30 bg-[#D4AF37]/10 font-black text-[#F2D675] hover:bg-[#D4AF37]/20 hover:text-[#F2D675]"
-                              >
-                                Trocar uniforme
-                              </Button>
+                            {entrega.comprovantePendente ? (
+                              <label className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-amber-400/25 bg-amber-400/[0.05] px-4 text-sm font-bold text-amber-200 transition hover:bg-amber-400/[0.1]">
+                                <FileUp className="mr-2 h-4 w-4" />
+                                {anexandoId === entregaDocumento.id ? "Enviando..." : "Anexar termo"}
+                                <input
+                                  type="file"
+                                  accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                                  className="hidden"
+                                  disabled={anexandoId === entregaDocumento.id}
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0] || null;
+                                    void anexarComprovante(entregaDocumento, file);
+                                    event.currentTarget.value = "";
+                                  }}
+                                />
+                              </label>
+                            ) : (
                               <Button
                                 type="button"
                                 variant="outline"
-                                onClick={() => abrirMovimentacaoUniforme(entrega, "devolucao")}
-                                className="border-white/15 bg-white/[0.03] font-bold text-gray-300 hover:bg-white/[0.07] hover:text-white"
+                                onClick={() => void abrirComprovante(entregaDocumento)}
+                                disabled={abrindoId === entregaDocumento.id}
+                                className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
                               >
-                                Registrar devolução
+                                <Download className="mr-2 h-4 w-4" />
+                                {abrindoId === entregaDocumento.id ? "Abrindo..." : "Abrir termo"}
                               </Button>
-                            </>
-                          )}
+                            )}
 
-                          {entrega.comprovantePendente ? (
-                            <label className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-amber-400/25 bg-amber-400/[0.05] px-4 text-sm font-bold text-amber-200 transition hover:bg-amber-400/[0.1]">
-                              <FileUp className="mr-2 h-4 w-4" />
-                              {anexandoId === entrega.id ? "Enviando..." : "Anexar termo"}
-                              <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif" className="hidden" disabled={anexandoId === entrega.id} onChange={(event) => { const file = event.target.files?.[0] || null; void anexarComprovante(entrega, file); event.currentTarget.value = ""; }} />
-                            </label>
-                          ) : (
-                            <Button type="button" variant="outline" onClick={() => void abrirComprovante(entrega)} disabled={abrindoId === entrega.id} className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]">
-                              <Download className="mr-2 h-4 w-4" />{abrindoId === entrega.id ? "Abrindo..." : "Abrir termo"}
-                            </Button>
-                          )}
+                            {(emLote || entrega.item !== "uniforme") && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  excluirEntrega(
+                                    entregaDocumento,
+                                    emLote,
+                                    grupo.itens.length
+                                  )
+                                }
+                                disabled={excluirEntregaMutation.isPending}
+                                className="border-rose-400/25 bg-rose-400/[0.04] font-bold text-rose-200 hover:bg-rose-400/[0.1] hover:text-rose-100"
+                              >
+                                {excluirEntregaMutation.isPending
+                                  ? "Excluindo..."
+                                  : "Excluir entrega"}
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>

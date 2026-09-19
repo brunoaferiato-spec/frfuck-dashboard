@@ -59,6 +59,51 @@ function diasVencido(valor?: string | null) {
   return Math.floor((inicioHoje.getTime() - vencimento.getTime()) / 86_400_000);
 }
 
+function situacaoPrazo(valor?: string | null) {
+  const atraso = diasVencido(valor);
+
+  if (atraso >= 1) {
+    return {
+      faixa: "vencido",
+      label: `${atraso} dia${atraso === 1 ? "" : "s"} vencido${atraso === 1 ? "" : "s"}`,
+      classe: "border-rose-400/20 bg-rose-400/[0.06] text-rose-200",
+    };
+  }
+
+  if (atraso === 0) {
+    return {
+      faixa: "ate7",
+      label: "Troca hoje",
+      classe: "border-rose-400/20 bg-rose-400/[0.06] text-rose-200",
+    };
+  }
+
+  const faltam = Math.abs(atraso);
+
+  if (faltam <= 7) {
+    return {
+      faixa: "ate7",
+      label: `Troca em ${faltam} dia${faltam === 1 ? "" : "s"}`,
+      classe: "border-amber-400/20 bg-amber-400/[0.06] text-amber-200",
+    };
+  }
+
+  if (faltam <= 15) {
+    return {
+      faixa: "ate15",
+      label: `Troca em ${faltam} dias`,
+      classe: "border-orange-400/20 bg-orange-400/[0.06] text-orange-200",
+    };
+  }
+
+  return {
+    faixa: "ate30",
+    label: `Troca em ${faltam} dias`,
+    classe: "border-sky-400/20 bg-sky-400/[0.05] text-sky-200",
+  };
+}
+
+
 export default function RHEpiAlertas() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -109,7 +154,7 @@ export default function RHEpiAlertas() {
     }
 
     return Array.from(maisRecente.values())
-      .filter((entrega) => diasVencido(entrega.proximaTroca) >= 1)
+      .filter((entrega) => diasVencido(entrega.proximaTroca) >= -30)
       .sort((a, b) => {
         const atrasoA = diasVencido(a.proximaTroca);
         const atrasoB = diasVencido(b.proximaTroca);
@@ -117,6 +162,20 @@ export default function RHEpiAlertas() {
         return a.funcionarioNome.localeCompare(b.funcionarioNome, "pt-BR");
       });
   }, [query.data]);
+
+  const resumoPrazos = alertas.reduce(
+    (resumo, entrega) => {
+      const situacao = situacaoPrazo(entrega.proximaTroca);
+
+      if (situacao.faixa === "vencido") resumo.vencidos += 1;
+      else if (situacao.faixa === "ate7") resumo.ate7 += 1;
+      else if (situacao.faixa === "ate15") resumo.ate15 += 1;
+      else resumo.ate30 += 1;
+
+      return resumo;
+    },
+    { vencidos: 0, ate7: 0, ate15: 0, ate30: 0 }
+  );
 
   if (!podeVer || query.isLoading || alertas.length === 0) {
     return null;
@@ -139,14 +198,23 @@ export default function RHEpiAlertas() {
 
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="font-black text-white">EPIs com troca vencida</h2>
+                  <h2 className="font-black text-white">Alertas de troca de EPI</h2>
                   <span className="rounded-full border border-rose-400/25 bg-rose-400/[0.08] px-2.5 py-1 text-[10px] font-black text-rose-200">
                     {alertas.length} pendente{alertas.length === 1 ? "" : "s"}
                   </span>
                 </div>
 
                 <p className="mt-1 text-xs leading-5 text-rose-100/65">
-                  O aviso aparece a partir do dia seguinte ao vencimento e some automaticamente quando uma nova entrega do mesmo EPI é registrada.
+                  Acompanhamento preventivo de 30, 15 e 7 dias. O alerta some automaticamente quando uma nova entrega do mesmo EPI é registrada.
+                </p>
+                <p className="mt-2 text-[11px] font-bold text-gray-400">
+                  {resumoPrazos.vencidos} vencido{resumoPrazos.vencidos === 1 ? "" : "s"}
+                  {" • "}
+                  {resumoPrazos.ate7} até 7 dias
+                  {" • "}
+                  {resumoPrazos.ate15} em 8–15 dias
+                  {" • "}
+                  {resumoPrazos.ate30} em 16–30 dias
                 </p>
 
                 {!caixaLider && porLoja.size > 1 && (
@@ -169,7 +237,7 @@ export default function RHEpiAlertas() {
 
           <div className="max-h-[290px] overflow-y-auto">
             {alertas.map((alerta) => {
-              const atraso = diasVencido(alerta.proximaTroca);
+              const situacao = situacaoPrazo(alerta.proximaTroca);
 
               return (
                 <div
@@ -201,8 +269,10 @@ export default function RHEpiAlertas() {
                     </div>
                   </div>
 
-                  <span className="shrink-0 rounded-lg border border-rose-400/20 bg-rose-400/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-rose-200">
-                    {atraso} dia{atraso === 1 ? "" : "s"} vencido{atraso === 1 ? "" : "s"}
+                  <span
+                    className={`shrink-0 rounded-lg border px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${situacao.classe}`}
+                  >
+                    {situacao.label}
                   </span>
                 </div>
               );

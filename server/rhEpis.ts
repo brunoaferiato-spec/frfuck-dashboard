@@ -15,6 +15,17 @@ const ITENS_EPI = [
 ] as const;
 
 const itemEpiSchema = z.enum(ITENS_EPI);
+
+const ITENS_EPI_LOTE = [
+  "luva",
+  "protetor_ouvido",
+  "creme_protecao",
+  "oculos_protecao",
+  "oculos",
+  "botina",
+] as const;
+
+const itemEpiLoteSchema = z.enum(ITENS_EPI_LOTE);
 const dataCivilSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 const MIME_PERMITIDOS = new Set([
@@ -111,6 +122,36 @@ async function ensureRhEpisTable() {
         `ALTER TABLE rh_epi_entregas ADD COLUMN \`${nomeColuna}\` INT UNSIGNED NULL`
       );
     }
+  }
+
+  const [colunaLote] = await pool.query<any[]>(
+    `SELECT COLUMN_NAME
+       FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'rh_epi_entregas'
+        AND COLUMN_NAME = 'loteId'
+      LIMIT 1`
+  );
+
+  if (!colunaLote.length) {
+    await pool.query(
+      `ALTER TABLE rh_epi_entregas ADD COLUMN loteId BIGINT UNSIGNED NULL`
+    );
+  }
+
+  const [indiceLote] = await pool.query<any[]>(
+    `SELECT INDEX_NAME
+       FROM information_schema.STATISTICS
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'rh_epi_entregas'
+        AND INDEX_NAME = 'idx_rh_epi_lote'
+      LIMIT 1`
+  );
+
+  if (!indiceLote.length) {
+    await pool.query(
+      `ALTER TABLE rh_epi_entregas ADD INDEX idx_rh_epi_lote (loteId)`
+    );
   }
 
   await pool.query(`
@@ -327,6 +368,7 @@ export const rhEpisRouter = router({
       const [rows] = await pool.query<any[]>(
         `SELECT
            e.id,
+           e.loteId,
            e.lojaId,
            COALESCE(l.nome, CONCAT('Loja ', e.lojaId)) AS lojaNome,
            e.funcionarioId,
@@ -352,18 +394,24 @@ export const rhEpisRouter = router({
              END,
              '%Y-%m-%d'
            ) AS proximaTroca,
-           e.observacao,
-           e.comprovanteNome,
-           e.comprovanteMime,
-           e.comprovanteTamanho,
-           CASE WHEN e.comprovanteConteudo IS NULL OR e.comprovanteNome IS NULL THEN 1 ELSE 0 END AS comprovantePendente,
-           e.entreguePorUsuarioId,
-           e.entreguePorNome,
-           e.comprovantePorUsuarioId,
-           e.comprovantePorNome,
-           DATE_FORMAT(e.createdAt, '%Y-%m-%dT%H:%i:%s') AS criadoEm,
-           DATE_FORMAT(e.comprovanteAnexadoEm, '%Y-%m-%dT%H:%i:%s') AS comprovanteAnexadoEm
+           COALESCE(mestre.observacao, e.observacao) AS observacao,
+           COALESCE(mestre.comprovanteNome, e.comprovanteNome) AS comprovanteNome,
+           COALESCE(mestre.comprovanteMime, e.comprovanteMime) AS comprovanteMime,
+           COALESCE(mestre.comprovanteTamanho, e.comprovanteTamanho) AS comprovanteTamanho,
+           CASE
+             WHEN COALESCE(mestre.comprovanteConteudo, e.comprovanteConteudo) IS NULL
+               OR COALESCE(mestre.comprovanteNome, e.comprovanteNome) IS NULL
+             THEN 1
+             ELSE 0
+           END AS comprovantePendente,
+           COALESCE(mestre.entreguePorUsuarioId, e.entreguePorUsuarioId) AS entreguePorUsuarioId,
+           COALESCE(mestre.entreguePorNome, e.entreguePorNome) AS entreguePorNome,
+           COALESCE(mestre.comprovantePorUsuarioId, e.comprovantePorUsuarioId) AS comprovantePorUsuarioId,
+           COALESCE(mestre.comprovantePorNome, e.comprovantePorNome) AS comprovantePorNome,
+           DATE_FORMAT(COALESCE(mestre.createdAt, e.createdAt), '%Y-%m-%dT%H:%i:%s') AS criadoEm,
+           DATE_FORMAT(COALESCE(mestre.comprovanteAnexadoEm, e.comprovanteAnexadoEm), '%Y-%m-%dT%H:%i:%s') AS comprovanteAnexadoEm
          FROM rh_epi_entregas e
+         LEFT JOIN rh_epi_entregas mestre ON mestre.id = e.loteId
          LEFT JOIN funcionarios f ON f.id = e.funcionarioId
          LEFT JOIN lojas l ON l.id = e.lojaId
          WHERE ${condicoes.join(" AND ")}
@@ -375,6 +423,10 @@ export const rhEpisRouter = router({
       return (rows || []).map((row: any) => ({
         ...row,
         id: Number(row.id),
+        loteId:
+          row.loteId === null || row.loteId === undefined
+            ? null
+            : Number(row.loteId),
         lojaId: Number(row.lojaId),
         funcionarioId: Number(row.funcionarioId),
         quantidade: Number(row.quantidade || 0),
@@ -553,6 +605,172 @@ export const rhEpisRouter = router({
       };
     }),
 
+  salvarLote: protectedProcedure
+    .input(
+      z.object({
+        lojaId: z.number().int().positive(),
+        funcionarioId: z.number().int().positive(),
+        itens: z
+          .array(
+            z.object({
+              item: itemEpiLoteSchema,
+              quantidade: z.number().int().min(1).max(99),
+              tamanho: z.string().trim().max(80).nullable().optional(),
+            })
+          )
+          .min(1)
+          .max(20),
+        dataEntrega: dataCivilSchema,
+        observacao: z.string().trim().max(2000).nullable().optional(),
+        comprovanteNome: z.string().trim().min(1).max(255).nullable().optional(),
+        comprovanteMime: z.string().trim().min(1).max(120).nullable().optional(),
+        comprovanteTamanho: z.number().int().positive().max(TAMANHO_MAXIMO).nullable().optional(),
+        comprovanteBase64: z.string().min(1).nullable().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await ensureRhEpisTable();
+      assertAcessoRhEpis(ctx, input.lojaId);
+
+      const pool = getPoolEpis();
+      await validarFuncionarioDaLoja(pool, input.funcionarioId, input.lojaId);
+
+      const itensUnicos = new Set(input.itens.map((item) => item.item));
+      if (itensUnicos.size !== input.itens.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cada EPI deve aparecer apenas uma vez no mesmo lote.",
+        });
+      }
+
+      const temAlgumArquivo =
+        Boolean(input.comprovanteNome) ||
+        Boolean(input.comprovanteMime) ||
+        Boolean(input.comprovanteTamanho) ||
+        Boolean(input.comprovanteBase64);
+
+      const temArquivoCompleto =
+        Boolean(input.comprovanteNome) &&
+        Boolean(input.comprovanteMime) &&
+        Boolean(input.comprovanteTamanho) &&
+        Boolean(input.comprovanteBase64);
+
+      if (temAlgumArquivo && !temArquivoCompleto) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Os dados do comprovante estão incompletos.",
+        });
+      }
+
+      let comprovanteNome: string | null = null;
+      let comprovanteMime: string | null = null;
+      let comprovanteTamanho: number | null = null;
+      let comprovanteHash: string | null = null;
+      let comprovanteConteudo: Buffer | null = null;
+      let comprovantePorUsuarioId: number | null = null;
+      let comprovantePorNome: string | null = null;
+      let comprovanteAnexadoEm: Date | null = null;
+
+      if (temArquivoCompleto) {
+        validarMime(String(input.comprovanteMime));
+        const arquivo = bufferArquivo(String(input.comprovanteBase64));
+
+        comprovanteNome = nomeArquivoSeguro(String(input.comprovanteNome));
+        comprovanteMime = String(input.comprovanteMime);
+        comprovanteTamanho = arquivo.length;
+        comprovanteHash = createHash("sha256").update(arquivo).digest("hex");
+        comprovanteConteudo = arquivo;
+        comprovantePorUsuarioId = Number(ctx.user?.id || 0) || null;
+        comprovantePorNome = String(ctx.user?.name || ctx.user?.email || "Usuário");
+        comprovanteAnexadoEm = new Date();
+      }
+
+      const entreguePorUsuarioId = Number(ctx.user?.id || 0) || null;
+      const entreguePorNome = String(ctx.user?.name || ctx.user?.email || "Usuário");
+      const primeiro = input.itens[0]!;
+      const restantes = input.itens.slice(1);
+      const connection = await pool.getConnection();
+
+      try {
+        await connection.beginTransaction();
+
+        const [resultadoPrimeiro] = await connection.query<any>(
+          `INSERT INTO rh_epi_entregas (
+             lojaId, funcionarioId, item, quantidade, tamanho, dataEntrega, observacao,
+             comprovanteNome, comprovanteMime, comprovanteTamanho, comprovanteHash,
+             comprovanteConteudo, comprovantePorUsuarioId, comprovantePorNome,
+             comprovanteAnexadoEm, entreguePorUsuarioId, entreguePorNome
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            input.lojaId,
+            input.funcionarioId,
+            primeiro.item,
+            primeiro.quantidade,
+            primeiro.tamanho || null,
+            input.dataEntrega,
+            input.observacao || null,
+            comprovanteNome,
+            comprovanteMime,
+            comprovanteTamanho,
+            comprovanteHash,
+            comprovanteConteudo,
+            comprovantePorUsuarioId,
+            comprovantePorNome,
+            comprovanteAnexadoEm,
+            entreguePorUsuarioId,
+            entreguePorNome,
+          ]
+        );
+
+        const loteId = Number(resultadoPrimeiro.insertId);
+
+        await connection.query(
+          `UPDATE rh_epi_entregas SET loteId = ? WHERE id = ?`,
+          [loteId, loteId]
+        );
+
+        const ids = [loteId];
+
+        for (const item of restantes) {
+          const [resultadoItem] = await connection.query<any>(
+            `INSERT INTO rh_epi_entregas (
+               lojaId, funcionarioId, loteId, item, quantidade, tamanho, dataEntrega
+             ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+              input.lojaId,
+              input.funcionarioId,
+              loteId,
+              item.item,
+              item.quantidade,
+              item.tamanho || null,
+              input.dataEntrega,
+            ]
+          );
+
+          ids.push(Number(resultadoItem.insertId));
+        }
+
+        await connection.commit();
+
+        return {
+          success: true,
+          loteId,
+          ids,
+          quantidadeItens: input.itens.length,
+          documentoPendente: !comprovanteConteudo,
+        };
+      } catch (error) {
+        try {
+          await connection.rollback();
+        } catch {
+          // preserva o erro original
+        }
+        throw error;
+      } finally {
+        connection.release();
+      }
+    }),
+
   salvar: protectedProcedure
     .input(
       z.object({
@@ -711,6 +929,141 @@ export const rhEpisRouter = router({
         id: Number(resultado.insertId),
         documentoPendente: !comprovanteConteudo,
       };
+    }),
+
+  excluirEntrega: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        lojaId: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await ensureRhEpisTable();
+      assertAcessoRhEpis(ctx, input.lojaId);
+
+      const pool = getPoolEpis();
+      const connection = await pool.getConnection();
+
+      try {
+        await connection.beginTransaction();
+
+        const [rows] = await connection.query<any[]>(
+          `SELECT id, lojaId, funcionarioId, item, loteId
+             FROM rh_epi_entregas
+            WHERE id = ?
+            LIMIT 1
+            FOR UPDATE`,
+          [input.id]
+        );
+
+        const entrega = rows?.[0];
+
+        if (!entrega) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Entrega de EPI não encontrada.",
+          });
+        }
+
+        if (Number(entrega.lojaId) !== Number(input.lojaId)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "A entrega não pertence à loja informada.",
+          });
+        }
+
+        if (String(entrega.item) === "uniforme") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Uniformes possuem fluxo próprio e não podem ser excluídos por esta ação.",
+          });
+        }
+
+        const loteId = Number(entrega.loteId || 0) || null;
+        let quantidadeExcluida = 0;
+
+        if (loteId) {
+          const [itensLote] = await connection.query<any[]>(
+            `SELECT id, lojaId, item
+               FROM rh_epi_entregas
+              WHERE loteId = ?
+              FOR UPDATE`,
+            [loteId]
+          );
+
+          if (!itensLote.length) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "O lote desta entrega não foi encontrado.",
+            });
+          }
+
+          const lojaDiferente = itensLote.some(
+            (item) => Number(item.lojaId) !== Number(input.lojaId)
+          );
+          if (lojaDiferente) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "O lote possui registros de outra loja e não foi excluído.",
+            });
+          }
+
+          const contemUniforme = itensLote.some(
+            (item) => String(item.item) === "uniforme"
+          );
+          if (contemUniforme) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "O lote contém uniforme e não pode ser excluído por esta ação.",
+            });
+          }
+
+          const [resultado] = await connection.query<any>(
+            `DELETE FROM rh_epi_entregas
+              WHERE loteId = ?
+                AND lojaId = ?`,
+            [loteId, input.lojaId]
+          );
+
+          quantidadeExcluida = Number(resultado.affectedRows || 0);
+        } else {
+          const [resultado] = await connection.query<any>(
+            `DELETE FROM rh_epi_entregas
+              WHERE id = ?
+                AND lojaId = ?
+                AND loteId IS NULL
+                AND item <> 'uniforme'`,
+            [input.id, input.lojaId]
+          );
+
+          quantidadeExcluida = Number(resultado.affectedRows || 0);
+        }
+
+        if (quantidadeExcluida <= 0) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Nenhuma entrega foi excluída.",
+          });
+        }
+
+        await connection.commit();
+
+        return {
+          success: true,
+          loteId,
+          quantidadeExcluida,
+        };
+      } catch (error) {
+        try {
+          await connection.rollback();
+        } catch {
+          // preserva o erro original
+        }
+        throw error;
+      } finally {
+        connection.release();
+      }
     }),
 
   anexarComprovante: protectedProcedure
