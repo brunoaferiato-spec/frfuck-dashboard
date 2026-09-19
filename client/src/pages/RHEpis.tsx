@@ -1363,24 +1363,51 @@ export default function RHEpis() {
 
                 {(itemEnvio !== "uniforme" || modoUniforme === "entrega") && (
                   <>
-                <label className="block cursor-pointer rounded-2xl border border-dashed border-[#D4AF37]/30 bg-[#D4AF37]/[0.035] p-4 transition hover:bg-[#D4AF37]/[0.07]">
-                  <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif" className="hidden" onChange={(event) => setArquivo(event.target.files?.[0] || null)} />
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.08] p-2.5">
-                      <FileUp className="h-5 w-5 text-[#F2D675]" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-white">{arquivo
+                <div className="space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-4 py-3 text-sm font-black text-[#F2D675] transition hover:bg-[#D4AF37]/[0.10]">
+                      📷 Tirar foto
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(event) => {
+                          setArquivo(event.target.files?.[0] || null);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+
+                    <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-sm font-black text-white transition hover:bg-white/[0.06]">
+                      📎 Selecionar arquivo
+                      <input
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                        className="hidden"
+                        onChange={(event) => {
+                          setArquivo(event.target.files?.[0] || null);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2.5">
+                    <p className={arquivo ? "truncate text-sm font-bold text-[#F2D675]" : "text-sm text-gray-500"}>
+                      {arquivo
                         ? arquivo.name
                         : itemEnvio === "uniforme"
-                        ? "Anexar ficha de uniforme assinada (obrigatório)"
-                        : "Anexar termo assinado (opcional agora)"}</p>
-                      <p className="mt-0.5 text-xs text-gray-500">{itemEnvio === "uniforme"
-                        ? "PDF ou foto • máximo 6 MB. A ficha assinada é obrigatória para uniforme."
-                        : "PDF ou foto • máximo 6 MB. Sem anexo, a entrega fica com documento pendente."}</p>
-                    </div>
+                        ? "Ficha assinada ainda não anexada"
+                        : "Termo assinado ainda não anexado"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-600">
+                      {itemEnvio === "uniforme"
+                        ? "A ficha assinada é obrigatória para uniforme. No celular, “Tirar foto” abre a câmera traseira."
+                        : "Sem anexo, a entrega fica com documento pendente. No celular, “Tirar foto” abre a câmera traseira."}
+                    </p>
                   </div>
-                </label>
+                </div>
 
                   </>
                 )}
@@ -1634,21 +1661,39 @@ export default function RHEpis() {
                             )}
 
                             {entrega.comprovantePendente ? (
-                              <label className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-amber-400/25 bg-amber-400/[0.05] px-4 text-sm font-bold text-amber-200 transition hover:bg-amber-400/[0.1]">
-                                <FileUp className="mr-2 h-4 w-4" />
-                                {anexandoId === entregaDocumento.id ? "Enviando..." : "Anexar termo"}
-                                <input
-                                  type="file"
-                                  accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
-                                  className="hidden"
-                                  disabled={anexandoId === entregaDocumento.id}
-                                  onChange={(event) => {
-                                    const file = event.target.files?.[0] || null;
-                                    void anexarComprovante(entregaDocumento, file);
-                                    event.currentTarget.value = "";
-                                  }}
-                                />
-                              </label>
+                              <div className="flex flex-wrap gap-2">
+                                <label className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-4 text-sm font-bold text-[#F2D675] transition hover:bg-[#D4AF37]/[0.10]">
+                                  📷 {anexandoId === entregaDocumento.id ? "Enviando..." : "Tirar foto"}
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                                    capture="environment"
+                                    className="hidden"
+                                    disabled={anexandoId === entregaDocumento.id}
+                                    onChange={(event) => {
+                                      const file = event.target.files?.[0] || null;
+                                      void anexarComprovante(entregaDocumento, file);
+                                      event.currentTarget.value = "";
+                                    }}
+                                  />
+                                </label>
+
+                                <label className="inline-flex h-10 cursor-pointer items-center rounded-lg border border-amber-400/25 bg-amber-400/[0.05] px-4 text-sm font-bold text-amber-200 transition hover:bg-amber-400/[0.1]">
+                                  <FileUp className="mr-2 h-4 w-4" />
+                                  {anexandoId === entregaDocumento.id ? "Enviando..." : "Selecionar arquivo"}
+                                  <input
+                                    type="file"
+                                    accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                                    className="hidden"
+                                    disabled={anexandoId === entregaDocumento.id}
+                                    onChange={(event) => {
+                                      const file = event.target.files?.[0] || null;
+                                      void anexarComprovante(entregaDocumento, file);
+                                      event.currentTarget.value = "";
+                                    }}
+                                  />
+                                </label>
+                              </div>
                             ) : (
                               <Button
                                 type="button"

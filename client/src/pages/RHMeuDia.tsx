@@ -637,8 +637,13 @@ export default function RHMeuDia() {
   const role = String(user?.role || "");
   const ehAdminTeste = role === "admin" || role === "gestor";
   const lojaUsuario = Number(user?.lojaId || 0);
+  const caixaLider = role === "rh" && lojaUsuario > 0;
   const hoje = dataHojeCivil();
 
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+  const [painelMobileAberto, setPainelMobileAberto] = useState<
+    "ponto" | "ferias" | "rescisoes" | "epis" | null
+  >(null);
   const [lojaTeste, setLojaTeste] = useState("1");
   const [dataTeste, setDataTeste] = useState(hoje);
   const dataReferencia = ehAdminTeste ? dataTeste : hoje;
@@ -658,6 +663,36 @@ export default function RHMeuDia() {
 
   const lojaIdAtual = ehAdminTeste ? Number(lojaTeste) : lojaUsuario;
   const lojaAtual = lojas.find((loja) => Number(loja.id) === lojaIdAtual);
+
+  const feriasPainelQuery = trpc.rhFerias.pendenciasCaixa.useQuery(undefined, {
+    enabled: caixaLider,
+    retry: false,
+    refetchOnWindowFocus: true,
+  });
+
+  const rescisoesPainelQuery = trpc.rhRescisoes.minhaLoja.useQuery(
+    ehAdminTeste ? { lojaId: lojaIdAtual } : undefined,
+    {
+      enabled: caixaLider || (ehAdminTeste && lojaIdAtual > 0),
+      retry: false,
+      refetchOnWindowFocus: true,
+    }
+  );
+
+  const episPainelQuery = trpc.rhEpis.listar.useQuery(
+    {
+      lojaId: lojaIdAtual > 0 ? lojaIdAtual : null,
+      funcionarioId: null,
+      item: null,
+      dataInicio: null,
+      dataFim: null,
+    },
+    {
+      enabled: lojaIdAtual > 0,
+      retry: false,
+      refetchOnWindowFocus: true,
+    }
+  );
 
   const pontoDiaQuery = trpc.rhPonto.dia.useQuery(
     {
@@ -802,6 +837,113 @@ export default function RHMeuDia() {
       })).filter((grupo) => grupo.pendencias.length > 0),
     [pendenciasDaLoja]
   );
+
+  const resumoPainelMobile = useMemo(() => {
+    function diasAtePainel(valor?: string | null) {
+      if (!valor) return null;
+
+      const data = String(valor).slice(0, 10);
+      const [ano, mes, dia] = data.split("-").map(Number);
+      if (!ano || !mes || !dia) return null;
+
+      const alvo = new Date(ano, mes - 1, dia);
+      const agora = new Date();
+      const hojeLocal = new Date(
+        agora.getFullYear(),
+        agora.getMonth(),
+        agora.getDate()
+      );
+
+      return Math.round(
+        (alvo.getTime() - hojeLocal.getTime()) / 86_400_000
+      );
+    }
+
+    const ferias = (feriasPainelQuery.data || []) as Array<any>;
+    let feriasPendencias = 0;
+    let feriasUrgentes = 0;
+
+    for (const item of ferias) {
+      const dias = diasAtePainel(item.dataInicio);
+
+      if (item.avisoPendente) {
+        feriasPendencias += 1;
+        if (dias !== null && dias <= 30) feriasUrgentes += 1;
+      }
+
+      if (
+        item.pagamentoSolicitado &&
+        (item.pagamentoPendente || !item.contasAPagarLancado)
+      ) {
+        feriasPendencias += 1;
+        if (dias !== null && dias <= 2) feriasUrgentes += 1;
+      }
+    }
+
+    const rescisoesAbertas = (
+      (rescisoesPainelQuery.data || []) as Array<any>
+    ).filter(
+      (item) =>
+        !["cancelada", "concluida"].includes(String(item.status)) &&
+        item.faseOperacional !== "operacional_concluido"
+    ).length;
+
+    const entregasEpi = (episPainelQuery.data || []) as Array<any>;
+    const epiMaisRecente = new Map<string, any>();
+
+    for (const entrega of entregasEpi) {
+      if (!entrega.proximaTroca) continue;
+
+      const chave = `${entrega.lojaId}:${entrega.funcionarioId}:${entrega.item}`;
+      const atual = epiMaisRecente.get(chave);
+
+      if (
+        !atual ||
+        String(entrega.dataEntrega || "") > String(atual.dataEntrega || "") ||
+        (String(entrega.dataEntrega || "") === String(atual.dataEntrega || "") &&
+          Number(entrega.id) > Number(atual.id))
+      ) {
+        epiMaisRecente.set(chave, entrega);
+      }
+    }
+
+    const prazosEpi = Array.from(epiMaisRecente.values())
+      .map((entrega) => diasAtePainel(entrega.proximaTroca))
+      .filter((dias): dias is number => dias !== null && dias <= 30);
+
+    const epiVencidos = prazosEpi.filter((dias) => dias < 0).length;
+    const epiAte7 = prazosEpi.filter((dias) => dias >= 0 && dias <= 7).length;
+    const epiAte15 = prazosEpi.filter((dias) => dias >= 8 && dias <= 15).length;
+
+    return {
+      ponto: pendenciasDaLoja.length,
+      ferias: feriasPendencias,
+      feriasUrgentes,
+      rescisoes: rescisoesAbertas,
+      epis: prazosEpi.length,
+      epiVencidos,
+      epiAte7,
+      epiAte15,
+    };
+  }, [
+    pendenciasDaLoja.length,
+    feriasPainelQuery.data,
+    rescisoesPainelQuery.data,
+    episPainelQuery.data,
+  ]);
+
+  function abrirPainelMobile(
+    painel: "ponto" | "ferias" | "rescisoes" | "epis"
+  ) {
+    setPainelMobileAberto((atual) => (atual === painel ? null : painel));
+    setMenuMobileAberto(false);
+
+    window.setTimeout(() => {
+      document
+        .getElementById(`painel-mobile-${painel}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }
 
   const itensResultado = useMemo(() => {
     if (!analise) return [];
@@ -1067,18 +1209,18 @@ export default function RHMeuDia() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#050505] text-white">
-      <header className="border-b border-[#D4AF37]/15 bg-[#080808]">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-5 lg:px-8">
+      <header className="sticky top-0 z-40 border-b border-[#D4AF37]/15 bg-[#080808]/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4 lg:px-8">
           <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8f8a80] sm:text-xs">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#8f8a80] sm:text-xs">
               RH Operacional
             </p>
-            <h1 className="mt-0.5 text-xl font-black text-[#F2D675] sm:text-2xl">
+            <h1 className="mt-0.5 truncate text-xl font-black text-[#F2D675] sm:text-2xl">
               Meu Dia
             </h1>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="hidden shrink-0 items-center gap-2 sm:flex">
             <Button
               type="button"
               variant="outline"
@@ -1086,8 +1228,7 @@ export default function RHMeuDia() {
               className="h-10 border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-3 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
             >
               <Banknote className="mr-2 h-4 w-4" />
-              <span className="hidden text-sm sm:inline">Fechar Caixa</span>
-              <span className="text-sm sm:hidden">Caixa</span>
+              <span className="text-sm">Fechar Caixa</span>
             </Button>
 
             <Button
@@ -1097,8 +1238,7 @@ export default function RHMeuDia() {
               className="h-10 border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-3 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
             >
               <FileCheck2 className="mr-2 h-4 w-4" />
-              <span className="hidden text-sm sm:inline">Documentos</span>
-              <span className="text-sm sm:hidden">Docs</span>
+              <span className="text-sm">Documentos</span>
             </Button>
 
             <Button
@@ -1116,19 +1256,527 @@ export default function RHMeuDia() {
               className="h-10 px-3 text-gray-400 hover:bg-red-500/10 hover:text-rose-300"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              <span className="hidden text-sm sm:inline">Sair</span>
+              <span className="text-sm">Sair</span>
             </Button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setMenuMobileAberto(true)}
+            aria-label="Abrir menu"
+            aria-expanded={menuMobileAberto}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] text-[#F2D675] transition active:scale-95 sm:hidden"
+          >
+            <span className="text-2xl leading-none">☰</span>
+          </button>
         </div>
       </header>
 
+      {menuMobileAberto && (
+        <div className="fixed inset-0 z-[80] sm:hidden">
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            onClick={() => setMenuMobileAberto(false)}
+            className="absolute inset-0 h-full w-full bg-black/75"
+          />
+
+          <aside className="absolute inset-y-0 left-0 flex w-[84vw] max-w-[320px] flex-col border-r border-[#D4AF37]/20 bg-[#080808] shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-white/[0.07] px-4 py-5">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#8f8a80]">
+                  RH Operacional
+                </p>
+                <h2 className="mt-1 text-xl font-black text-[#F2D675]">
+                  Menu
+                </h2>
+                <p className="mt-1 text-xs text-gray-500">
+                  {lojaAtual?.nome || "Sua loja"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMenuMobileAberto(false)}
+                aria-label="Fechar menu"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-xl text-gray-300"
+              >
+                ×
+              </button>
+            </div>
+
+            <nav className="flex-1 space-y-2 overflow-y-auto p-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setPainelMobileAberto(null);
+                  setMenuMobileAberto(false);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl bg-[#D4AF37] px-4 text-left text-sm font-black text-black"
+              >
+                <CalendarDays className="h-5 w-5 shrink-0" />
+                Meu Dia
+              </button>
+
+              <button
+                type="button"
+                onClick={() => abrirPainelMobile("ponto")}
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 text-left text-sm font-bold text-white"
+              >
+                <Clock3 className="h-5 w-5 shrink-0 text-[#F2D675]" />
+                Ponto
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuMobileAberto(false);
+                  navigate("/rh/caixa");
+                }}
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 text-left text-sm font-bold text-white"
+              >
+                <Banknote className="h-5 w-5 shrink-0 text-[#F2D675]" />
+                Caixa
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuMobileAberto(false);
+                  navigate("/rh/documentos");
+                }}
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 text-left text-sm font-bold text-white"
+              >
+                <FileCheck2 className="h-5 w-5 shrink-0 text-[#F2D675]" />
+                Documentos
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuMobileAberto(false);
+                  navigate("/rh/epis");
+                }}
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 text-left text-sm font-bold text-white"
+              >
+                <ShieldCheck className="h-5 w-5 shrink-0 text-[#F2D675]" />
+                EPIs
+              </button>
+            </nav>
+
+            <div className="border-t border-white/[0.07] p-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuMobileAberto(false);
+                  void sair();
+                }}
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl px-4 text-left text-sm font-bold text-gray-400 transition hover:bg-rose-400/[0.06] hover:text-rose-300"
+              >
+                <LogOut className="h-5 w-5 shrink-0" />
+                Sair
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
       <main className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-5 sm:py-6 lg:px-8">
-        <RHFeriasCaixaPendencias />
-        <RHRescisaoCaixa
-          lojaIdOverride={lojaIdAtual}
-          modoTeste={ehAdminTeste}
-        />
-        <RHEpiAlertas />
+        <section className="mb-5 space-y-3 sm:hidden">
+          <div className="mb-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8f8a80]">
+              Pendências da loja
+            </p>
+            <p className="mt-1 text-sm text-gray-500">
+              Toque em um card para abrir ou recolher os detalhes.
+            </p>
+          </div>
+
+          <div id="painel-mobile-ponto" className="scroll-mt-20">
+            <button
+              type="button"
+              onClick={() => abrirPainelMobile("ponto")}
+              className={`w-full rounded-3xl border p-5 text-left transition active:scale-[0.99] ${
+                resumoPainelMobile.ponto > 0
+                  ? "border-rose-400/25 bg-rose-400/[0.045]"
+                  : "border-emerald-400/20 bg-emerald-400/[0.035]"
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${
+                    resumoPainelMobile.ponto > 0
+                      ? "border-rose-400/25 bg-rose-400/[0.06]"
+                      : "border-emerald-400/20 bg-emerald-400/[0.05]"
+                  }`}
+                >
+                  <Clock3
+                    className={`h-6 w-6 ${
+                      resumoPainelMobile.ponto > 0
+                        ? "text-rose-300"
+                        : "text-emerald-300"
+                    }`}
+                  />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-black text-white">Ponto</h2>
+                      <p className="mt-1 text-sm leading-5 text-gray-500">
+                        Conferências e tratativas do ponto diário.
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <p
+                        className={`text-3xl font-black ${
+                          resumoPainelMobile.ponto > 0
+                            ? "text-rose-200"
+                            : "text-emerald-200"
+                        }`}
+                      >
+                        {resumoPainelMobile.ponto}
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">
+                        pendências
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`mt-4 inline-flex items-center gap-2 text-xs font-black ${
+                      resumoPainelMobile.ponto > 0
+                        ? "text-rose-300"
+                        : "text-emerald-300"
+                    }`}
+                  >
+                    {resumoPainelMobile.ponto > 0 ? (
+                      <AlertTriangle className="h-4 w-4" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    {resumoPainelMobile.ponto > 0
+                      ? "Aguardando ação"
+                      : "Ponto em dia"}
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            {painelMobileAberto === "ponto" && (
+              <div className="mt-3">
+                <div className="mb-3 flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2">
+                  <p className="text-xs font-bold text-gray-400">
+                    Detalhes do ponto
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setPainelMobileAberto(null)}
+                    className="text-xs font-black text-[#F2D675]"
+                  >
+                    Recolher
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div id="painel-mobile-ferias" className="scroll-mt-20">
+            <button
+              type="button"
+              onClick={() => abrirPainelMobile("ferias")}
+              className={`w-full rounded-3xl border p-5 text-left transition active:scale-[0.99] ${
+                resumoPainelMobile.feriasUrgentes > 0
+                  ? "border-rose-400/25 bg-rose-400/[0.045]"
+                  : resumoPainelMobile.ferias > 0
+                  ? "border-amber-400/25 bg-amber-400/[0.045]"
+                  : "border-emerald-400/20 bg-emerald-400/[0.035]"
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${
+                    resumoPainelMobile.feriasUrgentes > 0
+                      ? "border-rose-400/25 bg-rose-400/[0.06]"
+                      : resumoPainelMobile.ferias > 0
+                      ? "border-amber-400/25 bg-amber-400/[0.06]"
+                      : "border-emerald-400/20 bg-emerald-400/[0.05]"
+                  }`}
+                >
+                  <CalendarDays
+                    className={`h-6 w-6 ${
+                      resumoPainelMobile.feriasUrgentes > 0
+                        ? "text-rose-300"
+                        : resumoPainelMobile.ferias > 0
+                        ? "text-amber-300"
+                        : "text-emerald-300"
+                    }`}
+                  />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-black text-white">Férias</h2>
+                      <p className="mt-1 text-sm leading-5 text-gray-500">
+                        Avisos e pagamentos aguardando documento.
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <p
+                        className={`text-3xl font-black ${
+                          resumoPainelMobile.feriasUrgentes > 0
+                            ? "text-rose-200"
+                            : resumoPainelMobile.ferias > 0
+                            ? "text-amber-200"
+                            : "text-emerald-200"
+                        }`}
+                      >
+                        {resumoPainelMobile.ferias}
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">
+                        pendências
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`mt-4 inline-flex items-center gap-2 text-xs font-black ${
+                      resumoPainelMobile.feriasUrgentes > 0
+                        ? "text-rose-300"
+                        : resumoPainelMobile.ferias > 0
+                        ? "text-amber-300"
+                        : "text-emerald-300"
+                    }`}
+                  >
+                    {resumoPainelMobile.ferias > 0 ? (
+                      <AlertTriangle className="h-4 w-4" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    {resumoPainelMobile.feriasUrgentes > 0
+                      ? "Urgente"
+                      : resumoPainelMobile.ferias > 0
+                      ? "Aguardando ação"
+                      : "Férias em dia"}
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            {painelMobileAberto === "ferias" && (
+              <div className="mt-3">
+                <RHFeriasCaixaPendencias />
+              </div>
+            )}
+          </div>
+
+          <div id="painel-mobile-rescisoes" className="scroll-mt-20">
+            <button
+              type="button"
+              onClick={() => abrirPainelMobile("rescisoes")}
+              className={`w-full rounded-3xl border p-5 text-left transition active:scale-[0.99] ${
+                resumoPainelMobile.rescisoes > 0
+                  ? "border-amber-400/25 bg-amber-400/[0.045]"
+                  : "border-emerald-400/20 bg-emerald-400/[0.035]"
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${
+                    resumoPainelMobile.rescisoes > 0
+                      ? "border-amber-400/25 bg-amber-400/[0.06]"
+                      : "border-emerald-400/20 bg-emerald-400/[0.05]"
+                  }`}
+                >
+                  <FileCheck2
+                    className={`h-6 w-6 ${
+                      resumoPainelMobile.rescisoes > 0
+                        ? "text-amber-300"
+                        : "text-emerald-300"
+                    }`}
+                  />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-black text-white">Rescisões</h2>
+                      <p className="mt-1 text-sm leading-5 text-gray-500">
+                        Processos que ainda exigem etapas da Caixa.
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <p
+                        className={`text-3xl font-black ${
+                          resumoPainelMobile.rescisoes > 0
+                            ? "text-amber-200"
+                            : "text-emerald-200"
+                        }`}
+                      >
+                        {resumoPainelMobile.rescisoes}
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">
+                        pendências
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`mt-4 inline-flex items-center gap-2 text-xs font-black ${
+                      resumoPainelMobile.rescisoes > 0
+                        ? "text-amber-300"
+                        : "text-emerald-300"
+                    }`}
+                  >
+                    {resumoPainelMobile.rescisoes > 0 ? (
+                      <AlertTriangle className="h-4 w-4" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    {resumoPainelMobile.rescisoes > 0
+                      ? "Em andamento"
+                      : "Rescisões em dia"}
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            {painelMobileAberto === "rescisoes" && (
+              <div className="mt-3">
+                <RHRescisaoCaixa
+                  lojaIdOverride={lojaIdAtual}
+                  modoTeste={ehAdminTeste}
+                />
+              </div>
+            )}
+          </div>
+
+          <div id="painel-mobile-epis" className="scroll-mt-20">
+            <button
+              type="button"
+              onClick={() => abrirPainelMobile("epis")}
+              className={`w-full rounded-3xl border p-5 text-left transition active:scale-[0.99] ${
+                resumoPainelMobile.epiVencidos > 0 ||
+                resumoPainelMobile.epiAte7 > 0
+                  ? "border-rose-400/25 bg-rose-400/[0.045]"
+                  : resumoPainelMobile.epiAte15 > 0
+                  ? "border-amber-400/25 bg-amber-400/[0.045]"
+                  : resumoPainelMobile.epis > 0
+                  ? "border-yellow-400/20 bg-yellow-400/[0.035]"
+                  : "border-emerald-400/20 bg-emerald-400/[0.035]"
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${
+                    resumoPainelMobile.epiVencidos > 0 ||
+                    resumoPainelMobile.epiAte7 > 0
+                      ? "border-rose-400/25 bg-rose-400/[0.06]"
+                      : resumoPainelMobile.epiAte15 > 0
+                      ? "border-amber-400/25 bg-amber-400/[0.06]"
+                      : resumoPainelMobile.epis > 0
+                      ? "border-yellow-400/20 bg-yellow-400/[0.05]"
+                      : "border-emerald-400/20 bg-emerald-400/[0.05]"
+                  }`}
+                >
+                  <ShieldCheck
+                    className={`h-6 w-6 ${
+                      resumoPainelMobile.epiVencidos > 0 ||
+                      resumoPainelMobile.epiAte7 > 0
+                        ? "text-rose-300"
+                        : resumoPainelMobile.epiAte15 > 0
+                        ? "text-amber-300"
+                        : resumoPainelMobile.epis > 0
+                        ? "text-yellow-300"
+                        : "text-emerald-300"
+                    }`}
+                  />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-black text-white">EPIs</h2>
+                      <p className="mt-1 text-sm leading-5 text-gray-500">
+                        Trocas vencidas ou próximas do prazo.
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <p
+                        className={`text-3xl font-black ${
+                          resumoPainelMobile.epiVencidos > 0 ||
+                          resumoPainelMobile.epiAte7 > 0
+                            ? "text-rose-200"
+                            : resumoPainelMobile.epiAte15 > 0
+                            ? "text-amber-200"
+                            : resumoPainelMobile.epis > 0
+                            ? "text-yellow-100"
+                            : "text-emerald-200"
+                        }`}
+                      >
+                        {resumoPainelMobile.epis}
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">
+                        pendências
+                      </p>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`mt-4 inline-flex items-center gap-2 text-xs font-black ${
+                      resumoPainelMobile.epiVencidos > 0 ||
+                      resumoPainelMobile.epiAte7 > 0
+                        ? "text-rose-300"
+                        : resumoPainelMobile.epiAte15 > 0
+                        ? "text-amber-300"
+                        : resumoPainelMobile.epis > 0
+                        ? "text-yellow-300"
+                        : "text-emerald-300"
+                    }`}
+                  >
+                    {resumoPainelMobile.epis > 0 ? (
+                      <AlertTriangle className="h-4 w-4" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    {resumoPainelMobile.epiVencidos > 0
+                      ? "Há EPI vencido"
+                      : resumoPainelMobile.epiAte7 > 0
+                      ? "Prioridade"
+                      : resumoPainelMobile.epiAte15 > 0
+                      ? "Atenção"
+                      : resumoPainelMobile.epis > 0
+                      ? "Próximo do prazo"
+                      : "EPIs em dia"}
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            {painelMobileAberto === "epis" && (
+              <div className="mt-3">
+                <RHEpiAlertas />
+              </div>
+            )}
+          </div>
+        </section>
+
+        <div className="hidden sm:block">
+          <RHFeriasCaixaPendencias />
+          <RHRescisaoCaixa
+            lojaIdOverride={lojaIdAtual}
+            modoTeste={ehAdminTeste}
+          />
+          <RHEpiAlertas />
+        </div>
+
+        <div className={painelMobileAberto === "ponto" ? "block" : "hidden sm:block"}>
         <section className="grid gap-3 lg:grid-cols-[1.35fr_1fr] lg:gap-4">
           <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#080808]">
             <CardContent className="p-4 sm:p-6">
@@ -1475,22 +2123,40 @@ export default function RHMeuDia() {
                                   )}
 
                                   {pendencia.fase === "documento" && pendencia.tratativaId && (
-                                    <label className="mt-3 inline-flex h-9 cursor-pointer items-center rounded-md bg-[#D4AF37] px-3 text-xs font-black text-black hover:bg-[#E6C760]">
-                                      {enviandoDocumentoId === pendencia.tratativaId
-                                        ? "Enviando..."
-                                        : labelDocumentoPendente(pendencia.tratativaTipo)}
-                                      <input
-                                        type="file"
-                                        accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
-                                        className="hidden"
-                                        disabled={enviandoDocumentoId === pendencia.tratativaId}
-                                        onChange={(event) => {
-                                          const file = event.target.files?.[0] || null;
-                                          void anexarDocumento(pendencia, file);
-                                          event.currentTarget.value = "";
-                                        }}
-                                      />
-                                    </label>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                      <label className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#D4AF37] px-3 text-xs font-black text-black hover:bg-[#E6C760]">
+                                        📷 {enviandoDocumentoId === pendencia.tratativaId ? "Enviando..." : "Tirar foto"}
+                                        <input
+                                          type="file"
+                                          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                                          capture="environment"
+                                          className="hidden"
+                                          disabled={enviandoDocumentoId === pendencia.tratativaId}
+                                          onChange={(event) => {
+                                            const file = event.target.files?.[0] || null;
+                                            void anexarDocumento(pendencia, file);
+                                            event.currentTarget.value = "";
+                                          }}
+                                        />
+                                      </label>
+
+                                      <label className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#D4AF37]/25 bg-[#D4AF37]/[0.05] px-3 text-xs font-black text-[#F2D675] hover:bg-[#D4AF37]/[0.10]">
+                                        📎 {enviandoDocumentoId === pendencia.tratativaId
+                                          ? "Enviando..."
+                                          : labelDocumentoPendente(pendencia.tratativaTipo)}
+                                        <input
+                                          type="file"
+                                          accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                                          className="hidden"
+                                          disabled={enviandoDocumentoId === pendencia.tratativaId}
+                                          onChange={(event) => {
+                                            const file = event.target.files?.[0] || null;
+                                            void anexarDocumento(pendencia, file);
+                                            event.currentTarget.value = "";
+                                          }}
+                                        />
+                                      </label>
+                                    </div>
                                   )}
 
                                   {pendencia.fase === "concluir" && pendencia.tratativaId && (
@@ -1545,6 +2211,7 @@ export default function RHMeuDia() {
             </CardContent>
           </Card>
         </section>
+        </div>
       </main>
 
       {periodoAberto && horarioConfigAberto && (
@@ -1949,28 +2616,59 @@ export default function RHMeuDia() {
                     : "Comprovante / documento (PDF ou foto)"}
                 </label>
 
-                <label className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-[#D4AF37]/30 bg-[#D4AF37]/[0.035] px-4 py-3 text-sm transition hover:bg-[#D4AF37]/[0.07]">
-                  <span className={arquivoTratativa ? "truncate font-bold text-[#F2D675]" : "text-gray-400"}>
-                    {arquivoTratativa ? arquivoTratativa.name : "Selecionar PDF ou foto"}
-                  </span>
-                  <FileUp className="h-4 w-4 shrink-0 text-[#F2D675]" />
-                  <input
-                    type="file"
-                    accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0] || null;
-                      if (file && !documentoPermitido(file)) {
-                        setMensagemTratativa("Envie PDF, JPG, PNG, WEBP ou foto HEIC/HEIF.");
-                        setArquivoTratativa(null);
-                      } else {
-                        setMensagemTratativa("");
-                        setArquivoTratativa(file);
-                      }
-                      event.currentTarget.value = "";
-                    }}
-                  />
-                </label>
+                <div className="space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-4 py-3 text-sm font-black text-[#F2D675] transition hover:bg-[#D4AF37]/[0.10]">
+                      📷 Tirar foto
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] || null;
+                          if (file && !documentoPermitido(file)) {
+                            setMensagemTratativa("Envie JPG, PNG, WEBP ou foto HEIC/HEIF.");
+                            setArquivoTratativa(null);
+                          } else {
+                            setMensagemTratativa("");
+                            setArquivoTratativa(file);
+                          }
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+
+                    <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-sm font-black text-white transition hover:bg-white/[0.06]">
+                      📎 Selecionar arquivo
+                      <input
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] || null;
+                          if (file && !documentoPermitido(file)) {
+                            setMensagemTratativa("Envie PDF, JPG, PNG, WEBP ou foto HEIC/HEIF.");
+                            setArquivoTratativa(null);
+                          } else {
+                            setMensagemTratativa("");
+                            setArquivoTratativa(file);
+                          }
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2.5">
+                    <p className={arquivoTratativa ? "truncate text-sm font-bold text-[#F2D675]" : "text-sm text-gray-500"}>
+                      {arquivoTratativa ? arquivoTratativa.name : "Nenhum arquivo selecionado"}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-gray-600">
+                      No celular, “Tirar foto” abre a câmera traseira.
+                    </p>
+                  </div>
+                </div>
 
                 {arquivoTratativa && (
                   <button
