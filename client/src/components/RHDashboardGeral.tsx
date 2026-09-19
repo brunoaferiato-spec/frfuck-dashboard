@@ -63,6 +63,50 @@ type CardResumo = {
   icon: any;
 };
 
+function visualPrioridade(prioridade: number) {
+  if (prioridade >= 3) {
+    return {
+      hover: "hover:bg-rose-950/10",
+      caixaIcone: "border-rose-400/20 bg-rose-400/[0.06]",
+      icone: "text-rose-300",
+      valor: "text-rose-200",
+      status: "text-rose-300",
+      pill: "border-rose-400/20 bg-rose-400/[0.055] text-rose-100 hover:bg-rose-400/[0.10]",
+    };
+  }
+
+  if (prioridade === 2) {
+    return {
+      hover: "hover:bg-amber-950/10",
+      caixaIcone: "border-amber-400/20 bg-amber-400/[0.06]",
+      icone: "text-amber-300",
+      valor: "text-amber-200",
+      status: "text-amber-300",
+      pill: "border-amber-400/20 bg-amber-400/[0.055] text-amber-100 hover:bg-amber-400/[0.10]",
+    };
+  }
+
+  if (prioridade === 1) {
+    return {
+      hover: "hover:bg-yellow-950/10",
+      caixaIcone: "border-yellow-400/20 bg-yellow-400/[0.05]",
+      icone: "text-yellow-300",
+      valor: "text-yellow-100",
+      status: "text-yellow-300",
+      pill: "border-yellow-400/20 bg-yellow-400/[0.05] text-yellow-100 hover:bg-yellow-400/[0.09]",
+    };
+  }
+
+  return {
+    hover: "",
+    caixaIcone: "border-[#D4AF37]/15 bg-[#D4AF37]/[0.04]",
+    icone: "text-[#F2D675]",
+    valor: "text-white",
+    status: "text-emerald-400",
+    pill: "",
+  };
+}
+
 export default function RHDashboardGeral() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
@@ -420,42 +464,33 @@ export default function RHDashboardGeral() {
             {cards.map((card) => {
               const Icon = card.icon;
               const atencao = card.prioridade > 0;
+              const visual = visualPrioridade(card.prioridade);
 
               return (
                 <button
                   type="button"
                   key={card.id}
                   onClick={() => abrir(card)}
-                  className={`min-h-[150px] bg-[#090909] p-4 text-left transition hover:bg-[#101010] ${
-                    atencao ? "hover:bg-rose-950/10" : ""
-                  }`}
+                  className={`min-h-[150px] bg-[#090909] p-4 text-left transition hover:bg-[#101010] ${visual.hover}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div
-                      className={`rounded-xl border p-2 ${
-                        atencao
-                          ? "border-rose-400/20 bg-rose-400/[0.06]"
-                          : "border-[#D4AF37]/15 bg-[#D4AF37]/[0.04]"
-                      }`}
+                      className={`rounded-xl border p-2 ${visual.caixaIcone}`}
                     >
                       <Icon
-                        className={`h-4 w-4 ${
-                          atencao ? "text-rose-300" : "text-[#F2D675]"
-                        }`}
+                        className={`h-4 w-4 ${visual.icone}`}
                       />
                     </div>
 
                     {atencao ? (
-                      <AlertTriangle className="h-4 w-4 text-rose-300" />
+                      <AlertTriangle className={`h-4 w-4 ${visual.status}`} />
                     ) : (
                       <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                     )}
                   </div>
 
                   <p
-                    className={`mt-4 text-2xl font-black ${
-                      atencao ? "text-rose-200" : "text-white"
-                    }`}
+                    className={`mt-4 text-2xl font-black ${visual.valor}`}
                   >
                     {carregando ? "..." : card.valor}
                   </p>
@@ -482,16 +517,20 @@ export default function RHDashboardGeral() {
 
             {prioridades.length > 0 ? (
               <div className="mt-3 flex flex-wrap gap-2">
-                {prioridades.map((card) => (
-                  <button
-                    type="button"
-                    key={`prioridade-${card.id}`}
-                    onClick={() => abrir(card)}
-                    className="rounded-xl border border-rose-400/20 bg-rose-400/[0.055] px-3 py-2 text-xs font-bold text-rose-100 transition hover:bg-rose-400/[0.10]"
-                  >
-                    {card.titulo}: {card.valor} • abrir →
-                  </button>
-                ))}
+                {prioridades.map((card) => {
+                  const visual = visualPrioridade(card.prioridade);
+
+                  return (
+                    <button
+                      type="button"
+                      key={`prioridade-${card.id}`}
+                      onClick={() => abrir(card)}
+                      className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${visual.pill}`}
+                    >
+                      {card.titulo}: {card.valor} • abrir →
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <p className="mt-2 text-sm text-emerald-300">
