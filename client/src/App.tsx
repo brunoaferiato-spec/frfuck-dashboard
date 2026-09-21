@@ -25,6 +25,9 @@ import RHFerias from "./pages/RHFerias";
 import RHExperiencia from "./pages/RHExperiencia";
 import RHRescisoes from "./pages/RHRescisoes";
 import RHFeriasPlanejamento from "./pages/RHFeriasPlanejamento";
+import ComprasShell from "./components/ComprasShell";
+import ComprasPneus from "./pages/ComprasPneus";
+import ComprasPlaceholder from "./pages/ComprasPlaceholder";
 
 function TelaCarregando() {
   return (
@@ -177,6 +180,25 @@ function RotaGestaoRh({ children }: { children: ReactNode }) {
   return <RHGestaoShell>{children}</RHGestaoShell>;
 }
 
+function RotaCompras({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+
+  if (loading) return <TelaCarregando />;
+  if (!user) return <Home />;
+
+  const role = String(user.role || "");
+  if (!["compras", "admin", "gestor"].includes(role)) {
+    return (
+      <AcessoNegado
+        descricao="O módulo de Compras é exclusivo para Compras, Admin e Gestor."
+        destino="/"
+      />
+    );
+  }
+
+  return <ComprasShell>{children}</ComprasShell>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -240,6 +262,24 @@ function Router() {
         <RotaGestaoRh>
           <RHFeriasPlanejamento />
         </RotaGestaoRh>
+      </Route>
+
+      <Route path="/compras/pneus">
+        <RotaCompras>
+          <ComprasPneus />
+        </RotaCompras>
+      </Route>
+
+      <Route path="/compras/pecas">
+        <RotaCompras>
+          <ComprasPlaceholder tipo="pecas" />
+        </RotaCompras>
+      </Route>
+
+      <Route path="/compras/insumos">
+        <RotaCompras>
+          <ComprasPlaceholder tipo="insumos" />
+        </RotaCompras>
       </Route>
 
       <Route path="/folha-pagamento">
