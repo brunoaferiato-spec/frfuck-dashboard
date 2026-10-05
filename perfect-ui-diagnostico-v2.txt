@@ -1,0 +1,144 @@
+﻿============================================================
+ PERFECT - DIAGNOSTICO DE INTERFACE V2
+============================================================
+
+Data: 24/09/2026 20:32:59
+Processo: CatalogoExpresso
+PID: 31884
+MainWindowHandle: 6161550
+Titulo da janela: Catálogo Expresso
+
+IMPORTANTE: este script e SOMENTE LEITURA.
+
+============================================================
+ 1) UI AUTOMATION
+============================================================
+
+Janela UIA: Catálogo Perfect
+
+Controles encontrados por UI Automation: 15
+
+[1]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 28
+  CLASS      : ThunderRT6PictureBox
+
+[2]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 43
+  CLASS      : ThunderRT6PictureBox
+
+[3]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 58
+  CLASS      : ThunderRT6PictureBoxDC
+
+[4]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 38
+  CLASS      : ThunderRT6PictureBox
+
+[5]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 
+  CLASS      : ThunderRT6UserControl
+
+[6]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 
+  CLASS      : ThunderRT6UserControlDC
+
+[7]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 4
+  CLASS      : ThunderRT6PictureBox
+
+[8]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 3
+  CLASS      : ThunderRT6PictureBox
+
+[9]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 36
+  CLASS      : ThunderRT6PictureBox
+
+[10]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 2
+  CLASS      : ThunderRT6PictureBox
+
+[11]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 
+  CLASS      : DataGridWndClass
+
+[12]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 36
+  CLASS      : ThunderRT6PictureBoxDC
+
+[13]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 42
+  CLASS      : ThunderRT6PictureBox
+
+[14]
+  TYPE       : ControlType.Pane
+  NAME       : 
+  AUTOMATION : 44
+  CLASS      : ThunderRT6PictureBox
+
+[15]
+  TYPE       : ControlType.Pane
+  NAME       : BRD0379
+  AUTOMATION : 7
+  CLASS      : ThunderRT6TextBox
+
+============================================================
+ 2) CONTROLES WIN32 NATIVOS
+============================================================
+
+Controles Win32 encontrados: 2
+
+[1]
+  HANDLE  : 3277478
+  CLASS   : VBFocusRT6
+  CTRL_ID : 0
+  VISIBLE : False
+  TEXT    : 
+
+[2]
+  HANDLE  : 2622098
+  CLASS   : Static
+  CTRL_ID : 0
+  VISIBLE : False
+  TEXT    : stdPicEx-Listener2.0
+
+============================================================
+ 3) RESUMO / TERMOS ENCONTRADOS
+============================================================
+
+ENCONTRADO: BRD0379
+NAO ENCONTRADO: AXIAL
+NAO ENCONTRADO: DIRECAO
+NAO ENCONTRADO: DIREÃ‡ÃƒO
+NAO ENCONTRADO: CHEVROLET
+NAO ENCONTRADO: EQUINOX
+NAO ENCONTRADO: 2018
+NAO ENCONTRADO: 2021
+NAO ENCONTRADO: APLICACAO
+NAO ENCONTRADO: APLICAÃ‡ÃƒO

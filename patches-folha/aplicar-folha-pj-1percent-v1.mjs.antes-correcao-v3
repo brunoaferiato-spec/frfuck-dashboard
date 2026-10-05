@@ -1,0 +1,1476 @@
+import fs from "node:fs";
+import path from "node:path";
+
+const raiz = process.cwd();
+const timestamp = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
+const pastaBackup = path.join(raiz, `.backup-folha-pj-1pct-v1-${timestamp}`);
+
+const caminhos = {
+  schema: path.join(raiz, "drizzle", "schema.ts"),
+  db: path.join(raiz, "server", "db.ts"),
+  routers: path.join(raiz, "server", "routers.ts"),
+  funcionarios: path.join(raiz, "client", "src", "pages", "GestaoFuncionarios.tsx"),
+  folha: path.join(raiz, "client", "src", "pages", "FolhaPagamento.tsx"),
+};
+
+function falhar(msg) {
+  throw new Error(`\n❌ ${msg}\n`);
+}
+
+const eolPorNome = {};
+
+function ler(file, nome) {
+  if (!fs.existsSync(file)) falhar(`Arquivo não encontrado: ${file}`);
+  const bruto = fs.readFileSync(file, "utf8");
+  eolPorNome[nome] = bruto.includes("\r\n") ? "\r\n" : "\n";
+  return bruto.replace(/\r\n/g, "\n");
+}
+
+function contar(texto, trecho) {
+  return texto.split(trecho).length - 1;
+}
+
+function replaceOnce(texto, antigo, novo, rotulo) {
+  const n = contar(texto, antigo);
+  if (n !== 1) {
+    falhar(
+      `${rotulo}: esperava 1 ocorrência, encontrei ${n}. Nenhum arquivo foi gravado.`
+    );
+  }
+  return texto.replace(antigo, novo);
+}
+
+function replaceCount(texto, antigo, novo, esperado, rotulo) {
+  const n = contar(texto, antigo);
+  if (n !== esperado) {
+    falhar(
+      `${rotulo}: esperava ${esperado} ocorrência(s), encontrei ${n}. Nenhum arquivo foi gravado.`
+    );
+  }
+  return texto.split(antigo).join(novo);
+}
+
+function replaceRegexOnce(texto, regex, novo, rotulo) {
+  const matches = [...texto.matchAll(regex)];
+  if (matches.length !== 1) {
+    falhar(
+      `${rotulo}: esperava 1 ocorrência, encontrei ${matches.length}. Nenhum arquivo foi gravado.`
+    );
+  }
+  return texto.replace(regex, novo);
+}
+
+function indiceN(texto, trecho, n) {
+  let from = 0;
+  let idx = -1;
+
+  for (let i = 0; i < n; i++) {
+    idx = texto.indexOf(trecho, from);
+
+    if (idx < 0) return -1;
+
+    from = idx + trecho.length;
+  }
+
+  return idx;
+}
+
+function inserirAntesIndice(texto, idx, conteudo) {
+  return texto.slice(0, idx) + conteudo + texto.slice(idx);
+}
+
+function encontrarStatement(texto, needle) {
+  const idx = texto.indexOf(needle);
+
+  if (idx < 0) {
+    falhar(`Não encontrei: ${needle}`);
+  }
+
+  const janelaInicio = Math.max(0, idx - 4000);
+  const janela = texto.slice(janelaInicio, idx + needle.length);
+
+  const candidatos = [
+    ...janela.matchAll(/^[ \t]*const\s+([A-Za-z_$][\w$]*)\s*=/gm),
+  ];
+
+  if (!candidatos.length) {
+    falhar(`Não consegui identificar a declaração que contém ${needle}`);
+  }
+
+  const ultimo = candidatos[candidatos.length - 1];
+  const start = janelaInicio + Number(ultimo.index || 0);
+  const varName = ultimo[1];
+
+  let lineStart = start;
+  let end = -1;
+
+  while (lineStart < texto.length) {
+    const nl = texto.indexOf("\n", lineStart);
+    const lineEnd = nl < 0 ? texto.length : nl;
+    const linha = texto.slice(lineStart, lineEnd).trim();
+
+    if (linha.endsWith(");") || linha.endsWith(";")) {
+      end = nl < 0 ? texto.length : nl + 1;
+      break;
+    }
+
+    if (nl < 0) break;
+
+    lineStart = nl + 1;
+
+    if (lineStart - start > 10000) break;
+  }
+
+  if (end < 0) {
+    falhar(`Não consegui encontrar o final da declaração ${varName}`);
+  }
+
+  return {
+    start,
+    end,
+    varName,
+  };
+}
+
+function encontrarChamadaObjeto(texto, needle, occurrence = 1) {
+  const idx = indiceN(texto, needle, occurrence);
+
+  if (idx < 0) {
+    falhar(`Não encontrei a chamada ${needle} #${occurrence}`);
+  }
+
+  const abre = texto.indexOf("{", idx);
+
+  if (abre < 0) {
+    falhar(`Objeto da chamada ${needle} não encontrado`);
+  }
+
+  let depth = 0;
+  let quote = null;
+  let escaped = false;
+
+  for (let i = abre; i < texto.length; i++) {
+    const c = texto[i];
+
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (c === "\\") {
+        escaped = true;
+      } else if (c === quote) {
+        quote = null;
+      }
+
+      continue;
+    }
+
+    if (c === '"' || c === "'" || c === "`") {
+      quote = c;
+      continue;
+    }
+
+    if (c === "{") {
+      depth++;
+    }
+
+    if (c === "}") {
+      depth--;
+
+      if (depth === 0) {
+        return {
+          start: idx,
+          objectStart: abre,
+          objectEnd: i,
+        };
+      }
+    }
+  }
+
+  falhar(`Não consegui fechar o objeto da chamada ${needle}`);
+}
+
+// -----------------------------------------------------------------------------
+// Leitura + validações iniciais
+// -----------------------------------------------------------------------------
+
+let schema = ler(caminhos.schema, "schema");
+let db = ler(caminhos.db, "db");
+let routers = ler(caminhos.routers, "routers");
+let funcionarios = ler(caminhos.funcionarios, "funcionarios");
+let folha = ler(caminhos.folha, "folha");
+
+for (const [nome, texto] of Object.entries({
+  schema,
+  db,
+  routers,
+  funcionarios,
+  folha,
+})) {
+  if (texto.includes("FOLHA_PJ_1PCT_V1")) {
+    falhar(
+      `O marcador FOLHA_PJ_1PCT_V1 já existe em ${nome}. O patch parece já ter sido aplicado.`
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 1) drizzle/schema.ts — campo PJ no funcionário
+// -----------------------------------------------------------------------------
+
+schema = replaceOnce(
+  schema,
+  '  cargoConfianca: boolean("cargoConfianca").default(false).notNull(),',
+  '  cargoConfianca: boolean("cargoConfianca").default(false).notNull(),\n  isPj: boolean("isPj").default(false).notNull(), // FOLHA_PJ_1PCT_V1',
+  "schema: campo isPj"
+);
+
+// -----------------------------------------------------------------------------
+// 2) server/db.ts — persistência do vínculo PJ + tabela informativa do 1%
+// -----------------------------------------------------------------------------
+
+db = replaceOnce(
+  db,
+  `  if (!existentes.has("cargoConfianca")) {
+    alteracoes.push(
+      "ADD COLUMN cargoConfianca TINYINT(1) NOT NULL DEFAULT 0 AFTER dataAdmissao"
+    );
+  }`,
+  `  if (!existentes.has("cargoConfianca")) {
+    alteracoes.push(
+      "ADD COLUMN cargoConfianca TINYINT(1) NOT NULL DEFAULT 0 AFTER dataAdmissao"
+    );
+  }
+  // FOLHA_PJ_1PCT_V1
+  if (!existentes.has("isPj")) {
+    alteracoes.push(
+      "ADD COLUMN isPj TINYINT(1) NOT NULL DEFAULT 0 AFTER cargoConfianca"
+    );
+  }`,
+  "db: ensure campo isPj"
+);
+
+db = replaceCount(
+  db,
+  `  cargoConfianca?: boolean | null;
+  horarioEntrada1?: string | null;`,
+  `  cargoConfianca?: boolean | null;
+  isPj?: boolean | null;
+  horarioEntrada1?: string | null;`,
+  2,
+  "db: tipos create/update isPj"
+);
+
+db = replaceOnce(
+  db,
+  `    cargoConfianca: Boolean(data.cargoConfianca),
+    horarioEntrada1: normalizarHorarioJornada(data.horarioEntrada1),`,
+  `    cargoConfianca: Boolean(data.cargoConfianca),
+    isPj: Boolean(data.isPj),
+    horarioEntrada1: normalizarHorarioJornada(data.horarioEntrada1),`,
+  "db: create values isPj"
+);
+
+db = replaceOnce(
+  db,
+  `      cargoConfianca: Boolean(data.cargoConfianca),
+      horarioEntrada1: normalizarHorarioJornada(data.horarioEntrada1),`,
+  `      cargoConfianca: Boolean(data.cargoConfianca),
+      isPj: Boolean(data.isPj),
+      horarioEntrada1: normalizarHorarioJornada(data.horarioEntrada1),`,
+  "db: update values isPj"
+);
+
+const ancoraDescontos = "// ===== Descontos =====";
+const idxDescontos = db.indexOf(ancoraDescontos);
+
+if (idxDescontos < 0) {
+  falhar("db: âncora de descontos não encontrada");
+}
+
+const blocoUmPorcentoDb = `// FOLHA_PJ_1PCT_V1
+// ===== Informativo mensal de 1% =====
+let _folhaUmPorcentoTableReady = false;
+
+async function ensureFolhaUmPorcentoTable() {
+  if (_folhaUmPorcentoTableReady) return;
+
+  await getDb();
+
+  if (!_pool) {
+    throw new Error("Banco não conectado");
+  }
+
+  await _pool.query(\`
+    CREATE TABLE IF NOT EXISTS folha_um_porcento (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      funcionario_id INT NOT NULL,
+      loja_id INT NOT NULL,
+      ano INT NOT NULL,
+      mes INT NOT NULL,
+      liquidez_base DECIMAL(14,2) NOT NULL DEFAULT 0,
+      ultima_alteracao_por VARCHAR(255) NULL,
+      ultima_alteracao_em DATETIME NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_folha_um_porcento (funcionario_id, loja_id, ano, mes),
+      INDEX idx_folha_um_porcento_competencia (loja_id, ano, mes)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  \`);
+
+  _folhaUmPorcentoTableReady = true;
+}
+
+export async function getFolhaUmPorcentoByLojaAnoMes(
+  lojaId: number,
+  ano: number,
+  mes: number
+) {
+  await ensureFolhaUmPorcentoTable();
+
+  if (!_pool) {
+    throw new Error("Banco não conectado");
+  }
+
+  const [rows] = await _pool.query<any[]>(
+    \`SELECT
+       funcionario_id AS funcionarioId,
+       loja_id AS lojaId,
+       ano,
+       mes,
+       liquidez_base AS liquidezBase,
+       ultima_alteracao_por AS ultimaAlteracaoPor,
+       ultima_alteracao_em AS ultimaAlteracaoEm
+     FROM folha_um_porcento
+     WHERE loja_id = ? AND ano = ? AND mes = ?\`,
+    [lojaId, ano, mes]
+  );
+
+  return (rows || []).map((row: any) => ({
+    ...row,
+    funcionarioId: Number(row.funcionarioId),
+    lojaId: Number(row.lojaId),
+    ano: Number(row.ano),
+    mes: Number(row.mes),
+    liquidezBase: Number(row.liquidezBase || 0),
+  }));
+}
+
+export async function upsertFolhaUmPorcento(data: {
+  funcionarioId: number;
+  lojaId: number;
+  ano: number;
+  mes: number;
+  liquidezBase: number;
+  ultimaAlteracaoPor?: string | null;
+  ultimaAlteracaoEm?: Date | null;
+}) {
+  await assertCompetenciaFolhaAberta(
+    data.lojaId,
+    data.ano,
+    data.mes
+  );
+
+  await ensureFolhaUmPorcentoTable();
+
+  if (!_pool) {
+    throw new Error("Banco não conectado");
+  }
+
+  const liquidez = Math.max(
+    0,
+    Number(data.liquidezBase || 0)
+  );
+
+  await _pool.query(
+    \`INSERT INTO folha_um_porcento
+       (
+         funcionario_id,
+         loja_id,
+         ano,
+         mes,
+         liquidez_base,
+         ultima_alteracao_por,
+         ultima_alteracao_em
+       )
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       liquidez_base = VALUES(liquidez_base),
+       ultima_alteracao_por = VALUES(ultima_alteracao_por),
+       ultima_alteracao_em = VALUES(ultima_alteracao_em),
+       updated_at = CURRENT_TIMESTAMP\`,
+    [
+      data.funcionarioId,
+      data.lojaId,
+      data.ano,
+      data.mes,
+      liquidez.toFixed(2),
+      data.ultimaAlteracaoPor ?? null,
+      data.ultimaAlteracaoEm ?? null,
+    ]
+  );
+
+  return {
+    success: true,
+  };
+}
+
+`;
+
+db = inserirAntesIndice(
+  db,
+  idxDescontos,
+  blocoUmPorcentoDb
+);
+
+// -----------------------------------------------------------------------------
+// 3) server/routers.ts — cadastro PJ + endpoints do 1%
+// -----------------------------------------------------------------------------
+
+routers = replaceOnce(
+  routers,
+  `  getFolhaExtrasByLojaAnoMes,
+  getFolhaBaseByLojaAnoMes,`,
+  `  getFolhaExtrasByLojaAnoMes,
+  getFolhaUmPorcentoByLojaAnoMes,
+  upsertFolhaUmPorcento,
+  getFolhaBaseByLojaAnoMes,`,
+  "routers: imports 1%"
+);
+
+routers = replaceCount(
+  routers,
+  `          cargoConfianca: z.boolean().optional(),
+          horarioEntrada1: horarioJornadaSchema,`,
+  `          cargoConfianca: z.boolean().optional(),
+          isPj: z.boolean().optional(),
+          horarioEntrada1: horarioJornadaSchema,`,
+  2,
+  "routers: schemas isPj"
+);
+
+routers = replaceCount(
+  routers,
+  `          cargoConfianca: Boolean(input.cargoConfianca),
+          horarioEntrada1: input.horarioEntrada1 ?? null,`,
+  `          cargoConfianca: Boolean(input.cargoConfianca),
+          isPj: Boolean(input.isPj),
+          horarioEntrada1: input.horarioEntrada1 ?? null,`,
+  2,
+  "routers: payloads isPj"
+);
+
+const ancoraRepasses =
+  "    getRepassesFranklyn: protectedProcedure";
+
+const idxRepasses = routers.indexOf(ancoraRepasses);
+
+if (idxRepasses < 0) {
+  falhar(
+    "routers: âncora getRepassesFranklyn não encontrada"
+  );
+}
+
+const blocoRouterUmPorcento = `    // FOLHA_PJ_1PCT_V1
+    getUmPorcento: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number().min(1).max(12),
+        })
+      )
+      .query(({ input }) =>
+        getFolhaUmPorcentoByLojaAnoMes(
+          input.lojaId,
+          input.ano,
+          input.mes
+        )
+      ),
+
+    saveUmPorcento: protectedProcedure
+      .input(
+        z.object({
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number().min(1).max(12),
+          liquidezBase: z.number().min(0),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        upsertFolhaUmPorcento({
+          ...input,
+          ultimaAlteracaoPor:
+            ctx.user.name ||
+            ctx.user.email ||
+            \`Usuário \${ctx.user.id}\`,
+          ultimaAlteracaoEm: new Date(),
+        })
+      ),
+
+`;
+
+routers = inserirAntesIndice(
+  routers,
+  idxRepasses,
+  blocoRouterUmPorcento
+);
+
+// -----------------------------------------------------------------------------
+// 4) Gestão de Funcionários — opção PJ no cadastro/edição
+// -----------------------------------------------------------------------------
+
+funcionarios = replaceOnce(
+  funcionarios,
+  `  cargoConfianca?: boolean | number | null;
+  horarioEntrada1?: string | null;`,
+  `  cargoConfianca?: boolean | number | null;
+  isPj?: boolean | number | null;
+  horarioEntrada1?: string | null;`,
+  "funcionarios: tipo item isPj"
+);
+
+funcionarios = replaceOnce(
+  funcionarios,
+  `  cargoConfianca: boolean;
+  horarioEntrada1: string;`,
+  `  cargoConfianca: boolean;
+  isPj: boolean;
+  horarioEntrada1: string;`,
+  "funcionarios: form isPj"
+);
+
+funcionarios = replaceOnce(
+  funcionarios,
+  `    cargoConfianca: false,
+    horarioEntrada1: "",`,
+  `    cargoConfianca: false,
+    isPj: false,
+    horarioEntrada1: "",`,
+  "funcionarios: form vazio isPj"
+);
+
+funcionarios = replaceOnce(
+  funcionarios,
+  `      cargoConfianca: Boolean(Number(func.cargoConfianca || 0)),
+      horarioEntrada1: func.horarioEntrada1 || "",`,
+  `      cargoConfianca: Boolean(Number(func.cargoConfianca || 0)),
+      isPj: Boolean(Number(func.isPj || 0)),
+      horarioEntrada1: func.horarioEntrada1 || "",`,
+  "funcionarios: edição isPj"
+);
+
+funcionarios = replaceOnce(
+  funcionarios,
+  `        cargoConfianca: formData.cargoConfianca,
+        horarioEntrada1: formData.horarioEntrada1 || null,`,
+  `        cargoConfianca: formData.cargoConfianca,
+        isPj: formData.isPj,
+        horarioEntrada1: formData.horarioEntrada1 || null,`,
+  "funcionarios: payload isPj"
+);
+
+// Badge PJ na listagem
+
+funcionarios = replaceOnce(
+  funcionarios,
+  `<p className="text-sm font-medium text-white/75">{labelFuncao(func.funcao, lojaId)}</p>`,
+  `<p className="text-sm font-medium text-white/75">{labelFuncao(func.funcao, lojaId)}</p>
+                            {Boolean(Number(func.isPj || 0)) && (
+                              <span className="mt-1 inline-flex rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/[0.08] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.10em] text-[#F2D675]">
+                                PJ
+                              </span>
+                            )}`,
+  "funcionarios: badge PJ"
+);
+
+// Card/checkbox PJ antes da Jornada
+
+const idxJornadaTexto =
+  funcionarios.indexOf("Jornada de trabalho");
+
+if (idxJornadaTexto < 0) {
+  falhar(
+    "funcionarios: seção Jornada não encontrada"
+  );
+}
+
+const idxSectionJornada =
+  funcionarios.lastIndexOf(
+    "              <section",
+    idxJornadaTexto
+  );
+
+if (idxSectionJornada < 0) {
+  falhar(
+    "funcionarios: início da seção Jornada não encontrado"
+  );
+}
+
+const blocoPjFormulario = `              {/* FOLHA_PJ_1PCT_V1 */}
+              <section className="rounded-2xl border border-[#D4AF37]/16 bg-gradient-to-br from-[#111009] to-[#0a0a0a] p-4 sm:p-5">
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/18 bg-[#D4AF37]/[0.05] p-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.isPj}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isPj: e.target.checked,
+                      }))
+                    }
+                    className="mt-0.5 h-4 w-4 accent-[#D4AF37]"
+                  />
+
+                  <span>
+                    <span className="block text-sm font-semibold text-[#F2D675]">
+                      Funcionário PJ
+                    </span>
+
+                    <span className="mt-0.5 block text-xs leading-relaxed text-white/40">
+                      Na folha, Holerite será exibido como Pagamento e o boleto ficará limitado ao valor que exceder R$ 6.500,00 da base líquida.
+                    </span>
+                  </span>
+                </label>
+              </section>
+
+`;
+
+funcionarios = inserirAntesIndice(
+  funcionarios,
+  idxSectionJornada,
+  blocoPjFormulario
+);
+
+// -----------------------------------------------------------------------------
+// 5) Folha de Pagamento — regra do PJ + coluna informativa 1%
+// -----------------------------------------------------------------------------
+
+folha = replaceOnce(
+  folha,
+  `  funcionarioNome: string;
+  totalComissao: number;`,
+  `  funcionarioNome: string;
+  isPj?: boolean;
+  totalComissao: number;`,
+  "folha: parâmetro isPj boleto"
+);
+
+// FOLHA_PJ_1PCT_V1
+folha = replaceOnce(
+  folha,
+  `function calcularBoletoAjustado(args: {`,
+  `const FOLHA_PJ_CHAVES_V1 = new Set<string>(); // FOLHA_PJ_1PCT_V1
+
+function normalizarChavePjV1(
+  lojaId: unknown,
+  nome: unknown
+) {
+  const loja =
+    Number(lojaId || 0);
+
+  const funcionario =
+    String(nome || "")
+      .normalize("NFD")
+      .replace(/[\\u0300-\\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\\s+/g, " ")
+      .trim();
+
+  return \`${loja}::${funcionario}\`;
+}
+
+function calcularBoletoAjustado(args: {`,
+  "folha: registro central PJ"
+);
+
+folha = replaceOnce(
+  folha,
+  `  const holerite = Number(args.holerite || 0);
+
+  if (args.quadrante === "salario_fixo") {`,
+  `  const holerite = Number(args.holerite || 0);
+
+  // FOLHA_PJ_1PCT_V1 — regra geral para funcionário marcado como PJ.
+  // O 1% informativo NÃO participa deste cálculo.
+  if (
+    Boolean(args.isPj) ||
+    FOLHA_PJ_CHAVES_V1.has(
+      normalizarChavePjV1(
+        args.lojaId,
+        args.funcionarioNome
+      )
+    )
+  ) {
+    const baseLiquidaPj =
+      totalComissao +
+      premiacao -
+      vale -
+      aluguel;
+
+    const excedenteAcimaDoDireto =
+      Math.max(
+        0,
+        baseLiquidaPj - 6500
+      );
+
+    const saldoDepoisDoPagoNormal =
+      Math.max(
+        0,
+        baseLiquidaPj -
+          adiant -
+          holerite
+      );
+
+    return Number(
+      Math.min(
+        excedenteAcimaDoDireto,
+        saldoDepoisDoPagoNormal
+      ).toFixed(2)
+    );
+  }
+
+  if (args.quadrante === "salario_fixo") {`,
+  "folha: regra boleto PJ"
+);
+
+// FOLHA_PJ_1PCT_V1
+// A identificação PJ é centralizada por loja + nome do funcionário.
+// Não é necessário alterar individualmente os quatro caminhos do boleto.
+
+// Localiza as queries já existentes para inserir os novos hooks depois delas.
+
+const stmtExtras = encontrarStatement(
+  folha,
+  "trpc.folhaExtras.getByLojaAnoMes.useQuery"
+);
+
+const stmtFuncs = encontrarStatement(
+  folha,
+  "trpc.funcionarios.listByLoja.useQuery"
+);
+
+const insertHooksAt =
+  Math.max(stmtExtras.end, stmtFuncs.end);
+
+const blocoHooks = `
+  // FOLHA_PJ_1PCT_V1 — dados informativos de 1% e identificação dos PJs
+  const umPorcentoQuery =
+    trpc.folhaExtras.getUmPorcento.useQuery(
+      {
+        lojaId: Number(lojaId),
+        ano: Number(ano),
+        mes: Number(mes),
+      },
+      {
+        enabled: Boolean(
+          lojaId &&
+          ano &&
+          mes
+        ),
+        retry: false,
+      }
+    );
+
+  const saveUmPorcentoMutation =
+    trpc.folhaExtras.saveUmPorcento.useMutation({
+      onSuccess: async () => {
+        await umPorcentoQuery.refetch();
+      },
+    });
+
+  const umPorcentoByFuncionario =
+    useMemo(() => {
+      const mapa: Record<number, number> = {};
+
+      for (
+        const item of (
+          (umPorcentoQuery.data ?? []) as any[]
+        )
+      ) {
+        mapa[Number(item.funcionarioId)] =
+          Number(item.liquidezBase || 0);
+      }
+
+      return mapa;
+    }, [umPorcentoQuery.data]);
+
+  const pjFuncionarioIds =
+    useMemo(() => {
+      return new Set<number>(
+        ((((${stmtFuncs.varName}.data ?? []) as any[]))
+          .filter(
+            (item: any) =>
+              Boolean(
+                Number(
+                  item?.isPj || 0
+                )
+              )
+          )
+          .map(
+            (item: any) =>
+              Number(item.id)
+          )
+          .filter(
+            (id: number) =>
+              Number.isFinite(id) &&
+              id > 0
+          ))
+      );
+    }, [${stmtFuncs.varName}.data]);
+
+  // FOLHA_PJ_1PCT_V1
+  // Atualiza a lista de funcionários PJ da loja antes dos cálculos.
+  FOLHA_PJ_CHAVES_V1.clear();
+
+  for (
+    const funcionarioPjV1 of (
+      ((${stmtFuncs.varName}.data ?? []) as any[])
+    )
+  ) {
+    if (
+      !Boolean(
+        Number(
+          funcionarioPjV1?.isPj || 0
+        )
+      )
+    ) {
+      continue;
+    }
+
+    FOLHA_PJ_CHAVES_V1.add(
+      normalizarChavePjV1(
+        Number(
+          funcionarioPjV1?.lojaId ||
+          lojaId
+        ),
+        funcionarioPjV1?.nome
+      )
+    );
+  }
+
+  const [
+    umPorcentoEditor,
+    setUmPorcentoEditor,
+  ] = useState({
+    open: false,
+    funcionarioId: null as number | null,
+    funcionarioNome: "",
+    liquidezBase: "",
+  });
+`;
+
+folha = inserirAntesIndice(
+  folha,
+  insertHooksAt,
+  blocoHooks
+);
+
+// Props de TabelaQuadrante
+
+folha = replaceOnce(
+  folha,
+  `  onOpenImportacaoHolerite,
+  onUpdateComposicaoSemanaPercentual,`,
+  `  onOpenImportacaoHolerite,
+  onOpenUmPorcentoEditor,
+  umPorcentoByFuncionario,
+  pjFuncionarioIds,
+  onUpdateComposicaoSemanaPercentual,`,
+  "folha: destructuring props 1%"
+);
+
+folha = replaceOnce(
+  folha,
+  `  onOpenImportacaoHolerite: () => void;
+  onUpdateComposicaoSemanaPercentual: (`,
+  `  onOpenImportacaoHolerite: () => void;
+  onOpenUmPorcentoEditor: (linha: LinhaComQuadrante) => void;
+  umPorcentoByFuncionario: Record<number, number>;
+  pjFuncionarioIds: Set<number>;
+  onUpdateComposicaoSemanaPercentual: (`,
+  "folha: tipos props 1%"
+);
+
+folha = replaceOnce(
+  folha,
+  `  const isPj = isSupervisor || isSupervisoraAci;
+  const recepcaoCompleta =`,
+  `  const isPj = isSupervisor || isSupervisoraAci;
+
+  const exibeUmPorcento =
+    linhas.some((linha) =>
+      [
+        "gerente",
+        "vendedor",
+        "mecanico",
+        "alinhador",
+      ].includes(
+        String(linha.funcao || "")
+      )
+    );
+
+  const recepcaoCompleta =`,
+  "folha: flag exibe 1%"
+);
+
+// Cabeçalho da coluna 1% imediatamente antes de Premiação
+
+const headerPremioNeedle = `                {!isConsultorAci && (
+                  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Premiação</th>
+                )}`;
+
+const idxHeaderPremio =
+  folha.indexOf(headerPremioNeedle);
+
+if (idxHeaderPremio < 0) {
+  falhar(
+    "folha: cabeçalho Premiação não encontrado"
+  );
+}
+
+folha = inserirAntesIndice(
+  folha,
+  idxHeaderPremio,
+  `                {exibeUmPorcento && (
+                  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
+                    1%
+                  </th>
+                )}
+`
+);
+
+// Cabeçalho Holerite passa a explicar os dois usos.
+
+folha = replaceOnce(
+  folha,
+  `                      Holerite
+                      <span className="text-[10px] font-normal text-gray-400">PDF</span>`,
+  `                      Holerite / Pagamento
+                      <span className="text-[10px] font-normal text-gray-400">PDF</span>`,
+  "folha: cabeçalho pagamento PJ"
+);
+
+// A segunda ocorrência de {!isConsultorAci && ( fica no corpo,
+// imediatamente antes da célula Premiação.
+
+const premioOccurrence2 =
+  indiceN(
+    folha,
+    `{!isConsultorAci && (`,
+    2
+  );
+
+if (premioOccurrence2 < 0) {
+  falhar(
+    "folha: célula Premiação não encontrada"
+  );
+}
+
+const blocoCelulaUmPorcento = `{exibeUmPorcento && (
+                    <td className="p-2">
+                      {[
+                        "gerente",
+                        "vendedor",
+                        "mecanico",
+                        "alinhador",
+                      ].includes(
+                        String(
+                          linha.funcao || ""
+                        )
+                      ) ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onOpenUmPorcentoEditor(
+                              linha
+                            )
+                          }
+                          className="w-full min-h-[42px] whitespace-nowrap rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.045] px-3 py-2 text-right font-bold text-[#F2D675] transition hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/[0.08]"
+                          title="Informar a liquidez mensal usada somente para o cálculo informativo de 1%"
+                        >
+                          R$ {money(
+                            Number(
+                              umPorcentoByFuncionario[
+                                Number(
+                                  linha.funcionarioId
+                                )
+                              ] || 0
+                            ) * 0.01
+                          )}
+                        </button>
+                      ) : (
+                        <span className="block text-right text-gray-700">
+                          —
+                        </span>
+                      )}
+                    </td>
+                  )}
+
+                  `;
+
+folha = inserirAntesIndice(
+  folha,
+  premioOccurrence2,
+  blocoCelulaUmPorcento
+);
+
+// Para PJ, INSS não participa da regra e fica apenas como traço visual.
+
+folha = replaceRegexOnce(
+  folha,
+  /renderEditButton\(\s*linha,\s*"inss",\s*"INSS",\s*"money"\s*\)/g,
+  `pjFuncionarioIds.has(
+                        Number(linha.funcionarioId)
+                      )
+                        ? (
+                          <span className="block rounded-xl border border-white/[0.05] bg-[#0d0d0d] px-3 py-2 text-right text-gray-600">
+                            —
+                          </span>
+                        )
+                        : renderEditButton(
+                            linha,
+                            "inss",
+                            "INSS",
+                            "money"
+                          )`,
+  "folha: célula INSS PJ"
+);
+
+// Holerite continua usando o mesmo campo no banco,
+// mas para PJ aparece como Pagamento.
+
+folha = replaceRegexOnce(
+  folha,
+  /renderEditButton\(\s*linha,\s*"holerite",\s*"Holerite",\s*"money"\s*\)/g,
+  `renderEditButton(
+                        linha,
+                        "holerite",
+                        pjFuncionarioIds.has(
+                          Number(
+                            linha.funcionarioId
+                          )
+                        )
+                          ? "Pagamento PJ"
+                          : "Holerite",
+                        "money"
+                      )`,
+  "folha: célula Pagamento PJ"
+);
+
+// Handlers do modal 1%
+
+const idxOpenCell =
+  folha.indexOf(
+    "function openCellEditor("
+  );
+
+if (idxOpenCell < 0) {
+  falhar(
+    "folha: openCellEditor não encontrado"
+  );
+}
+
+const blocoHandlers = `// FOLHA_PJ_1PCT_V1
+function openUmPorcentoEditor(
+  linha: LinhaComQuadrante
+) {
+  if (!garantirCompetenciaAberta()) {
+    return;
+  }
+
+  const base = Number(
+    umPorcentoByFuncionario[
+      Number(linha.funcionarioId)
+    ] || 0
+  );
+
+  setUmPorcentoEditor({
+    open: true,
+    funcionarioId:
+      Number(linha.funcionarioId),
+    funcionarioNome:
+      linha.nome,
+    liquidezBase:
+      base > 0
+        ? String(base)
+        : "",
+  });
+}
+
+async function saveUmPorcentoEditor() {
+  if (!umPorcentoEditor.funcionarioId) {
+    return;
+  }
+
+  if (!garantirCompetenciaAberta()) {
+    return;
+  }
+
+  const liquidezBase =
+    Math.max(
+      0,
+      parseValorBR(
+        umPorcentoEditor.liquidezBase
+      )
+    );
+
+  await saveUmPorcentoMutation.mutateAsync({
+    funcionarioId:
+      Number(
+        umPorcentoEditor.funcionarioId
+      ),
+    lojaId: Number(lojaId),
+    ano: Number(ano),
+    mes: Number(mes),
+    liquidezBase,
+  });
+
+  setUmPorcentoEditor({
+    open: false,
+    funcionarioId: null,
+    funcionarioNome: "",
+    liquidezBase: "",
+  });
+}
+
+`;
+
+folha = inserirAntesIndice(
+  folha,
+  idxOpenCell,
+  blocoHandlers
+);
+
+// Props na chamada da tabela
+
+folha = replaceOnce(
+  folha,
+  `              onOpenImportacaoHolerite={openImportacaoHolerite}
+              onUpdateComposicaoSemanaPercentual={updateComposicaoSemanaPercentual}`,
+  `              onOpenImportacaoHolerite={openImportacaoHolerite}
+              onOpenUmPorcentoEditor={openUmPorcentoEditor}
+              umPorcentoByFuncionario={umPorcentoByFuncionario}
+              pjFuncionarioIds={pjFuncionarioIds}
+              onUpdateComposicaoSemanaPercentual={updateComposicaoSemanaPercentual}`,
+  "folha: props chamada TabelaQuadrante"
+);
+
+// Modal do 1% antes do editor genérico de célula.
+
+const dialogCellNeedle = `      <Dialog
+        open={cellEditor.open}`;
+
+const idxDialogCell =
+  folha.indexOf(dialogCellNeedle);
+
+if (idxDialogCell < 0) {
+  falhar(
+    "folha: Dialog do cellEditor não encontrado"
+  );
+}
+
+const blocoDialog1Pct = `      {/* FOLHA_PJ_1PCT_V1 */}
+      <Dialog
+        open={umPorcentoEditor.open}
+        onOpenChange={(open) =>
+          setUmPorcentoEditor(
+            (prev) => ({
+              ...prev,
+              open,
+            })
+          )
+        }
+      >
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#D4AF37]">
+              1% informativo
+            </DialogTitle>
+
+            <DialogDescription className="text-gray-400">
+              {umPorcentoEditor.funcionarioNome}
+              {" • "}
+              informe a liquidez correspondente somente a esta competência.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-gray-300">
+                Liquidez do mês
+              </Label>
+
+              <Input
+                type="text"
+                inputMode="decimal"
+                placeholder="Ex.: 100.000,00"
+                value={
+                  umPorcentoEditor.liquidezBase
+                }
+                onChange={(e) =>
+                  setUmPorcentoEditor(
+                    (prev) => ({
+                      ...prev,
+                      liquidezBase:
+                        e.target.value,
+                    })
+                  )
+                }
+              />
+            </div>
+
+            <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.055] p-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+                Resultado de 1%
+              </p>
+
+              <p className="mt-1 text-2xl font-bold text-[#F2D675]">
+                R$ {money(
+                  Math.max(
+                    0,
+                    parseValorBR(
+                      umPorcentoEditor.liquidezBase
+                    )
+                  ) * 0.01
+                )}
+              </p>
+
+              <p className="mt-2 text-xs leading-relaxed text-white/35">
+                Este valor é somente informativo.
+                Não altera comissão, boleto,
+                premiação, descontos ou total
+                da folha.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() =>
+                setUmPorcentoEditor({
+                  open: false,
+                  funcionarioId: null,
+                  funcionarioNome: "",
+                  liquidezBase: "",
+                })
+              }
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+              onClick={
+                saveUmPorcentoEditor
+              }
+              disabled={
+                saveUmPorcentoMutation.isPending
+              }
+            >
+              {saveUmPorcentoMutation.isPending
+                ? "Salvando..."
+                : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+`;
+
+folha = inserirAntesIndice(
+  folha,
+  idxDialogCell,
+  blocoDialog1Pct
+);
+
+// -----------------------------------------------------------------------------
+// Validações finais antes de tocar no disco
+// -----------------------------------------------------------------------------
+
+const validacoes = [
+  [
+    schema,
+    'isPj: boolean("isPj")',
+    "schema isPj",
+  ],
+  [
+    db,
+    "CREATE TABLE IF NOT EXISTS folha_um_porcento",
+    "db tabela 1%",
+  ],
+  [
+    db,
+    "isPj: Boolean(data.isPj)",
+    "db isPj",
+  ],
+  [
+    routers,
+    "getUmPorcento: protectedProcedure",
+    "router get 1%",
+  ],
+  [
+    routers,
+    "saveUmPorcento: protectedProcedure",
+    "router save 1%",
+  ],
+  [
+    funcionarios,
+    "Funcionário PJ",
+    "cadastro PJ",
+  ],
+  [
+    folha,
+    "1% informativo",
+    "modal 1%",
+  ],
+  [
+    folha,
+    "baseLiquidaPj",
+    "regra boleto PJ",
+  ],
+  [
+    folha,
+    "Pagamento PJ",
+    "pagamento PJ",
+  ],
+];
+
+for (
+  const [
+    texto,
+    marcador,
+    rotulo,
+  ] of validacoes
+) {
+  if (!texto.includes(marcador)) {
+    falhar(
+      `Validação final falhou: ${rotulo}`
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Backup + gravação
+// -----------------------------------------------------------------------------
+
+fs.mkdirSync(
+  pastaBackup,
+  {
+    recursive: true,
+  }
+);
+
+for (
+  const [
+    nome,
+    file,
+  ] of Object.entries(caminhos)
+) {
+  fs.copyFileSync(
+    file,
+    path.join(
+      pastaBackup,
+      `${nome}-${path.basename(file)}`
+    )
+  );
+}
+
+const novos = {
+  schema,
+  db,
+  routers,
+  funcionarios,
+  folha,
+};
+
+try {
+  for (
+    const [
+      nome,
+      file,
+    ] of Object.entries(caminhos)
+  ) {
+    const eol =
+      eolPorNome[nome] || "\n";
+
+    const conteudo =
+      eol === "\r\n"
+        ? novos[nome].replace(
+            /\n/g,
+            "\r\n"
+          )
+        : novos[nome];
+
+    fs.writeFileSync(
+      file,
+      conteudo,
+      "utf8"
+    );
+  }
+} catch (error) {
+  for (
+    const [
+      nome,
+      file,
+    ] of Object.entries(caminhos)
+  ) {
+    const backup =
+      path.join(
+        pastaBackup,
+        `${nome}-${path.basename(file)}`
+      );
+
+    if (fs.existsSync(backup)) {
+      fs.copyFileSync(
+        backup,
+        file
+      );
+    }
+  }
+
+  throw error;
+}
+
+console.log("");
+console.log(
+  "✅ Folha PJ + 1% V1 aplicada nos arquivos locais."
+);
+console.log(
+  "✅ Backup criado em:"
+);
+console.log(pastaBackup);
+console.log("");
+console.log(
+  "Alterações incluídas:"
+);
+console.log(
+  "• Cadastro/Edição: opção Funcionário PJ"
+);
+console.log(
+  "• PJ: Holerite aparece como Pagamento PJ"
+);
+console.log(
+  "• PJ: boleto limitado ao excedente da base líquida acima de R$ 6.500,00"
+);
+console.log(
+  "• PJ: Vale e Aluguel reduzem a base antes do limite de R$ 6.500,00"
+);
+console.log(
+  "• PJ: Adiantamento + Pagamento reduzem apenas o saldo ainda a pagar"
+);
+console.log(
+  "• 1%: coluna informativa para Gerente, Vendedor, Mecânico e Alinhador"
+);
+console.log(
+  "• 1%: base mensal independente das semanas e sem efeito em qualquer cálculo"
+);
+console.log("");
+console.log(
+  "⚠️ Nenhum commit foi executado."
+);
+console.log(
+  "Próximo passo: pnpm run build"
+);
+console.log("");

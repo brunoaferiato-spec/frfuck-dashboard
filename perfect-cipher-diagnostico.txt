@@ -1,0 +1,21 @@
+﻿============================================================
+ PERFECT - DIAGNOSTICO DE CONFIGURACAO / CIPHER
+============================================================
+
+Raiz: C:\ProgramData\CatalogoPerfect
+Data: 24/09/2026 19:09:24
+
+Este script e SOMENTE LEITURA.
+Ele nao altera nenhum arquivo do Perfect.
+
+Arquivos examinados: 363
+
+============================================================
+ RESULTADO
+============================================================
+
+Ocorrencias encontradas: 0
+
+Nenhuma configuracao textual foi localizada.
+Nesse caso, o proximo passo sera observar como o CatalogoExpresso
+gera a chave em memoria, sem alterar a instalacao.

@@ -184,6 +184,7 @@ type FormEdicaoFuncionario = {
   tipoMeta: TipoMetaFuncionario;
   dataAdmissao: string;
   cargoConfianca: boolean;
+  isPj: boolean;
   horarioEntrada1: string;
   duracaoAlmocoMinutos: string;
   horarioSaida2: string;
@@ -199,6 +200,7 @@ function criarFormEdicaoFuncionarioVazio(): FormEdicaoFuncionario {
     tipoMeta: "",
     dataAdmissao: "",
     cargoConfianca: false,
+    isPj: false,
     horarioEntrada1: "",
     duracaoAlmocoMinutos: "",
     horarioSaida2: "",
@@ -1272,11 +1274,32 @@ function textoOuNaoInformado(value: unknown) {
   return texto || "Não informado";
 }
 
+const FOLHA_PJ_CHAVES_V1 = new Set<string>(); // FOLHA_PJ_1PCT_V1
+
+function normalizarChavePjV1(
+  lojaId: unknown,
+  nome: unknown
+) {
+  const loja =
+    Number(lojaId || 0);
+
+  const funcionario =
+    String(nome || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+
+  return `${loja}::${funcionario}`;
+}
+
 function calcularBoletoAjustado(args: {
   quadrante: QuadranteKey;
   funcao: string;
   lojaId: number;
   funcionarioNome: string;
+  isPj?: boolean;
   totalComissao: number;
   premiacao: number;
   vale: number;
@@ -1294,6 +1317,45 @@ function calcularBoletoAjustado(args: {
   const inss = Number(args.inss || 0);
   const adiant = Number(args.adiant || 0);
   const holerite = Number(args.holerite || 0);
+
+  // FOLHA_PJ_1PCT_V1 — regra geral para funcionário marcado como PJ.
+  // O 1% informativo NÃO participa deste cálculo.
+  if (
+    Boolean(args.isPj) ||
+    FOLHA_PJ_CHAVES_V1.has(
+      normalizarChavePjV1(
+        args.lojaId,
+        args.funcionarioNome
+      )
+    )
+  ) {
+    const baseLiquidaPj =
+      totalComissao +
+      premiacao -
+      vale -
+      aluguel;
+
+    const excedenteAcimaDoDireto =
+      Math.max(
+        0,
+        baseLiquidaPj - 6500
+      );
+
+    const saldoDepoisDoPagoNormal =
+      Math.max(
+        0,
+        baseLiquidaPj -
+          adiant -
+          holerite
+      );
+
+    return Number(
+      Math.min(
+        excedenteAcimaDoDireto,
+        saldoDepoisDoPagoNormal
+      ).toFixed(2)
+    );
+  }
 
   if (args.quadrante === "salario_fixo") {
   return premiacao - vale;
@@ -1405,6 +1467,7 @@ if (args.quadrante === "supervisor_pj") {
 }
 
 type QuadranteKey =
+  | "pj" // FOLHA_QUADRANTE_PJ_V1
   | "gerente"
   | "comissao_semanal"
   | "consultor_vendas"
@@ -1730,6 +1793,8 @@ function getQuadrante(
 
 function getQuadranteTitulo(key: QuadranteKey) {
   switch (key) {
+    case "pj":
+      return "Funcionários PJ";
     case "gerente":
       return "Gerente";
     case "comissao_semanal":
@@ -1757,6 +1822,8 @@ function getQuadranteTitulo(key: QuadranteKey) {
 
 function getQuadranteDescricao(key: QuadranteKey) {
   switch (key) {
+    case "pj":
+      return "Contrato PJ • mantém a regra de comissão da função original";
     case "gerente":
       return "Funções de gerência";
     case "comissao_semanal":
@@ -1928,6 +1995,10 @@ function TabelaQuadrante({
   onOpenImportacaoSemana,
   onOpenImportacaoAdiantamento,
   onOpenImportacaoHolerite,
+  onOpenUmPorcentoEditor,
+  onOpenImportacaoUmPorcento,
+  umPorcentoByFuncionario,
+  pjFuncionarioIds,
   onUpdateComposicaoSemanaPercentual,
   sem5Ativa,
 }: {
@@ -1955,6 +2026,10 @@ function TabelaQuadrante({
   onOpenImportacaoSemana: (semana: SemanaImportacao) => void;
   onOpenImportacaoAdiantamento: () => void;
   onOpenImportacaoHolerite: () => void;
+  onOpenUmPorcentoEditor: (linha: LinhaComQuadrante) => void;
+  onOpenImportacaoUmPorcento: () => void;
+  umPorcentoByFuncionario: Record<number, number>;
+  pjFuncionarioIds: Set<number>;
   onUpdateComposicaoSemanaPercentual: (
     linha: LinhaComQuadrante,
     semana: SemanaComissaoVisual,
@@ -1991,7 +2066,22 @@ function TabelaQuadrante({
   const isRecepcao = quadrante === "recepcao";
   const isSupervisor = quadrante === "supervisor_pj";
   const isSupervisoraAci = quadrante === "supervisora_consultores_pj";
+  const isPjQuadrante = quadrante === "pj";
   const isPj = isSupervisor || isSupervisoraAci;
+
+  const exibeUmPorcento =
+    !isPjQuadrante &&
+    linhas.some((linha) =>
+      [
+        "gerente",
+        "vendedor",
+        "mecanico",
+        "alinhador",
+      ].includes(
+        String(linha.funcao || "")
+      )
+    );
+
   const recepcaoCompleta =
     isRecepcao && (linhas[0]?.loja_id === 3 || linhas[0]?.loja_id === 4);
 
@@ -2301,7 +2391,7 @@ const isMensalUnico =
                 {!isSalarioFixo && !isRecepcao && !isPj && !isMensalUnico && !isConsultorMeta2 && !isGerente && (
                   <>
                     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
-                      {quadrante === "comissao_semanal" ? (
+                      {(quadrante === "comissao_semanal" || isPjQuadrante) ? (
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(1)}
@@ -2316,7 +2406,7 @@ const isMensalUnico =
                     </th>
                     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">{isConsultor ? "Regra" : "%"}</th>
                     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
-                      {quadrante === "comissao_semanal" ? (
+                      {(quadrante === "comissao_semanal" || isPjQuadrante) ? (
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(2)}
@@ -2331,7 +2421,7 @@ const isMensalUnico =
                     </th>
                     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">{isConsultor ? "Regra" : "%"}</th>
                     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
-                      {quadrante === "comissao_semanal" ? (
+                      {(quadrante === "comissao_semanal" || isPjQuadrante) ? (
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(3)}
@@ -2346,7 +2436,7 @@ const isMensalUnico =
                     </th>
                     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">{isConsultor ? "Regra" : "%"}</th>
                     <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
-                      {quadrante === "comissao_semanal" ? (
+                      {(quadrante === "comissao_semanal" || isPjQuadrante) ? (
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(4)}
@@ -2363,7 +2453,7 @@ const isMensalUnico =
                     {sem5Ativa && (
                       <>
                         <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
-                          {quadrante === "comissao_semanal" ? (
+                          {(quadrante === "comissao_semanal" || isPjQuadrante) ? (
                             <button
                               type="button"
                               onClick={() => onOpenImportacaoSemana(5)}
@@ -2508,6 +2598,25 @@ const isMensalUnico =
 
                 {isRecepcao && <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Total Comissão</th>}
 
+                {exibeUmPorcento && (
+                  <th className="p-2 text-center">
+                    {/* FOLHA_1PCT_HEADER_IMPORT_V1 */}
+                    <button
+                      type="button"
+                      onClick={onOpenImportacaoUmPorcento}
+                      className="group inline-flex min-w-[78px] flex-col items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.055] px-3 py-2 transition hover:border-[#D4AF37]/60 hover:bg-[#D4AF37]/[0.12]"
+                      title="Importar relatório mensal para preencher o 1% de todos os funcionários"
+                    >
+                      <span className="text-[12px] font-extrabold text-[#F2D675]">
+                        1%
+                      </span>
+
+                      <span className="mt-0.5 text-[8px] font-extrabold uppercase tracking-[0.12em] text-[#D4AF37]/65 group-hover:text-[#F2D675]">
+                        Importar
+                      </span>
+                    </button>
+                  </th>
+                )}
                 {!isConsultorAci && (
                   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Premiação</th>
                 )}
@@ -2523,7 +2632,11 @@ const isMensalUnico =
                 </th>
                 <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Aluguel</th>
                 {!isPj && <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">INSS</th>}
-                {isSupervisoraAci ? (
+                {isPjQuadrante ? (
+                  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
+                    Adiantamento
+                  </th>
+                ) : isSupervisoraAci ? (
                   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Adiant.</th>
                 ) : (
                   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
@@ -2538,7 +2651,11 @@ const isMensalUnico =
                     </button>
                   </th>
                 )}
-                {!isPj && (
+                {isPjQuadrante ? (
+                  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em] text-[#F2D675]">
+                    Pagamento PJ
+                  </th>
+                ) : !isPj && (
                   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
                     <button
                       type="button"
@@ -2950,6 +3067,46 @@ const isMensalUnico =
                     </td>
                   )}
 
+                  {exibeUmPorcento && (
+                    <td className="p-2">
+                      {[
+                        "gerente",
+                        "vendedor",
+                        "mecanico",
+                        "alinhador",
+                      ].includes(
+                        String(
+                          linha.funcao || ""
+                        )
+                      ) ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onOpenUmPorcentoEditor(
+                              linha
+                            )
+                          }
+                          className="w-full min-h-[42px] whitespace-nowrap rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.045] px-3 py-2 text-right font-bold text-[#F2D675] transition hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/[0.08]"
+                          title="Informar a liquidez mensal usada somente para o cálculo informativo de 1%"
+                        >
+                          R$ {money(
+                            Number(
+                              umPorcentoByFuncionario[
+                                Number(
+                                  linha.funcionarioId
+                                )
+                              ] || 0
+                            ) * 0.01
+                          )}
+                        </button>
+                      ) : (
+                        <span className="block text-right text-gray-700">
+                          —
+                        </span>
+                      )}
+                    </td>
+                  )}
+
                   {!isConsultorAci && (
                     <td className="p-2">
                       <button
@@ -2994,7 +3151,20 @@ const isMensalUnico =
 
                   {!isPj && (
                     <td className="p-2">
-                      {renderEditButton(linha, "inss", "INSS", "money")}
+                      {pjFuncionarioIds.has(
+                        Number(linha.funcionarioId)
+                      )
+                        ? (
+                          <span className="block rounded-xl border border-white/[0.05] bg-[#0d0d0d] px-3 py-2 text-right text-gray-600">
+                            —
+                          </span>
+                        )
+                        : renderEditButton(
+                            linha,
+                            "inss",
+                            "INSS",
+                            "money"
+                          )}
                     </td>
                   )}
 
@@ -3004,7 +3174,18 @@ const isMensalUnico =
 
                   {!isPj && (
                     <td className="p-2">
-                      {renderEditButton(linha, "holerite", "Holerite", "money")}
+                      {renderEditButton(
+                        linha,
+                        "holerite",
+                        pjFuncionarioIds.has(
+                          Number(
+                            linha.funcionarioId
+                          )
+                        )
+                          ? "Pagamento PJ"
+                          : "Holerite",
+                        "money"
+                      )}
                     </td>
                   )}
 
@@ -3424,6 +3605,122 @@ const folhaExtrasQuery = trpc.folhaExtras.getByLojaAnoMes.useQuery(
   }
 );
 
+  // FOLHA_PJ_1PCT_V1 — dados informativos de 1% e identificação dos PJs
+  const umPorcentoQuery =
+    trpc.folhaExtras.getUmPorcento.useQuery(
+      {
+        lojaId: Number(lojaId),
+        ano: Number(ano),
+        mes: Number(mes),
+      },
+      {
+        enabled: Boolean(
+          lojaId &&
+          ano &&
+          mes
+        ),
+        retry: false,
+      }
+    );
+
+  const saveUmPorcentoMutation =
+    trpc.folhaExtras.saveUmPorcento.useMutation({
+      onSuccess: async () => {
+        await umPorcentoQuery.refetch();
+      },
+    });
+
+  const umPorcentoByFuncionario =
+    useMemo(() => {
+      const mapa: Record<number, number> = {};
+
+      for (
+        const item of (
+          (umPorcentoQuery.data ?? []) as any[]
+        )
+      ) {
+        mapa[Number(item.funcionarioId)] =
+          Number(item.liquidezBase || 0);
+      }
+
+      return mapa;
+    }, [umPorcentoQuery.data]);
+
+  const pjFuncionarioIds =
+    useMemo(() => {
+      return new Set<number>(
+        ((((funcionariosQuery.data ?? []) as any[]))
+          .filter(
+            (item: any) =>
+              Boolean(
+                Number(
+                  item?.isPj || 0
+                )
+              )
+          )
+          .map(
+            (item: any) =>
+              Number(item.id)
+          )
+          .filter(
+            (id: number) =>
+              Number.isFinite(id) &&
+              id > 0
+          ))
+      );
+    }, [funcionariosQuery.data]);
+
+  // FOLHA_PJ_1PCT_V1
+  // Atualiza a lista de funcionários PJ da loja antes dos cálculos.
+  FOLHA_PJ_CHAVES_V1.clear();
+
+  for (
+    const funcionarioPjV1 of (
+      ((funcionariosQuery.data ?? []) as any[])
+    )
+  ) {
+    if (
+      !Boolean(
+        Number(
+          funcionarioPjV1?.isPj || 0
+        )
+      )
+    ) {
+      continue;
+    }
+
+    FOLHA_PJ_CHAVES_V1.add(
+      normalizarChavePjV1(
+        Number(
+          funcionarioPjV1?.lojaId ||
+          lojaId
+        ),
+        funcionarioPjV1?.nome
+      )
+    );
+  }
+
+  const [
+    umPorcentoEditor,
+    setUmPorcentoEditor,
+  ] = useState({
+    open: false,
+    funcionarioId: null as number | null,
+    funcionarioNome: "",
+    liquidezBase: "",
+  });
+
+  // FOLHA_1PCT_IMPORT_XLSX_V1
+  const [
+    umPorcentoImportacao,
+    setUmPorcentoImportacao,
+  ] = useState({
+    carregando: false,
+    arquivoNome: "",
+    mensagem: "",
+    erro: "",
+  });
+
 const repassesFranklynQuery = trpc.folhaExtras.getRepassesFranklyn.useQuery(
   { ano, mes },
   {
@@ -3613,6 +3910,9 @@ function abrirEdicaoFuncionarioDetalhe() {
     cargoConfianca: Boolean(
       Number(funcionario.cargoConfianca ?? funcionario.cargo_confianca ?? 0)
     ),
+    isPj: Boolean(
+      Number(funcionario.isPj ?? funcionario.cargo_confianca ?? 0)
+    ),
     horarioEntrada1: String(
       funcionario.horarioEntrada1 || funcionario.horario_entrada_1 || ""
     ),
@@ -3677,6 +3977,7 @@ async function salvarEdicaoFuncionarioDetalhe() {
           : null,
       dataAdmissao: dataFuncionarioParaApi(funcionarioEdicaoForm.dataAdmissao),
       cargoConfianca: funcionarioEdicaoForm.cargoConfianca,
+        isPj: funcionarioEdicaoForm.isPj,
       horarioEntrada1: funcionarioEdicaoForm.horarioEntrada1 || null,
       duracaoAlmocoMinutos: funcionarioEdicaoForm.duracaoAlmocoMinutos
         ? Number(funcionarioEdicaoForm.duracaoAlmocoMinutos)
@@ -7524,6 +7825,1020 @@ async function salvarCorrecaoDataTrocaEditor() {
   }
 }
 
+// FOLHA_PJ_1PCT_V1
+// FOLHA_1PCT_IMPORT_XLSX_V1
+
+type RegistroRelatorioUmPctV1 = {
+  nomeRelatorio: string;
+  secao:
+    | "venda"
+    | "mecanica"
+    | "alinhamento";
+  liquidezBase: number;
+};
+
+function normalizarTextoUmPctV1(
+  value: unknown
+) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizarNomeUmPctV1(
+  value: unknown
+) {
+  return normalizarTextoUmPctV1(
+    value
+  )
+    .replace(
+      /\b(DE|DA|DO|DAS|DOS|E)\b/g,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function scoreNomeUmPctV1(
+  nomeA: unknown,
+  nomeB: unknown
+) {
+  const a =
+    normalizarNomeUmPctV1(
+      nomeA
+    );
+
+  const b =
+    normalizarNomeUmPctV1(
+      nomeB
+    );
+
+  if (!a || !b) {
+    return 0;
+  }
+
+  if (a === b) {
+    return 1;
+  }
+
+  const tokensA =
+    a.split(" ").filter(Boolean);
+
+  const tokensB =
+    b.split(" ").filter(Boolean);
+
+  if (
+    !tokensA.length ||
+    !tokensB.length
+  ) {
+    return 0;
+  }
+
+  // O primeiro nome precisa coincidir.
+  if (
+    tokensA[0] !==
+    tokensB[0]
+  ) {
+    return 0;
+  }
+
+  const setA =
+    new Set(tokensA);
+
+  const setB =
+    new Set(tokensB);
+
+  let comuns = 0;
+
+  for (
+    const token of setA
+  ) {
+    if (setB.has(token)) {
+      comuns += 1;
+    }
+  }
+
+  if (comuns < 2) {
+    return 0;
+  }
+
+  const menor =
+    Math.min(
+      setA.size,
+      setB.size
+    );
+
+  const maior =
+    Math.max(
+      setA.size,
+      setB.size
+    );
+
+  const cobertura =
+    menor > 0
+      ? comuns / menor
+      : 0;
+
+  const jaccard =
+    maior > 0
+      ? comuns / maior
+      : 0;
+
+  const contem =
+    a.includes(b) ||
+    b.includes(a)
+      ? 0.08
+      : 0;
+
+  return Math.min(
+    1,
+    cobertura * 0.72 +
+      jaccard * 0.28 +
+      contem
+  );
+}
+
+function numeroUmPctV1(
+  value: unknown
+) {
+  if (
+    typeof value === "number"
+  ) {
+    return Number.isFinite(value)
+      ? value
+      : 0;
+  }
+
+  const raw =
+    String(value ?? "")
+      .trim();
+
+  if (!raw) {
+    return 0;
+  }
+
+  const limpo =
+    raw
+      .replace(/R\$/gi, "")
+      .replace(/\s/g, "");
+
+  if (
+    limpo.includes(",")
+  ) {
+    const valor =
+      Number(
+        limpo
+          .replace(/\./g, "")
+          .replace(",", ".")
+      );
+
+    return Number.isFinite(valor)
+      ? valor
+      : 0;
+  }
+
+  const valor =
+    Number(limpo);
+
+  return Number.isFinite(valor)
+    ? valor
+    : 0;
+}
+
+function periodoRelatorioUmPctV1(
+  matriz: unknown[][]
+) {
+  for (
+    const row of matriz
+  ) {
+    for (
+      const cell of row
+    ) {
+      if (
+        typeof cell !==
+        "string"
+      ) {
+        continue;
+      }
+
+      const match =
+        cell.match(
+          /(\d{2})\/(\d{2})\/(\d{4})\s*-\s*(\d{2})\/(\d{2})\/(\d{4})/
+        );
+
+      if (!match) {
+        continue;
+      }
+
+      return {
+        inicioDia:
+          Number(match[1]),
+        inicioMes:
+          Number(match[2]),
+        inicioAno:
+          Number(match[3]),
+        fimDia:
+          Number(match[4]),
+        fimMes:
+          Number(match[5]),
+        fimAno:
+          Number(match[6]),
+        label:
+          match[0],
+      };
+    }
+  }
+
+  return null;
+}
+
+function lojaRelatorioUmPctV1(
+  matriz: unknown[][]
+) {
+  const texto =
+    normalizarTextoUmPctV1(
+      matriz
+        .slice(0, 12)
+        .flat()
+        .map(
+          (cell) =>
+            String(
+              cell ?? ""
+            )
+        )
+        .join(" ")
+    );
+
+  const lojas = [
+    {
+      id: 1,
+      termos: [
+        "JOINVILLE",
+      ],
+    },
+    {
+      id: 2,
+      termos: [
+        "BLUMENAU",
+      ],
+    },
+    {
+      id: 3,
+      termos: [
+        "SAO JOSE",
+      ],
+    },
+    {
+      id: 4,
+      termos: [
+        "FLORIANOPOLIS",
+      ],
+    },
+    {
+      id: 5,
+      termos: [
+        "ACI PROMOCOES",
+        "ACI PROMOCAO",
+        "ACI",
+      ],
+    },
+    {
+      id: 6,
+      termos: [
+        "SAO LEOPOLDO",
+      ],
+    },
+    {
+      id: 7,
+      termos: [
+        "GRAVATAI",
+      ],
+    },
+  ];
+
+  for (
+    const loja of lojas
+  ) {
+    if (
+      loja.termos.some(
+        (termo) =>
+          texto.includes(
+            termo
+          )
+      )
+    ) {
+      return loja.id;
+    }
+  }
+
+  return null;
+}
+
+function registrosRelatorioUmPctV1(
+  matriz: unknown[][]
+) {
+  const registros:
+    RegistroRelatorioUmPctV1[] =
+      [];
+
+  let secao:
+    | "venda"
+    | "mecanica"
+    | "alinhamento"
+    | null = null;
+
+  let colNome = -1;
+  let colValor = -1;
+
+  for (
+    const rowRaw of matriz
+  ) {
+    const row =
+      Array.isArray(rowRaw)
+        ? rowRaw
+        : [];
+
+    const norm =
+      row.map(
+        normalizarTextoUmPctV1
+      );
+
+    const primeira =
+      norm[0] || "";
+
+    if (
+      primeira === "VENDA"
+    ) {
+      secao = "venda";
+      colNome = -1;
+      colValor = -1;
+      continue;
+    }
+
+    if (
+      primeira === "MECANICA"
+    ) {
+      secao = "mecanica";
+      colNome = -1;
+      colValor = -1;
+      continue;
+    }
+
+    if (
+      primeira ===
+      "ALINHAMENTO"
+    ) {
+      secao = "alinhamento";
+      colNome = -1;
+      colValor = -1;
+      continue;
+    }
+
+    const indiceColaborador =
+      norm.findIndex(
+        (cell) =>
+          cell ===
+          "COLABORADOR"
+      );
+
+    if (
+      indiceColaborador >= 0 &&
+      secao
+    ) {
+      colNome =
+        indiceColaborador;
+
+      const colunaSemPneu =
+        norm.findIndex(
+          (cell) =>
+            cell ===
+              "LIQ S PNEUS" ||
+            cell.includes(
+              "LIQ S PNEUS"
+            )
+        );
+
+      const colunaLiquidez =
+        norm.findIndex(
+          (cell) =>
+            cell ===
+            "LIQUIDEZ"
+        );
+
+      if (
+        colunaSemPneu >= 0
+      ) {
+        colValor =
+          colunaSemPneu;
+      } else if (
+        secao ===
+          "alinhamento" &&
+        colunaLiquidez >= 0
+      ) {
+        // O bloco ALINHAMENTO do relatório
+        // não possui LIQ. S/ PNEUS.
+        // Nesse caso LIQUIDEZ é o equivalente.
+        colValor =
+          colunaLiquidez;
+      } else {
+        colValor = -1;
+      }
+
+      continue;
+    }
+
+    if (
+      !secao ||
+      colNome < 0 ||
+      colValor < 0
+    ) {
+      continue;
+    }
+
+    const nome =
+      String(
+        row[colNome] ?? ""
+      ).trim();
+
+    const nomeNorm =
+      normalizarTextoUmPctV1(
+        nome
+      );
+
+    if (
+      !nomeNorm ||
+      nomeNorm ===
+        "TOTAIS" ||
+      nomeNorm ===
+        "LOJA" ||
+      nomeNorm ===
+        "COLABORADOR"
+    ) {
+      continue;
+    }
+
+    const liquidez =
+      numeroUmPctV1(
+        row[colValor]
+      );
+
+    if (
+      !Number.isFinite(
+        liquidez
+      )
+    ) {
+      continue;
+    }
+
+    registros.push({
+      nomeRelatorio:
+        nome,
+      secao,
+      liquidezBase:
+        Math.max(
+          0,
+          liquidez
+        ),
+    });
+  }
+
+  return registros;
+}
+
+function funcaoCompativelUmPctV1(
+  secao:
+    | "venda"
+    | "mecanica"
+    | "alinhamento",
+  funcao: unknown
+) {
+  const f =
+    String(
+      funcao ?? ""
+    );
+
+  if (
+    secao === "venda"
+  ) {
+    return (
+      f === "vendedor" ||
+      f === "gerente"
+    );
+  }
+
+  if (
+    secao ===
+    "mecanica"
+  ) {
+    return (
+      f === "mecanico"
+    );
+  }
+
+  return (
+    f === "alinhador"
+  );
+}
+
+async function importarRelatorioUmPctV1(
+  file: File
+) {
+  if (
+    !garantirCompetenciaAberta()
+  ) {
+    return;
+  }
+
+  setUmPorcentoImportacao({
+    carregando: true,
+    arquivoNome:
+      file.name,
+    mensagem: "",
+    erro: "",
+  });
+
+  try {
+    const XLSX =
+      await import(
+        "xlsx"
+      );
+
+    const buffer =
+      await file.arrayBuffer();
+
+    const workbook =
+      XLSX.read(
+        buffer,
+        {
+          type: "array",
+        }
+      );
+
+    const matrizes:
+      unknown[][][] = [];
+
+    for (
+      const sheetName of
+      workbook.SheetNames
+    ) {
+      const sheet =
+        workbook.Sheets[
+          sheetName
+        ];
+
+      if (!sheet) {
+        continue;
+      }
+
+      const matriz =
+        XLSX.utils.sheet_to_json<
+          unknown[]
+        >(
+          sheet,
+          {
+            header: 1,
+            raw: true,
+            defval: null,
+          }
+        ) as unknown[][];
+
+      matrizes.push(
+        matriz
+      );
+    }
+
+    if (
+      !matrizes.length
+    ) {
+      throw new Error(
+        "A planilha não possui páginas válidas."
+      );
+    }
+
+    const matrizCompleta =
+      matrizes.flat();
+
+    const periodo =
+      periodoRelatorioUmPctV1(
+        matrizCompleta
+      );
+
+    if (!periodo) {
+      throw new Error(
+        "Não consegui identificar o período do relatório."
+      );
+    }
+
+    if (
+      periodo.inicioMes !==
+        Number(mes) ||
+      periodo.inicioAno !==
+        Number(ano) ||
+      periodo.fimMes !==
+        Number(mes) ||
+      periodo.fimAno !==
+        Number(ano)
+    ) {
+      throw new Error(
+        "O relatório é do período " +
+          periodo.label +
+          ", mas a folha selecionada é " +
+          String(mes).padStart(
+            2,
+            "0"
+          ) +
+          "/" +
+          ano +
+          "."
+      );
+    }
+
+    const lojaRelatorio =
+      lojaRelatorioUmPctV1(
+        matrizCompleta
+      );
+
+    if (
+      lojaRelatorio &&
+      lojaRelatorio !==
+        Number(lojaId)
+    ) {
+      throw new Error(
+        "Este relatório pertence a outra loja. Selecione a loja correta antes de importar."
+      );
+    }
+
+    const registros =
+      registrosRelatorioUmPctV1(
+        matrizCompleta
+      );
+
+    if (!registros.length) {
+      throw new Error(
+        "Não encontrei colaboradores com LIQ. S/ PNEUS no relatório."
+      );
+    }
+
+    const funcionariosFolha =
+      linhasPorQuadrante
+        .flatMap(
+          (grupo) =>
+            grupo.linhas
+        )
+        .filter(
+          (linha) =>
+            !pjFuncionarioIds.has(
+              Number(
+                linha.funcionarioId
+              )
+            )
+        )
+        .filter(
+          (linha) =>
+            [
+              "gerente",
+              "vendedor",
+              "mecanico",
+              "alinhador",
+            ].includes(
+              String(
+                linha.funcao ||
+                ""
+              )
+            )
+        );
+
+    const usados =
+      new Set<number>();
+
+    const correspondencias:
+      Array<{
+        funcionarioId: number;
+        funcionarioNome:
+          string;
+        liquidezBase: number;
+        nomeRelatorio:
+          string;
+      }> = [];
+
+    const naoEncontrados:
+      string[] = [];
+
+    for (
+      const registro of
+      registros
+    ) {
+      const candidatos =
+        funcionariosFolha
+          .filter(
+            (linha) =>
+              !usados.has(
+                Number(
+                  linha.funcionarioId
+                )
+              ) &&
+              funcaoCompativelUmPctV1(
+                registro.secao,
+                linha.funcao
+              )
+          )
+          .map(
+            (linha) => ({
+              linha,
+              score:
+                scoreNomeUmPctV1(
+                  registro.nomeRelatorio,
+                  linha.nome
+                ),
+            })
+          )
+          .filter(
+            (item) =>
+              item.score >=
+              0.82
+          )
+          .sort(
+            (a, b) =>
+              b.score -
+              a.score
+          );
+
+      const melhor =
+        candidatos[0];
+
+      const segundo =
+        candidatos[1];
+
+      const confiavel =
+        Boolean(
+          melhor &&
+          melhor.score >=
+            0.82 &&
+          (
+            !segundo ||
+            melhor.score -
+              segundo.score >=
+              0.07
+          )
+        );
+
+      if (
+        !confiavel ||
+        !melhor
+      ) {
+        naoEncontrados.push(
+          registro.nomeRelatorio
+        );
+        continue;
+      }
+
+      const funcionarioId =
+        Number(
+          melhor.linha
+            .funcionarioId
+        );
+
+      usados.add(
+        funcionarioId
+      );
+
+      correspondencias.push({
+        funcionarioId,
+        funcionarioNome:
+          String(
+            melhor.linha.nome ||
+            ""
+          ),
+        liquidezBase:
+          Number(
+            registro.liquidezBase ||
+            0
+          ),
+        nomeRelatorio:
+          registro.nomeRelatorio,
+      });
+    }
+
+    if (
+      !correspondencias.length
+    ) {
+      throw new Error(
+        "Nenhum nome do relatório pôde ser vinculado com segurança aos funcionários da folha."
+      );
+    }
+
+    for (
+      const item of
+      correspondencias
+    ) {
+      await saveUmPorcentoMutation.mutateAsync({
+        funcionarioId:
+          item.funcionarioId,
+        lojaId:
+          Number(lojaId),
+        ano:
+          Number(ano),
+        mes:
+          Number(mes),
+        liquidezBase:
+          Number(
+            item.liquidezBase
+          ),
+      });
+    }
+
+    await umPorcentoQuery.refetch();
+
+    const atualDoEditor =
+      correspondencias.find(
+        (item) =>
+          Number(
+            item.funcionarioId
+          ) ===
+          Number(
+            umPorcentoEditor.funcionarioId
+          )
+      );
+
+    if (atualDoEditor) {
+      setUmPorcentoEditor(
+        (prev) => ({
+          ...prev,
+          liquidezBase:
+            String(
+              atualDoEditor.liquidezBase
+            ),
+        })
+      );
+    }
+
+    const resumoNaoEncontrados =
+      naoEncontrados.length
+        ? " Não vinculados: " +
+          naoEncontrados
+            .slice(0, 6)
+            .join(", ") +
+          (
+            naoEncontrados.length >
+            6
+              ? "..."
+              : ""
+          )
+        : "";
+
+    setUmPorcentoImportacao({
+      carregando: false,
+      arquivoNome:
+        file.name,
+      mensagem:
+        correspondencias.length +
+        " funcionário(s) atualizado(s) pelo relatório de " +
+        periodo.label +
+        "." +
+        resumoNaoEncontrados,
+      erro: "",
+    });
+
+    window.alert(
+      "Importação do 1% concluída.\n\n" +
+      correspondencias.length +
+      " funcionário(s) atualizado(s).\n" +
+      "Período: " +
+      periodo.label +
+      (
+        naoEncontrados.length
+          ? "\n\nNão vinculados: " +
+            naoEncontrados.join(", ")
+          : ""
+      )
+    );
+  } catch (
+    error: any
+  ) {
+    console.error(
+      error
+    );
+
+    setUmPorcentoImportacao(
+      (prev) => ({
+        ...prev,
+        carregando: false,
+        mensagem: "",
+        erro:
+          error?.message ||
+          "Erro ao importar o relatório.",
+      })
+    );
+
+    window.alert(
+      error?.message ||
+      "Erro ao importar o relatório do 1%."
+    );
+  }
+}
+
+// FOLHA_1PCT_HEADER_IMPORT_V1
+function openImportacaoUmPorcentoV1() {
+  if (!garantirCompetenciaAberta()) {
+    return;
+  }
+
+  const input =
+    document.createElement("input");
+
+  input.type = "file";
+  input.accept =
+    ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel";
+
+  input.onchange = async () => {
+    const file =
+      input.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    await importarRelatorioUmPctV1(
+      file
+    );
+  };
+
+  input.click();
+}
+
+function openUmPorcentoEditor(
+  linha: LinhaComQuadrante
+) {
+  if (!garantirCompetenciaAberta()) {
+    return;
+  }
+
+  setUmPorcentoImportacao({
+    carregando: false,
+    arquivoNome: "",
+    mensagem: "",
+    erro: "",
+  });
+
+  const base = Number(
+    umPorcentoByFuncionario[
+      Number(linha.funcionarioId)
+    ] || 0
+  );
+
+  setUmPorcentoEditor({
+    open: true,
+    funcionarioId:
+      Number(linha.funcionarioId),
+    funcionarioNome:
+      linha.nome,
+    liquidezBase:
+      base > 0
+        ? String(base)
+        : "",
+  });
+}
+
+async function saveUmPorcentoEditor() {
+  if (!umPorcentoEditor.funcionarioId) {
+    return;
+  }
+
+  if (!garantirCompetenciaAberta()) {
+    return;
+  }
+
+  const liquidezBase =
+    Math.max(
+      0,
+      parseValorBR(
+        umPorcentoEditor.liquidezBase
+      )
+    );
+
+  await saveUmPorcentoMutation.mutateAsync({
+    funcionarioId:
+      Number(
+        umPorcentoEditor.funcionarioId
+      ),
+    lojaId: Number(lojaId),
+    ano: Number(ano),
+    mes: Number(mes),
+    liquidezBase,
+  });
+
+  setUmPorcentoEditor({
+    open: false,
+    funcionarioId: null,
+    funcionarioNome: "",
+    liquidezBase: "",
+  });
+}
+
 function openCellEditor(
   linha: LinhaComQuadrante,
   campo: keyof FolhaMensal,
@@ -8719,6 +10034,7 @@ const totalFolhaGeral =
   (folhaFiltros.adiant ? totalAdiant : 0) +
   (folhaFiltros.holerite ? totalHolerite : 0);
   const ordemQuadrantes: QuadranteKey[] = [
+  "pj", // FOLHA_QUADRANTE_PJ_V1 — sempre primeiro
   "gerente",
   "comissao_semanal",
   "comissao_mensal",
@@ -8732,30 +10048,78 @@ const totalFolhaGeral =
 ];
 
   const linhasPorQuadrante = useMemo(() => {
+  const ehPjNovoQuadrante = (
+    linha: LinhaComQuadrante
+  ) =>
+    pjFuncionarioIds.has(
+      Number(
+        linha.funcionarioId
+      )
+    ) &&
+    linha.quadrante !==
+      "supervisor_pj" &&
+    linha.quadrante !==
+      "supervisora_consultores_pj";
+
   return ordemQuadrantes.map((key) => {
-    let linhasQuadrante = linhas.filter((l) => l.quadrante === key);
+    let linhasQuadrante =
+      key === "pj"
+        ? linhas.filter(
+            (linha) =>
+              ehPjNovoQuadrante(
+                linha
+              )
+          )
+        : linhas.filter(
+            (linha) =>
+              linha.quadrante ===
+                key &&
+              !ehPjNovoQuadrante(
+                linha
+              )
+          );
 
-    // Ordenação especial para salário fixo
-    if (key === "salario_fixo") {
-      linhasQuadrante = [...linhasQuadrante].sort((a, b) => {
-        const funcaoCompare = a.funcao.localeCompare(b.funcao);
+    // PJ e salário fixo ficam
+    // organizados por função e nome.
+    if (
+      key === "pj" ||
+      key === "salario_fixo"
+    ) {
+      linhasQuadrante =
+        [...linhasQuadrante]
+          .sort((a, b) => {
+            const funcaoCompare =
+              a.funcao.localeCompare(
+                b.funcao
+              );
 
-        if (funcaoCompare !== 0) {
-          return funcaoCompare;
-        }
+            if (
+              funcaoCompare !== 0
+            ) {
+              return funcaoCompare;
+            }
 
-        return a.nome.localeCompare(b.nome);
-      });
+            return a.nome.localeCompare(
+              b.nome
+            );
+          });
     }
 
     return {
       key,
-      titulo: getQuadranteTitulo(key),
-      descricao: getQuadranteDescricao(key),
-      linhas: linhasQuadrante,
+      titulo:
+        getQuadranteTitulo(
+          key
+        ),
+      descricao:
+        getQuadranteDescricao(
+          key
+        ),
+      linhas:
+        linhasQuadrante,
     };
   });
-}, [linhas]);
+}, [linhas, pjFuncionarioIds]);
   useEffect(() => {
   if (!meQuery.isLoading && !meQuery.data) {
     setLocation("/");
@@ -9136,6 +10500,10 @@ if (
               onOpenImportacaoSemana={openImportacaoSemana}
               onOpenImportacaoAdiantamento={openImportacaoAdiantamento}
               onOpenImportacaoHolerite={openImportacaoHolerite}
+              onOpenUmPorcentoEditor={openUmPorcentoEditor}
+              onOpenImportacaoUmPorcento={openImportacaoUmPorcentoV1}
+              umPorcentoByFuncionario={umPorcentoByFuncionario}
+              pjFuncionarioIds={pjFuncionarioIds}
               onUpdateComposicaoSemanaPercentual={updateComposicaoSemanaPercentual}
               sem5Ativa={sem5Ativa}
             />
@@ -11009,6 +12377,31 @@ if (
                       </p>
                     </div>
 
+                    {/* FOLHA_PJ_EDITOR_V3 */}
+                    <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.07] p-3">
+                      <input
+                        type="checkbox"
+                        checked={funcionarioEdicaoForm.isPj}
+                        onChange={(e) =>
+                          setFuncionarioEdicaoForm((prev) => ({
+                            ...prev,
+                            isPj: e.target.checked,
+                          }))
+                        }
+                        className="mt-0.5 h-4 w-4 accent-[#D4AF37]"
+                      />
+
+                      <span>
+                        <span className="block text-sm font-semibold text-[#F2D675]">
+                          Funcionário PJ
+                        </span>
+
+                        <span className="mt-0.5 block text-xs leading-relaxed text-white/40">
+                          Marque esta opção para aplicar a regra PJ da folha. Até R$ 6.500,00 líquidos será tratado como pagamento normal e somente o excedente poderá ir para boleto.
+                        </span>
+                      </span>
+                    </label>
+
                     <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/18 bg-[#D4AF37]/[0.05] p-3">
                       <input
                         type="checkbox"
@@ -11341,6 +12734,171 @@ if (
           <DialogFooter>
             <Button className="bg-[#D4AF37] text-black" onClick={() => setBloqueioAvisoOpen(false)}>
               Entendi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* FOLHA_PJ_1PCT_V1 */}
+      <Dialog
+        open={umPorcentoEditor.open}
+        onOpenChange={(open) =>
+          setUmPorcentoEditor(
+            (prev) => ({
+              ...prev,
+              open,
+            })
+          )
+        }
+      >
+        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#D4AF37]">
+              1% informativo
+            </DialogTitle>
+
+            <DialogDescription className="text-gray-400">
+              {umPorcentoEditor.funcionarioNome}
+              {" • "}
+              informe a liquidez correspondente somente a esta competência.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-gray-300">
+                Liquidez do mês
+              </Label>
+
+              <Input
+                type="text"
+                inputMode="decimal"
+                placeholder="Ex.: 100.000,00"
+                value={
+                  umPorcentoEditor.liquidezBase
+                }
+                onChange={(e) =>
+                  setUmPorcentoEditor(
+                    (prev) => ({
+                      ...prev,
+                      liquidezBase:
+                        e.target.value,
+                    })
+                  )
+                }
+              />
+            </div>
+
+            <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.055] p-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+                Resultado de 1%
+              </p>
+
+              <p className="mt-1 text-2xl font-bold text-[#F2D675]">
+                R$ {money(
+                  Math.max(
+                    0,
+                    parseValorBR(
+                      umPorcentoEditor.liquidezBase
+                    )
+                  ) * 0.01
+                )}
+              </p>
+
+              <p className="mt-2 text-xs leading-relaxed text-white/35">
+                Este valor é somente informativo.
+                Não altera comissão, boleto,
+                premiação, descontos ou total
+                da folha.
+              </p>
+            </div>
+          </div>
+
+          {/* FOLHA_1PCT_IMPORT_XLSX_V1 */}
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-4">
+            <div className="mb-3">
+              <p className="text-sm font-semibold text-white">
+                Importar relatório mensal
+              </p>
+
+              <p className="mt-1 text-xs leading-relaxed text-white/40">
+                Selecione o relatório Metas por Colaborador em Excel.
+                O sistema usará LIQ. S/ PNEUS em Venda e Mecânica.
+                No bloco Alinhamento, onde essa coluna não existe,
+                será usada a coluna LIQUIDEZ.
+              </p>
+            </div>
+
+            <Input
+              type="file"
+              accept=".xlsx,.xls"
+              disabled={
+                umPorcentoImportacao.carregando ||
+                saveUmPorcentoMutation.isPending
+              }
+              onChange={async (event) => {
+                const file =
+                  event.currentTarget.files?.[0];
+
+                event.currentTarget.value = "";
+
+                if (!file) {
+                  return;
+                }
+
+                await importarRelatorioUmPctV1(
+                  file
+                );
+              }}
+              className="cursor-pointer"
+            />
+
+            {umPorcentoImportacao.carregando && (
+              <p className="mt-3 text-xs font-medium text-[#F2D675]">
+                Lendo o relatório e atualizando os funcionários...
+              </p>
+            )}
+
+            {umPorcentoImportacao.mensagem && (
+              <div className="mt-3 rounded-lg border border-emerald-400/15 bg-emerald-400/[0.06] p-3 text-xs leading-relaxed text-emerald-300">
+                {umPorcentoImportacao.mensagem}
+              </div>
+            )}
+
+            {umPorcentoImportacao.erro && (
+              <div className="mt-3 rounded-lg border border-red-400/20 bg-red-400/[0.06] p-3 text-xs leading-relaxed text-red-300">
+                {umPorcentoImportacao.erro}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() =>
+                setUmPorcentoEditor({
+                  open: false,
+                  funcionarioId: null,
+                  funcionarioNome: "",
+                  liquidezBase: "",
+                })
+              }
+            >
+              Cancelar
+            </Button>
+
+            <Button
+              className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+              onClick={
+                saveUmPorcentoEditor
+              }
+              disabled={
+                saveUmPorcentoMutation.isPending
+              }
+            >
+              {saveUmPorcentoMutation.isPending
+                ? "Salvando..."
+                : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>

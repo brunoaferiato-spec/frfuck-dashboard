@@ -1,0 +1,1394 @@
+DIAGNÓSTICO — FOLHA PJ + 1%
+Gerado em: 2026-10-01T13:57:05.218Z
+Raiz do projeto: C:\FR-FUCK-CLEAR
+
+==============================================================================================================
+GIT
+==============================================================================================================
+HEAD: c051bb7
+
+git status --short:
+M client/src/App.tsx
+ M server/routers.ts
+?? .backup-compras-pecas-perfect-v3-20260922085823/
+?? .backup-compras-pecas-perfect-v31-20260922092354/
+?? .backup-compras-pecas-perfect-v32-20260922093436/
+?? .backup-compras-pecas-perfect-v33-20260922110007/
+?? .backup-compras-pecas-perfect-v34-20260924205207/
+?? .backup-compras-pecas-v1-20260921200538/
+?? .backup-compras-pecas-v2-20260921201810/
+?? .backup-compras-pecas-v22-20260921204958/
+?? .backup-compras-pecas-v23-20260922081449/
+?? .backup-compras-pecas-v231-20260922083631/
+?? aplicar-compras-pecas-catalogo-perfect-v3.mjs
+?? aplicar-compras-pecas-perfect-v3-1.mjs
+?? aplicar-compras-pecas-perfect-v3-2.mjs
+?? aplicar-compras-pecas-perfect-v3-3.mjs
+?? aplicar-compras-pecas-perfect-v3-4-local.mjs
+?? aplicar-compras-pecas-v1.mjs
+?? aplicar-compras-pecas-v2-2.mjs
+?? aplicar-compras-pecas-v2-3-1.mjs
+?? aplicar-compras-pecas-v2-3.mjs
+?? aplicar-compras-pecas-v2.mjs
+?? client/src/components/ComprasPecasCotacao.tsx
+?? client/src/pages/ComprasPecas.tsx
+?? diagnosticar-perfect-cipher.ps1
+?? diagnosticar-perfect-interface-v2.ps1
+?? diagnosticar-perfect-interface.ps1
+?? localizar-perfect-base-local.ps1
+?? localizar-perfect-registro.ps1
+?? patches-folha/
+?? patches-perfect/
+?? perfect-base-local-diagnostico.txt
+?? perfect-base/
+?? perfect-cipher-diagnostico.txt
+?? perfect-registro-diagnostico.txt
+?? perfect-ui-diagnostico-v2.txt
+?? server/catalogoPerfectPecas.ts
+?? server/comprasPecas.ts
+?? testar-perfect-c02.ps1
+?? testar-perfect-chave-207.ps1
+?? testar-perfect-chaves-embutidas.ps1
+?? teste-perfect-leitor-base-corrigido.ps1
+?? teste-perfect-rc5-completo.ps1
+?? teste-perfect-rc5.ps1
+
+##############################################################################################################
+ARQUIVO: FolhaPagamento
+CAMINHO: C:\FR-FUCK-CLEAR\client\src\pages\FolhaPagamento.tsx
+STATUS: ENCONTRADO
+TAMANHO: 481767 bytes
+LINHAS: 12983
+ENCODING ESPERADO: UTF-8
+BOM: NÃO
+EOL: CRLF
+##############################################################################################################
+
+====================================================================================================
+TERMO: type QuadranteKey
+LINHA APROXIMADA: 1407
+====================================================================================================
+  1395 |     return (
+  1396 |       totalComissao +
+  1397 |       premiacao -
+  1398 |       vale -
+  1399 |       aluguel -
+  1400 |       descontoFolha
+  1401 |     );
+  1402 |   }
+  1403 | 
+  1404 |   return Number(args.boletoOriginal || 0);
+  1405 | }
+  1406 | 
+  1407 | type QuadranteKey =
+  1408 |   | "gerente"
+  1409 |   | "comissao_semanal"
+  1410 |   | "consultor_vendas"
+  1411 |   | "consultor_vendas_mensal"
+  1412 |   | "comissao_mensal"
+  1413 |   | "alinhador"
+  1414 |   | "recepcao"
+  1415 |   | "supervisor_pj"
+  1416 |   | "supervisora_consultores_pj"
+  1417 |   | "salario_fixo";
+  1418 | 
+  1419 | type FuncaoSemanaComissao = "vendedor" | "mecanico";
+  1420 | 
+  1421 | type ComponenteFuncaoSemana = {
+  1422 |   funcao: FuncaoSemanaComissao;
+  1423 |   liquidez: number;
+  1424 |   percentual: number;
+  1425 |   comissao: number;
+  1426 | };
+  1427 | 
+
+
+====================================================================================================
+TERMO: function getQuadrante(
+LINHA APROXIMADA: 1691
+====================================================================================================
+  1679 |     if (ano === 2026 && mes >= 5) return true;
+  1680 |     return false;
+  1681 |   }
+  1682 | 
+  1683 |   // Florianópolis permanece mensal
+  1684 |   return false;
+  1685 | }
+  1686 | 
+  1687 | function usaMetaMensal(lojaId: number, ano: number, mes: number) {
+  1688 |   return !usaMetaSemanal(lojaId, ano, mes);
+  1689 | }
+  1690 | 
+  1691 | function getQuadrante(
+  1692 |   lojaId: number,
+  1693 |   funcao: string,
+  1694 |   ano: number,
+  1695 |   mes: number,
+  1696 |   tipoMeta?: string | null
+  1697 | ): QuadranteKey {
+  1698 |   const semanal = usaMetaSemanal(lojaId, ano, mes);
+  1699 |   const mensal = usaMetaMensal(lojaId, ano, mes);
+  1700 | 
+  1701 |   if (funcao === "supervisor" && lojaId === 5) {
+  1702 |     return "supervisora_consultores_pj";
+  1703 |   }
+  1704 | 
+  1705 |   if (funcao === "supervisor") return "supervisor_pj";
+  1706 |   if (funcao === "gerente") {
+  1707 |   return "gerente";
+  1708 | }
+  1709 |   if (funcao === "consultor_vendas") {
+  1710 |   // ACI e as lojas 6/7 usam consultor mensal.
+  1711 |   if (lojaId === 5 || ehConsultorSulMensal(lojaId) || tipoMeta === "meta2") {
+
+
+====================================================================================================
+TERMO: function TabelaQuadrante
+LINHA APROXIMADA: 1914
+====================================================================================================
+  1902 |   const blob = new Blob(["\ufeff" + csv], {
+  1903 |     type: "text/csv;charset=utf-8;",
+  1904 |   });
+  1905 | 
+  1906 |   const url = URL.createObjectURL(blob);
+  1907 |   const a = document.createElement("a");
+  1908 |   a.href = url;
+  1909 |   a.download = "boletos.csv";
+  1910 |   a.click();
+  1911 |   URL.revokeObjectURL(url);
+  1912 | }
+  1913 | 
+  1914 | function TabelaQuadrante({
+  1915 |   titulo,
+  1916 |   descricao,
+  1917 |   linhas,
+  1918 |   quadrante,
+  1919 |   onOpenCellEditor,
+  1920 |   onOpenPremioEditor,
+  1921 |   onOpenObsEditor,
+  1922 |   onOpenValeEditor,
+  1923 |   onOpenConferenciaVales,
+  1924 |   onOpenNegativoEditor,
+  1925 |   onOpenRegraSemanaEditor,
+  1926 |   onOpenFuncionarioDetalhe,
+  1927 |   onOpenTransicaoFuncao,
+  1928 |   onOpenImportacaoSemana,
+  1929 |   onOpenImportacaoAdiantamento,
+  1930 |   onOpenImportacaoHolerite,
+  1931 |   onUpdateComposicaoSemanaPercentual,
+  1932 |   sem5Ativa,
+  1933 | }: {
+  1934 |   titulo: string;
+
+
+====================================================================================================
+TERMO: calcularBoletoAjustado
+LINHA APROXIMADA: 1275
+====================================================================================================
+  1263 | 
+  1264 |   return digits.replace(
+  1265 |     /^(\d{3})(\d{3})(\d{3})(\d{2})$/,
+  1266 |     "$1.$2.$3-$4"
+  1267 |   );
+  1268 | }
+  1269 | 
+  1270 | function textoOuNaoInformado(value: unknown) {
+  1271 |   const texto = String(value ?? "").trim();
+  1272 |   return texto || "Não informado";
+  1273 | }
+  1274 | 
+  1275 | function calcularBoletoAjustado(args: {
+  1276 |   quadrante: QuadranteKey;
+  1277 |   funcao: string;
+  1278 |   lojaId: number;
+  1279 |   funcionarioNome: string;
+  1280 |   totalComissao: number;
+  1281 |   premiacao: number;
+  1282 |   vale: number;
+  1283 |   aluguel: number;
+  1284 |   inss: number;
+  1285 |   adiant: number;
+  1286 |   holerite: number;
+  1287 |   descontoFolhaProporcional?: number | null;
+  1288 |   boletoOriginal: number;
+  1289 | }) {
+  1290 |   const totalComissao = Number(args.totalComissao || 0);
+  1291 |   const premiacao = Number(args.premiacao || 0);
+  1292 |   const vale = Number(args.vale || 0);
+  1293 |   const aluguel = Number(args.aluguel || 0);
+  1294 |   const inss = Number(args.inss || 0);
+  1295 |   const adiant = Number(args.adiant || 0);
+
+
+====================================================================================================
+TERMO: renderEditButton
+LINHA APROXIMADA: 2035
+====================================================================================================
+  2023 |   function getRegraConsultorTexto(linha: LinhaComQuadrante, carrosSemana: number) {
+  2024 |     if (ehConsultorSulMensal(linha.loja_id)) {
+  2025 |       return getRegraConsultorSulTexto(carrosSemana);
+  2026 |     }
+  2027 | 
+  2028 |     return getConsultorRegraTexto({
+  2029 |       cidade: linha.loja_id.toString(),
+  2030 |       tipoMeta: linha.tipoMeta,
+  2031 |       carrosSemana,
+  2032 |     });
+  2033 |   }
+  2034 | 
+  2035 |   function renderEditButton(
+  2036 |     linha: LinhaComQuadrante,
+  2037 |     campo: keyof FolhaMensal,
+  2038 |     label: string,
+  2039 |     mode: "money" | "number"
+  2040 |   ) {
+  2041 |     const rawValue = Number(linha[campo] || 0);
+  2042 |     const text =
+  2043 |       mode === "money" ? `R$ ${money(rawValue)}` : rawValue.toLocaleString("pt-BR");
+  2044 | 
+  2045 |     const campoTexto = String(campo);
+  2046 |     const campoSemanaMatch = campoTexto.match(/^sem([1-4])$/);
+  2047 |     const semanaCampo: SemanaComissaoVisual | null =
+  2048 |       campoTexto === "sem5Extra"
+  2049 |         ? 5
+  2050 |         : campoSemanaMatch
+  2051 |         ? (Number(campoSemanaMatch[1]) as 1 | 2 | 3 | 4)
+  2052 |         : null;
+  2053 |     const composicaoSemana = semanaCampo
+  2054 |       ? getComposicaoSemana(linha, semanaCampo)
+  2055 |       : [];
+
+
+====================================================================================================
+TERMO: saveCellEditor
+LINHA APROXIMADA: 7544
+====================================================================================================
+  7532 | ) {
+  7533 |   if (!garantirCompetenciaAberta()) return;
+  7534 |   setCellEditor({
+  7535 |     open: true,
+  7536 |     funcionarioId: linha.funcionarioId,
+  7537 |     campo,
+  7538 |     label,
+  7539 |     mode,
+  7540 |     value: String(Number(linha[campo] || 0)),
+  7541 |   });
+  7542 | }
+  7543 | 
+  7544 | async function saveCellEditor() {
+  7545 |   if (!cellEditor.funcionarioId || !cellEditor.campo) return;
+  7546 | 
+  7547 |   const funcionarioId = cellEditor.funcionarioId;
+  7548 |   const campo = cellEditor.campo;
+  7549 |   const valor =
+  7550 |     cellEditor.mode === "money"
+  7551 |       ? parseValorBR(cellEditor.value)
+  7552 |       : Number(cellEditor.value || 0);
+  7553 | 
+  7554 |   // Fecha imediatamente para a interface responder sem esperar a rede.
+  7555 |   setCellEditor({
+  7556 |     open: false,
+  7557 |     funcionarioId: null,
+  7558 |     campo: null,
+  7559 |     label: "",
+  7560 |     mode: "money",
+  7561 |     value: "",
+  7562 |   });
+  7563 | 
+  7564 |   try {
+
+
+====================================================================================================
+TERMO: adiantamento
+LINHA APROXIMADA: 299
+====================================================================================================
+   287 |     semana,
+   288 |     etapa: "arquivo",
+   289 |     arquivoNome: "",
+   290 |     periodo: "",
+   291 |     cidadeRelatorio: "",
+   292 |     itens: [],
+   293 |     mensagem: "",
+   294 |     erro: "",
+   295 |   };
+   296 | }
+   297 | 
+   298 | 
+   299 | type StatusItemAdiantamento = "ok" | "possivel" | "nao_cadastrado" | "ignorado";
+   300 | 
+   301 | type ItemAdiantamentoPdf = {
+   302 |   id: string;
+   303 |   pagina: number;
+   304 |   nomePdf: string;
+   305 |   valorLiquido: number;
+   306 |   funcionarioId: number | null;
+   307 |   funcionarioNome: string | null;
+   308 |   status: StatusItemAdiantamento;
+   309 |   candidatoId: number | null;
+   310 |   candidatoNome: string | null;
+   311 |   scoreCandidato: number;
+   312 | };
+   313 | 
+   314 | type ImportacaoAdiantamentoState = {
+   315 |   open: boolean;
+   316 |   etapa: "arquivo" | "lendo" | "conferencia" | "importando" | "sucesso";
+   317 |   arquivoNome: string;
+   318 |   competencia: string;
+   319 |   competenciaMes: number | null;
+
+
+====================================================================================================
+TERMO: holerite
+LINHA APROXIMADA: 247
+====================================================================================================
+   235 | 
+   236 |   return (
+   237 |     FUNCOES_FUNCIONARIO.find((item) => item.id === funcao)?.nome ||
+   238 |     textoOuNaoInformado(funcao)
+   239 |   );
+   240 | }
+   241 | 
+   242 | 
+   243 | const ROTA_GESTAO_FUNCIONARIOS = "/funcionarios";
+   244 | const IMPORT_ALIAS_STORAGE_KEY = "folha-importacao-aliases-v1";
+   245 | const IMPORT_PENDENTE_STORAGE_KEY = "folha-importacao-pendente-v1";
+   246 | const IMPORT_ADIANT_PENDENTE_STORAGE_KEY = "folha-importacao-adiant-pendente-v1";
+   247 | const IMPORT_HOLERITE_PENDENTE_STORAGE_KEY = "folha-importacao-holerite-pendente-v1";
+   248 | const CADASTRO_RETORNO_FOLHA_STORAGE_KEY = "folha-cadastro-retorno-v1";
+   249 | const CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY = "folha-cadastro-concluido-v1";
+   250 | 
+   251 | type SemanaImportacao = 1 | 2 | 3 | 4 | 5;
+   252 | type FuncaoImportacao = "vendedor" | "mecanico";
+   253 | type StatusItemImportacao =
+   254 |   | "ok"
+   255 |   | "possivel"
+   256 |   | "nao_cadastrado"
+   257 |   | "ignorado";
+   258 | 
+   259 | type ItemRelatorioImportacao = {
+   260 |   id: string;
+   261 |   nomeRelatorio: string;
+   262 |   funcaoRelatorio: FuncaoImportacao;
+   263 |   valor: number;
+   264 |   funcionarioId: number | null;
+   265 |   funcionarioNome: string | null;
+   266 |   status: StatusItemImportacao;
+   267 |   candidatoId: number | null;
+
+
+====================================================================================================
+TERMO: premiacao
+LINHA APROXIMADA: 8
+====================================================================================================
+     1 | import { useEffect, useMemo, useRef, useState } from "react";
+     2 | import { useLocation } from "wouter";
+     3 | import { ArrowLeft, BadgeDollarSign, ReceiptText, Sparkles, TrendingUp, WalletCards } from "lucide-react";
+     4 | import { trpc } from "@/lib/trpc";
+     5 | import { readSheet } from "read-excel-file/browser";
+     6 | 
+     7 | import {
+     8 |   calcularPremiacaoSupervisorGrupo,
+     9 |   calcularPremiacaoSupervisorLoja,
+    10 |   regraSupervisor,
+    11 |   getSalarioFixoSupervisor,
+    12 |   calcularPremiacaoEspecialFuncionario,
+    13 |   getRegraVendedorMecanico,
+    14 |   getRegraAlinhador,
+    15 |   getRegraGerente,
+    16 | } from "@/lib/regrasComissao";
+    17 | 
+    18 | import { Button } from "@/components/ui/button";
+    19 | import {
+    20 |   Card,
+    21 |   CardContent,
+    22 |   CardHeader,
+    23 |   CardTitle,
+    24 |   CardDescription,
+    25 | } from "@/components/ui/card";
+    26 | import {
+    27 |   Dialog,
+    28 |   DialogContent,
+
+
+====================================================================================================
+TERMO: vale
+LINHA APROXIMADA: 46
+====================================================================================================
+    34 | import {
+    35 |   Select,
+    36 |   SelectContent,
+    37 |   SelectItem,
+    38 |   SelectTrigger,
+    39 |   SelectValue,
+    40 | } from "@/components/ui/select";
+    41 | import { Input } from "@/components/ui/input";
+    42 | import { Label } from "@/components/ui/label";
+    43 | import {
+    44 |   computeFolhaLinha,
+    45 |   computeSupervisor,
+    46 |   createParcelasVale,
+    47 |   findMetaForFuncionario,
+    48 |   getConsultorRegraTexto,
+    49 |   getPremiacaoAutomaticaDetalhes,
+    50 |   getRecepcaoConfig,
+    51 |   SUPERVISOR_RECORDE_GRUPO,
+    52 |   SUPERVISOR_SALARIO_FIXO,
+    53 |   type FolhaMensal,
+    54 |   type ValeItem,
+    55 | } from "@/lib/payrollStore";
+    56 | 
+    57 | const LOJAS = [
+    58 |   { id: 1, nome: "Joinville" },
+    59 |   { id: 2, nome: "Blumenau" },
+    60 |   { id: 3, nome: "São José" },
+    61 |   { id: 4, nome: "Florianópolis" },
+    62 |   { id: 5, nome: "ACI Promoções" },
+    63 |   { id: 6, nome: "São Leopoldo" },
+    64 |   { id: 7, nome: "Gravataí" },
+    65 | ];
+    66 | 
+
+
+
+##############################################################################################################
+ARQUIVO: GestaoFuncionarios
+CAMINHO: C:\FR-FUCK-CLEAR\client\src\pages\GestaoFuncionarios.tsx
+STATUS: ENCONTRADO
+TAMANHO: 64681 bytes
+LINHAS: 1500
+ENCODING ESPERADO: UTF-8
+BOM: NÃO
+EOL: LF
+##############################################################################################################
+
+====================================================================================================
+TERMO: const FUNCOES
+LINHA APROXIMADA: 46
+====================================================================================================
+    34 | const TROCA_FUNCAO_SUGERIDA_STORAGE_KEY = "folha-troca-funcao-sugerida-v1";
+    35 | 
+    36 | const LOJAS = [
+    37 |   { id: 1, nome: "Joinville" },
+    38 |   { id: 2, nome: "Blumenau" },
+    39 |   { id: 3, nome: "São José" },
+    40 |   { id: 4, nome: "Florianópolis" },
+    41 |   { id: 5, nome: "ACI Promoções" },
+    42 |   { id: 6, nome: "São Leopoldo" },
+    43 |   { id: 7, nome: "Gravataí" },
+    44 | ];
+    45 | 
+    46 | const FUNCOES = [
+    47 |   { id: "mecanico", nome: "Mecânico" },
+    48 |   { id: "vendedor", nome: "Vendedor" },
+    49 |   { id: "consultor_vendas", nome: "Consultor de Vendas" },
+    50 |   { id: "alinhador", nome: "Alinhador" },
+    51 |   { id: "aux_alinhador", nome: "Aux. Alinhador" },
+    52 |   { id: "recepcionista", nome: "Recepcionista" },
+    53 |   { id: "auxiliar_estoque", nome: "Auxiliar de Estoque" },
+    54 |   { id: "lider_estoque", nome: "Líder de Estoque" },
+    55 |   { id: "auxiliar_mecanico", nome: "Auxiliar de Mecânico" },
+    56 |   { id: "auxiliar_limpeza", nome: "Auxiliar Limpeza" },
+    57 |   { id: "caixa", nome: "Caixa" },
+    58 |   { id: "caixa_lider", nome: "Caixa Líder" },
+    59 |   { id: "administrativo", nome: "Administrativo" },
+    60 |   { id: "gerente", nome: "Gerente" },
+    61 |   { id: "supervisor", nome: "Supervisor" },
+    62 | ] as const;
+    63 | 
+    64 | const FUNCOES_ACI_IDS = [
+    65 |   "administrativo",
+    66 |   "consultor_vendas",
+
+
+====================================================================================================
+TERMO: tipoMeta
+LINHA APROXIMADA: 71
+====================================================================================================
+    59 |   { id: "administrativo", nome: "Administrativo" },
+    60 |   { id: "gerente", nome: "Gerente" },
+    61 |   { id: "supervisor", nome: "Supervisor" },
+    62 | ] as const;
+    63 | 
+    64 | const FUNCOES_ACI_IDS = [
+    65 |   "administrativo",
+    66 |   "consultor_vendas",
+    67 |   "supervisor",
+    68 | ] as const;
+    69 | 
+    70 | type FuncaoId = (typeof FUNCOES)[number]["id"];
+    71 | type TipoMeta = "meta1" | "meta2" | "";
+    72 | 
+    73 | type FuncionarioItem = {
+    74 |   id: number;
+    75 |   lojaId: number;
+    76 |   nome: string;
+    77 |   cpf?: string | null;
+    78 |   pix?: string | null;
+    79 |   dataNascimento?: string | Date | null;
+    80 |   funcao: FuncaoId;
+    81 |   tipoMeta?: TipoMeta | null;
+    82 |   dataAdmissao?: string | Date | null;
+    83 |   cargoConfianca?: boolean | number | null;
+    84 |   horarioEntrada1?: string | null;
+    85 |   duracaoAlmocoMinutos?: number | null;
+    86 |   horarioSaida1?: string | null;
+    87 |   horarioEntrada2?: string | null;
+    88 |   horarioSaida2?: string | null;
+    89 |   dataDesligamento?: string | Date | null;
+    90 |   dataReativacao?: string | Date | null;
+    91 |   status?: string | null;
+
+
+====================================================================================================
+TERMO: create
+LINHA APROXIMADA: 292
+====================================================================================================
+   280 |     }
+   281 |   );
+   282 | 
+   283 |   const fecharFormulario = () => {
+   284 |     setIsOpen(false);
+   285 |     setEditingId(null);
+   286 |     setTentouSalvar(false);
+   287 |     setTrocaFuncaoOpen(false);
+   288 |     setTrocaFuncaoForm({ novaFuncao: "", novoTipoMeta: "", dataMudanca: "" });
+   289 |     setFormData(criarFormVazio(lojaId));
+   290 |   };
+   291 | 
+   292 |   const createFuncionario = trpc.funcionarios.create.useMutation({
+   293 |     onSuccess: async () => {
+   294 |       await utils.funcionarios.listByLoja.invalidate({ lojaId });
+   295 |       fecharFormulario();
+   296 |     },
+   297 |   });
+   298 | 
+   299 |   const updateFuncionario = trpc.funcionarios.update.useMutation({
+   300 |     onSuccess: async () => {
+   301 |       await utils.funcionarios.listByLoja.invalidate({ lojaId });
+   302 |       fecharFormulario();
+   303 |     },
+   304 |   });
+   305 | 
+   306 |   const trocarFuncaoMutation = trpc.funcionarios.trocarFuncao.useMutation({
+   307 |     onSuccess: async (_result, variables) => {
+   308 |       await utils.funcionarios.listByLoja.invalidate({ lojaId });
+   309 |       await funcionariosQuery.refetch();
+   310 |       setFormData((prev) => ({
+   311 |         ...prev,
+   312 |         funcao: variables.novaFuncao as FuncaoId,
+
+
+====================================================================================================
+TERMO: editar
+LINHA APROXIMADA: 952
+====================================================================================================
+   940 |                               {func.status === "ativo" ? "Ativo" : "Inativo"}
+   941 |                             </span>
+   942 |                           </td>
+   943 |                           <td className="px-5 py-4">
+   944 |                             <div className="flex items-center justify-end gap-2">
+   945 |                               <Button
+   946 |                                 size="sm"
+   947 |                                 variant="outline"
+   948 |                                 onClick={() => handleEditFuncionario(func)}
+   949 |                                 className="h-9 rounded-lg border-[#D4AF37]/18 bg-[#D4AF37]/[0.035] px-3 text-[#F2D675] hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/[0.08] hover:text-[#FFE89A]"
+   950 |                               >
+   951 |                                 <Pencil className="mr-1.5 h-3.5 w-3.5" />
+   952 |                                 Editar
+   953 |                               </Button>
+   954 | 
+   955 |                               {func.status === "ativo" ? (
+   956 |                                 <Button
+   957 |                                   size="sm"
+   958 |                                   variant="outline"
+   959 |                                   onClick={() => handleInativarFuncionario(func)}
+   960 |                                   disabled={inativarFuncionario.isPending}
+   961 |                                   className="h-9 rounded-lg border-red-400/14 bg-red-400/[0.025] px-3 text-red-400 hover:border-red-400/35 hover:bg-red-400/[0.07]"
+   962 |                                 >
+   963 |                                   <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+   964 |                                   Inativar
+   965 |                                 </Button>
+   966 |                               ) : (
+   967 |                                 <Button
+   968 |                                   size="sm"
+   969 |                                   variant="outline"
+   970 |                                   onClick={() => handleReativarFuncionario(func)}
+   971 |                                   disabled={reativarFuncionario.isPending}
+   972 |                                   className="h-9 rounded-lg border-emerald-400/14 bg-emerald-400/[0.025] px-3 text-emerald-400 hover:border-emerald-400/35 hover:bg-emerald-400/[0.07]"
+
+
+====================================================================================================
+TERMO: Edit
+LINHA APROXIMADA: 241
+====================================================================================================
+   229 |       console.error("Erro ao ler loja sugerida para cadastro:", error);
+   230 |     }
+   231 | 
+   232 |     return "1";
+   233 |   });
+   234 |   const [funcionarioAbrirId, setFuncionarioAbrirId] = useState<number | null>(() => {
+   235 |     if (typeof window === "undefined") return null;
+   236 |     const raw = window.sessionStorage.getItem("folha-funcionario-abrir-id");
+   237 |     const id = raw ? Number(raw) : 0;
+   238 |     return Number.isFinite(id) && id > 0 ? id : null;
+   239 |   });
+   240 |   const [isOpen, setIsOpen] = useState(false);
+   241 |   const [editingId, setEditingId] = useState<number | null>(null);
+   242 |   const [buscaFuncionario, setBuscaFuncionario] = useState("");
+   243 |   const [tentouSalvar, setTentouSalvar] = useState(false);
+   244 |   const [formData, setFormData] = useState<FormFuncionario>(() => criarFormVazio(1));
+   245 |   const [trocaFuncaoOpen, setTrocaFuncaoOpen] = useState(false);
+   246 |   const [trocaFuncaoForm, setTrocaFuncaoForm] = useState<{
+   247 |     novaFuncao: FuncaoId | "";
+   248 |     novoTipoMeta: TipoMeta;
+   249 |     dataMudanca: string;
+   250 |   }>({ novaFuncao: "", novoTipoMeta: "", dataMudanca: "" });
+   251 | 
+   252 |   const lojaId = Number(selectedLoja);
+   253 | 
+   254 |   const veioDaFolha = () => {
+   255 |     if (typeof window === "undefined") return false;
+   256 | 
+   257 |     return Boolean(
+   258 |       window.sessionStorage.getItem(IMPORT_PENDENTE_STORAGE_KEY) ||
+   259 |         window.sessionStorage.getItem(IMPORT_ADIANT_PENDENTE_STORAGE_KEY) ||
+   260 |         window.sessionStorage.getItem(IMPORT_HOLERITE_PENDENTE_STORAGE_KEY)
+   261 |     );
+
+
+
+##############################################################################################################
+ARQUIVO: payrollStore
+CAMINHO: C:\FR-FUCK-CLEAR\client\src\lib\payrollStore.ts
+STATUS: ENCONTRADO
+TAMANHO: 23695 bytes
+LINHAS: 1026
+ENCODING ESPERADO: UTF-8
+BOM: NÃO
+EOL: CRLF
+##############################################################################################################
+
+====================================================================================================
+TERMO: FolhaLinha
+LINHA APROXIMADA: 580
+====================================================================================================
+   568 |       const maximo = numeros[0] || 0;
+   569 | 
+   570 |       if (valor <= maximo) return percentual;
+   571 |     }
+   572 |   }
+   573 | 
+   574 |   return 0;
+   575 | }
+   576 | // =========================
+   577 | // CÁLCULO PRINCIPAL
+   578 | // =========================
+   579 | 
+   580 | export function computeFolhaLinha(args: {
+   581 |   meta: Meta | null;
+   582 |   funcao: string;
+   583 |   cidade: string;
+   584 |   funcionarioNome?: string;
+   585 |   tipoMeta?: string;
+   586 |   sem1: number;
+   587 |   sem2: number;
+   588 |   sem3: number;
+   589 |   sem4: number;
+   590 | 
+   591 |   percManual1?: number | null;
+   592 |   percManual2?: number | null;
+   593 |   percManual3?: number | null;
+   594 |   percManual4?: number | null;
+   595 | 
+   596 |   premiacoesManuais?: PremioManual[];
+   597 |   vales?: ValeItem[];
+   598 |   aluguel: number;
+   599 |   inss: number;
+   600 |   adiant: number;
+
+
+====================================================================================================
+TERMO: computeSupervisor
+LINHA APROXIMADA: 384
+====================================================================================================
+   372 |   }
+   373 | 
+   374 |   return {
+   375 |     valorVenda: Number(regra.valorVenda || 0),
+   376 |     valorEntrada: Number(regra.valorEntrada || 0),
+   377 |   };
+   378 | }
+   379 | 
+   380 | // =========================
+   381 | // SUPERVISOR
+   382 | // =========================
+   383 | 
+   384 | export function computeSupervisor(args: {
+   385 |   cidade: string;
+   386 |   sem1: number;
+   387 |   sem2: number;
+   388 |   sem3: number;
+   389 |   sem4: number;
+   390 |   premiacoesManuais?: PremioManual[];
+   391 |   vales?: ValeItem[];
+   392 |   aluguel: number;
+   393 |   adiant: number;
+   394 | }) {
+   395 |   const totalLiquidez =
+   396 |     Number(args.sem1 || 0) +
+   397 |     Number(args.sem2 || 0) +
+   398 |     Number(args.sem3 || 0) +
+   399 |     Number(args.sem4 || 0);
+   400 | 
+   401 |   // Premiação acumulativa da loja conforme a cidade.
+   402 |   const premiacaoLoja = calcularPremiacaoSupervisorLoja({
+   403 |     lojaId: args.cidade,
+   404 |     liquidezLoja: totalLiquidez,
+
+
+====================================================================================================
+TERMO: totalComissao
+LINHA APROXIMADA: 109
+====================================================================================================
+    97 |   com4: number;
+    98 |   percManual1?: number | null;
+    99 |   percManual2?: number | null;
+   100 |   percManual3?: number | null;
+   101 |   percManual4?: number | null;
+   102 | 
+   103 |   motivoPercManual1?: string | null;
+   104 |   motivoPercManual2?: string | null;
+   105 |   motivoPercManual3?: string | null;
+   106 |   motivoPercManual4?: string | null;
+   107 | 
+   108 |   totalLiquidez: number;
+   109 |   totalComissao: number;
+   110 | 
+   111 |   premiacoesManuais: PremioManual[];
+   112 |   premiacao: number;
+   113 | 
+   114 |   vales: ValeItem[];
+   115 |   vale: number;
+   116 | 
+   117 |   aluguel: number;
+   118 |   inss: number;
+   119 |   adiant: number;
+   120 |   holerite: number;
+   121 | 
+   122 |   observacoes: string[];
+   123 | 
+   124 |   boleto: number;
+   125 | };
+   126 | 
+   127 | // =========================
+   128 | // CONSTANTES
+   129 | // =========================
+
+
+====================================================================================================
+TERMO: premiacao
+LINHA APROXIMADA: 9
+====================================================================================================
+     1 | import {
+     2 |   calcularPercentualVendedorMecanico,
+     3 |   calcularPercentualAlinhador,
+     4 |   calcularConsultorMeta1Semana,
+     5 |   calcularConsultorMeta2Mensal,
+     6 |   getRegrasConsultor,
+     7 |   getRegraRecepcao,
+     8 |   calcularPercentualGerente,
+     9 |   calcularPremiacaoSupervisorLoja,
+    10 |   getSalarioFixoSupervisor,
+    11 | } from "./regrasComissao";
+    12 | 
+    13 | // =========================
+    14 | // TIPOS BÁSICOS
+    15 | // =========================
+    16 | 
+    17 | export type TipoMeta = "meta1" | "meta2" | "";
+    18 | 
+    19 | export type Funcionario = {
+    20 |   id: number;
+    21 |   nome: string;
+    22 |   cpf: string;
+    23 |   pix?: string;
+    24 |   dataNascimento: string;
+    25 |   funcao: string;
+    26 |   loja_id: number;
+    27 |   dataAdmissao: string;
+    28 |   dataExperiencia45?: string;
+    29 |   dataExperiencia90?: string;
+
+
+====================================================================================================
+TERMO: vale
+LINHA APROXIMADA: 61
+====================================================================================================
+    49 | };
+    50 | 
+    51 | // =========================
+    52 | // TIPOS DA FOLHA
+    53 | // =========================
+    54 | 
+    55 | export type PremioManual = {
+    56 |   id: string;
+    57 |   descricao: string;
+    58 |   valor: number;
+    59 | };
+    60 | 
+    61 | export type ValeItem = {
+    62 |   id: string;
+    63 |   grupoId: string;
+    64 |   descricao: string;
+    65 |   valor: number;
+    66 |   parcelaAtual: number;
+    67 |   totalParcelas: number;
+    68 |   anoOrigem: number;
+    69 |   mesOrigem: number;
+    70 | };
+    71 | 
+    72 | export type FolhaMensal = {
+    73 |   id: string;
+    74 |   ano: number;
+    75 |   mes: number;
+    76 |   loja_id: number;
+    77 |   funcionarioId: number;
+    78 |   nome: string;
+    79 |   funcao: string;
+    80 |   tipoMeta?: TipoMeta;
+    81 |   regraMeta: string;
+
+
+
+##############################################################################################################
+ARQUIVO: routers
+CAMINHO: C:\FR-FUCK-CLEAR\server\routers.ts
+STATUS: ENCONTRADO
+TAMANHO: 57929 bytes
+LINHAS: 1958
+ENCODING ESPERADO: UTF-8
+BOM: NÃO
+EOL: LF
+##############################################################################################################
+
+====================================================================================================
+TERMO: funcaoSchema
+LINHA APROXIMADA: 85
+====================================================================================================
+    73 | import { storageGet, storagePut } from "./storage";
+    74 | import { createHash } from "node:crypto";
+    75 | import * as XLSX from "xlsx";
+    76 | 
+    77 | import { rhDocumentosRouter } from "./rhDocumentos";
+    78 | import { rhEpisRouter } from "./rhEpis";
+    79 | import { rhFeriasRouter } from "./rhFerias";
+    80 | import { rhExperienciaRouter } from "./rhExperiencia";
+    81 | import { rhRescisoesRouter } from "./rhRescisoes";
+    82 | import { comprasPneusRouter } from "./comprasPneus";
+    83 | import { comprasPecasRouter } from "./comprasPecas";
+    84 | 
+    85 | const funcaoSchema = z.enum([
+    86 |   "mecanico",
+    87 |   "vendedor",
+    88 |   "consultor_vendas",
+    89 |   "alinhador",
+    90 |   "aux_alinhador",
+    91 |   "auxiliar_limpeza",
+    92 |   "caixa",
+    93 |   "caixa_lider",
+    94 |   "recepcionista",
+    95 |   "auxiliar_estoque",
+    96 |   "lider_estoque",
+    97 |   "auxiliar_mecanico",
+    98 |   "administrativo",
+    99 |   "gerente",
+   100 |   "supervisor",
+   101 | ]);
+   102 | 
+   103 | const horarioJornadaSchema = z.preprocess(
+   104 |   (value) => {
+   105 |     if (value === undefined || value === null) return null;
+
+
+====================================================================================================
+TERMO: funcionarios
+LINHA APROXIMADA: 9
+====================================================================================================
+     1 | import {
+     2 |   getDb,
+     3 |   getUserByEmail,
+     4 |   getUsers,
+     5 |   updateUserById,
+     6 |   deleteUserById,
+     7 |   getLojas,
+     8 |   getLojaById,
+     9 |   getFuncionariosByLoja,
+    10 |   getFuncionarioById,
+    11 |   createFuncionario,
+    12 |   updateFuncionario,
+    13 |   inativarFuncionarioById,
+    14 |   reativarFuncionarioById,
+    15 |   deleteFuncionarioById,
+    16 |   getMetaByFuncaoLojaAnoMes,
+    17 |   getMetasByLoja,
+    18 |   getFolhaByFuncionarioAnoMes,
+    19 |   getFolhaByLojaAnoMes,
+    20 |   getContasBancariasByLoja,
+    21 |   getContaBancariaById,
+    22 |   getComprasByLojaAnoMes,
+    23 |   getComissaoFuncionario,
+    24 |   getFolhaExtrasByLojaAnoMes,
+    25 |   getFolhaBaseByLojaAnoMes,
+    26 |   getResumoSupervisorMensal,
+    27 |   upsertFolhaBaseItem,
+    28 |   createPremiacao,
+    29 |   deletePremiacaoById,
+
+
+====================================================================================================
+TERMO: adiantamento
+LINHA APROXIMADA: 1334
+====================================================================================================
+  1322 |           texto: z.string().min(1),
+  1323 |         })
+  1324 |       )
+  1325 |       .mutation(({ input }) => deleteObservacaoByTexto(input)),
+  1326 | 
+  1327 |     saveDesconto: protectedProcedure
+  1328 |       .input(
+  1329 |         z.object({
+  1330 |           funcionarioId: z.number(),
+  1331 |           lojaId: z.number(),
+  1332 |           ano: z.number(),
+  1333 |           mes: z.number(),
+  1334 |           tipo: z.enum(["aluguel", "inss", "adiantamento", "holerite"]),
+  1335 |           valor: z.number().min(0),
+  1336 | 
+  1337 |           ultimaAlteracaoPor: z.string().nullable().optional(),
+  1338 |           ultimaAlteracaoEm: z.coerce.date().nullable().optional(),
+  1339 |         })
+  1340 |       )
+  1341 |       .mutation(({ input }) => upsertDesconto(input)),
+  1342 | 
+  1343 |     addVales: protectedProcedure
+  1344 |   .input(
+  1345 |     z.object({
+  1346 |       funcionarioId: z.number(),
+  1347 |       lojaId: z.number(),
+  1348 | 
+  1349 |       items: z.array(
+  1350 |         z.object({
+  1351 |           grupoId: z.string(),
+  1352 |           descricao: z.string(),
+  1353 |           valorTotal: z.number(),
+  1354 |           valorParcela: z.number(),
+
+
+====================================================================================================
+TERMO: vale
+LINHA APROXIMADA: 33
+====================================================================================================
+    21 |   getContaBancariaById,
+    22 |   getComprasByLojaAnoMes,
+    23 |   getComissaoFuncionario,
+    24 |   getFolhaExtrasByLojaAnoMes,
+    25 |   getFolhaBaseByLojaAnoMes,
+    26 |   getResumoSupervisorMensal,
+    27 |   upsertFolhaBaseItem,
+    28 |   createPremiacao,
+    29 |   deletePremiacaoById,
+    30 |   createObservacao,
+    31 |   deleteObservacaoByTexto,
+    32 |   upsertDesconto,
+    33 |   createValesBatch,
+    34 |   cancelValesByGrupoFromCurrentForward,
+    35 |   getRepassesFranklynByAnoMes,
+    36 |   setRepasseFranklynPago,
+    37 |   getFolhaFechamentoStatus,
+    38 |   fecharCompetenciaFolha,
+    39 |   reabrirCompetenciaFolha,
+    40 |   trocarFuncaoFuncionario,
+    41 |   getTrocasFuncaoByLojaCompetencia,
+    42 |   getTrocasFuncaoByFuncionario,
+    43 |   corrigirDataTrocaFuncao,
+    44 |   upsertFolhaTransicaoFuncao,
+    45 |   getFolhaSem5Status,
+    46 |   ativarFolhaSem5,
+    47 |   desativarFolhaSem5,
+    48 |   getRhPontoDia,
+    49 |   getRhPontoHistorico,
+    50 |   analisarRhPontoImportacao,
+    51 |   salvarRhPontoImportacao,
+    52 |   salvarRhPontoConferencia,
+    53 |   getRhPontoPendencias,
+
+
+
+##############################################################################################################
+ARQUIVO: db
+CAMINHO: C:\FR-FUCK-CLEAR\server\db.ts
+STATUS: ENCONTRADO
+TAMANHO: 160036 bytes
+LINHAS: 5038
+ENCODING ESPERADO: UTF-8
+BOM: NÃO
+EOL: LF
+##############################################################################################################
+
+====================================================================================================
+TERMO: funcionarios
+LINHA APROXIMADA: 10
+====================================================================================================
+     1 | import { eq, and, or, gt, gte, desc, isNull, sql } from "drizzle-orm";
+     2 | import { drizzle } from "drizzle-orm/mysql2";
+     3 | import mysql from "mysql2/promise";
+     4 | import * as schema from "../drizzle/schema";
+     5 | import {
+     6 |   InsertUser,
+     7 |   InsertFuncionario,
+     8 |   users,
+     9 |   lojas,
+    10 |   funcionarios,
+    11 |   metas,
+    12 |   folhaPagamento,
+    13 |   premiacoes,
+    14 |   vales,
+    15 |   descontos,
+    16 |   observacoes,
+    17 |   tarefas,
+    18 |   tarefasAlertas,
+    19 |   feedbacks,
+    20 |   ferias,
+    21 |   rescisoes,
+    22 |   compras,
+    23 |   logsAtividade,
+    24 |   contasBancarias,
+    25 |   extratosBancarios,
+    26 |   conciliacao,
+    27 |   conciliacaoDetalhes,
+    28 |   comissaoFuncionario,
+    29 | } from "../drizzle/schema";
+    30 | import { ENV } from "./_core/env";
+
+
+====================================================================================================
+TERMO: adiantamento
+LINHA APROXIMADA: 1796
+====================================================================================================
+  1784 |       descontosAuditoriaByFuncionario[fid] = {};
+  1785 |     }
+  1786 | 
+  1787 |     descontosAuditoriaByFuncionario[fid][tipo] = {
+  1788 |       ultimaAlteracaoPor: (row as any).ultimaAlteracaoPor || null,
+  1789 |       ultimaAlteracaoEm: (row as any).ultimaAlteracaoEm || null,
+  1790 |     };
+  1791 | 
+  1792 |     const valor = Number(row.valor || 0);
+  1793 | 
+  1794 |     if (tipo === "aluguel") descontosByFuncionario[fid].aluguel = valor;
+  1795 |     if (tipo === "inss") descontosByFuncionario[fid].inss = valor;
+  1796 |     if (tipo === "adiantamento") descontosByFuncionario[fid].adiant = valor;
+  1797 |     if (tipo === "holerite") descontosByFuncionario[fid].holerite = valor;
+  1798 |   }
+  1799 | 
+  1800 |   for (const row of valesRows) {
+  1801 |     const fid = Number(row.funcionarioId);
+  1802 | 
+  1803 |     if (!valesByFuncionario[fid]) {
+  1804 |       valesByFuncionario[fid] = [];
+  1805 |     }
+  1806 | 
+  1807 |     valesByFuncionario[fid].push({
+  1808 |       id: String(row.id),
+  1809 |       grupoId: String(row.grupoId || ""),
+  1810 |       descricao: String(row.descricao || ""),
+  1811 |       valor: Number(row.valorParcela || row.valor || 0),
+  1812 |       parcelaAtual: Number(row.parcelaAtual || 1),
+  1813 |       totalParcelas: Number(row.parcelas || row.totalParcelas || 1),
+  1814 |       anoOrigem: Number(row.anoOrigem || row.ano || ano),
+  1815 |       mesOrigem: Number(row.mesOrigem || row.mes || mes),
+  1816 |       dataVale: (row as any).dataVale || null,
+
+
+====================================================================================================
+TERMO: holerite
+LINHA APROXIMADA: 1714
+====================================================================================================
+  1702 |     ultimaAlteracaoEm?: Date | null;
+  1703 |   }>
+  1704 | > = {};
+  1705 |   
+  1706 |   const observacoesByFuncionario: Record<number, string[]> = {};
+  1707 | 
+  1708 |   const descontosByFuncionario: Record<
+  1709 |     number,
+  1710 |     {
+  1711 |       aluguel: number;
+  1712 |       inss: number;
+  1713 |       adiant: number;
+  1714 |       holerite: number;
+  1715 |     }
+  1716 |   > = {};
+  1717 | 
+  1718 |   const descontosAuditoriaByFuncionario: Record<number, any> = {};
+  1719 | 
+  1720 |   const valesByFuncionario: Record<
+  1721 |   number,
+  1722 |   Array<{
+  1723 |     id: string;
+  1724 |     grupoId: string;
+  1725 |     descricao: string;
+  1726 |     valor: number;
+  1727 |     parcelaAtual: number;
+  1728 |     totalParcelas: number;
+  1729 |     anoOrigem: number;
+  1730 |     mesOrigem: number;
+  1731 |     dataVale?: string | null;
+  1732 |     repasseBeneficiario?: string | null;
+  1733 |     repasseValor?: number | null;
+  1734 |     repasseStatus?: "pendente" | "pago" | null;
+
+
+====================================================================================================
+TERMO: premiacao
+LINHA APROXIMADA: 1989
+====================================================================================================
+  1977 |   ano: number,
+  1978 |   mes: number
+  1979 | ) {
+  1980 |   const status = await getFolhaFechamentoStatus(lojaId, ano, mes);
+  1981 | 
+  1982 |   if (status.fechado) {
+  1983 |     throw new Error(
+  1984 |       `A folha de ${String(mes).padStart(2, "0")}/${ano} está fechada. Reabra a competência antes de alterar valores.`
+  1985 |     );
+  1986 |   }
+  1987 | }
+  1988 | 
+  1989 | export async function createPremiacao(data: {
+  1990 |   funcionarioId: number;
+  1991 |   lojaId: number;
+  1992 |   ano: number;
+  1993 |   mes: number;
+  1994 |   descricao: string;
+  1995 |   valor: number;
+  1996 | 
+  1997 |   ultimaAlteracaoPor?: string | null;
+  1998 |   ultimaAlteracaoEm?: Date | null;
+  1999 | }) {
+  2000 |   const db = await getDb();
+  2001 |   if (!db) throw new Error("Banco não conectado");
+  2002 | 
+  2003 |   await assertCompetenciaFolhaAberta(data.lojaId, data.ano, data.mes);
+  2004 | 
+  2005 |   await db.insert(premiacoes).values({
+  2006 |     funcionarioId: data.funcionarioId,
+  2007 |     lojaId: data.lojaId,
+  2008 |     ano: data.ano,
+  2009 |     mes: data.mes,
+
+
+====================================================================================================
+TERMO: UPDATE funcionarios
+LINHA APROXIMADA: 468
+====================================================================================================
+   456 |     duracaoAlmocoMinutos: normalizarDuracaoAlmoco(data.duracaoAlmocoMinutos),
+   457 |     horarioSaida1: normalizarHorarioJornada(data.horarioSaida1),
+   458 |     horarioEntrada2: normalizarHorarioJornada(data.horarioEntrada2),
+   459 |     horarioSaida2: normalizarHorarioJornada(data.horarioSaida2),
+   460 |     status: "ativo",
+   461 |   };
+   462 | 
+   463 |   const result = await db.insert(funcionarios).values(values as any);
+   464 |   const insertId = result?.[0]?.insertId ?? result?.insertId;
+   465 | 
+   466 |   if (insertId && _pool) {
+   467 |     await _pool.execute(
+   468 |       "UPDATE funcionarios SET dataNascimento = ? WHERE id = ?",
+   469 |       [formatarDataMySQL(data.dataNascimento), insertId]
+   470 |     );
+   471 |   }
+   472 | 
+   473 |   if (!insertId) {
+   474 |     const criado = await db
+   475 |       .select()
+   476 |       .from(funcionarios)
+   477 |       .where(eq(funcionarios.nome, data.nome))
+   478 |       .orderBy(desc(funcionarios.id))
+   479 |       .limit(1);
+   480 | 
+   481 |     return criado[0] ?? null;
+   482 |   }
+   483 | 
+   484 |   return getFuncionarioById(Number(insertId));
+   485 | }
+   486 | 
+   487 | export async function updateFuncionario(data: {
+   488 |   id: number;
+
+
+
+##############################################################################################################
+ARQUIVO: schema raiz
+CAMINHO: C:\FR-FUCK-CLEAR\drizzle\schema.ts
+STATUS: ENCONTRADO
+TAMANHO: 21967 bytes
+LINHAS: 543
+ENCODING ESPERADO: UTF-8
+BOM: NÃO
+EOL: LF
+##############################################################################################################
+
+====================================================================================================
+TERMO: funcionarios
+LINHA APROXIMADA: 50
+====================================================================================================
+    38 | export const lojas = mysqlTable("lojas", {
+    39 |   id: int("id").autoincrement().primaryKey(),
+    40 |   nome: varchar("nome", { length: 100 }).notNull(),
+    41 |   metaTotal: decimal("metaTotal", { precision: 12, scale: 2 }).notNull(),
+    42 |   createdAt: timestamp("createdAt").defaultNow().notNull(),
+    43 |   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    44 | });
+    45 | 
+    46 | export type Loja = typeof lojas.$inferSelect;
+    47 | export type InsertLoja = typeof lojas.$inferInsert;
+    48 | 
+    49 | /**
+    50 |  * Funcionarios (employee records with history)
+    51 |  */
+    52 | export const funcionarios = mysqlTable("funcionarios", {
+    53 |   id: int("id").autoincrement().primaryKey(),
+    54 |   lojaId: int("lojaId").notNull(),
+    55 |   nome: varchar("nome", { length: 150 }).notNull(),
+    56 |   cpf: varchar("cpf", { length: 20 }),
+    57 |   pix: varchar("pix", { length: 200 }),
+    58 |   dataNascimento: timestamp("dataNascimento"),
+    59 |   funcao: mysqlEnum("funcao", [
+    60 |     "mecanico",
+    61 |     "vendedor",
+    62 |     "consultor_vendas",
+    63 |     "alinhador",
+    64 |     "aux_alinhador",
+    65 |     "auxiliar_limpeza",
+    66 |     "caixa",
+    67 |     "caixa_lider",
+    68 |     "recepcionista",
+    69 |     "auxiliar_estoque",
+    70 |     "lider_estoque",
+
+
+====================================================================================================
+TERMO: folha
+LINHA APROXIMADA: 116
+====================================================================================================
+   104 |   faixas: json("faixas").notNull(), // [{liquidezMinima, percentualComissao}, ...]
+   105 |   salarioFixo: decimal("salarioFixo", { precision: 12, scale: 2 }),
+   106 |   dataAlteracao: timestamp("dataAlteracao").defaultNow(),
+   107 |   aplicacaoEm: mysqlEnum("aplicacaoEm", ["imediata", "mes_atual", "proximo_mes"]).default("proximo_mes"),
+   108 |   createdAt: timestamp("createdAt").defaultNow().notNull(),
+   109 |   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+   110 | });
+   111 | 
+   112 | export type Meta = typeof metas.$inferSelect;
+   113 | export type InsertMeta = typeof metas.$inferInsert;
+   114 | 
+   115 | /**
+   116 |  * Folha de Pagamento (weekly liquidity and commissions)
+   117 |  */
+   118 | export const folhaPagamento = mysqlTable("folha_pagamento", {
+   119 |   id: int("id").autoincrement().primaryKey(),
+   120 |   funcionarioId: int("funcionarioId").notNull(),
+   121 |   lojaId: int("lojaId").notNull(),
+   122 |   contaBancariaId: int("contaBancariaId"),
+   123 |   ano: int("ano").notNull(),
+   124 |   mes: int("mes").notNull(),
+   125 |   semana: int("semana").notNull(),
+   126 |   liquidez: decimal("liquidez", { precision: 12, scale: 2 }).notNull(),
+   127 |   percentualComissao: decimal("percentualComissao", { precision: 5, scale: 2 }).notNull(),
+   128 |   valorComissao: decimal("valorComissao", { precision: 12, scale: 2 }).notNull(),
+   129 |   percentualManual: decimal("percentualManual", { precision: 5, scale: 2 }),
+   130 |   motivoPercentualManual: varchar("motivoPercentualManual", { length: 255 }),
+   131 |   ultimaAlteracaoPor: varchar("ultima_alteracao_por", { length: 255 }),
+   132 |   ultimaAlteracaoEm: timestamp("ultima_alteracao_em"),
+   133 |   createdAt: timestamp("createdAt").defaultNow().notNull(),
+   134 |   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+   135 | });
+   136 | 
+
+
+====================================================================================================
+TERMO: adiantamento
+LINHA APROXIMADA: 190
+====================================================================================================
+   178 |   status: mysqlEnum("status", ["ativo", "cancelado"]).default("ativo"),
+   179 |   createdAt: timestamp("createdAt").defaultNow().notNull(),
+   180 |   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+   181 | 
+   182 |   ultimaAlteracaoPor: varchar("ultima_alteracao_por", { length: 255 }),
+   183 |   ultimaAlteracaoEm: timestamp("ultima_alteracao_em"),
+   184 | });
+   185 | 
+   186 | export type Vale = typeof vales.$inferSelect;
+   187 | export type InsertVale = typeof vales.$inferInsert;
+   188 | 
+   189 | /**
+   190 |  * Descontos (discounts: aluguel, INSS, adiantamento, holerite)
+   191 |  */
+   192 | export const descontos = mysqlTable("descontos", {
+   193 |   id: int("id").autoincrement().primaryKey(),
+   194 |   funcionarioId: int("funcionarioId").notNull(),
+   195 |   lojaId: int("lojaId").notNull(),
+   196 |   tipo: mysqlEnum("tipo", ["aluguel", "inss", "adiantamento", "holerite"]).notNull(),
+   197 |   valor: decimal("valor", { precision: 12, scale: 2 }).notNull(),
+   198 |   ano: int("ano").notNull(),
+   199 |   mes: int("mes").notNull(),
+   200 |   descricao: varchar("descricao", { length: 200 }),
+   201 |   createdAt: timestamp("createdAt").defaultNow().notNull(),
+   202 |   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+   203 | 
+   204 |   ultimaAlteracaoPor: varchar("ultima_alteracao_por", { length: 255 }),
+   205 |   ultimaAlteracaoEm: timestamp("ultima_alteracao_em"),
+   206 | });
+   207 | 
+   208 | export type Desconto = typeof descontos.$inferSelect;
+   209 | export type InsertDesconto = typeof descontos.$inferInsert;
+   210 | 
+
+
+====================================================================================================
+TERMO: mysqlTable
+LINHA APROXIMADA: 4
+====================================================================================================
+     1 | import {
+     2 |   int,
+     3 |   mysqlEnum,
+     4 |   mysqlTable,
+     5 |   text,
+     6 |   timestamp,
+     7 |   varchar,
+     8 |   decimal,
+     9 |   boolean,
+    10 |   json,
+    11 |   date,
+    12 | } from "drizzle-orm/mysql-core";
+    13 | 
+    14 | /**
+    15 |  * Core user table backing auth flow with role-based access control.
+    16 |  */
+    17 | export const users = mysqlTable("users", {
+    18 |   id: int("id").autoincrement().primaryKey(),
+    19 |   openId: varchar("openId", { length: 64 }).notNull().unique(),
+    20 |   name: text("name"),
+    21 |   email: varchar("email", { length: 320 }),
+    22 |   loginMethod: varchar("loginMethod", { length: 64 }),
+    23 |   passwordHash: varchar("passwordHash", { length: 255 }),
+    24 |   isActive: boolean("isActive").default(true),
+
+
+
+##############################################################################################################
+ARQUIVO: schema server
+CAMINHO: C:\FR-FUCK-CLEAR\server\drizzle\schema.ts
+STATUS: NÃO ENCONTRADO
+##############################################################################################################

@@ -1,0 +1,256 @@
+﻿============================================================
+ PERFECT - DIAGNOSTICO DE REGISTRO
+============================================================
+
+Data: 24/09/2026 19:18:44
+
+Este script e SOMENTE LEITURA.
+Nenhuma chave ou valor sera alterado.
+
+NAO EXISTE: Registry::HKEY_CURRENT_USER\Software\VB and VBA Program Settings
+
+NAO EXISTE: Registry::HKEY_CURRENT_USER\Software\Classes\VirtualStore\MACHINE\SOFTWARE
+
+============================================================
+ BUSCAS DIRECIONADAS
+============================================================
+
+------------------------------------------------------------
+BUSCA: HKCU\Software  |  termo: CatalogoExpresso
+------------------------------------------------------------
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appleveltileinfo$appleveltilelist\windows.data.apps.appleveltileinfo$w~cprogramdatacatalogoperfectcallcatalogoexpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appleveltileinfo$appleveltilelist\windows.data.apps.appleveltileinfo$w~cprogramdatacatalogosampelesamkitcallcatalogoexpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appleveltileinfo$appleveltilelist\windows.data.apps.appleveltileinfo$w~cprogramdatacatalogosylcallcatalogoexpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appleveltileinfo$appleveltilelist\windows.data.apps.appleveltileinfo$w~cprogramdatacatalogovoldacallcatalogoexpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso207ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso245ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso65ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso669ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appleveltileinfo$appleveltilelist\windows.data.apps.appleveltileinfo$w~cprogramdatacatalogoperfectcallcatalogoexpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appleveltileinfo$appleveltilelist\windows.data.apps.appleveltileinfo$w~cprogramdatacatalogosampelesamkitcallcatalogoexpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appleveltileinfo$appleveltilelist\windows.data.apps.appleveltileinfo$w~cprogramdatacatalogosylcallcatalogoexpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appleveltileinfo$appleveltilelist\windows.data.apps.appleveltileinfo$w~cprogramdatacatalogovoldacallcatalogoexpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso207ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso245ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso65ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso669ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppLaunch
+    C:\ProgramData\CatalogoSampelESamkit\CallCatalogoExpresso.exe    REG_DWORD    0x47
+    C:\ProgramData\CatalogoSYL\CallCatalogoExpresso.exe    REG_DWORD    0x2b
+    C:\ProgramData\CatalogoPerfect\CallCatalogoExpresso.exe    REG_DWORD    0x36
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppSwitched
+    C:\ProgramData\CatalogoSampelESamkit\CatalogoExpresso.exe    REG_DWORD    0x1e6
+    C:\ProgramData\CatalogoSYL\CatalogoExpresso.exe    REG_DWORD    0xd5
+    C:\ProgramData\CatalogoPerfect\CatalogoExpresso.exe    REG_DWORD    0x10d
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\ShowJumpView
+    C:\ProgramData\CatalogoSampelESamkit\CatalogoExpresso.exe    REG_DWORD    0x3
+    C:\ProgramData\CatalogoSampelESamkit\CallCatalogoExpresso.exe    REG_DWORD    0x1
+    C:\ProgramData\CatalogoPerfect\CallCatalogoExpresso.exe    REG_DWORD    0x1
+    C:\ProgramData\CatalogoSYL\CallCatalogoExpresso.exe    REG_DWORD    0x1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Start\TileProperties\W~C:\ProgramData\CatalogoPerfect\CallCatalogoExpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Start\TileProperties\W~C:\ProgramData\CatalogoSampelESamkit\CallCatalogoExpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Start\TileProperties\W~C:\ProgramData\CatalogoSYL\CallCatalogoExpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Start\TileProperties\W~C:\ProgramData\CatalogoVolda\CallCatalogoExpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store
+    C:\ProgramData\CatalogoSampelESamkit\CallCatalogoExpresso.exe    REG_BINARY    534143500100000000000000070000002800000018F00100BF6F020001000000000000000000000A712000006CAAE87AD8FBDB0100000000000000000200000028000000000000000000000000000000200000000000000000000000B637C729000000004A0000004A000000
+    C:\ProgramData\CatalogoSYL\CallCatalogoExpresso.exe    REG_BINARY    534143500100000000000000070000002800000018F00100BF6F020001000000000000000000000A712000006CAAE87AD8FBDB0100000000000000000200000028000000000000000000000000000000200000000000000000000000B2E0320F000000002F0000002F000000
+    C:\ProgramData\CatalogoPerfect\CallCatalogoExpresso.exe    REG_BINARY    534143500100000000000000070000002800000018F00100BF6F020001000000000000000000000A712000006CAAE87AD8FBDB010000000000000000020000002800000000000000000000000000000020000000000000000000000042DC0004000000003C0000003C000000
+
+HKEY_CURRENT_USER\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache
+    C:\ProgramData\CatalogoSYL\CallCatalogoExpresso.exe.FriendlyAppName    REG_SZ    CallCatalogoExpresso
+    C:\ProgramData\CatalogoSYL\CallCatalogoExpresso.exe.ApplicationCompany    REG_SZ    Idéia 2001 Informática
+    C:\ProgramData\CatalogoSampelESamkit\CatalogoExpresso.exe.FriendlyAppName    REG_SZ    CatalogoExpresso
+    C:\ProgramData\CatalogoSampelESamkit\CatalogoExpresso.exe.ApplicationCompany    REG_SZ    Idéia 2001 Informática
+    C:\ProgramData\CatalogoSYL\CatalogoExpresso.exe.FriendlyAppName    REG_SZ    CatalogoExpresso
+    C:\ProgramData\CatalogoSYL\CatalogoExpresso.exe.ApplicationCompany    REG_SZ    Idéia 2001 Informática
+    C:\ProgramData\CatalogoPerfect\CatalogoExpresso.exe.FriendlyAppName    REG_SZ    CatalogoExpresso
+    C:\ProgramData\CatalogoPerfect\CatalogoExpresso.exe.ApplicationCompany    REG_SZ    Idéia 2001 Informática
+    C:\ProgramData\CatalogoVolda\CatalogoExpresso.exe.FriendlyAppName    REG_SZ    CatalogoExpresso
+    C:\ProgramData\CatalogoVolda\CatalogoExpresso.exe.ApplicationCompany    REG_SZ    Idéia 2001 Informática
+
+Fim da pesquisa: 43 correspondência(s) encontrada(s).
+
+------------------------------------------------------------
+BUSCA: HKCU\Software  |  termo: Catalogo Expresso
+------------------------------------------------------------
+(nenhum resultado)
+
+------------------------------------------------------------
+BUSCA: HKCU\Software  |  termo: Ideia2001
+------------------------------------------------------------
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso207ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso245ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso65ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso669ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso207ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso245ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso65ideia2001_is1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appmetadata$appmetadatalist\windows.data.apps.appmetadata$catalogoexpresso669ideia2001_is1
+
+Fim da pesquisa: 8 correspondência(s) encontrada(s).
+
+------------------------------------------------------------
+BUSCA: HKCU\Software  |  termo: Perfect
+------------------------------------------------------------
+
+HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\WEF\MostPopularAddins\PowerPoint
+    App18    REG_SZ    wa104381063	Icons by Noun Project	Over 7 million high-quality icons to choose from, perfect for presentations.	https://store-images.s-microsoft.com/image/apps.43800.2d301a6f-7f58-486a-aa28-60900de38763.afe578dd-fbdd-497d-b1e4-66a6217bfb17.c7c39ea5-5370-437d-8e9d-f9fe1fa77b09.png	7206	2	2	0	0	1.0.0.1	https://thenounproject.com/legal/#!privacy-policy	https://go.microsoft.com/fwlink/?LinkID=521715&omkt=en-US	
+    App21    REG_SZ    wa104381448	Ubi Timer	Ubi Timer: Perfect timing and enhanced engagement for PowerPoint presentations.	https://store-images.s-microsoft.com/image/apps.8460.b2044bd4-1b25-41e3-9810-3564d9472171.804e0d26-99a8-4b72-a103-49327a1a30b8.f01fef0d-5053-4e80-b246-34524e7c5f69.png	1105	3	2	0	0	1.0.3.0	https://ubitimer.com/privacy-policy	https://go.microsoft.com/fwlink/?linkid=2041178	
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Cloud\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appleveltileinfo$appleveltilelist\windows.data.apps.appleveltileinfo$w~cprogramdatacatalogoperfectcallcatalogoexpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\{f7a3caf0-102d-48aa-ad4f-78d30ca61bdf}$windows.data.apps.appleveltileinfo$appleveltilelist\windows.data.apps.appleveltileinfo$w~cprogramdatacatalogoperfectcallcatalogoexpresso.exe
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppLaunch
+    C:\ProgramData\CatalogoPerfect\CallCatalogoExpresso.exe    REG_DWORD    0x36
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\AppSwitched
+    C:\ProgramData\CatalogoPerfect\CatalogoExpresso.exe    REG_DWORD    0x10d
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FeatureUsage\ShowJumpView
+    C:\ProgramData\CatalogoPerfect\CallCatalogoExpresso.exe    REG_DWORD    0x1
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Start\TileProperties\W~C:\ProgramData\CatalogoPerfect
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store
+    C:\Users\bruno\Downloads\InstalarCatalogoPerfect.exe    REG_BINARY    5341435001000000000000000700000028000000701ECE095848CE0901000000000000000000010600010000B5E96C186E4ADB01000000000000000002000000280000000000000000000000000000000000000000000000000000001E400500000000000100000001000000
+    C:\ProgramData\CatalogoPerfect\CallCatalogoExpresso.exe    REG_BINARY    534143500100000000000000070000002800000018F00100BF6F020001000000000000000000000A712000006CAAE87AD8FBDB010000000000000000020000002800000000000000000000000000000020000000000000000000000042DC0004000000003C0000003C000000
+
+HKEY_CURRENT_USER\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache
+    C:\ProgramData\CatalogoPerfect\CatalogoExpresso.exe.FriendlyAppName    REG_SZ    CatalogoExpresso
+    C:\ProgramData\CatalogoPerfect\CatalogoExpresso.exe.ApplicationCompany    REG_SZ    Idéia 2001 Informática
+
+Fim da pesquisa: 12 correspondência(s) encontrada(s).
+
+------------------------------------------------------------
+BUSCA: HKCU\Software  |  termo: CatExp
+------------------------------------------------------------
+(nenhum resultado)
+
+------------------------------------------------------------
+BUSCA: HKCU\Software  |  termo: CodigoEmpresa
+------------------------------------------------------------
+(nenhum resultado)
+
+------------------------------------------------------------
+BUSCA: HKCU\Software  |  termo: DbCipher
+------------------------------------------------------------
+(nenhum resultado)
+
+------------------------------------------------------------
+BUSCA: HKCU\Software  |  termo: gIsDbCipher
+------------------------------------------------------------
+(nenhum resultado)
+
+------------------------------------------------------------
+BUSCA: HKLM\SOFTWARE\WOW6432Node  |  termo: CatalogoExpresso
+------------------------------------------------------------
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\CatalogoExpresso207Ideia2001_is1
+    DisplayIcon    REG_SZ    C:\ProgramData\CatalogoPerfect\Configuracoes\CatalogoExpresso207.ico
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\CatalogoExpresso245Ideia2001_is1
+    DisplayIcon    REG_SZ    C:\ProgramData\CatalogoSampelESamkit\Configuracoes\CatalogoExpresso245.ico
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\CatalogoExpresso65Ideia2001_is1
+    DisplayIcon    REG_SZ    C:\ProgramData\CatalogoSYL\Configuracoes\CatalogoExpresso65.ico
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\CatalogoExpresso669Ideia2001_is1
+    DisplayIcon    REG_SZ    C:\ProgramData\CatalogoVolda\Configuracoes\CatalogoExpresso669.ico
+
+Fim da pesquisa: 8 correspondência(s) encontrada(s).
+
+------------------------------------------------------------
+BUSCA: HKLM\SOFTWARE\WOW6432Node  |  termo: Catalogo Expresso
+------------------------------------------------------------
+(nenhum resultado)
+
+------------------------------------------------------------
+BUSCA: HKLM\SOFTWARE\WOW6432Node  |  termo: Ideia2001
+------------------------------------------------------------
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\CatalogoExpresso207Ideia2001_is1
+    URLInfoAbout    REG_SZ    http://www.ideia2001.com.br
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\CatalogoExpresso245Ideia2001_is1
+    URLInfoAbout    REG_SZ    http://www.ideia2001.com.br
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\CatalogoExpresso65Ideia2001_is1
+    URLInfoAbout    REG_SZ    http://www.ideia2001.com.br
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\CatalogoExpresso669Ideia2001_is1
+    URLInfoAbout    REG_SZ    http://www.ideia2001.com.br
+
+Fim da pesquisa: 8 correspondência(s) encontrada(s).
+
+------------------------------------------------------------
+BUSCA: HKLM\SOFTWARE\WOW6432Node  |  termo: Perfect
+------------------------------------------------------------
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\CatalogoExpresso207Ideia2001_is1
+    Inno Setup: App Path    REG_SZ    C:\Program Files (x86)\CatalogoPerfect
+    InstallLocation    REG_SZ    C:\Program Files (x86)\CatalogoPerfect\
+    Inno Setup: Icon Group    REG_SZ    Catálogo Perfect
+    DisplayName    REG_SZ    Catálogo Perfect
+    DisplayIcon    REG_SZ    C:\ProgramData\CatalogoPerfect\Configuracoes\CatalogoExpresso207.ico
+    UninstallString    REG_SZ    "C:\Program Files (x86)\CatalogoPerfect\unins000.exe"
+    QuietUninstallString    REG_SZ    "C:\Program Files (x86)\CatalogoPerfect\unins000.exe" /SILENT
+
+Fim da pesquisa: 7 correspondência(s) encontrada(s).
+
+------------------------------------------------------------
+BUSCA: HKLM\SOFTWARE\WOW6432Node  |  termo: CatExp
+------------------------------------------------------------
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Internet Explorer\Main\FeatureControl\FEATURE_BROWSER_EMULATION
+    HtmVcatExp.exe    REG_DWORD    0x2af8
+
+Fim da pesquisa: 1 correspondência(s) encontrada(s).
+
+------------------------------------------------------------
+BUSCA: HKLM\SOFTWARE\WOW6432Node  |  termo: CodigoEmpresa
+------------------------------------------------------------
+(nenhum resultado)
+
+------------------------------------------------------------
+BUSCA: HKLM\SOFTWARE\WOW6432Node  |  termo: DbCipher
+------------------------------------------------------------
+(nenhum resultado)
+
+------------------------------------------------------------
+BUSCA: HKLM\SOFTWARE\WOW6432Node  |  termo: gIsDbCipher
+------------------------------------------------------------
+(nenhum resultado)
+

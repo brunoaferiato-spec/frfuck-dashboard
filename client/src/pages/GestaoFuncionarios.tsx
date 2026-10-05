@@ -81,6 +81,7 @@ type FuncionarioItem = {
   tipoMeta?: TipoMeta | null;
   dataAdmissao?: string | Date | null;
   cargoConfianca?: boolean | number | null;
+  isPj?: boolean | number | null;
   horarioEntrada1?: string | null;
   duracaoAlmocoMinutos?: number | null;
   horarioSaida1?: string | null;
@@ -100,6 +101,7 @@ type FormFuncionario = {
   tipoMeta: TipoMeta;
   dataAdmissao: string;
   cargoConfianca: boolean;
+  isPj: boolean;
   horarioEntrada1: string;
   duracaoAlmocoMinutos: string;
   horarioSaida2: string;
@@ -125,6 +127,7 @@ function criarFormVazio(lojaId?: number): FormFuncionario {
     tipoMeta: "",
     dataAdmissao: hojeInput(),
     cargoConfianca: false,
+    isPj: false,
     horarioEntrada1: "",
     duracaoAlmocoMinutos: "",
     horarioSaida2: "",
@@ -394,6 +397,7 @@ export default function GestaoFuncionarios() {
           : (func.tipoMeta as TipoMeta) || "",
       dataAdmissao: formatDateInput(func.dataAdmissao),
       cargoConfianca: Boolean(Number(func.cargoConfianca || 0)),
+      isPj: Boolean(Number(func.isPj || 0)),
       horarioEntrada1: func.horarioEntrada1 || "",
       duracaoAlmocoMinutos:
         func.duracaoAlmocoMinutos !== null && func.duracaoAlmocoMinutos !== undefined
@@ -562,6 +566,7 @@ export default function GestaoFuncionarios() {
             : null,
         dataAdmissao: dateFromInput(formData.dataAdmissao),
         cargoConfianca: formData.cargoConfianca,
+        isPj: formData.isPj,
         horarioEntrada1: formData.horarioEntrada1 || null,
         duracaoAlmocoMinutos: formData.duracaoAlmocoMinutos
           ? Number(formData.duracaoAlmocoMinutos)
@@ -894,6 +899,11 @@ export default function GestaoFuncionarios() {
                           <td className="px-4 py-4 text-sm text-white/58">{func.pix || "—"}</td>
                           <td className="px-4 py-4">
                             <p className="text-sm font-medium text-white/75">{labelFuncao(func.funcao, lojaId)}</p>
+                            {Boolean(Number(func.isPj || 0)) && (
+                              <span className="mt-1 inline-flex rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/[0.08] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.10em] text-[#F2D675]">
+                                PJ
+                              </span>
+                            )}
                             {func.funcao === "consultor_vendas" && (
                               <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#D4AF37]">
                                 {lojaId === 5
@@ -1111,6 +1121,33 @@ export default function GestaoFuncionarios() {
                     />
                   </div>
                 </div>
+              </section>
+
+              {/* FOLHA_PJ_1PCT_V1 */}
+              <section className="rounded-2xl border border-[#D4AF37]/16 bg-gradient-to-br from-[#111009] to-[#0a0a0a] p-4 sm:p-5">
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/18 bg-[#D4AF37]/[0.05] p-3">
+                  <input
+                    type="checkbox"
+                    checked={formData.isPj}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        isPj: e.target.checked,
+                      }))
+                    }
+                    className="mt-0.5 h-4 w-4 accent-[#D4AF37]"
+                  />
+
+                  <span>
+                    <span className="block text-sm font-semibold text-[#F2D675]">
+                      Funcionário PJ
+                    </span>
+
+                    <span className="mt-0.5 block text-xs leading-relaxed text-white/40">
+                      Na folha, Holerite será exibido como Pagamento e o boleto ficará limitado ao valor que exceder R$ 6.500,00 da base líquida.
+                    </span>
+                  </span>
+                </label>
               </section>
 
               <section className="rounded-2xl border border-[#D4AF37]/16 bg-gradient-to-br from-[#111009] to-[#0a0a0a] p-4 sm:p-5">

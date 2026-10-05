@@ -27,6 +27,7 @@ import RHRescisoes from "./pages/RHRescisoes";
 import RHFeriasPlanejamento from "./pages/RHFeriasPlanejamento";
 import ComprasShell from "./components/ComprasShell";
 import ComprasPneus from "./pages/ComprasPneus";
+import ComprasPecas from "./pages/ComprasPecas";
 import ComprasPlaceholder from "./pages/ComprasPlaceholder";
 
 function TelaCarregando() {
@@ -272,7 +273,7 @@ function Router() {
 
       <Route path="/compras/pecas">
         <RotaCompras>
-          <ComprasPlaceholder tipo="pecas" />
+          <ComprasPecas />
         </RotaCompras>
       </Route>
 

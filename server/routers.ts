@@ -22,6 +22,8 @@ import {
   getComprasByLojaAnoMes,
   getComissaoFuncionario,
   getFolhaExtrasByLojaAnoMes,
+  getFolhaUmPorcentoByLojaAnoMes,
+  upsertFolhaUmPorcento,
   getFolhaBaseByLojaAnoMes,
   getResumoSupervisorMensal,
   upsertFolhaBaseItem,
@@ -80,6 +82,7 @@ import { rhFeriasRouter } from "./rhFerias";
 import { rhExperienciaRouter } from "./rhExperiencia";
 import { rhRescisoesRouter } from "./rhRescisoes";
 import { comprasPneusRouter } from "./comprasPneus";
+import { comprasPecasRouter } from "./comprasPecas";
 
 const funcaoSchema = z.enum([
   "mecanico",
@@ -808,6 +811,7 @@ export const appRouter = router({
           ),
           dataAdmissao: z.coerce.date(),
           cargoConfianca: z.boolean().optional(),
+          isPj: z.boolean().optional(),
           horarioEntrada1: horarioJornadaSchema,
           duracaoAlmocoMinutos: duracaoAlmocoSchema,
           horarioSaida1: horarioJornadaSchema,
@@ -826,6 +830,7 @@ export const appRouter = router({
           tipoMeta: input.tipoMeta ?? null,
           dataAdmissao: input.dataAdmissao,
           cargoConfianca: Boolean(input.cargoConfianca),
+          isPj: Boolean(input.isPj),
           horarioEntrada1: input.horarioEntrada1 ?? null,
           duracaoAlmocoMinutos: input.duracaoAlmocoMinutos ?? null,
           horarioSaida1: input.horarioSaida1 ?? null,
@@ -924,6 +929,7 @@ export const appRouter = router({
           ),
           dataAdmissao: z.coerce.date(),
           cargoConfianca: z.boolean().optional(),
+          isPj: z.boolean().optional(),
           horarioEntrada1: horarioJornadaSchema,
           duracaoAlmocoMinutos: duracaoAlmocoSchema,
           horarioSaida1: horarioJornadaSchema,
@@ -943,6 +949,7 @@ export const appRouter = router({
           tipoMeta: input.tipoMeta ?? null,
           dataAdmissao: input.dataAdmissao,
           cargoConfianca: Boolean(input.cargoConfianca),
+          isPj: Boolean(input.isPj),
           horarioEntrada1: input.horarioEntrada1 ?? null,
           duracaoAlmocoMinutos: input.duracaoAlmocoMinutos ?? null,
           horarioSaida1: input.horarioSaida1 ?? null,
@@ -1254,6 +1261,44 @@ export const appRouter = router({
       )
       .query(({ input }) =>
         getFolhaExtrasByLojaAnoMes(input.lojaId, input.ano, input.mes)
+      ),
+
+    // FOLHA_PJ_1PCT_V1
+    getUmPorcento: protectedProcedure
+      .input(
+        z.object({
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number().min(1).max(12),
+        })
+      )
+      .query(({ input }) =>
+        getFolhaUmPorcentoByLojaAnoMes(
+          input.lojaId,
+          input.ano,
+          input.mes
+        )
+      ),
+
+    saveUmPorcento: protectedProcedure
+      .input(
+        z.object({
+          funcionarioId: z.number(),
+          lojaId: z.number(),
+          ano: z.number(),
+          mes: z.number().min(1).max(12),
+          liquidezBase: z.number().min(0),
+        })
+      )
+      .mutation(({ input, ctx }) =>
+        upsertFolhaUmPorcento({
+          ...input,
+          ultimaAlteracaoPor:
+            ctx.user.name ||
+            ctx.user.email ||
+            `Usuário ${ctx.user.id}`,
+          ultimaAlteracaoEm: new Date(),
+        })
       ),
 
     getRepassesFranklyn: protectedProcedure
@@ -1940,6 +1985,7 @@ export const appRouter = router({
         getComprasByLojaAnoMes(input.lojaId, input.ano, input.mes)
       ),
     pneus: comprasPneusRouter,
+    pecas: comprasPecasRouter,
   }),
 
   contasBancarias: router({

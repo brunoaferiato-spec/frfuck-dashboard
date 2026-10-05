@@ -76,6 +76,7 @@ export const funcionarios = mysqlTable("funcionarios", {
   tipoMeta: mysqlEnum("tipoMeta", ["meta1", "meta2"]),
   dataAdmissao: timestamp("dataAdmissao").notNull(),
   cargoConfianca: boolean("cargoConfianca").default(false).notNull(),
+  isPj: boolean("isPj").default(false).notNull(), // FOLHA_PJ_1PCT_V1
   horarioEntrada1: varchar("horarioEntrada1", { length: 5 }),
   duracaoAlmocoMinutos: int("duracaoAlmocoMinutos"),
   horarioSaida1: varchar("horarioSaida1", { length: 5 }),

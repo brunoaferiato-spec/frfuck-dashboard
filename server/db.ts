@@ -263,6 +263,12 @@ async function ensureFuncionarioJornadaFields() {
       "ADD COLUMN cargoConfianca TINYINT(1) NOT NULL DEFAULT 0 AFTER dataAdmissao"
     );
   }
+  // FOLHA_PJ_1PCT_V1
+  if (!existentes.has("isPj")) {
+    alteracoes.push(
+      "ADD COLUMN isPj TINYINT(1) NOT NULL DEFAULT 0 AFTER cargoConfianca"
+    );
+  }
   if (!existentes.has("horarioEntrada1")) {
     alteracoes.push("ADD COLUMN horarioEntrada1 VARCHAR(5) NULL AFTER cargoConfianca");
   }
@@ -427,6 +433,7 @@ export async function createFuncionario(data: {
   tipoMeta?: "meta1" | "meta2" | null;
   dataAdmissao: Date;
   cargoConfianca?: boolean | null;
+  isPj?: boolean | null;
   horarioEntrada1?: string | null;
   duracaoAlmocoMinutos?: number | null;
   horarioSaida1?: string | null;
@@ -452,6 +459,7 @@ export async function createFuncionario(data: {
     : null,
     dataAdmissao: data.dataAdmissao,
     cargoConfianca: Boolean(data.cargoConfianca),
+    isPj: Boolean(data.isPj),
     horarioEntrada1: normalizarHorarioJornada(data.horarioEntrada1),
     duracaoAlmocoMinutos: normalizarDuracaoAlmoco(data.duracaoAlmocoMinutos),
     horarioSaida1: normalizarHorarioJornada(data.horarioSaida1),
@@ -510,6 +518,7 @@ export async function updateFuncionario(data: {
   tipoMeta?: "meta1" | "meta2" | "" | null;
   dataAdmissao: Date;
   cargoConfianca?: boolean | null;
+  isPj?: boolean | null;
   horarioEntrada1?: string | null;
   duracaoAlmocoMinutos?: number | null;
   horarioSaida1?: string | null;
@@ -538,6 +547,7 @@ export async function updateFuncionario(data: {
       tipoMeta: tipoMetaNormalizado,
       dataAdmissao: data.dataAdmissao,
       cargoConfianca: Boolean(data.cargoConfianca),
+      isPj: Boolean(data.isPj),
       horarioEntrada1: normalizarHorarioJornada(data.horarioEntrada1),
       duracaoAlmocoMinutos: normalizarDuracaoAlmoco(data.duracaoAlmocoMinutos),
       horarioSaida1: normalizarHorarioJornada(data.horarioSaida1),
@@ -1393,6 +1403,133 @@ export async function getValesByFuncionarioMesOrigem(funcionarioId: number, mesO
         eq(vales.status, "ativo")
       )
     );
+}
+
+// FOLHA_PJ_1PCT_V1
+// ===== Informativo mensal de 1% =====
+let _folhaUmPorcentoTableReady = false;
+
+async function ensureFolhaUmPorcentoTable() {
+  if (_folhaUmPorcentoTableReady) return;
+
+  await getDb();
+
+  if (!_pool) {
+    throw new Error("Banco não conectado");
+  }
+
+  await _pool.query(`
+    CREATE TABLE IF NOT EXISTS folha_um_porcento (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      funcionario_id INT NOT NULL,
+      loja_id INT NOT NULL,
+      ano INT NOT NULL,
+      mes INT NOT NULL,
+      liquidez_base DECIMAL(14,2) NOT NULL DEFAULT 0,
+      ultima_alteracao_por VARCHAR(255) NULL,
+      ultima_alteracao_em DATETIME NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uniq_folha_um_porcento (funcionario_id, loja_id, ano, mes),
+      INDEX idx_folha_um_porcento_competencia (loja_id, ano, mes)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  _folhaUmPorcentoTableReady = true;
+}
+
+export async function getFolhaUmPorcentoByLojaAnoMes(
+  lojaId: number,
+  ano: number,
+  mes: number
+) {
+  await ensureFolhaUmPorcentoTable();
+
+  if (!_pool) {
+    throw new Error("Banco não conectado");
+  }
+
+  const [rows] = await _pool.query<any[]>(
+    `SELECT
+       funcionario_id AS funcionarioId,
+       loja_id AS lojaId,
+       ano,
+       mes,
+       liquidez_base AS liquidezBase,
+       ultima_alteracao_por AS ultimaAlteracaoPor,
+       ultima_alteracao_em AS ultimaAlteracaoEm
+     FROM folha_um_porcento
+     WHERE loja_id = ? AND ano = ? AND mes = ?`,
+    [lojaId, ano, mes]
+  );
+
+  return (rows || []).map((row: any) => ({
+    ...row,
+    funcionarioId: Number(row.funcionarioId),
+    lojaId: Number(row.lojaId),
+    ano: Number(row.ano),
+    mes: Number(row.mes),
+    liquidezBase: Number(row.liquidezBase || 0),
+  }));
+}
+
+export async function upsertFolhaUmPorcento(data: {
+  funcionarioId: number;
+  lojaId: number;
+  ano: number;
+  mes: number;
+  liquidezBase: number;
+  ultimaAlteracaoPor?: string | null;
+  ultimaAlteracaoEm?: Date | null;
+}) {
+  await assertCompetenciaFolhaAberta(
+    data.lojaId,
+    data.ano,
+    data.mes
+  );
+
+  await ensureFolhaUmPorcentoTable();
+
+  if (!_pool) {
+    throw new Error("Banco não conectado");
+  }
+
+  const liquidez = Math.max(
+    0,
+    Number(data.liquidezBase || 0)
+  );
+
+  await _pool.query(
+    `INSERT INTO folha_um_porcento
+       (
+         funcionario_id,
+         loja_id,
+         ano,
+         mes,
+         liquidez_base,
+         ultima_alteracao_por,
+         ultima_alteracao_em
+       )
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       liquidez_base = VALUES(liquidez_base),
+       ultima_alteracao_por = VALUES(ultima_alteracao_por),
+       ultima_alteracao_em = VALUES(ultima_alteracao_em),
+       updated_at = CURRENT_TIMESTAMP`,
+    [
+      data.funcionarioId,
+      data.lojaId,
+      data.ano,
+      data.mes,
+      liquidez.toFixed(2),
+      data.ultimaAlteracaoPor ?? null,
+      data.ultimaAlteracaoEm ?? null,
+    ]
+  );
+
+  return {
+    success: true,
+  };
 }
 
 // ===== Descontos =====
