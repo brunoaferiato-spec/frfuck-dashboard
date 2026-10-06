@@ -1978,6 +1978,105 @@ function exportBoletosCsv(rows: Array<{
   URL.revokeObjectURL(url);
 }
 
+
+// FOLHA_STATUS_BOLETO_V1
+type StatusBoletoFolha =
+  | "pendente"
+  | "acertado"
+  | "nao_pagar";
+
+const STATUS_BOLETO_ACERTADO =
+  "__STATUS_BOLETO__:ACERTO_REALIZADO";
+
+const STATUS_BOLETO_NAO_PAGAR =
+  "__STATUS_BOLETO__:NAO_PAGAR";
+
+function isMarcadorStatusBoleto(
+  texto: unknown
+) {
+  const valor =
+    String(texto ?? "");
+
+  return (
+    valor ===
+      STATUS_BOLETO_ACERTADO ||
+    valor ===
+      STATUS_BOLETO_NAO_PAGAR
+  );
+}
+
+function getStatusBoletoLinha(
+  linha:
+    | {
+        observacoes?: string[];
+      }
+    | null
+    | undefined
+): StatusBoletoFolha {
+  const observacoes =
+    Array.isArray(
+      linha?.observacoes
+    )
+      ? linha!.observacoes!
+      : [];
+
+  if (
+    observacoes.includes(
+      STATUS_BOLETO_ACERTADO
+    )
+  ) {
+    return "acertado";
+  }
+
+  if (
+    observacoes.includes(
+      STATUS_BOLETO_NAO_PAGAR
+    )
+  ) {
+    return "nao_pagar";
+  }
+
+  return "pendente";
+}
+
+function boletoBloqueadoLinha(
+  linha:
+    | {
+        observacoes?: string[];
+      }
+    | null
+    | undefined
+) {
+  return (
+    getStatusBoletoLinha(
+      linha
+    ) !== "pendente"
+  );
+}
+
+function observacoesPublicasLinha(
+  linha:
+    | {
+        observacoes?: string[];
+      }
+    | null
+    | undefined
+) {
+  const observacoes =
+    Array.isArray(
+      linha?.observacoes
+    )
+      ? linha!.observacoes!
+      : [];
+
+  return observacoes.filter(
+    (obs) =>
+      !isMarcadorStatusBoleto(
+        obs
+      )
+  );
+}
+
 function TabelaQuadrante({
   titulo,
   descricao,
@@ -2677,9 +2776,19 @@ const isMensalUnico =
              {linhas.map((linha: LinhaComQuadrante) => (
                 <tr
                   key={linha.id}
-                  className="border-b border-white/[0.045] transition-colors duration-200 hover:bg-[#D4AF37]/[0.028]"
+                  className={`border-b transition-colors duration-200 ${
+                    boletoBloqueadoLinha(linha)
+                      ? "border-red-500/25 bg-red-950/30 hover:bg-red-950/40"
+                      : "border-white/[0.045] hover:bg-[#D4AF37]/[0.028]"
+                  }`}
                 >
-                  <td className="sticky left-0 z-10 min-w-[260px] bg-[#0b0b0b] p-3 font-semibold text-white">
+                  <td
+                    className={`sticky left-0 z-10 min-w-[260px] p-3 font-semibold text-white ${
+                      boletoBloqueadoLinha(linha)
+                        ? "bg-[#2a0909]"
+                        : "bg-[#0b0b0b]"
+                    }`}
+                  >
                     <button
                       type="button"
                       onClick={() => onOpenFuncionarioDetalhe(linha)}
@@ -2713,6 +2822,7 @@ const isMensalUnico =
                       getDescricaoFuncaoNoMes(linha)
                     )}
                   </td>
+
                   {temTransicaoNoQuadrante && (
                     <td className="min-w-[190px] p-2">
                       {linha.trocaFuncaoMes ? (
@@ -3210,12 +3320,12 @@ const isMensalUnico =
                       type="button"
                       onClick={() => onOpenObsEditor(linha)}
                       className={
-                        linha.observacoes && linha.observacoes.length > 0
+                        observacoesPublicasLinha(linha).length > 0
                           ? "rounded-md bg-red-600 px-3 py-2 font-bold text-white hover:bg-red-500"
                           : "rounded-md border border-[#D4AF37]/15 bg-[#111111] px-3 py-2 text-white hover:border-[#D4AF37]/45"
                       }
                     >
-                      {linha.observacoes && linha.observacoes.length > 0 ? "OBS" : "—"}
+                      {observacoesPublicasLinha(linha).length > 0 ? "OBS" : "—"}
                     </button>
                   </td>
                 </tr>
@@ -8978,7 +9088,10 @@ async function removeObservacao(index: number) {
   if (!obsEditor.funcionarioId) return;
 
   const linhaAtual = linhas.find((l) => l.funcionarioId === obsEditor.funcionarioId);
-  const texto = linhaAtual?.observacoes?.[index];
+  const texto =
+    observacoesPublicasLinha(
+      linhaAtual
+    )[index];
   if (!texto) return;
 
   await removeObservacaoMutation.mutateAsync({
@@ -9239,6 +9352,101 @@ async function importarArquivoConferenciaVale(file: File | null) {
   }
 }
 
+async function setStatusBoleto(
+  linha: LinhaComQuadrante,
+  status: StatusBoletoFolha
+) {
+  if (
+    !garantirCompetenciaAberta()
+  ) {
+    return;
+  }
+
+  const statusAtual =
+    getStatusBoletoLinha(
+      linha
+    );
+
+  if (
+    statusAtual === status
+  ) {
+    return;
+  }
+
+  const marcadoresAtuais =
+    Array.isArray(
+      linha.observacoes
+    )
+      ? linha.observacoes.filter(
+          (obs) =>
+            isMarcadorStatusBoleto(
+              obs
+            )
+        )
+      : [];
+
+  for (
+    const marcador of
+    marcadoresAtuais
+  ) {
+    await removeObservacaoMutation.mutateAsync({
+      funcionarioId:
+        Number(
+          linha.funcionarioId
+        ),
+      lojaId:
+        Number(
+          linha.loja_id
+        ),
+      ano:
+        Number(ano),
+      mes:
+        Number(mes),
+      texto:
+        marcador,
+    });
+  }
+
+  let novoMarcador:
+    | string
+    | null = null;
+
+  if (
+    status === "acertado"
+  ) {
+    novoMarcador =
+      STATUS_BOLETO_ACERTADO;
+  }
+
+  if (
+    status === "nao_pagar"
+  ) {
+    novoMarcador =
+      STATUS_BOLETO_NAO_PAGAR;
+  }
+
+  if (novoMarcador) {
+    await addObservacaoMutation.mutateAsync({
+      funcionarioId:
+        Number(
+          linha.funcionarioId
+        ),
+      lojaId:
+        Number(
+          linha.loja_id
+        ),
+      ano:
+        Number(ano),
+      mes:
+        Number(mes),
+      texto:
+        novoMarcador,
+    });
+  }
+
+  await folhaExtrasQuery.refetch();
+}
+
 function openValeEditor(linha: LinhaComQuadrante) {
   if (!garantirCompetenciaAberta()) return;
   setValeEditor({
@@ -9445,7 +9653,14 @@ async function lançarNegativoNoPróximoMês() {
 
   function exportarBoletos() {
     const rows = linhas
-      .filter((linha) => linha.boleto > 0 && linha.quadrante !== "recepcao")
+      .filter(
+        (linha) =>
+          linha.boleto > 0 &&
+          linha.quadrante !== "recepcao" &&
+          !boletoBloqueadoLinha(
+            linha
+          )
+      )
       .map((linha) => {
         const funcionario = getFuncionarioById(linha.funcionarioId) as any;
         return {
@@ -12197,6 +12412,23 @@ if (
           {funcionarioDetalheAtual && (() => {
             const funcionario = funcionarioDetalheAtual as any;
 
+            // FOLHA_STATUS_BOLETO_MODAL_V1
+            const linhaFolhaDetalhe =
+              linhas.find(
+                (linha) =>
+                  Number(
+                    linha.funcionarioId
+                  ) ===
+                  Number(
+                    funcionario.id
+                  )
+              ) || null;
+
+            const statusBoletoDetalhe =
+              getStatusBoletoLinha(
+                linhaFolhaDetalhe
+              );
+
             const Campo = ({ label, valor }: { label: string; valor: any }) => (
               <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
                 <p className="text-xs text-gray-400 mb-1">{label}</p>
@@ -12507,6 +12739,64 @@ if (
                   <p className="text-lg font-bold text-white">
                     {funcionario.nome}
                   </p>
+                </div>
+
+                <div
+                  className={`rounded-xl border p-4 ${
+                    boletoBloqueadoLinha(
+                      linhaFolhaDetalhe
+                    )
+                      ? "border-red-500/35 bg-red-950/25"
+                      : "border-[#D4AF37]/20 bg-[#D4AF37]/[0.04]"
+                  }`}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-[#F2D675]">
+                        Status do pagamento
+                      </p>
+
+                      <p className="mt-1 text-xs leading-relaxed text-gray-400">
+                        Acerto realizado e Não pagar não entram na exportação dos boletos.
+                      </p>
+                    </div>
+
+                    <select
+                      value={statusBoletoDetalhe}
+                      disabled={!linhaFolhaDetalhe}
+                      onChange={(e) => {
+                        if (
+                          !linhaFolhaDetalhe
+                        ) {
+                          return;
+                        }
+
+                        void setStatusBoleto(
+                          linhaFolhaDetalhe,
+                          e.target.value as StatusBoletoFolha
+                        );
+                      }}
+                      className={`min-w-[180px] cursor-pointer rounded-xl border px-4 py-3 text-sm font-bold outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                        boletoBloqueadoLinha(
+                          linhaFolhaDetalhe
+                        )
+                          ? "border-red-500/40 bg-red-950/50 text-red-300"
+                          : "border-[#D4AF37]/25 bg-[#111111] text-[#F2D675] hover:border-[#D4AF37]/55"
+                      }`}
+                    >
+                      <option value="pendente">
+                        Pendente
+                      </option>
+
+                      <option value="acertado">
+                        Acerto realizado
+                      </option>
+
+                      <option value="nao_pagar">
+                        Não pagar
+                      </option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -13857,14 +14147,13 @@ if (
                 Observações cadastradas
               </p>
 
-              {!linhaObsAtual?.observacoes ||
-              linhaObsAtual.observacoes.length === 0 ? (
+              {observacoesPublicasLinha(linhaObsAtual).length === 0 ? (
                 <p className="text-sm text-gray-400">
                   Nenhuma observação cadastrada.
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {linhaObsAtual.observacoes.map((obs, index) => (
+                  {observacoesPublicasLinha(linhaObsAtual).map((obs, index) => (
                     <div
                       key={`${obs}-${index}`}
                       className="flex items-center justify-between gap-4 rounded-md border border-[#D4AF37]/10 p-2"

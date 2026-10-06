@@ -663,6 +663,35 @@ export function getRegraPremiacaoEspecial(args: {
   const lojaId = Number(args.lojaId);
   const nome = normalizarNome(args.funcionarioNome);
 
+  // PREMIO_CHEFE_PATIO_BRUNO_ALMEIDA_V1
+  //
+  // Em Joinville existe uma premiação especial de Chefe de Pátio
+  // destinada ao BRUNO ALMEIDA ALVES.
+  //
+  // A busca histórica abaixo aceita correspondência pelo primeiro nome.
+  // Isso fazia qualquer "Bruno" receber a regra do Bruno Almeida.
+  //
+  // Para outros Brunos de Joinville, só permitimos continuar
+  // se existir uma regra EXATA cadastrada especificamente para eles.
+  if (
+    lojaId === 1 &&
+    nome.startsWith("BRUNO") &&
+    nome !== "BRUNO ALMEIDA ALVES"
+  ) {
+    const regraExataOutroBruno =
+      regrasPremiacoesEspeciais.find(
+        (item) =>
+          item.lojaId === lojaId &&
+          normalizarNome(
+            item.funcionarioNome
+          ) === nome
+      );
+
+    if (!regraExataOutroBruno) {
+      return null;
+    }
+  }
+
   const regra = regrasPremiacoesEspeciais.find((item) => {
     const nomeRegra = normalizarNome(item.funcionarioNome);
 
