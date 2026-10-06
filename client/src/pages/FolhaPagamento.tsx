@@ -4921,7 +4921,30 @@ return {
   proporcaoNovaFuncao,
   diasFuncaoAnterior,
   diasFuncaoNova,
-  boleto: boletoAjustado,
+  // FOLHA_ALINHADOR_DESCONTA_1PCT_BOLETO_V1
+  boleto:
+    quadrante === "alinhador" &&
+    String(
+      func.funcao || ""
+    )
+      .trim()
+      .toLowerCase() === "alinhador"
+      ? Number(
+          (
+            Number(
+              boletoAjustado || 0
+            ) -
+            Number(
+              umPorcentoByFuncionario[
+                Number(
+                  base.funcionarioId
+                )
+              ] || 0
+            ) *
+              0.01
+          ).toFixed(2)
+        )
+      : boletoAjustado,
 };
 
 }).filter(Boolean) as LinhaComQuadrante[];
@@ -4935,6 +4958,7 @@ return {
   folhaExtrasQuery.data,
   resumoSupervisorQuery.data,
   trocaFuncaoPorFuncionario,
+  umPorcentoByFuncionario,
 ]);
 
   const funcionariosImportaveis = useMemo(() => {
@@ -13096,10 +13120,9 @@ if (
               </p>
 
               <p className="mt-2 text-xs leading-relaxed text-white/35">
-                Este valor é somente informativo.
-                Não altera comissão, boleto,
-                premiação, descontos ou total
-                da folha.
+                Para as demais funções, este valor é somente informativo.
+                Para Alinhador, o 1% é abatido do boleto,
+                pois este valor já é pago dentro do Holerite.
               </p>
             </div>
           </div>
