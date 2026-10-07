@@ -146,6 +146,34 @@ export function getRegraVendedorMecanico(args: {
   const lojaId = Number(args.lojaId);
   const funcao = String(args.funcao || "").trim().toLowerCase();
 
+  // META_VENDEDOR_JOINVILLE_40_50_60_V1
+  // Regra exclusiva do Vendedor de Joinville.
+  if (
+    lojaId === 1 &&
+    funcao === "vendedor"
+  ) {
+    return {
+      faixas: [
+        {
+          minimo: 0,
+          percentual: 5,
+        },
+        {
+          minimo: 40000,
+          percentual: 6,
+        },
+        {
+          minimo: 50000,
+          percentual: 7,
+        },
+        {
+          minimo: 60000,
+          percentual: 8,
+        },
+      ],
+    } as RegraPercentual;
+  }
+
   const regrasLoja = REGRAS_POR_LOJA[lojaId];
 
   if (!regrasLoja) {
