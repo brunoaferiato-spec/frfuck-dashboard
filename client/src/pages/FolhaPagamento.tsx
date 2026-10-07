@@ -5161,8 +5161,23 @@ if (
   // As vendas pessoais do gerente continuam usando
   // normalmente as regras semanais SEM1...SEM5.
 
+  // META_GERENTE_SAO_JOSE_RENAN_V1
   const percentualLojaGerente =
-    Number(lojaId) === 7
+    Number(lojaId) === 3
+      ? liquidezLoja <= 0
+        ? 0
+        : liquidezLoja < 360000
+        ? 0.5
+        : liquidezLoja < 400000
+        ? 1
+        : liquidezLoja < 440000
+        ? 1.5
+        : liquidezLoja < 480000
+        ? 2
+        : liquidezLoja < 520000
+        ? 2.5
+        : 3
+      : Number(lojaId) === 7
       ? liquidezLoja <= 0
         ? 0
         : liquidezLoja < 360000
@@ -9453,7 +9468,21 @@ async function saveCellEditor() {
         ) || null;
 
       const percentualLoja =
-        Number(lojaId) === 7
+        Number(lojaId) === 3
+          ? valorLiquidezLoja <= 0
+            ? 0
+            : valorLiquidezLoja < 360000
+            ? 0.5
+            : valorLiquidezLoja < 400000
+            ? 1
+            : valorLiquidezLoja < 440000
+            ? 1.5
+            : valorLiquidezLoja < 480000
+            ? 2
+            : valorLiquidezLoja < 520000
+            ? 2.5
+            : 3
+          : Number(lojaId) === 7
           ? valorLiquidezLoja <= 0
             ? 0
             : valorLiquidezLoja < 360000
@@ -10422,6 +10451,21 @@ function getMetaFuncaoTexto(
 
   // GERENTE
 if (funcao === "gerente") {
+
+  // Meta exclusiva da Liquidez Loja do gerente de São José.
+  if (
+    Number(linha.loja_id) === 3 &&
+    semana === 5
+  ) {
+    return [
+      "Até R$ 359.999,99 = 0,50%",
+      "R$ 360.000,00 até R$ 399.999,99 = 1,00%",
+      "R$ 400.000,00 até R$ 439.999,99 = 1,50%",
+      "R$ 440.000,00 até R$ 479.999,99 = 2,00%",
+      "R$ 480.000,00 até R$ 519.999,99 = 2,50%",
+      "R$ 520.000,00 ou mais = 3,00%",
+    ].join("\n");
+  }
   // São José e São Leopoldo:
   // SEM1 a SEM4 = comissão normal de vendedor
   // SEM5 = comissão de gerente sobre a loja
