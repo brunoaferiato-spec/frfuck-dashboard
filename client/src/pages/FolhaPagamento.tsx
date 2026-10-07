@@ -4152,43 +4152,133 @@ async function salvarEdicaoFuncionarioDetalhe() {
 }
 
 const funcionariosDaCidade = useMemo(() => {
-  const dataReferencia = new Date(ano, mes - 1, 1);
+  // REATIVACAO_POR_COMPETENCIA_V1
+  //
+  // A Folha trabalha por COMPETÊNCIA mensal.
+  // Portanto admissão/desligamento/reativação precisam ser
+  // analisados pelo mês/ano, e não comparando apenas com o dia 1º.
+  //
+  // Exemplo:
+  // funcionário reativado em 20/08/2026
+  // deve participar da folha 08/2026.
 
-  return todosFuncionarios.filter((f: any) => {
-    if (Number(f.loja_id ?? f.lojaId) !== Number(lojaId)) return false;
+  const competenciaAtual =
+    Number(ano) * 100 +
+    Number(mes);
 
-    const desligamento = f.dataDesligamento
-      ? new Date(f.dataDesligamento)
-      : null;
+  function competenciaDaData(
+    value: any
+  ): number | null {
+    if (!value) return null;
 
-    const reativacao = f.dataReativacao
-      ? new Date(f.dataReativacao)
-      : null;
+    const data =
+      value instanceof Date
+        ? value
+        : new Date(value);
 
-    if (f.status === "ativo") {
-      if (!desligamento) return true;
+    if (
+      Number.isNaN(
+        data.getTime()
+      )
+    ) {
+      return null;
+    }
 
-      if (reativacao) {
+    return (
+      data.getUTCFullYear() *
+        100 +
+      (data.getUTCMonth() + 1)
+    );
+  }
+
+  return todosFuncionarios.filter(
+    (f: any) => {
+      if (
+        Number(
+          f.loja_id ??
+            f.lojaId
+        ) !== Number(lojaId)
+      ) {
+        return false;
+      }
+
+      const competenciaDesligamento =
+        competenciaDaData(
+          f.dataDesligamento
+        );
+
+      const competenciaReativacao =
+        competenciaDaData(
+          f.dataReativacao
+        );
+
+      // FUNCIONÁRIO ATIVO
+      if (f.status === "ativo") {
+        // Nunca foi desligado.
+        if (
+          competenciaDesligamento ===
+          null
+        ) {
+          return true;
+        }
+
+        // Foi desligado e depois reativado.
+        //
+        // Aparece:
+        // - até o mês do desligamento;
+        // - a partir do próprio mês da reativação.
+        //
+        // Não aparece somente no intervalo em que
+        // realmente esteve desligado.
+        if (
+          competenciaReativacao !==
+          null
+        ) {
+          return (
+            competenciaAtual <=
+              competenciaDesligamento ||
+            competenciaAtual >=
+              competenciaReativacao
+          );
+        }
+
+        // Mantém compatibilidade para cadastros antigos
+        // que estejam ATIVOS mas sem data de reativação.
+        return true;
+      }
+
+      // FUNCIONÁRIO INATIVO
+      if (f.status === "inativo") {
+        if (
+          competenciaDesligamento ===
+          null
+        ) {
+          return false;
+        }
+
+        if (
+          competenciaReativacao !==
+          null
+        ) {
+          return (
+            competenciaAtual <=
+              competenciaDesligamento ||
+            competenciaAtual >=
+              competenciaReativacao
+          );
+        }
+
+        // O mês do desligamento ainda pertence à folha,
+        // pois pode existir valor a receber naquele mês.
         return (
-          dataReferencia < desligamento ||
-          dataReferencia >= reativacao
+          competenciaAtual <=
+          competenciaDesligamento
         );
       }
 
       return true;
     }
-
-    if (f.status === "inativo") {
-      if (!desligamento) return false;
-
-      // Se o funcionário está atualmente inativo, a data de reativação
-      // histórica não pode fazê-lo reaparecer depois do desligamento atual.
-      // Ele aparece somente nas competências anteriores ao desligamento.
-      return dataReferencia < desligamento;
-    }
-
-    return true;
-  });
+  );
 }, [lojaId, todosFuncionarios, ano, mes]);
 
 function updateFolhas(next: FolhaMensal[]) {
@@ -6800,7 +6890,8 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
           updatedLine.funcao === "mecanico" ||
           (updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7));
 
-        const metaAtualizacao = findMetaForFuncionario({
+        // CORRECAO_SALVAMENTO_MANUAL_FOLHA_V2
+const metaAtualizacao = findMetaForFuncionario({
           funcionarioNome: updatedLine.nome,
           funcao: funcaoMetaAtualizacao,
           cidade: selectedLoja,
@@ -6809,7 +6900,7 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
 
         const metaAtualizacaoCompetencia =
           aplicarMetaMecanicoGravataiSetembro2026({
-            meta: metaAtualizacaoCompetencia,
+            meta: metaAtualizacao,
             funcao: funcaoMetaAtualizacao,
             lojaId,
             ano,
@@ -7830,7 +7921,7 @@ const metaAtualizacao = findMetaForFuncionario({
 
         const metaAtualizacaoCompetencia =
           aplicarMetaMecanicoGravataiSetembro2026({
-            meta: metaAtualizacaoCompetencia,
+            meta: metaAtualizacao,
             funcao: funcaoMetaAtualizacao,
             lojaId,
             ano,
