@@ -3215,7 +3215,69 @@ const isMensalUnico =
                       </td>
 
                       <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
-                        R$ {money(linha.totalComissao)}
+                        <div className="flex flex-col items-end gap-1">
+                          <span>
+                            R$ {money(linha.totalComissao)}
+                          </span>
+
+                          {/* PJ_GERENTE_MANTEM_LIQUIDEZ_LOJA_V1 */}
+                          {isPjQuadrante &&
+                            String(linha.funcao || "")
+                              .trim()
+                              .toLowerCase() === "gerente" &&
+                            [3, 6, 7].includes(
+                              Number(linha.loja_id)
+                            ) && (
+                              <div className="mt-1 flex flex-col items-end gap-1 rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] px-2 py-1.5 text-[10px]">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onOpenCellEditor(
+                                      linha,
+                                      "sem5" as any,
+                                      "Liquidez Loja",
+                                      "money"
+                                    )
+                                  }
+                                  className="whitespace-nowrap text-white hover:text-[#F2D675] hover:underline underline-offset-4"
+                                  title="Editar Liquidez Loja"
+                                >
+                                  Loja: R$ {money(
+                                    Number(
+                                      (linha as any)
+                                        .liquidezLojaGerente || 0
+                                    )
+                                  )}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onOpenRegraSemanaEditor(
+                                      linha,
+                                      5
+                                    )
+                                  }
+                                  className="whitespace-nowrap text-[#F2D675] hover:underline underline-offset-4"
+                                  title="Ver regra da comissão da loja"
+                                >
+                                  % Loja: {Number(
+                                    (linha as any)
+                                      .percLojaGerente || 0
+                                  ).toFixed(2)}%
+                                </button>
+
+                                <span className="whitespace-nowrap text-green-400">
+                                  Comissão Loja: R$ {money(
+                                    Number(
+                                      (linha as any)
+                                        .comLojaGerente || 0
+                                    )
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                        </div>
                       </td>
                     </>
                   )}
