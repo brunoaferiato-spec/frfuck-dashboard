@@ -1294,6 +1294,40 @@ function normalizarChavePjV1(
   return `${loja}::${funcionario}`;
 }
 
+
+// REGRA_MECANICO_GRAVATAI_SETEMBRO_2026_V1
+function aplicarMetaMecanicoGravataiSetembro2026(args: {
+  meta: any;
+  funcao: string;
+  lojaId: number;
+  ano: number;
+  mes: number;
+}) {
+  const funcao =
+    String(args.funcao || "")
+      .trim()
+      .toLowerCase();
+
+  const ehRegraEspecial =
+    Number(args.lojaId) === 7 &&
+    Number(args.ano) === 2026 &&
+    Number(args.mes) === 9 &&
+    funcao === "mecanico";
+
+  if (!ehRegraEspecial) {
+    return args.meta;
+  }
+
+  return {
+    ...(args.meta || {}),
+    cidade: "7",
+    funcao: "mecanico",
+    tipoMeta: "gravatai-setembro-2026",
+    regra:
+      "ATÉ 7.999,99 = 10% | 8.000 A 9.999,99 = 12% | 10.000 A 14.999,99 = 15% | 15.000 OU MAIS = 17%",
+  };
+}
+
 function calcularBoletoAjustado(args: {
   quadrante: QuadranteKey;
   funcao: string;
@@ -2200,9 +2234,14 @@ const isConsultorAci =
   const isGerente =
   quadrante === "gerente";
 
+// GERENTE_GRAVATAI_SEMANAL_V1
 const isGerenteSaoJoseSemanal =
   isGerente &&
-  (linhas[0]?.loja_id === 3 || linhas[0]?.loja_id === 6);
+  (
+    linhas[0]?.loja_id === 3 ||
+    linhas[0]?.loja_id === 6 ||
+    linhas[0]?.loja_id === 7
+  );
 
 const isMensalUnico =
   (quadrante === "comissao_mensal" && !isConsultorMeta2) ||
@@ -2337,7 +2376,7 @@ const isMensalUnico =
     const funcaoRegra =
       funcaoHistoricaSemana ||
       (linha.funcao === "gerente" &&
-      (linha.loja_id === 3 || linha.loja_id === 6)
+      (linha.loja_id === 3 || linha.loja_id === 6 || linha.loja_id === 7)
         ? "vendedor"
         : linha.funcao);
 
@@ -2348,12 +2387,22 @@ const isMensalUnico =
       tipoMeta: linha.tipoMeta,
     });
 
+    // CORRECAO_GRAVATAI_SETEMBRO_ANO_MES_V2
+    const metaCompetencia =
+      aplicarMetaMecanicoGravataiSetembro2026({
+        meta,
+        funcao: funcaoRegra,
+        lojaId: Number(linha.loja_id),
+        ano: Number(linha.ano),
+        mes: Number(linha.mes),
+      });
+
     const liquidezSemana = Number(
       (linha as any)[campoLiquidezSemanaVisual(semana)] || 0
     );
 
     const calculadoOriginal = computeFolhaLinha({
-      meta,
+      meta: metaCompetencia,
       funcao: funcaoRegra,
       cidade: linha.loja_id.toString(),
       funcionarioNome: linha.nome,
@@ -2385,7 +2434,7 @@ const isMensalUnico =
     const manual =
       !(
         linha.funcao === "gerente" &&
-        (linha.loja_id === 3 || linha.loja_id === 6)
+        (linha.loja_id === 3 || linha.loja_id === 6 || linha.loja_id === 7)
       ) &&
       manualValue > 0 &&
       percentualAutomatico > 0 &&
@@ -2442,7 +2491,7 @@ const isMensalUnico =
 
     const percentual =
       linha.funcao === "gerente" &&
-      (linha.loja_id === 3 || linha.loja_id === 6)
+      (linha.loja_id === 3 || linha.loja_id === 6 || linha.loja_id === 7)
         ? percentualAutomatico
         : Number((linha as any)[campoPercentualSemanaVisual(semana)] || 0);
 
@@ -4449,12 +4498,12 @@ setFolhas(Array.from(agrupado.values()));
         trocaFuncaoPorFuncionario.get(Number(func.id)) || null;
 
       const funcaoMetaCalculo =
-  func.funcao === "gerente" && (lojaId === 3 || lojaId === 6)
+  func.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7)
     ? "vendedor"
     : func.funcao;
 
       const isGerenteSaoJose =
-  func.funcao === "gerente" && (lojaId === 3 || lojaId === 6);
+  func.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7);
 
 const tipoMetaEfetivo =
   func.funcao === "consultor_vendas" && (lojaId === 5 || ehConsultorSulMensal(lojaId))
@@ -4575,7 +4624,7 @@ const possuiHistoricoSem5 =
 
 if (sem5Extra > 0 && !possuiHistoricoSem5) {
   const funcaoSem5Calculo =
-    func.funcao === "gerente" && (lojaId === 3 || lojaId === 6)
+    func.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7)
       ? "vendedor"
       : func.funcao;
   const metaSem5 = findMetaForFuncionario({
@@ -4619,7 +4668,7 @@ if (
   Number(base.percManual1 || 0) > 0 &&
   base.funcao !== "vendedor" &&
   base.funcao !== "mecanico" &&
-  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6))
+  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7))
 ) {
   calculadoAjustado.perc1 = Number(base.percManual1);
 
@@ -4636,7 +4685,7 @@ if (
   Number(base.percManual2 || 0) > 0 &&
   base.funcao !== "vendedor" &&
   base.funcao !== "mecanico" &&
-  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6))
+  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7))
 ) {
   calculadoAjustado.perc2 = Number(base.percManual2);
 
@@ -4653,7 +4702,7 @@ if (
   Number(base.percManual3 || 0) > 0 &&
   base.funcao !== "vendedor" &&
   base.funcao !== "mecanico" &&
-  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6))
+  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7))
 ) {
   calculadoAjustado.perc3 = Number(base.percManual3);
 
@@ -4670,7 +4719,7 @@ if (
   Number(base.percManual4 || 0) > 0 &&
   base.funcao !== "vendedor" &&
   base.funcao !== "mecanico" &&
-  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6))
+  !(base.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7))
 ) {
   calculadoAjustado.perc4 = Number(base.percManual4);
 
@@ -4693,6 +4742,156 @@ if (func.funcao !== "supervisor") {
 
   calculadoAjustado.totalLiquidez =
     Number(calculadoAjustado.totalLiquidez || 0) + sem5Extra;
+}
+
+// MECANICO_GRAVATAI_SETEMBRO_CALCULO_V2
+// Regra TEMPORÁRIA somente para MECÂNICO de Gravataí em 09/2026.
+//
+// Setembro/2026:
+// até 7.999,99       = 10%
+// 8.000 a 9.999,99  = 12%
+// 10.000 a 14.999,99 = 15%
+// 15.000 ou mais     = 17%
+//
+// Outubro e demais competências continuam com a regra tradicional.
+if (
+  Number(lojaId) === 7 &&
+  Number(ano) === 2026 &&
+  Number(mes) === 9 &&
+  String(func.funcao || "")
+    .trim()
+    .toLowerCase() === "mecanico"
+) {
+  const percentualMecanicoGravataiSetembro = (
+    valorBruto: number
+  ) => {
+    const valor =
+      Number(valorBruto || 0);
+
+    if (valor <= 0) return 0;
+    if (valor < 8000) return 10;
+    if (valor < 10000) return 12;
+    if (valor < 15000) return 15;
+
+    return 17;
+  };
+
+  const liquidez1 =
+    Number(base.sem1 || 0);
+
+  const liquidez2 =
+    Number(base.sem2 || 0);
+
+  const liquidez3 =
+    Number(base.sem3 || 0);
+
+  const liquidez4 =
+    Number(base.sem4 || 0);
+
+  const liquidez5 =
+    Number(sem5Extra || 0);
+
+  const perc1 =
+    percentualMecanicoGravataiSetembro(
+      liquidez1
+    );
+
+  const perc2 =
+    percentualMecanicoGravataiSetembro(
+      liquidez2
+    );
+
+  const perc3 =
+    percentualMecanicoGravataiSetembro(
+      liquidez3
+    );
+
+  const perc4 =
+    percentualMecanicoGravataiSetembro(
+      liquidez4
+    );
+
+  const perc5 =
+    percentualMecanicoGravataiSetembro(
+      liquidez5
+    );
+
+  calculadoAjustado.perc1 =
+    perc1;
+
+  calculadoAjustado.perc2 =
+    perc2;
+
+  calculadoAjustado.perc3 =
+    perc3;
+
+  calculadoAjustado.perc4 =
+    perc4;
+
+  (calculadoAjustado as any).perc5Extra =
+    perc5;
+
+  calculadoAjustado.com1 =
+    Number(
+      (
+        liquidez1 *
+        (perc1 / 100)
+      ).toFixed(2)
+    );
+
+  calculadoAjustado.com2 =
+    Number(
+      (
+        liquidez2 *
+        (perc2 / 100)
+      ).toFixed(2)
+    );
+
+  calculadoAjustado.com3 =
+    Number(
+      (
+        liquidez3 *
+        (perc3 / 100)
+      ).toFixed(2)
+    );
+
+  calculadoAjustado.com4 =
+    Number(
+      (
+        liquidez4 *
+        (perc4 / 100)
+      ).toFixed(2)
+    );
+
+  (calculadoAjustado as any).com5Extra =
+    Number(
+      (
+        liquidez5 *
+        (perc5 / 100)
+      ).toFixed(2)
+    );
+
+  calculadoAjustado.totalComissao =
+    Number(
+      (
+        Number(
+          calculadoAjustado.com1 || 0
+        ) +
+        Number(
+          calculadoAjustado.com2 || 0
+        ) +
+        Number(
+          calculadoAjustado.com3 || 0
+        ) +
+        Number(
+          calculadoAjustado.com4 || 0
+        ) +
+        Number(
+          (calculadoAjustado as any)
+            .com5Extra || 0
+        )
+      ).toFixed(2)
+    );
 }
 
 // Regra exclusiva mensal dos Consultores de São Leopoldo (6) e Gravataí (7).
@@ -4770,7 +4969,7 @@ if (func.funcao === "supervisor" && lojaId === 5) {
 
 if (
   func.funcao === "gerente" &&
-  (lojaId === 3 || lojaId === 6)
+  (lojaId === 3 || lojaId === 6 || lojaId === 7)
 ) {
   const liquidezLoja = Number((base as any).liquidezLojaGerente || 0);
 
@@ -4799,8 +4998,43 @@ if (
     holerite: 0,
   });
 
-  (calculadoAjustado as any).percLojaGerente = calculoLoja.perc1;
-  (calculadoAjustado as any).comLojaGerente = calculoLoja.com1;
+  // META_LOJA_GERENTE_GRAVATAI_V1
+  // Gravataí possui uma tabela própria para a LIQUIDEZ DA LOJA.
+  //
+  // Até 359.999,99       = 0,50%
+  // 360.000 a 439.999,99 = 1,00%
+  // 440.000 a 479.999,99 = 1,50%
+  // 480.000 ou mais      = 2,00%
+  //
+  // As vendas pessoais do gerente continuam usando
+  // normalmente as regras semanais SEM1...SEM5.
+
+  const percentualLojaGerente =
+    Number(lojaId) === 7
+      ? liquidezLoja <= 0
+        ? 0
+        : liquidezLoja < 360000
+        ? 0.5
+        : liquidezLoja < 440000
+        ? 1
+        : liquidezLoja < 480000
+        ? 1.5
+        : 2
+      : Number(calculoLoja.perc1 || 0);
+
+  const comissaoLojaGerente =
+    Number(
+      (
+        liquidezLoja *
+        (percentualLojaGerente / 100)
+      ).toFixed(2)
+    );
+
+  (calculadoAjustado as any).percLojaGerente =
+    percentualLojaGerente;
+
+  (calculadoAjustado as any).comLojaGerente =
+    comissaoLojaGerente;
 
   calculadoAjustado.totalComissao =
     Number(calculadoAjustado.com1 || 0) +
@@ -4808,7 +5042,7 @@ if (
     Number(calculadoAjustado.com3 || 0) +
     Number(calculadoAjustado.com4 || 0) +
     Number((calculadoAjustado as any).com5Extra || 0) +
-    Number(calculoLoja.com1 || 0);
+    Number(comissaoLojaGerente || 0);
 }
 
 const premiacaoEspecial =
@@ -6557,14 +6791,14 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
         } as LinhaComQuadrante;
 
         const funcaoMetaAtualizacao =
-          updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6)
+          updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7)
             ? "vendedor"
             : updatedLine.funcao;
 
         const ignorarPercentualManual =
           updatedLine.funcao === "vendedor" ||
           updatedLine.funcao === "mecanico" ||
-          (updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6));
+          (updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7));
 
         const metaAtualizacao = findMetaForFuncionario({
           funcionarioNome: updatedLine.nome,
@@ -6573,8 +6807,17 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
           tipoMeta: updatedLine.tipoMeta,
         });
 
+        const metaAtualizacaoCompetencia =
+          aplicarMetaMecanicoGravataiSetembro2026({
+            meta: metaAtualizacaoCompetencia,
+            funcao: funcaoMetaAtualizacao,
+            lojaId,
+            ano,
+            mes,
+          });
+
         const recalculado = computeFolhaLinha({
-          meta: metaAtualizacao,
+          meta: metaAtualizacaoCompetencia,
           funcao: funcaoMetaAtualizacao,
           cidade: selectedLoja,
           funcionarioNome: updatedLine.nome,
@@ -7569,14 +7812,14 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
   };
 
   const funcaoMetaAtualizacao =
-  updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6)
+  updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7)
     ? "vendedor"
     : updatedLine.funcao;
 
 const ignorarPercentualManual =
   updatedLine.funcao === "vendedor" ||
   updatedLine.funcao === "mecanico" ||
-  (updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6));
+  (updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7));
 
 const metaAtualizacao = findMetaForFuncionario({
   funcionarioNome: updatedLine.nome,
@@ -7585,8 +7828,17 @@ const metaAtualizacao = findMetaForFuncionario({
   tipoMeta: updatedLine.tipoMeta,
 });
 
+        const metaAtualizacaoCompetencia =
+          aplicarMetaMecanicoGravataiSetembro2026({
+            meta: metaAtualizacaoCompetencia,
+            funcao: funcaoMetaAtualizacao,
+            lojaId,
+            ano,
+            mes,
+          });
+
 const recalculado = computeFolhaLinha({
-  meta: metaAtualizacao,
+  meta: metaAtualizacaoCompetencia,
   funcao: funcaoMetaAtualizacao,
   cidade: selectedLoja,
   funcionarioNome: updatedLine.nome,
@@ -7670,7 +7922,7 @@ const camposDesconto = ["aluguel", "inss", "adiant", "holerite"] as const;
 if (String(campo) === "sem5Extra") {
   const liquidez = Number(valor || 0);
   const funcaoSem5 =
-    updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6)
+    updatedLine.funcao === "gerente" && (lojaId === 3 || lojaId === 6 || lojaId === 7)
       ? "vendedor"
       : updatedLine.funcao;
   const metaSem5 = findMetaForFuncionario({
@@ -8980,13 +9232,28 @@ function openCellEditor(
   mode: "money" | "number"
 ) {
   if (!garantirCompetenciaAberta()) return;
+
+  // EDITOR_LIQUIDEZ_LOJA_GERENTE_V1
+  // A Liquidez Loja do gerente é persistida na semana especial 5,
+  // porém visualmente fica em liquidezLojaGerente.
+  // Por isso o editor precisa abrir com o valor visual correto.
+  const valorInicial =
+    String(campo) === "sem5" &&
+    label === "Liquidez Loja"
+      ? Number(
+          (linha as any).liquidezLojaGerente || 0
+        )
+      : Number(
+          linha[campo] || 0
+        );
+
   setCellEditor({
     open: true,
     funcionarioId: linha.funcionarioId,
     campo,
     label,
     mode,
-    value: String(Number(linha[campo] || 0)),
+    value: String(valorInicial),
   });
 }
 
@@ -9011,9 +9278,114 @@ async function saveCellEditor() {
   });
 
   try {
-    await updateLinha(funcionarioId, campo, valor);
+    // GERENTE_GRAVATAI_LOJA_V3
+    // Liquidez Loja do gerente usa a semana interna 5.
+    // A SEM5 real continua independente na semana interna 7.
+    if (
+      String(campo) === "sem5" &&
+      cellEditor.label === "Liquidez Loja"
+    ) {
+      const valorLiquidezLoja =
+        Number(valor || 0);
+
+      const linhaAtual =
+        linhas.find(
+          (item) =>
+            Number(
+              item.funcionarioId
+            ) ===
+            Number(
+              funcionarioId
+            )
+        ) || null;
+
+      const percentualLoja =
+        Number(lojaId) === 7
+          ? valorLiquidezLoja <= 0
+            ? 0
+            : valorLiquidezLoja < 360000
+            ? 0.5
+            : valorLiquidezLoja < 440000
+            ? 1
+            : valorLiquidezLoja < 480000
+            ? 1.5
+            : 2
+          : Number(
+              (linhaAtual as any)
+                ?.percLojaGerente || 0
+            );
+
+      const comissaoLoja =
+        Number(
+          (
+            valorLiquidezLoja *
+            (percentualLoja / 100)
+          ).toFixed(2)
+        );
+
+      // Atualiza imediatamente a tela.
+      setFolhas((prev) =>
+        prev.map((f) =>
+          Number(f.funcionarioId) ===
+            Number(funcionarioId) &&
+          Number(f.loja_id) ===
+            Number(lojaId) &&
+          Number(f.ano) ===
+            Number(ano) &&
+          Number(f.mes) ===
+            Number(mes)
+            ? ({
+                ...f,
+                liquidezLojaGerente:
+                  valorLiquidezLoja,
+                percLojaGerente:
+                  percentualLoja,
+                comLojaGerente:
+                  comissaoLoja,
+              } as any)
+            : f
+        )
+      );
+
+      // Persiste exatamente o mesmo resultado.
+      await upsertFolhaBaseMutation.mutateAsync({
+        funcionarioId:
+          Number(funcionarioId),
+        lojaId:
+          Number(lojaId),
+        ano:
+          Number(ano),
+        mes:
+          Number(mes),
+        semana: 5,
+        liquidez:
+          valorLiquidezLoja,
+        percentualComissao:
+          percentualLoja,
+        percentualManual: null,
+        valorComissao:
+          comissaoLoja,
+        ultimaAlteracaoPor:
+          usuarioLogado,
+        ultimaAlteracaoEm:
+          new Date(),
+      });
+
+      await folhaBaseQuery.refetch();
+
+      return;
+    }
+
+    await updateLinha(
+      funcionarioId,
+      campo,
+      valor
+    );
   } catch (err) {
-    console.error("Erro ao salvar campo da folha:", err);
+    console.error(
+      "Erro ao salvar campo da folha:",
+      err
+    );
   }
 }
 
@@ -9901,7 +10273,7 @@ if (funcao === "gerente") {
   // SEM1 a SEM4 = comissão normal de vendedor
   // SEM5 = comissão de gerente sobre a loja
   const gerenteSaoJoseVenda =
-    (linha.loja_id === 3 || linha.loja_id === 6) &&
+    (linha.loja_id === 3 || linha.loja_id === 6 || linha.loja_id === 7) &&
     ((semana >= 1 && semana <= 4) || semana === 7);
 
   // Florianópolis:
@@ -10069,7 +10441,7 @@ if (funcao === "gerente") {
 
     if (
       linha.funcao === "gerente" &&
-      (linha.loja_id === 3 || linha.loja_id === 6)
+      (linha.loja_id === 3 || linha.loja_id === 6 || linha.loja_id === 7)
     ) {
 
   // resto do código continua igual...
@@ -10124,9 +10496,19 @@ return {
   regraTexto: `${percentual.toFixed(2)}%`,
   metaTitulo:
     semana === 5
-      ? "Meta - Gerente"
+      ? linha.loja_id === 7
+        ? "Meta - Gerente Loja"
+        : "Meta - Gerente"
       : "Meta - Vendedor",
-  metaDescricao: getMetaFuncaoTexto(linha, semana),
+
+  metaDescricao:
+    semana === 5 &&
+    linha.loja_id === 7
+      ? "AtÃ© R$ 359.999,99 = 0,50%\nR$ 360.000,00 atÃ© R$ 439.999,99 = 1,00%\nR$ 440.000,00 atÃ© R$ 479.999,99 = 1,50%\nR$ 480.000,00 ou mais = 2,00%"
+      : getMetaFuncaoTexto(
+          linha,
+          semana
+        ),
   baseLabel:
     semana === 5
       ? "Liquidez Loja"
@@ -10227,7 +10609,7 @@ return {
       : "Meta 1"
     : linha.funcao === "gerente"
     ? (
-        ((linha.loja_id === 3 || linha.loja_id === 6) && ((semana >= 1 && semana <= 4) || semana === 7)) ||
+        ((linha.loja_id === 3 || linha.loja_id === 6 || linha.loja_id === 7) && ((semana >= 1 && semana <= 4) || semana === 7)) ||
         (linha.loja_id === 4 && semana === 1)
       )
       ? "Meta - Vendedor"
@@ -14678,7 +15060,7 @@ if (semana === 7) {
 
 if (
   linha.funcao === "gerente" &&
-  (linha.loja_id === 3 || linha.loja_id === 6) &&
+  (linha.loja_id === 3 || linha.loja_id === 6 || linha.loja_id === 7) &&
   semana === 5
 ) {
   const liquidez = Number((linha as any).liquidezLojaGerente || 0);
