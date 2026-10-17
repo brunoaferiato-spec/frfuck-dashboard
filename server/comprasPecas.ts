@@ -18,6 +18,18 @@ function assertCompras(ctx: any) {
   }
 }
 
+// Exclusão de compra (planejamento ou pedidos) exige senha, conferida aqui no servidor.
+// A senha fica na variável de ambiente COMPRAS_SENHA_EXCLUSAO (nunca no código); sem ela, ninguém exclui.
+function assertSenhaExclusao(senha: string) {
+  const esperada = String(process.env.COMPRAS_SENHA_EXCLUSAO || "").trim();
+  if (!esperada) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Senha de exclusão não configurada no servidor." });
+  }
+  if (String(senha || "").trim() !== esperada) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Senha de exclusão incorreta." });
+  }
+}
+
 function db() {
   if (!process.env.DATABASE_URL) {
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco não configurado." });
@@ -555,9 +567,10 @@ export const comprasPecasRouter = router({
   }),
 
   excluirPedidosPlanejamento: protectedProcedure
-    .input(z.object({ planejamentoId: z.number().int().positive() }))
+    .input(z.object({ planejamentoId: z.number().int().positive(), senha: z.string().max(50) }))
     .mutation(async ({ ctx, input }) => {
       assertCompras(ctx);
+      assertSenhaExclusao(input.senha);
       await ensure();
       const c = await db().getConnection();
 
@@ -620,9 +633,10 @@ export const comprasPecasRouter = router({
     }),
 
   excluirPlanejamento: protectedProcedure
-    .input(z.object({ planejamentoId: z.number().int().positive() }))
+    .input(z.object({ planejamentoId: z.number().int().positive(), senha: z.string().max(50) }))
     .mutation(async ({ ctx, input }) => {
       assertCompras(ctx);
+      assertSenhaExclusao(input.senha);
       await ensure();
       const c = await db().getConnection();
 

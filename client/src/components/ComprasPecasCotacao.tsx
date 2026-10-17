@@ -48,6 +48,9 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
   const [planejamentoId, setPlanejamentoId] = useState<number | null>(null);
   const [novoFornecedor, setNovoFornecedor] = useState("");
   const [fornecedorModal, setFornecedorModal] = useState<any | null>(null);
+  // Exclusão protegida por senha (conferida no servidor).
+  const [exclusao, setExclusao] = useState<{ tipo: "pedidos" | "planejamento"; id: number; lojaId?: any; texto: string } | null>(null);
+  const [senhaExclusao, setSenhaExclusao] = useState("");
   const [local, setLocal] = useState<Record<string, string>>({});
   const [quantidadeLocal, setQuantidadeLocal] = useState<Record<string, string>>({});
   const [lojaId, setLojaId] = useState("1");
@@ -125,6 +128,8 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
         `${data.excluidos || 0} pedido(s) excluído(s). A cotação foi reaberta.`
       );
       setErro("");
+      setExclusao(null);
+      setSenhaExclusao("");
       await pedidosQ.refetch();
       await detalheQ.refetch();
       await planosQ.refetch();
@@ -137,6 +142,8 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
     onSuccess: async (data) => {
       setMensagem(`Planejamento #${data.planejamentoId} excluído.`);
       setErro("");
+      setExclusao(null);
+      setSenhaExclusao("");
       if (planejamentoId === Number(data.planejamentoId)) {
         setPlanejamentoId(null);
       }
@@ -312,13 +319,12 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
               type="button"
               disabled={excluirPedidos.isPending}
               onClick={() => {
-                if (
-                  window.confirm(
-                    `Excluir todos os pedidos do Planejamento #${planejamentoId}? A cotação será mantida e poderá ser refeita.`
-                  )
-                ) {
-                  excluirPedidos.mutate({ planejamentoId });
-                }
+                setSenhaExclusao("");
+                setExclusao({
+                  tipo: "pedidos",
+                  id: Number(planejamentoId),
+                  texto: `Excluir todos os pedidos do Planejamento #${planejamentoId}? A cotação será mantida e poderá ser refeita.`,
+                });
               }}
               className="h-10 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-4 text-xs font-black text-rose-300 disabled:opacity-50"
             >
@@ -383,15 +389,13 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
                 type="button"
                 disabled={excluirPedidos.isPending}
                 onClick={() => {
-                  if (
-                    window.confirm(
-                      `Excluir os pedidos do Planejamento #${p.id}? A cotação será mantida.`
-                    )
-                  ) {
-                    setPlanejamentoId(Number(p.id));
-                    if (p.lojaId) setLojaId(String(p.lojaId));
-                    excluirPedidos.mutate({ planejamentoId: Number(p.id) });
-                  }
+                  setSenhaExclusao("");
+                  setExclusao({
+                    tipo: "pedidos",
+                    id: Number(p.id),
+                    lojaId: p.lojaId,
+                    texto: `Excluir os pedidos do Planejamento #${p.id}? A cotação será mantida.`,
+                  });
                 }}
                 className="h-9 rounded-lg border border-rose-400/20 px-3 text-[11px] font-black text-rose-200 disabled:opacity-50"
               >
@@ -403,15 +407,12 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
               type="button"
               disabled={excluirPlanejamento.isPending}
               onClick={() => {
-                if (
-                  window.confirm(
-                    `Excluir o Planejamento #${p.id}? Isso também excluirá cotações e pedidos vinculados.`
-                  )
-                ) {
-                  excluirPlanejamento.mutate({
-                    planejamentoId: Number(p.id),
-                  });
-                }
+                setSenhaExclusao("");
+                setExclusao({
+                  tipo: "planejamento",
+                  id: Number(p.id),
+                  texto: `Excluir o Planejamento #${p.id}? Isso também excluirá cotações e pedidos vinculados.`,
+                });
               }}
               className="h-9 rounded-lg border border-rose-500/30 bg-rose-500/[0.06] px-3 text-[11px] font-black text-rose-300 disabled:opacity-50"
             >
@@ -426,5 +427,44 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
     {aba==='fornecedores' && <div className="mt-5"><div className="flex gap-2"><input value={novoFornecedor} onChange={e=>setNovoFornecedor(e.target.value)} placeholder="Nome do fornecedor" className="h-11 flex-1 rounded-xl border border-white/10 bg-black/40 px-3 text-sm"/><button type="button" onClick={()=>novoFornecedor.trim()&&criarFornecedor.mutate({nome:novoFornecedor.trim()})} className="h-11 rounded-xl bg-[#D4AF37] px-4 text-sm font-black text-black"><Settings2 className="mr-2 inline h-4 w-4"/>Adicionar</button></div><div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">{(fornecedoresQ.data||[]).map((f:any)=><div key={f.id} className="flex items-center justify-between rounded-xl border border-white/[0.07] px-4 py-3"><span className={f.ativo?'font-bold':'text-gray-600'}>{f.nome}</span><button type="button" onClick={()=>toggleFornecedor.mutate({id:Number(f.id),ativo:!f.ativo})} className="text-xs font-black text-[#F2D675]">{f.ativo?'Desativar':'Ativar'}</button></div>)}</div></div>}
 
     {fornecedorModal&&planejamentoId&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"><div className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#0a0a0a] p-5"><div className="flex items-start justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#D4AF37]/60">COTAÇÃO DO FORNECEDOR</p><h2 className="mt-1 text-2xl font-black">{fornecedorModal.nome}</h2><p className="mt-2 text-xs text-gray-500">{countMap.get(Number(fornecedorModal.id))||0}/{detalheQ.data?.itens?.length||0} preços recebidos</p></div><button type="button" onClick={()=>setFornecedorModal(null)} className="rounded-xl border border-white/10 p-2 text-gray-500"><X className="h-4 w-4"/></button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><button type="button" onClick={()=>arquivoCotacao.mutate({planejamentoId,fornecedorId:Number(fornecedorModal.id)})} className="rounded-2xl border border-[#D4AF37]/20 p-5 text-left"><Download className="h-5 w-5 text-[#F2D675]"/><p className="mt-3 font-black">Baixar arquivo de cotação</p><p className="mt-1 text-xs text-gray-600">Código e item travados. Só o preço fica editável.</p></button><label className="cursor-pointer rounded-2xl border border-emerald-400/20 p-5"><Upload className="h-5 w-5 text-emerald-300"/><p className="mt-3 font-black">Anexar arquivo preenchido</p><p className="mt-1 text-xs text-gray-600">Os preços entram automaticamente.</p><input type="file" accept=".xlsx" className="hidden" onChange={e=>{void importar(e.target.files?.[0]||null,Number(fornecedorModal.id));e.currentTarget.value='';}}/></label></div></div></div>}
+    {exclusao && (() => {
+      const enviando = excluirPedidos.isPending || excluirPlanejamento.isPending;
+      const confirmar = () => {
+        if (!senhaExclusao.trim() || enviando) return;
+        if (exclusao.tipo === "pedidos") {
+          setPlanejamentoId(exclusao.id);
+          if (exclusao.lojaId) setLojaId(String(exclusao.lojaId));
+          excluirPedidos.mutate({ planejamentoId: exclusao.id, senha: senhaExclusao });
+        } else {
+          excluirPlanejamento.mutate({ planejamentoId: exclusao.id, senha: senhaExclusao });
+        }
+      };
+      return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+        <div className="w-full max-w-md rounded-3xl border border-rose-500/20 bg-[#0a0a0a] p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-300/70">EXCLUSÃO PROTEGIDA</p>
+              <p className="mt-2 text-sm font-bold text-white">{exclusao.texto}</p>
+            </div>
+            <button type="button" onClick={() => { setExclusao(null); setSenhaExclusao(""); }} className="rounded-xl border border-white/10 p-2 text-gray-500"><X className="h-4 w-4"/></button>
+          </div>
+          <input
+            type="password"
+            autoFocus
+            value={senhaExclusao}
+            onChange={(e) => setSenhaExclusao(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") confirmar(); }}
+            placeholder="Senha de exclusão"
+            className="mt-4 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white"
+          />
+          <div className="mt-4 flex justify-end gap-2">
+            <button type="button" onClick={() => { setExclusao(null); setSenhaExclusao(""); }} className="h-10 rounded-xl border border-white/10 px-4 text-xs font-black text-gray-400">Cancelar</button>
+            <button type="button" disabled={!senhaExclusao.trim() || enviando} onClick={confirmar} className="h-10 rounded-xl border border-rose-500/30 bg-rose-500/[0.12] px-4 text-xs font-black text-rose-200 disabled:opacity-50">
+              <Trash2 className="mr-2 inline h-4 w-4"/>{enviando ? "Excluindo..." : "Excluir"}
+            </button>
+          </div>
+        </div>
+      </div>;
+    })()}
   </section>;
 }

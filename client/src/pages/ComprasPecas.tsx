@@ -10,6 +10,7 @@ import {
 import * as XLSX from "xlsx";
 import ComprasPecasCotacao from "@/components/ComprasPecasCotacao";
 import { trpc } from "@/lib/trpc";
+import { consultarCatalogoSampelFrasle } from "@shared/catalogoSampelFrasle";
 
 type LinhaBruta = Record<string, unknown>;
 
@@ -238,6 +239,16 @@ function classificarGrupo(itemOriginal: string) {
     };
   }
 
+  // Suporte do amortecedor é cadastrado assim no estoque; entra como coxim de amortecedor.
+  if (item.includes("SUPORTE") && item.includes("AMORTECEDOR")) {
+    return {
+      grupo: "Coxim" as const,
+      incluir: true,
+      status: "pendente" as const,
+      motivo: null,
+    };
+  }
+
   if (item.includes("COXIM") || item.includes("COXINM")) {
     if (item.includes("AMORTECEDOR")) {
       return {
@@ -306,6 +317,73 @@ function detectarLado(itemOriginal: string) {
   return null;
 }
 
+// Código fora do padrão do fabricante daquele grupo não entra na relação de compra.
+function codigoCompativel(codigoOriginal: string, grupo: ItemPeca["grupo"]) {
+  const codigo = normalizarTexto(codigoOriginal).replace(/[^A-Z0-9]/g, "");
+
+  switch (grupo) {
+    case "Pivô":
+      return /^PV[IS]\d/.test(codigo);
+    case "Terminal Axial":
+      return /^BRD\d/.test(codigo);
+    case "Terminal de Direção":
+      return /^TDI\d/.test(codigo);
+    case "Pastilha":
+      return /^PD\d/.test(codigo);
+    case "Bieleta":
+      return /^SK\d/.test(codigo);
+    case "Bucha":
+    case "Coxim":
+      // Padrão Sampel/Samkit: número (ex.: 3001, 8501A) ou SP/SK.
+      return /^\d{4,5}[A-Z]{0,2}$/.test(codigo) || /^S[PK]\d/.test(codigo);
+    default:
+      return true;
+  }
+}
+
+// Bucha só de bandeja e coxim só de amortecedor: vale o catálogo quando houver
+// descrição; sem catálogo, vale a descrição do estoque. Na dúvida, não entra.
+function confirmaTipo(codigo: string, itemOriginal: string, palavra: string) {
+  const catalogo = consultarCatalogoSampelFrasle(codigo);
+
+  if (catalogo?.descricao) {
+    return normalizarTexto(catalogo.descricao).includes(palavra);
+  }
+
+  return normalizarTexto(itemOriginal).includes(palavra);
+}
+
+function aplicacaoSampelFrasle(codigo: string) {
+  const catalogo = consultarCatalogoSampelFrasle(codigo);
+  if (!catalogo || !catalogo.aplicacao) return null;
+
+  const observacao =
+    catalogo.situacao === "Unificado" && catalogo.observacao
+      ? `unificado ao ${catalogo.observacao.replace(/^item\s+/i, "")}`
+      : catalogo.situacao === "Revisar"
+        ? "conferir código"
+        : "";
+
+  return {
+    // Detalhes técnicos entre parênteses (furo, medidas) ficam fora: a tela mostra só o essencial.
+    especificacao: [catalogo.descricao.replace(/\s*\([^)]*\)?/g, "").trim(), catalogo.aplicacao, observacao]
+      .filter(Boolean)
+      .join(" • "),
+    fonte:
+      catalogo.fabricante === "Fras-le"
+        ? /^Via Syl/.test(catalogo.observacao)
+          ? "FRAS-LE (VIA SYL)"
+          : /^Via antirruido/.test(catalogo.observacao)
+            ? "FRAS-LE 01/2022"
+            : /^Via catalogo digital/.test(catalogo.observacao)
+              ? "FRAS-LE (CATÁLOGO DIGITAL 17/10/2026)"
+              : "FRAS-LE 05/2016"
+        : catalogo.fabricante === "Perfect"
+          ? "PERFECT 08/10/2026"
+          : String(catalogo.fabricante || "SAMPEL").toUpperCase(),
+  };
+}
+
 function arredondarCompra(
   necessidadeBruta: number,
   grupo: ItemPeca["grupo"],
@@ -361,6 +439,10 @@ export default function ComprasPecas() {
             ) as any;
 
             if (!resultado) return item;
+
+            // A base Perfect completa (catálogo 08/10/2026) já veio preenchida na importação:
+            // a consulta antiga do servidor não deve apagá-la.
+            if (item.catalogoFonte?.startsWith("PERFECT 08/10/2026")) return item;
 
             const especificacao = [
               resultado.descricao,
@@ -509,7 +591,33 @@ export default function ComprasPecas() {
         if (!codigo || !item) continue;
 
         const classificacao = classificarGrupo(item);
-        if (!classificacao || !classificacao.incluir) continue;
+        if (!classificacao) continue;
+
+        // Código de outro fabricante/padrão não aparece na relação de compra.
+        if (!codigoCompativel(codigo, classificacao.grupo)) continue;
+
+        // Bucha só de bandeja e coxim só de amortecedor (catálogo tem prioridade).
+        const incluir =
+          classificacao.grupo === "Bucha"
+            ? confirmaTipo(codigo, item, "BANDEJA")
+            : classificacao.grupo === "Coxim"
+              ? confirmaTipo(codigo, item, "AMORTECEDOR")
+              : classificacao.incluir;
+        if (!incluir) continue;
+
+        const decididoPeloFiltro =
+          classificacao.grupo === "Bucha" || classificacao.grupo === "Coxim";
+        const catalogoSF = [
+          "Bucha",
+          "Coxim",
+          "Bieleta",
+          "Pastilha",
+          "Pivô",
+          "Terminal Axial",
+          "Terminal de Direção",
+        ].includes(classificacao.grupo)
+          ? aplicacaoSampelFrasle(codigo)
+          : null;
 
         const ladoIndividual = detectarLado(item);
 
@@ -536,8 +644,22 @@ export default function ComprasPecas() {
           arredondamentoPar:
             classificacao.grupo !== "Pastilha" && !ladoIndividual,
           ladoIndividual,
-          especificacaoStatus: classificacao.status,
-          motivoRevisao: classificacao.motivo,
+          especificacaoStatus: decididoPeloFiltro ? "pendente" : classificacao.status,
+          motivoRevisao: decididoPeloFiltro ? null : classificacao.motivo,
+          ...(["Bucha", "Coxim", "Bieleta", "Pastilha"].includes(classificacao.grupo)
+            ? {
+                especificacao: catalogoSF?.especificacao || null,
+                catalogoStatus: catalogoSF ? ("localizado" as const) : ("nao_localizado" as const),
+                catalogoFonte: catalogoSF?.fonte || "SAMPEL / FRAS-LE",
+              }
+            : catalogoSF
+              ? {
+                  // Perfect na base completa; sem ela, segue para a consulta antiga do servidor
+                  especificacao: catalogoSF.especificacao,
+                  catalogoStatus: "localizado" as const,
+                  catalogoFonte: catalogoSF.fonte,
+                }
+              : {}),
         });
       }
 
@@ -674,7 +796,7 @@ export default function ComprasPecas() {
                 <div>
                   <h2 className="font-black">Análise da compra</h2>
                   <p className="mt-1 text-xs text-gray-600">
-                    Perfect usa a base local extraída do catálogo oficial de 24/09/2026 para pivô, terminal axial e terminal de direção. Sem consulta web.
+                    Perfect usa a base local extraída do catálogo oficial de 24/09/2026 para pivô, terminal axial e terminal de direção. Buchas, coxins e bieletas usam o catálogo Sampel/Samkit e pastilhas o catálogo Fras-le (05/2016). Sem consulta web.
                   </p>
                   {mensagemCatalogo && (
                     <p className="mt-2 text-xs font-bold text-emerald-300">
@@ -762,7 +884,9 @@ export default function ComprasPecas() {
                             </div>
                           ) : item.catalogoStatus === "nao_localizado" ? (
                             <span className="inline-flex rounded-full border border-rose-400/20 bg-rose-400/[0.05] px-2 py-1 font-black text-rose-200">
-                              Não consta no catálogo Perfect 24/09/2026
+                              {item.catalogoFonte === "PERFECT"
+                                ? "Não consta no catálogo Perfect 24/09/2026"
+                                : "Aplicação pendente"}
                             </span>
                           ) : item.catalogoStatus === "erro" ? (
                             <span className="inline-flex rounded-full border border-amber-400/20 bg-amber-400/[0.05] px-2 py-1 font-black text-amber-200">
