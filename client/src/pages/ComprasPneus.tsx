@@ -1062,19 +1062,24 @@ export default function ComprasPneus() {
                                   Number(fornecedor.id);
                                 const ehMenor =
                                   salvo && menor !== null && Number(salvo) === Number(menor);
+                                // Escolher o menor preço fica igual ao padrão (só a etiqueta verde).
+                                // Destaque dourado + diferença só quando a escolha é mais cara que o menor.
+                                const acimaDoMenor =
+                                  escolhido && salvo && menor !== null && Number(salvo) > Number(menor)
+                                    ? Number(salvo) - Number(menor)
+                                    : 0;
+                                const escolhidoMaisCaro = escolhido && !ehMenor;
 
                                 return (
                                   <td
                                     key={fornecedor.id}
-                                    className={`px-3 py-2 ${
-                                      escolhido
-                                        ? "bg-[#D4AF37]/[0.07]"
-                                        : ehMenor
-                                        ? "bg-emerald-400/[0.035]"
+                                    className={`px-3 py-2 align-top ${
+                                      escolhidoMaisCaro
+                                        ? "bg-[#D4AF37]/[0.16] shadow-[inset_0_0_0_2px_rgba(212,175,55,0.65)]"
                                         : ""
                                     }`}
                                   >
-                                    <div className="flex min-w-[160px] gap-1.5">
+                                    <div className="flex min-w-[170px] gap-1.5">
                                       <input
                                         value={valorAtual}
                                         onChange={(event) =>
@@ -1086,10 +1091,12 @@ export default function ComprasPneus() {
                                         onBlur={() => salvarValor(item.id, fornecedor.id)}
                                         inputMode="decimal"
                                         placeholder="0,00"
-                                        className={`h-9 min-w-0 flex-1 rounded-lg border bg-black/30 px-2 text-right text-sm outline-none ${
-                                          ehMenor
-                                            ? "border-emerald-400/25 text-emerald-200"
-                                            : "border-white/10 text-white"
+                                        className={`h-9 min-w-0 flex-1 rounded-lg border px-2 text-right text-sm outline-none ${
+                                          escolhidoMaisCaro
+                                            ? "border-[#D4AF37] bg-[#D4AF37]/[0.12] font-black text-[#F2D675]"
+                                            : ehMenor
+                                            ? "border-white/10 bg-black/30 text-emerald-200"
+                                            : "border-white/10 bg-black/30 text-white"
                                         }`}
                                       />
                                       <button
@@ -1100,15 +1107,37 @@ export default function ComprasPneus() {
                                             fornecedorId: fornecedor.id,
                                           })
                                         }
+                                        title={escolhido ? "Fornecedor escolhido para este pneu" : "Comprar este pneu com este fornecedor"}
                                         className={`h-9 rounded-lg px-2.5 text-[10px] font-black ${
-                                          escolhido
+                                          escolhidoMaisCaro
                                             ? "bg-[#D4AF37] text-black"
-                                            : "border border-white/10 text-gray-400"
+                                            : "border border-white/10 text-gray-400 hover:border-[#D4AF37]/40 hover:text-[#F2D675]"
                                         }`}
                                       >
-                                        {escolhido ? "OK" : "Escolher"}
+                                        {escolhidoMaisCaro ? (
+                                          <>
+                                            <Check className="mr-0.5 inline h-3.5 w-3.5" />
+                                            Comprar
+                                          </>
+                                        ) : (
+                                          "Escolher"
+                                        )}
                                       </button>
                                     </div>
+                                    {(ehMenor || acimaDoMenor > 0) && (
+                                      <div className="mt-1 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.04em]">
+                                        {ehMenor && (
+                                          <span className="rounded-full bg-emerald-400/[0.08] px-2 py-0.5 text-emerald-300">
+                                            menor preço
+                                          </span>
+                                        )}
+                                        {acimaDoMenor > 0 && (
+                                          <span className="rounded-full bg-amber-400/[0.12] px-2 py-0.5 text-amber-300">
+                                            +{moeda(acimaDoMenor)} vs menor
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
                                   </td>
                                 );
                               })}

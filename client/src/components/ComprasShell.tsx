@@ -1,16 +1,19 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, Boxes, CircleDot, LogOut, Menu, Package, ShoppingCart, Wrench, X } from "lucide-react";
+import { ArrowLeft, Boxes, CircleDot, LogOut, Menu, Package, ShoppingCart, Store, Wrench, X } from "lucide-react";
 import { ReactNode, useState } from "react";
 import { useLocation } from "wouter";
 
 const itens = [
   { label: "Pneus", rota: "/compras/pneus", icon: CircleDot },
   { label: "Peças", rota: "/compras/pecas", icon: Wrench },
-  { label: "Insumos", rota: "/compras/insumos", icon: Boxes },
+  { label: "Insumos de estoque", rota: "/compras/insumos/estoque", icon: Boxes },
+  { label: "Insumos de loja", rota: "/compras/insumos/loja", icon: Store },
 ];
 
 export default function ComprasShell({ children }: { children: ReactNode }) {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  // Perfil Compras não tem dashboard principal: só o módulo de Compras.
+  const somenteCompras = String(user?.role || "") === "compras";
   const [location, navigate] = useLocation();
   const [menuAberto, setMenuAberto] = useState(false);
 
@@ -43,7 +46,7 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {itens.map((item) => {
           const Icon = item.icon;
-          const ativo = location === item.rota;
+          const ativo = location === item.rota || (item.rota === "/compras/insumos/estoque" && location === "/compras/insumos");
           return (
             <button
               type="button"
@@ -63,14 +66,16 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
       </nav>
 
       <div className="space-y-1 border-t border-white/[0.06] p-3">
-        <button
-          type="button"
-          onClick={() => navegar("/")}
-          className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-bold text-[#F2D675] transition hover:bg-[#D4AF37]/10"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          Dashboard principal
-        </button>
+        {!somenteCompras && (
+          <button
+            type="button"
+            onClick={() => navegar("/")}
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-bold text-[#F2D675] transition hover:bg-[#D4AF37]/10"
+          >
+            <ArrowLeft className="h-5 w-5" />
+            Dashboard principal
+          </button>
+        )}
 
         <button
           type="button"

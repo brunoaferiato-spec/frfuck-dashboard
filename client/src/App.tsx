@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch, useLocation } from "wouter";
+import { Redirect, Route, Switch, useLocation } from "wouter";
 import type { ReactNode } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -29,6 +29,7 @@ import ComprasShell from "./components/ComprasShell";
 import ComprasPneus from "./pages/ComprasPneus";
 import ComprasPecas from "./pages/ComprasPecas";
 import ComprasPlaceholder from "./pages/ComprasPlaceholder";
+import ComprasInsumos from "./pages/ComprasInsumos";
 
 function TelaCarregando() {
   return (
@@ -76,7 +77,18 @@ function perfilAtual(user: any) {
     caixaLider: role === "rh" && lojaId > 0,
     liderRh: role === "rh" && lojaId <= 0,
     adminOuGestor: role === "admin" || role === "gestor",
+    compras: role === "compras",
   };
+}
+
+// Perfil Compras entra direto no módulo de Compras (não vê o dashboard da folha).
+function RotaInicial() {
+  const { user, loading } = useAuth();
+
+  if (loading) return <TelaCarregando />;
+  if (user && perfilAtual(user).compras) return <Redirect to="/compras/pecas" />;
+
+  return <Home />;
 }
 
 function RotaSemCaixaLider({ children }: { children: ReactNode }) {
@@ -86,6 +98,15 @@ function RotaSemCaixaLider({ children }: { children: ReactNode }) {
   if (!user) return <Home />;
 
   const perfil = perfilAtual(user);
+
+  if (perfil.compras) {
+    return (
+      <AcessoNegado
+        descricao="O perfil Compras possui acesso somente ao módulo de Compras."
+        destino="/compras/pecas"
+      />
+    );
+  }
 
   if (perfil.caixaLider) {
     return (
@@ -203,7 +224,7 @@ function RotaCompras({ children }: { children: ReactNode }) {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={RotaInicial} />
 
       <Route path="/rh/meu-dia">
         <RotaMeuDia>
@@ -279,7 +300,19 @@ function Router() {
 
       <Route path="/compras/insumos">
         <RotaCompras>
-          <ComprasPlaceholder tipo="insumos" />
+          <ComprasInsumos key="estoque" tipo="estoque" />
+        </RotaCompras>
+      </Route>
+
+      <Route path="/compras/insumos/estoque">
+        <RotaCompras>
+          <ComprasInsumos key="estoque" tipo="estoque" />
+        </RotaCompras>
+      </Route>
+
+      <Route path="/compras/insumos/loja">
+        <RotaCompras>
+          <ComprasInsumos key="loja" tipo="loja" />
         </RotaCompras>
       </Route>
 

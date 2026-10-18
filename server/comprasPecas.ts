@@ -11,7 +11,7 @@ const MAX_FILE = 8 * 1024 * 1024;
 let pool: mysql.Pool | null = null;
 let ready = false;
 
-function assertCompras(ctx: any) {
+export function assertCompras(ctx: any) {
   const role = String(ctx?.user?.role || "");
   if (!["compras", "admin", "gestor"].includes(role)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Acesso não autorizado." });
@@ -20,7 +20,7 @@ function assertCompras(ctx: any) {
 
 // Exclusão de compra (planejamento ou pedidos) exige senha, conferida aqui no servidor.
 // A senha fica na variável de ambiente COMPRAS_SENHA_EXCLUSAO (nunca no código); sem ela, ninguém exclui.
-function assertSenhaExclusao(senha: string) {
+export function assertSenhaExclusao(senha: string) {
   const esperada = String(process.env.COMPRAS_SENHA_EXCLUSAO || "").trim();
   if (!esperada) {
     throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Senha de exclusão não configurada no servidor." });
@@ -30,7 +30,7 @@ function assertSenhaExclusao(senha: string) {
   }
 }
 
-function db() {
+export function db() {
   if (!process.env.DATABASE_URL) {
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Banco não configurado." });
   }
@@ -158,11 +158,11 @@ async function ensure() {
   ready = true;
 }
 
-function norm(v: unknown) {
+export function norm(v: unknown) {
   return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
 }
 
-function parseMoney(v: unknown) {
+export function parseMoney(v: unknown) {
   const s = String(v ?? "").trim().replace(/\s/g, "").replace(/R\$/gi, "").replace(/\./g, "").replace(",", ".").replace(/[^0-9.-]/g, "");
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
@@ -196,7 +196,7 @@ async function consultarPerfect(codigoOriginal: string) {
   };
 }
 
-async function quoteBook(name: string, items: Array<{ codigo: string; item: string }>) {
+export async function quoteBook(name: string, items: Array<{ codigo: string; item: string }>) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Cotação", { views: [{ state: "frozen", ySplit: 1 }] });
   ws.columns = [
@@ -219,7 +219,7 @@ async function quoteBook(name: string, items: Array<{ codigo: string; item: stri
   return wb.xlsx.writeBuffer();
 }
 
-async function orderBook(items: Array<any>) {
+export async function orderBook(items: Array<any>) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Pedido", { views: [{ state: "frozen", ySplit: 1, showGridLines: false }] });
   ws.columns = [

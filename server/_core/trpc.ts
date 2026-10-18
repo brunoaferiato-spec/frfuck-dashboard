@@ -10,11 +10,30 @@ const t = initTRPC.context<TrpcContext>().create({
 export const router = t.router;
 export const publicProcedure = t.procedure;
 
+// O perfil Compras só enxerga o módulo de Compras (pneus, peças e insumos),
+// além do login e da lista de lojas. Folha, RH, metas e demais áreas ficam bloqueadas.
+const ROTAS_PERFIL_COMPRAS = [
+  "compras.pneus.",
+  "compras.pecas.",
+  "compras.insumosEstoque.",
+  "compras.insumosLoja.",
+];
+// Do auth, só entrar/sair/sessão: cadastro de usuários fica fora do perfil Compras.
+const ROTAS_EXATAS_PERFIL_COMPRAS = new Set(["lojas.list", "auth.me", "auth.login", "auth.logout"]);
+
+function perfilComprasPodeAcessar(path: string) {
+  return ROTAS_EXATAS_PERFIL_COMPRAS.has(path) || ROTAS_PERFIL_COMPRAS.some(prefixo => path.startsWith(prefixo));
+}
+
 const requireUser = t.middleware(async opts => {
-  const { ctx, next } = opts;
+  const { ctx, next, path } = opts;
 
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  }
+
+  if (String(ctx.user.role || "") === "compras" && !perfilComprasPodeAcessar(path)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "O perfil Compras tem acesso somente ao módulo de Compras." });
   }
 
   return next({

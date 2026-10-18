@@ -25,6 +25,7 @@ import {
   LogOut,
   ReceiptText,
   ShieldCheck,
+  ShoppingCart,
   TrendingUp,
   WalletCards,
 } from "lucide-react";
@@ -1185,8 +1186,14 @@ export default function Home() {
     { label: "Dashboard", icon: LayoutDashboard, rota: "/", ativo: true },
     { label: "Folha de Pagamento", icon: WalletCards, rota: "/folha-pagamento" },
     { label: "Gestão RH", icon: ShieldCheck, rota: "/rh/gestao", adminOnly: true },
+    // Mesmos perfis liberados na rota /compras (App.tsx).
+    { label: "Compras", icon: ShoppingCart, rota: "/compras/pecas", perfis: ["compras", "admin", "gestor"] },
     { label: "Usuários", icon: ShieldCheck, rota: "/usuarios", adminOnly: true },
-  ];
+  ] as { label: string; icon: typeof ShieldCheck; rota: string; ativo?: boolean; adminOnly?: boolean; perfis?: string[] }[];
+
+  const itemVisivel = (item: (typeof menu)[number]) =>
+    (!item.adminOnly || ["admin", "gestor"].includes(String(user?.role))) &&
+    (!item.perfis || item.perfis.includes(String(user?.role)));
 
   if (authLoading) {
     return (
@@ -1310,10 +1317,7 @@ export default function Home() {
 
           <nav className="flex-1 space-y-2 p-4">
             {menu
-              .filter(
-                (item) =>
-                  !item.adminOnly || ["admin", "gestor"].includes(String(user.role))
-              )
+              .filter(itemVisivel)
               .map((item) => {
                 const Icon = item.icon;
                 return (
@@ -1425,10 +1429,7 @@ export default function Home() {
           <div className="space-y-6 px-5 py-7 lg:px-8 2xl:space-y-7">
             <div className="flex gap-2 overflow-x-auto pb-1 xl:hidden">
               {menu
-                .filter(
-                  (item) =>
-                    !item.adminOnly || ["admin", "gestor"].includes(String(user.role))
-                )
+                .filter(itemVisivel)
                 .map((item) => {
                   const Icon = item.icon;
                   return (

@@ -83,6 +83,7 @@ import { rhExperienciaRouter } from "./rhExperiencia";
 import { rhRescisoesRouter } from "./rhRescisoes";
 import { comprasPneusRouter } from "./comprasPneus";
 import { comprasPecasRouter } from "./comprasPecas";
+import { comprasInsumosEstoqueRouter, comprasInsumosLojaRouter } from "./comprasInsumos";
 
 const funcaoSchema = z.enum([
   "mecanico",
@@ -154,6 +155,17 @@ const rhPontoRegistroPdfSchema = z.object({
   entrada2: rhPontoBatidaPdfSchema,
   saida2: rhPontoBatidaPdfSchema,
 });
+
+// Cadastro de usuários e permissões: somente Admin ou Gestor (mesma regra da tela /usuarios).
+function assertAdminOuGestorUsuarios(ctx: any) {
+  const role = String(ctx?.user?.role || "");
+  if (role !== "admin" && role !== "gestor") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Somente Admin ou Gestor podem administrar usuários.",
+    });
+  }
+}
 
 function assertAcessoRhPonto(
   ctx: any,
@@ -623,7 +635,8 @@ export const appRouter = router({
           lojaId: z.number().nullable().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        assertAdminOuGestorUsuarios(ctx);
         const existingUser = await getUserByEmail(input.email);
 
         if (existingUser) {
@@ -663,7 +676,8 @@ export const appRouter = router({
         };
       }),
 
-    listUsers: protectedProcedure.query(async () => {
+    listUsers: protectedProcedure.query(async ({ ctx }) => {
+      assertAdminOuGestorUsuarios(ctx);
       return await getUsers();
     }),
 
@@ -679,7 +693,8 @@ export const appRouter = router({
           isActive: z.boolean(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        assertAdminOuGestorUsuarios(ctx);
         const existingUser = await getUserByEmail(input.email);
 
         if (existingUser && existingUser.id !== input.id) {
@@ -720,6 +735,7 @@ export const appRouter = router({
     deleteUser: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input, ctx }) => {
+        assertAdminOuGestorUsuarios(ctx);
         if (ctx.user.id === input.id) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -1986,6 +2002,8 @@ export const appRouter = router({
       ),
     pneus: comprasPneusRouter,
     pecas: comprasPecasRouter,
+    insumosEstoque: comprasInsumosEstoqueRouter,
+    insumosLoja: comprasInsumosLojaRouter,
   }),
 
   contasBancarias: router({
