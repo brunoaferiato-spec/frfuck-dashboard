@@ -30,6 +30,7 @@ import ComprasPneus from "./pages/ComprasPneus";
 import ComprasPecas from "./pages/ComprasPecas";
 import ComprasPlaceholder from "./pages/ComprasPlaceholder";
 import ComprasInsumos from "./pages/ComprasInsumos";
+import ComprasManutencao from "./pages/ComprasManutencao";
 
 function TelaCarregando() {
   return (
@@ -307,6 +308,12 @@ function Router() {
       <Route path="/compras/insumos/estoque">
         <RotaCompras>
           <ComprasInsumos key="estoque" tipo="estoque" />
+        </RotaCompras>
+      </Route>
+
+      <Route path="/compras/manutencao">
+        <RotaCompras>
+          <ComprasManutencao />
         </RotaCompras>
       </Route>
 

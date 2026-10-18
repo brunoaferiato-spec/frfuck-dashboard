@@ -1,5 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, Boxes, CircleDot, LogOut, Menu, Package, ShoppingCart, Store, Wrench, X } from "lucide-react";
+import { ArrowLeft, Boxes, CircleDot, Hammer, LogOut, Menu, Package, ShoppingCart, Store, Wrench, X } from "lucide-react";
 import { ReactNode, useState } from "react";
 import { useLocation } from "wouter";
 
@@ -8,6 +8,7 @@ const itens = [
   { label: "Peças", rota: "/compras/pecas", icon: Wrench },
   { label: "Insumos de estoque", rota: "/compras/insumos/estoque", icon: Boxes },
   { label: "Insumos de loja", rota: "/compras/insumos/loja", icon: Store },
+  { label: "Manutenção", rota: "/compras/manutencao", icon: Hammer },
 ];
 
 export default function ComprasShell({ children }: { children: ReactNode }) {
