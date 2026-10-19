@@ -411,6 +411,10 @@ function dinheiroNumero(valor: number) {
 
 export default function ComprasPecas() {
   const [arquivoNome, setArquivoNome] = useState("");
+  // Período do relatório e da compra (padrão: últimos 120 dias → compra para 30 dias).
+  const [diasAnalise, setDiasAnalise] = useState("120");
+  const [diasProjecao, setDiasProjecao] = useState("30");
+  const [abaixoDoMinimo, setAbaixoDoMinimo] = useState(0);
   const [itens, setItens] = useState<ItemPeca[]>([]);
   const [excluidos, setExcluidos] = useState<ItemPeca[]>([]);
   const [erro, setErro] = useState("");
@@ -570,6 +574,9 @@ export default function ComprasPecas() {
       }
 
       const encontrados: ItemPeca[] = [];
+      const dias = Math.max(1, Number(diasAnalise) || 120);
+      const projecao = Math.max(1, Number(diasProjecao) || 30);
+      let descartadosAbaixo = 0;
 
       for (let indice = 0; indice < linhas.length; indice += 1) {
         const linha = linhas[indice];
@@ -621,10 +628,16 @@ export default function ComprasPecas() {
 
         const ladoIndividual = detectarLado(item);
 
-        // Regra: venda dos últimos 60 dias / 2 - estoque atual.
+        // Regra: venda do período ÷ dias analisados × dias projetados − estoque atual.
         const necessidadeBruta = Number(
-          (vendaPeriodo / 2 - estoqueAtual).toFixed(2)
+          ((vendaPeriodo / dias) * projecao - estoqueAtual).toFixed(2)
         );
+
+        // Abaixo de 0,75 não compra: o item sai da relação.
+        if (necessidadeBruta < 0.75) {
+          descartadosAbaixo += 1;
+          continue;
+        }
 
         const quantidadeCompra = arredondarCompra(
           necessidadeBruta,
@@ -664,6 +677,7 @@ export default function ComprasPecas() {
       }
 
       setArquivoNome(file.name);
+      setAbaixoDoMinimo(descartadosAbaixo);
       setItens(encontrados);
       setExcluidos([]);
       setMensagemCatalogo("");
@@ -731,9 +745,32 @@ export default function ComprasPecas() {
           </p>
           <h1 className="mt-2 text-3xl font-black">Planejamento de peças</h1>
           <p className="mt-3 max-w-4xl text-sm leading-6 text-gray-500">
-            Relatório dos últimos 60 dias → compra projetada para 30 dias.
-            Regra base: venda do período ÷ 2 − estoque atual.
+            Relatório dos últimos {Number(diasAnalise) || 120} dias → compra projetada para {Number(diasProjecao) || 30} dias.
+            Regra: venda do período ÷ {Number(diasAnalise) || 120} × {Number(diasProjecao) || 30} − estoque atual. Necessidade abaixo de 0,75 sai da relação.
           </p>
+
+          <div className="mt-5 grid max-w-xl gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">Dias analisados (relatório)</span>
+              <input
+                value={diasAnalise}
+                inputMode="numeric"
+                onChange={(e) => setDiasAnalise(e.target.value.replace(/[^0-9]/g, ""))}
+                className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-[#D4AF37]/50"
+              />
+              <span className="mt-1 block text-[10px] text-gray-600">Normalmente 120 dias.</span>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">Dias para projetar (compra)</span>
+              <input
+                value={diasProjecao}
+                inputMode="numeric"
+                onChange={(e) => setDiasProjecao(e.target.value.replace(/[^0-9]/g, ""))}
+                className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-[#D4AF37]/50"
+              />
+              <span className="mt-1 block text-[10px] text-gray-600">Normalmente 30 dias. Ajuste antes de importar o relatório.</span>
+            </label>
+          </div>
 
           <label className="mt-6 flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.025] px-4 text-center hover:border-[#D4AF37]/45">
             <Upload className="h-7 w-7 text-[#F2D675]" />
@@ -752,9 +789,14 @@ export default function ComprasPecas() {
           </label>
 
           {arquivoNome && (
-            <div className="mt-4 flex items-center gap-2 text-xs font-bold text-emerald-300">
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-bold text-emerald-300">
               <CheckCircle2 className="h-4 w-4" />
               {arquivoNome}
+              {abaixoDoMinimo > 0 && (
+                <span className="font-bold text-gray-500">
+                  • {abaixoDoMinimo} item(ns) com necessidade abaixo de 0,75 tirados da relação
+                </span>
+              )}
             </div>
           )}
 
