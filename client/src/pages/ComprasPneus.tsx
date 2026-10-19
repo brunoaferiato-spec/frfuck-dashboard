@@ -1053,7 +1053,7 @@ export default function ComprasPneus() {
                           <th className="sticky left-0 z-10 bg-[#0d0d0d] px-3 py-2">Medida</th>
                           <th className="px-3 py-2 text-right">Qtd interna</th>
                           <th className="px-3 py-2 text-right">Melhor UF</th>
-                          {fornecedores.map((fornecedor: any) => {
+                          {fornecedores.map((fornecedor: any, indiceFornecedor: number) => {
                             const recebidos = ((detalheQuery.data?.cotacoes || []) as any[]).filter(
                               (cotacao) =>
                                 Number(cotacao.fornecedorId) === Number(fornecedor.id) &&
@@ -1062,7 +1062,7 @@ export default function ComprasPneus() {
                             const total = itensCotacao.length;
 
                             return (
-                              <th key={fornecedor.id} className="w-[128px] px-1 py-2 align-bottom">
+                              <th key={fornecedor.id} className={`w-[128px] px-1 py-2 align-bottom ${indiceFornecedor % 2 === 0 ? "bg-white/[0.06]" : ""}`}>
                                 <button
                                   type="button"
                                   onClick={() => setFornecedorModal(fornecedor)}
@@ -1110,7 +1110,7 @@ export default function ComprasPneus() {
                                 {item.melhorPrecoUf > 0 ? moeda(item.melhorPrecoUf) : "—"}
                               </td>
 
-                              {fornecedores.map((fornecedor: any) => {
+                              {fornecedores.map((fornecedor: any, indiceFornecedor: number) => {
                                 const chave = `${item.id}:${fornecedor.id}`;
                                 const salvo = cotacoes.get(chave);
                                 const valorAtual =
@@ -1138,6 +1138,8 @@ export default function ComprasPneus() {
                                     className={`px-1.5 py-1.5 align-top ${
                                       escolhidoMaisCaro
                                         ? "bg-[#D4AF37]/[0.16] shadow-[inset_0_0_0_2px_rgba(212,175,55,0.65)]"
+                                        : indiceFornecedor % 2 === 0
+                                        ? "bg-white/[0.045]"
                                         : ""
                                     }`}
                                   >
