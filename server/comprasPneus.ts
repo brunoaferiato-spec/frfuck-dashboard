@@ -2154,6 +2154,13 @@ export const comprasPneusRouter = router({
         [input.itemId, input.fornecedorId, input.valor]
       );
 
+      // Se este fornecedor já é o escolhido do item, o pedido passa a usar o preço novo.
+      await pool.query(
+        `UPDATE compras_pneus_itens SET precoSelecionado = ?
+         WHERE id = ? AND fornecedorSelecionadoId = ?`,
+        [input.valor, input.itemId, input.fornecedorId]
+      );
+
       await pool.query(
         `UPDATE compras_pneus_planejamentos p
          JOIN compras_pneus_itens i ON i.planejamentoId = p.id
@@ -2408,6 +2415,11 @@ export const comprasPneusRouter = router({
            VALUES (?, ?, ?)
            ON DUPLICATE KEY UPDATE valor = VALUES(valor)`,
           [itemId, input.fornecedorId, valor]
+        );
+        await pool.query(
+          `UPDATE compras_pneus_itens SET precoSelecionado = ?
+           WHERE id = ? AND fornecedorSelecionadoId = ?`,
+          [valor, itemId, input.fornecedorId]
         );
 
         importados += 1;

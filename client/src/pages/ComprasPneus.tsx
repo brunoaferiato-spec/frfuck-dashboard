@@ -1239,6 +1239,69 @@ export default function ComprasPneus() {
                           );
                         })}
                       </tbody>
+                      {/* Total do pedido de cada fornecedor: só as medidas escolhidas nele (quantidade × preço). */}
+                      {(() => {
+                        const totais = fornecedores.map((fornecedor: any) => {
+                          let valor = 0;
+                          let medidas = 0;
+                          let pneus = 0;
+                          for (const item of itensCotacao) {
+                            if (Number(item.fornecedorSelecionadoId || 0) !== Number(fornecedor.id)) continue;
+                            const preco = Number(cotacoes.get(`${item.id}:${fornecedor.id}`) || item.precoSelecionado || 0);
+                            const qtd = Number(item.quantidadeFinal || 0);
+                            valor += preco * qtd;
+                            medidas += 1;
+                            pneus += qtd;
+                          }
+                          return { valor, medidas, pneus };
+                        });
+                        const totalGeral = totais.reduce((s, t) => s + t.valor, 0);
+                        const pneusEscolhidos = totais.reduce((s, t) => s + t.pneus, 0);
+                        const semEscolha = itensCotacao.filter(
+                          (item: any) => !fornecedores.some((f: any) => Number(f.id) === Number(item.fornecedorSelecionadoId || 0))
+                        ).length;
+                        return (
+                          <tfoot>
+                            <tr className="border-t-2 border-[#D4AF37]/30 bg-[#D4AF37]/[0.04]">
+                              <td className="sticky left-0 z-10 bg-[#0f0d07] px-3 py-3 align-top">
+                                <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">Total do pedido</p>
+                                <p className="mt-1 text-sm font-black text-[#F2D675]">{moeda(totalGeral)}</p>
+                              </td>
+                              <td className="px-3 py-3 text-right align-top">
+                                <p className="text-[10px] font-black uppercase text-gray-600">Pneus</p>
+                                <p className="mt-1 text-sm font-black text-white">{pneusEscolhidos}</p>
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                {semEscolha > 0 ? (
+                                  <p className="text-[10px] font-black leading-4 text-amber-300">{semEscolha} medida(s) sem fornecedor escolhido</p>
+                                ) : (
+                                  <p className="text-[10px] font-black leading-4 text-emerald-300">Todas as medidas escolhidas</p>
+                                )}
+                              </td>
+                              {fornecedores.map((fornecedor: any, indiceFornecedor: number) => {
+                                const t = totais[indiceFornecedor];
+                                return (
+                                  <td
+                                    key={fornecedor.id}
+                                    className={`px-2 py-3 align-top ${indiceFornecedor % 2 === 0 ? "bg-white/[0.045]" : ""}`}
+                                  >
+                                    {t.medidas > 0 ? (
+                                      <>
+                                        <p className="text-sm font-black text-[#F2D675]">{moeda(t.valor)}</p>
+                                        <p className="mt-0.5 text-[10px] text-gray-500">
+                                          {t.medidas} medida(s) • {t.pneus} pneus
+                                        </p>
+                                      </>
+                                    ) : (
+                                      <p className="text-[11px] text-gray-600">—</p>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          </tfoot>
+                        );
+                      })()}
                     </table>
                   </div>
                 </section>
