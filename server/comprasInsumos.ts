@@ -508,8 +508,11 @@ function criarRouterInsumos(tipo: TipoInsumo) {
       const [f] = await db().query<any[]>(`SELECT id,nome FROM compras_insumos_fornecedores WHERE id=? AND tipo=? AND ativo=1 LIMIT 1`, [input.fornecedorId, tipo]);
       if (!f.length) throw new TRPCError({ code: "NOT_FOUND", message: "Fornecedor não encontrado." });
       const [items] = await db().query<any[]>(`SELECT codigo,item FROM compras_insumos_itens WHERE planejamentoId=? AND quantidadeFinal>0 ORDER BY id`, [input.planejamentoId]);
-      const buf = await quoteBook(String(f[0].nome), items.map((x) => ({ codigo: String(x.codigo), item: String(x.item) })));
-      return { nome: `cotacao-insumos-${tipo}-${nomeArquivo(f[0].nome)}-${input.planejamentoId}.xlsx`, mime: MIME_XLSX, base64: Buffer.from(buf as any).toString("base64") };
+      const [pl] = await db().query<any[]>(`SELECT lojaNome FROM compras_insumos_planejamentos WHERE id=? LIMIT 1`, [input.planejamentoId]);
+      const cidade = String(pl[0]?.lojaNome || "");
+      const titulo = `COTAÇÃO DE INSUMOS DE ${tipo === "estoque" ? "ESTOQUE" : "LOJA"} - ${cidade.toUpperCase() || "LOJA"}`;
+      const buf = await quoteBook(String(f[0].nome), items.map((x) => ({ codigo: String(x.codigo), item: String(x.item) })), titulo);
+      return { nome: `cotacao-insumos-${tipo}-${cidade ? `${nomeArquivo(cidade)}-` : ""}${nomeArquivo(f[0].nome)}-${input.planejamentoId}.xlsx`, mime: MIME_XLSX, base64: Buffer.from(buf as any).toString("base64") };
     }),
 
     importarCotacaoFornecedor: protectedProcedure.input(z.object({ planejamentoId: id, fornecedorId: id, arquivoNome: z.string().min(1), arquivoBase64: z.string().min(1) })).mutation(async ({ ctx, input }) => {

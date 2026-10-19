@@ -58,6 +58,13 @@ async function ensure() {
     PRIMARY KEY (id), UNIQUE KEY uq_cp_fornecedor_nome (nome)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
+  // Lojas atendidas por cada fornecedor de peças. Sem nenhuma loja aqui = atende todas.
+  await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_fornecedor_lojas (
+    fornecedorId INT UNSIGNED NOT NULL,
+    lojaId INT UNSIGNED NOT NULL,
+    PRIMARY KEY (fornecedorId, lojaId)
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+
   await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_planejamentos (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     lojaId INT UNSIGNED NULL,
@@ -196,20 +203,30 @@ async function consultarPerfect(codigoOriginal: string) {
   };
 }
 
-export async function quoteBook(name: string, items: Array<{ codigo: string; item: string }>) {
+// titulo (ex.: "COTAÇÃO DE PEÇAS - JOINVILLE") vai nas linhas 1-2; o cabeçalho fica na linha 3
+// (a importação procura o cabeçalho nas 12 primeiras linhas).
+export async function quoteBook(name: string, items: Array<{ codigo: string; item: string }>, titulo?: string) {
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet("Cotação", { views: [{ state: "frozen", ySplit: 1 }] });
-  ws.columns = [
-    { header: "CÓDIGO", key: "codigo", width: 20 },
-    { header: "ITEM", key: "item", width: 55 },
-    { header: name, key: "valor", width: 20 },
-  ];
-  items.forEach((x) => ws.addRow({ ...x, valor: null }));
-  ws.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-  ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111111" } };
-  ws.getColumn(3).numFmt = '"R$" #,##0.00';
+  const H = 3;
+  const ws = wb.addWorksheet("Cotação", { views: [{ state: "frozen", ySplit: H }] });
+  ws.getColumn(1).width = 20;
+  ws.getColumn(2).width = 55;
+  ws.getColumn(3).width = 20;
+  ws.mergeCells("A1:C1");
+  ws.getCell("A1").value = titulo || "COTAÇÃO";
+  ws.getCell("A1").font = { bold: true, size: 14 };
+  ws.getCell("A1").alignment = { horizontal: "center" };
+  ws.mergeCells("A2:C2");
+  ws.getCell("A2").value = `Fornecedor: ${name} • preencha só a coluna com o seu nome`;
+  ws.getCell("A2").font = { italic: true, color: { argb: "FF666666" } };
+  ws.getCell("A2").alignment = { horizontal: "center" };
+  ws.getRow(H).values = ["CÓDIGO", "ITEM", name];
+  items.forEach((x) => ws.addRow([x.codigo, x.item, null]));
+  ws.getRow(H).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  ws.getRow(H).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111111" } };
+  for (let r = H + 1; r <= ws.rowCount; r++) ws.getCell(r, 3).numFmt = '"R$" #,##0.00';
   ws.eachRow((row, r) => row.eachCell({ includeEmpty: true }, (cell, c) => {
-    cell.protection = { locked: r === 1 || c !== 3 };
+    cell.protection = { locked: r <= H || c !== 3 };
   }));
   await ws.protect("fr-cotacao-pecas", {
     selectLockedCells: false, selectUnlockedCells: true,
@@ -373,14 +390,38 @@ export const comprasPecasRouter = router({
 
   fornecedores: protectedProcedure.query(async ({ ctx }) => {
     assertCompras(ctx); await ensure();
-    const [rows] = await db().query<any[]>(`SELECT id,nome,ativo FROM compras_pecas_fornecedores ORDER BY ativo DESC,nome ASC`);
-    return rows.map((x) => ({ ...x, id: Number(x.id), ativo: Boolean(x.ativo) }));
+    const [rows] = await db().query<any[]>(
+      `SELECT f.id,f.nome,f.ativo,GROUP_CONCAT(fl.lojaId ORDER BY fl.lojaId) lojas
+         FROM compras_pecas_fornecedores f
+         LEFT JOIN compras_pecas_fornecedor_lojas fl ON fl.fornecedorId=f.id
+        GROUP BY f.id ORDER BY f.ativo DESC,f.nome ASC`
+    );
+    // lojas vazio = atende todas as lojas
+    return rows.map((x) => ({ id: Number(x.id), nome: String(x.nome), ativo: Boolean(x.ativo), lojas: String(x.lojas || "").split(",").filter(Boolean).map(Number) }));
   }),
 
-  criarFornecedor: protectedProcedure.input(z.object({ nome: z.string().trim().min(2).max(160) })).mutation(async ({ ctx, input }) => {
+  criarFornecedor: protectedProcedure.input(z.object({ nome: z.string().trim().min(2).max(160), lojas: z.array(z.number().int().positive()).max(20).optional() })).mutation(async ({ ctx, input }) => {
     assertCompras(ctx); await ensure();
     await db().query(`INSERT INTO compras_pecas_fornecedores (nome,ativo) VALUES (?,1) ON DUPLICATE KEY UPDATE ativo=1,nome=VALUES(nome)`, [input.nome.trim()]);
+    if (input.lojas?.length) {
+      const [f] = await db().query<any[]>(`SELECT id FROM compras_pecas_fornecedores WHERE nome=? LIMIT 1`, [input.nome.trim()]);
+      const fid = Number(f[0]?.id || 0);
+      if (fid) for (const lojaId of new Set(input.lojas)) await db().query(`INSERT IGNORE INTO compras_pecas_fornecedor_lojas (fornecedorId,lojaId) VALUES (?,?)`, [fid, lojaId]);
+    }
     return { ok: true };
+  }),
+
+  // Em quais lojas o fornecedor aparece na cotação (lista vazia = todas).
+  definirLojasFornecedor: protectedProcedure.input(z.object({ id: z.number().int().positive(), lojas: z.array(z.number().int().positive()).max(20) })).mutation(async ({ ctx, input }) => {
+    assertCompras(ctx); await ensure();
+    const c = await db().getConnection();
+    try {
+      await c.beginTransaction();
+      await c.query(`DELETE FROM compras_pecas_fornecedor_lojas WHERE fornecedorId=?`, [input.id]);
+      for (const lojaId of new Set(input.lojas)) await c.query(`INSERT INTO compras_pecas_fornecedor_lojas (fornecedorId,lojaId) VALUES (?,?)`, [input.id, lojaId]);
+      await c.commit();
+      return { ok: true };
+    } catch (e) { await c.rollback(); throw e; } finally { c.release(); }
   }),
 
   definirFornecedorAtivo: protectedProcedure.input(z.object({ id: z.number().int().positive(), ativo: z.boolean() })).mutation(async ({ ctx, input }) => {
@@ -528,8 +569,11 @@ export const comprasPecasRouter = router({
     const [f]=await db().query<any[]>(`SELECT id,nome FROM compras_pecas_fornecedores WHERE id=? AND ativo=1 LIMIT 1`,[input.fornecedorId]);
     if(!f.length) throw new TRPCError({code:"NOT_FOUND",message:"Fornecedor não encontrado."});
     const [items]=await db().query<any[]>(`SELECT codigo,item FROM compras_pecas_itens WHERE planejamentoId=? AND quantidadeFinal>0 ORDER BY codigo`,[input.planejamentoId]);
-    const buf=await quoteBook(String(f[0].nome),items.map((x)=>({codigo:String(x.codigo),item:String(x.item)})));
-    return {nome:`cotacao-pecas-${norm(f[0].nome).toLowerCase().replace(/[^a-z0-9]+/g,"-")}-${input.planejamentoId}.xlsx`,mime:MIME_XLSX,base64:Buffer.from(buf as any).toString("base64")};
+    const [pl]=await db().query<any[]>(`SELECT lojaNome FROM compras_pecas_planejamentos WHERE id=? LIMIT 1`,[input.planejamentoId]);
+    const cidade=String(pl[0]?.lojaNome||"");
+    const buf=await quoteBook(String(f[0].nome),items.map((x)=>({codigo:String(x.codigo),item:String(x.item)})),`COTAÇÃO DE PEÇAS - ${cidade.toUpperCase()||"LOJA"}`);
+    const seg=(s:string)=>norm(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    return {nome:`cotacao-pecas-${cidade?`${seg(cidade)}-`:""}${seg(f[0].nome)}-${input.planejamentoId}.xlsx`,mime:MIME_XLSX,base64:Buffer.from(buf as any).toString("base64")};
   }),
 
   importarCotacaoFornecedor: protectedProcedure.input(z.object({planejamentoId:z.number().int().positive(),fornecedorId:z.number().int().positive(),arquivoNome:z.string().min(1),arquivoBase64:z.string().min(1)})).mutation(async({ctx,input})=>{

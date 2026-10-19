@@ -15,7 +15,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ComprasPneusHistorico from "@/components/ComprasPneusHistorico";
 import ComprasPneusPromocionais from "@/components/ComprasPneusPromocionais";
 
@@ -45,6 +45,15 @@ const LOJAS_COMPRAS = [
   { id: 6, nome: "São Leopoldo" },
   { id: 7, nome: "Gravataí" },
 ] as const;
+
+// Grupos de lojas para escolher rápido os fornecedores de cada região.
+const LOJAS_SC = [1, 2, 3, 4];
+const LOJAS_RS = [6, 7];
+
+function nomesLojas(ids: number[]) {
+  if (!ids.length) return "Todas as lojas";
+  return ids.map((id) => LOJAS_COMPRAS.find((l) => l.id === id)?.nome || `Loja ${id}`).join(", ");
+}
 
 function moeda(valor: unknown) {
   const n = Number(valor || 0);
@@ -146,10 +155,23 @@ export default function ComprasPneus() {
     { enabled: Boolean(planejamentoId) }
   );
 
+  // Na cotação aparecem só os fornecedores que atendem a loja do planejamento
+  // (fornecedor sem loja marcada atende todas).
+  const lojaDaCotacao = Number(detalheQuery.data?.planejamento?.lojaId || lojaId || 0);
   const fornecedores = useMemo(
-    () => (fornecedoresQuery.data || []).filter((item: any) => item.ativo),
-    [fornecedoresQuery.data]
+    () =>
+      (fornecedoresQuery.data || []).filter(
+        (item: any) =>
+          item.ativo &&
+          (!(item.lojas || []).length || (item.lojas || []).includes(lojaDaCotacao))
+      ),
+    [fornecedoresQuery.data, lojaDaCotacao]
   );
+  const [novoFornecedorLojas, setNovoFornecedorLojas] = useState<number[]>([]);
+  useEffect(() => {
+    if (!lojaDaCotacao) return;
+    setNovoFornecedorLojas(LOJAS_RS.includes(lojaDaCotacao) ? LOJAS_RS : LOJAS_SC.includes(lojaDaCotacao) ? LOJAS_SC : [lojaDaCotacao]);
+  }, [lojaDaCotacao]);
 
   const itensCotacao = useMemo(
     () =>
@@ -222,6 +244,20 @@ export default function ComprasPneus() {
     },
     onError: (error) => setErro(error.message || "Não foi possível cadastrar fornecedor."),
   });
+
+  const definirLojasFornecedorMutation =
+    trpc.compras.pneus.definirLojasFornecedor.useMutation({
+      onSuccess: async () => {
+        await utils.compras.pneus.fornecedores.invalidate();
+      },
+      onError: (error) => setErro(error.message || "Não foi possível salvar as lojas do fornecedor."),
+    });
+
+  function alternarLojaFornecedor(fornecedor: any, lojaIdAlvo: number) {
+    const atuais: number[] = fornecedor.lojas || [];
+    const novas = atuais.includes(lojaIdAlvo) ? atuais.filter((id) => id !== lojaIdAlvo) : [...atuais, lojaIdAlvo];
+    definirLojasFornecedorMutation.mutate({ id: Number(fornecedor.id), lojas: novas.sort((a, b) => a - b) });
+  }
 
   const definirFornecedorAtivoMutation =
     trpc.compras.pneus.definirFornecedorAtivo.useMutation({
@@ -926,7 +962,7 @@ export default function ComprasPneus() {
                       type="button"
                       onClick={() => {
                         if (novoFornecedor.trim()) {
-                          criarFornecedorMutation.mutate({ nome: novoFornecedor.trim() });
+                          criarFornecedorMutation.mutate({ nome: novoFornecedor.trim(), lojas: novoFornecedorLojas });
                         }
                       }}
                       className="inline-flex h-11 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.05] px-4 text-sm font-black text-[#F2D675]"
@@ -935,6 +971,32 @@ export default function ComprasPneus() {
                       Cadastrar fornecedor
                     </button>
                   </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="font-black uppercase tracking-[0.06em] text-gray-600">Atende:</span>
+                    {LOJAS_COMPRAS.map((loja) => {
+                      const marcada = novoFornecedorLojas.includes(loja.id);
+                      return (
+                        <button
+                          key={loja.id}
+                          type="button"
+                          onClick={() =>
+                            setNovoFornecedorLojas((atual) =>
+                              atual.includes(loja.id) ? atual.filter((id) => id !== loja.id) : [...atual, loja.id].sort((a, b) => a - b)
+                            )
+                          }
+                          className={`rounded-full border px-3 py-1 font-bold ${marcada ? "border-[#D4AF37]/40 bg-[#D4AF37]/[0.12] text-[#F2D675]" : "border-white/10 text-gray-500"}`}
+                        >
+                          {loja.nome}
+                        </button>
+                      );
+                    })}
+                    <button type="button" onClick={() => setNovoFornecedorLojas(LOJAS_SC)} className="rounded-full border border-sky-400/20 px-3 py-1 font-black text-sky-200">Lojas SC</button>
+                    <button type="button" onClick={() => setNovoFornecedorLojas(LOJAS_RS)} className="rounded-full border border-sky-400/20 px-3 py-1 font-black text-sky-200">Lojas RS</button>
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-600">
+                    {novoFornecedorLojas.length ? `O novo fornecedor vai aparecer só em: ${nomesLojas(novoFornecedorLojas)}.` : "Sem loja marcada, o fornecedor aparece em todas as lojas."}
+                  </p>
 
                   {fornecedores.length === 0 ? (
                     <div className="mt-5 rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 text-sm text-gray-500">
@@ -1367,23 +1429,47 @@ export default function ComprasPneus() {
                   {(fornecedoresQuery.data || []).map((fornecedor: any) => (
                     <div
                       key={fornecedor.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.07] px-4 py-3"
+                      className="rounded-xl border border-white/[0.07] px-4 py-3"
                     >
-                      <span className={fornecedor.ativo ? "font-bold text-white" : "text-gray-600"}>
-                        {fornecedor.nome}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          definirFornecedorAtivoMutation.mutate({
-                            id: fornecedor.id,
-                            ativo: !fornecedor.ativo,
-                          })
-                        }
-                        className="text-xs font-black text-[#F2D675]"
-                      >
-                        {fornecedor.ativo ? "Desativar" : "Ativar"}
-                      </button>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <span className={fornecedor.ativo ? "font-bold text-white" : "text-gray-600"}>
+                            {fornecedor.nome}
+                          </span>
+                          <p className="mt-0.5 text-[11px] text-gray-500">{nomesLojas(fornecedor.lojas || [])}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            definirFornecedorAtivoMutation.mutate({
+                              id: fornecedor.id,
+                              ativo: !fornecedor.ativo,
+                            })
+                          }
+                          className="text-xs font-black text-[#F2D675]"
+                        >
+                          {fornecedor.ativo ? "Desativar" : "Ativar"}
+                        </button>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+                        {LOJAS_COMPRAS.map((loja) => {
+                          const marcada = (fornecedor.lojas || []).includes(loja.id);
+                          return (
+                            <button
+                              key={loja.id}
+                              type="button"
+                              disabled={definirLojasFornecedorMutation.isPending}
+                              onClick={() => alternarLojaFornecedor(fornecedor, loja.id)}
+                              className={`rounded-full border px-2.5 py-0.5 font-bold disabled:opacity-50 ${marcada ? "border-[#D4AF37]/40 bg-[#D4AF37]/[0.12] text-[#F2D675]" : "border-white/10 text-gray-500"}`}
+                            >
+                              {loja.nome}
+                            </button>
+                          );
+                        })}
+                        <button type="button" disabled={definirLojasFornecedorMutation.isPending} onClick={() => definirLojasFornecedorMutation.mutate({ id: Number(fornecedor.id), lojas: LOJAS_SC })} className="rounded-full border border-sky-400/20 px-2.5 py-0.5 font-black text-sky-200 disabled:opacity-50">Só SC</button>
+                        <button type="button" disabled={definirLojasFornecedorMutation.isPending} onClick={() => definirLojasFornecedorMutation.mutate({ id: Number(fornecedor.id), lojas: LOJAS_RS })} className="rounded-full border border-sky-400/20 px-2.5 py-0.5 font-black text-sky-200 disabled:opacity-50">Só RS</button>
+                        <button type="button" disabled={definirLojasFornecedorMutation.isPending} onClick={() => definirLojasFornecedorMutation.mutate({ id: Number(fornecedor.id), lojas: [] })} className="rounded-full border border-white/10 px-2.5 py-0.5 font-black text-gray-400 disabled:opacity-50">Todas</button>
+                      </div>
                     </div>
                   ))}
                 </div>

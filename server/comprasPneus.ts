@@ -338,6 +338,15 @@ async function ensureComprasPneus() {
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
   `);
 
+  // Lojas atendidas por cada fornecedor. Fornecedor sem nenhuma loja aqui atende todas.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS compras_pneus_fornecedor_lojas (
+      fornecedorId INT UNSIGNED NOT NULL,
+      lojaId INT UNSIGNED NOT NULL,
+      PRIMARY KEY (fornecedorId, lojaId)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS compras_pneus_regras (
       id INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -1002,41 +1011,44 @@ function workbookBase64(
 
 async function workbookCotacaoFornecedorBase64(
   fornecedorNome: string,
-  itens: Array<{ medida: string; melhorPrecoUf: unknown }>
+  itens: Array<{ medida: string; melhorPrecoUf: unknown }>,
+  cidade?: string | null
 ) {
   const workbook = new ExcelJS.Workbook();
+  // Linhas 1-2: título com a cidade; linha 3: cabeçalho (a importação procura o cabeçalho nas 12 primeiras linhas).
+  const LINHA_CABECALHO = 3;
   const worksheet = workbook.addWorksheet("Cotação", {
-    views: [{ state: "frozen", ySplit: 1 }],
+    views: [{ state: "frozen", ySplit: LINHA_CABECALHO }],
   });
 
-  worksheet.columns = [
-    { header: "MEDIDA", key: "medida", width: 18 },
-    { header: "MELHOR PREÇO UF", key: "melhorPrecoUf", width: 20 },
-    { header: fornecedorNome, key: "fornecedor", width: 22 },
-  ];
+  worksheet.getColumn(1).width = 18;
+  worksheet.getColumn(2).width = 20;
+  worksheet.getColumn(3).width = 22;
+  worksheet.mergeCells("A1:C1");
+  worksheet.getCell("A1").value = `COTAÇÃO DE PNEUS - ${String(cidade || "").toUpperCase() || "LOJA"}`;
+  worksheet.getCell("A1").font = { bold: true, size: 14 };
+  worksheet.getCell("A1").alignment = { horizontal: "center" };
+  worksheet.mergeCells("A2:C2");
+  worksheet.getCell("A2").value = `Fornecedor: ${fornecedorNome} • preencha só a coluna com o seu nome`;
+  worksheet.getCell("A2").font = { italic: true, color: { argb: "FF666666" } };
+  worksheet.getCell("A2").alignment = { horizontal: "center" };
+
+  const cabecalho = worksheet.getRow(LINHA_CABECALHO);
+  cabecalho.values = ["MEDIDA", "MELHOR PREÇO UF", fornecedorNome];
+  cabecalho.font = { bold: true };
 
   for (const item of itens) {
-    worksheet.addRow({
-      medida: item.medida,
-      melhorPrecoUf: Number(item.melhorPrecoUf || 0),
-      fornecedor: null,
-    });
+    worksheet.addRow([item.medida, Number(item.melhorPrecoUf || 0), null]);
   }
-
-  worksheet.getColumn(2).numFmt = '"R$" #,##0.00';
-  worksheet.getColumn(3).numFmt = '"R$" #,##0.00';
-
-  const cabecalho = worksheet.getRow(1);
-  cabecalho.font = { bold: true };
 
   for (let linha = 1; linha <= worksheet.rowCount; linha += 1) {
     const row = worksheet.getRow(linha);
 
     row.getCell(1).protection = { locked: true };
     row.getCell(2).protection = { locked: true };
-    row.getCell(3).protection = { locked: linha === 1 };
+    row.getCell(3).protection = { locked: linha <= LINHA_CABECALHO };
 
-    if (linha > 1) {
+    if (linha > LINHA_CABECALHO) {
       row.getCell(2).numFmt = '"R$" #,##0.00';
       row.getCell(3).numFmt = '"R$" #,##0.00';
     }
@@ -1654,15 +1666,31 @@ export const comprasPneusRouter = router({
     const pool = getPoolComprasPneus();
 
     const [rows] = await pool.query<any[]>(
-      `SELECT id, nome, ativo, createdAt
-       FROM compras_pneus_fornecedores
-       ORDER BY ativo DESC, nome ASC`
+      `SELECT f.id, f.nome, f.ativo, f.createdAt,
+              GROUP_CONCAT(fl.lojaId ORDER BY fl.lojaId) lojas
+       FROM compras_pneus_fornecedores f
+       LEFT JOIN compras_pneus_fornecedor_lojas fl ON fl.fornecedorId = f.id
+       GROUP BY f.id
+       ORDER BY f.ativo DESC, f.nome ASC`
     );
-    return rows.map((item) => ({ ...item, ativo: Boolean(item.ativo) }));
+    // lojas vazio = fornecedor atende todas as lojas
+    return rows.map((item) => ({
+      ...item,
+      ativo: Boolean(item.ativo),
+      lojas: String(item.lojas || "")
+        .split(",")
+        .filter(Boolean)
+        .map(Number),
+    }));
   }),
 
   criarFornecedor: protectedProcedure
-    .input(z.object({ nome: z.string().trim().min(2).max(160) }))
+    .input(
+      z.object({
+        nome: z.string().trim().min(2).max(160),
+        lojas: z.array(z.number().int().positive()).max(20).optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       assertCompras(ctx);
       await ensureComprasPneus();
@@ -1679,7 +1707,14 @@ export const comprasPneusRouter = router({
             String(ctx.user?.name || "") || null,
           ]
         );
-        return { id: Number(result.insertId), nome: input.nome.trim() };
+        const fornecedorId = Number(result.insertId);
+        for (const lojaId of new Set(input.lojas || [])) {
+          await pool.query(
+            `INSERT IGNORE INTO compras_pneus_fornecedor_lojas (fornecedorId, lojaId) VALUES (?, ?)`,
+            [fornecedorId, lojaId]
+          );
+        }
+        return { id: fornecedorId, nome: input.nome.trim() };
       } catch (error: any) {
         if (String(error?.code || "") === "ER_DUP_ENTRY") {
           throw new TRPCError({
@@ -1702,6 +1737,38 @@ export const comprasPneusRouter = router({
         [input.ativo ? 1 : 0, input.id]
       );
       return { ok: true };
+    }),
+
+  // Define em quais lojas o fornecedor aparece na cotação (lista vazia = todas).
+  definirLojasFornecedor: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        lojas: z.array(z.number().int().positive()).max(20),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      assertCompras(ctx);
+      await ensureComprasPneus();
+      const pool = getPoolComprasPneus();
+      const conn = await pool.getConnection();
+      try {
+        await conn.beginTransaction();
+        await conn.query(`DELETE FROM compras_pneus_fornecedor_lojas WHERE fornecedorId = ?`, [input.id]);
+        for (const lojaId of new Set(input.lojas)) {
+          await conn.query(
+            `INSERT INTO compras_pneus_fornecedor_lojas (fornecedorId, lojaId) VALUES (?, ?)`,
+            [input.id, lojaId]
+          );
+        }
+        await conn.commit();
+        return { ok: true };
+      } catch (error) {
+        await conn.rollback();
+        throw error;
+      } finally {
+        conn.release();
+      }
     }),
 
   regras: protectedProcedure
@@ -2224,12 +2291,21 @@ export const comprasPneusRouter = router({
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
 
+      const [planos] = await pool.query<any[]>(
+        `SELECT lojaId FROM compras_pneus_planejamentos WHERE id = ? LIMIT 1`,
+        [input.planejamentoId]
+      );
+      const cidade =
+        LOJAS_RELATORIO.find((loja) => loja.id === Number(planos[0]?.lojaId || 0))?.nome || "";
+      const cidadeSegura = normalizarTexto(cidade).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
       return {
-        nome: `cotacao-pneus-${nomeSeguro || input.fornecedorId}-${input.planejamentoId}.xlsx`,
+        nome: `cotacao-pneus-${cidadeSegura ? `${cidadeSegura}-` : ""}${nomeSeguro || input.fornecedorId}-${input.planejamentoId}.xlsx`,
         mime: MIME_XLSX,
         base64: await workbookCotacaoFornecedorBase64(
           String(fornecedor.nome),
-          itens
+          itens,
+          cidade
         ),
       };
     }),

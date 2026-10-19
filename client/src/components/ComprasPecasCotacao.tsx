@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Download, MapPin, Save, Settings2, Trash2, Upload, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
@@ -24,6 +24,14 @@ const LOJAS_PECAS = [
   { id: 6, nome: "São Leopoldo" },
   { id: 7, nome: "Gravataí" },
 ] as const;
+
+// Grupos para marcar rápido os fornecedores de cada região.
+const LOJAS_SC = [1, 2, 3, 4];
+const LOJAS_RS = [6, 7];
+function nomesLojasPecas(ids: number[]) {
+  if (!ids.length) return "Todas as lojas";
+  return ids.map((id) => LOJAS_PECAS.find((l) => l.id === id)?.nome || `Loja ${id}`).join(", ");
+}
 
 function moeda(v: number) {
   return Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -153,7 +161,23 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
     onError: (e) => setErro(e.message),
   });
 
-  const fornecedores = useMemo(()=> (fornecedoresQ.data || []).filter((x:any)=>x.ativo), [fornecedoresQ.data]);
+  // Na cotação aparecem só os fornecedores da loja do planejamento (sem loja marcada = todas).
+  const lojaDaCotacao = Number(detalheQ.data?.planejamento?.lojaId || lojaId || 0);
+  const fornecedores = useMemo(
+    () => (fornecedoresQ.data || []).filter((x: any) => x.ativo && (!(x.lojas || []).length || (x.lojas || []).includes(lojaDaCotacao))),
+    [fornecedoresQ.data, lojaDaCotacao]
+  );
+  const [novoFornecedorLojas, setNovoFornecedorLojas] = useState<number[]>([]);
+  useEffect(() => {
+    if (!lojaDaCotacao) return;
+    setNovoFornecedorLojas(LOJAS_RS.includes(lojaDaCotacao) ? LOJAS_RS : LOJAS_SC.includes(lojaDaCotacao) ? LOJAS_SC : [lojaDaCotacao]);
+  }, [lojaDaCotacao]);
+  const definirLojasFornecedor = trpc.compras.pecas.definirLojasFornecedor.useMutation({ onSuccess: async () => { await fornecedoresQ.refetch(); }, onError: (e) => setErro(e.message) });
+  function alternarLojaFornecedor(f: any, alvo: number) {
+    const atuais: number[] = f.lojas || [];
+    const novas = atuais.includes(alvo) ? atuais.filter((x) => x !== alvo) : [...atuais, alvo];
+    definirLojasFornecedor.mutate({ id: Number(f.id), lojas: novas.sort((a, b) => a - b) });
+  }
   const quoteMap = useMemo(()=>{ const m=new Map<string,number>(); for(const q of detalheQ.data?.cotacoes || []) m.set(`${q.itemId}-${q.fornecedorId}`,Number(q.valor||0)); return m;},[detalheQ.data?.cotacoes]);
   const countMap = useMemo(()=>{ const m=new Map<number,number>(); for(const q of detalheQ.data?.cotacoes || []) m.set(Number(q.fornecedorId),(m.get(Number(q.fornecedorId))||0)+1); return m;},[detalheQ.data?.cotacoes]);
 
@@ -424,7 +448,25 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
       </div>
     </div>}
 
-    {aba==='fornecedores' && <div className="mt-5"><div className="flex gap-2"><input value={novoFornecedor} onChange={e=>setNovoFornecedor(e.target.value)} placeholder="Nome do fornecedor" className="h-11 flex-1 rounded-xl border border-white/10 bg-black/40 px-3 text-sm"/><button type="button" onClick={()=>novoFornecedor.trim()&&criarFornecedor.mutate({nome:novoFornecedor.trim()})} className="h-11 rounded-xl bg-[#D4AF37] px-4 text-sm font-black text-black"><Settings2 className="mr-2 inline h-4 w-4"/>Adicionar</button></div><div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">{(fornecedoresQ.data||[]).map((f:any)=><div key={f.id} className="flex items-center justify-between rounded-xl border border-white/[0.07] px-4 py-3"><span className={f.ativo?'font-bold':'text-gray-600'}>{f.nome}</span><button type="button" onClick={()=>toggleFornecedor.mutate({id:Number(f.id),ativo:!f.ativo})} className="text-xs font-black text-[#F2D675]">{f.ativo?'Desativar':'Ativar'}</button></div>)}</div></div>}
+    {aba==='fornecedores' && <div className="mt-5">
+      <div className="flex gap-2"><input value={novoFornecedor} onChange={e=>setNovoFornecedor(e.target.value)} placeholder="Nome do fornecedor" className="h-11 flex-1 rounded-xl border border-white/10 bg-black/40 px-3 text-sm"/><button type="button" onClick={()=>novoFornecedor.trim()&&criarFornecedor.mutate({nome:novoFornecedor.trim(),lojas:novoFornecedorLojas})} className="h-11 rounded-xl bg-[#D4AF37] px-4 text-sm font-black text-black"><Settings2 className="mr-2 inline h-4 w-4"/>Adicionar</button></div>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-black uppercase tracking-[0.06em] text-gray-600">Atende:</span>
+        {LOJAS_PECAS.map((l)=>{const m=novoFornecedorLojas.includes(l.id);return <button key={l.id} type="button" onClick={()=>setNovoFornecedorLojas((a)=>a.includes(l.id)?a.filter((x)=>x!==l.id):[...a,l.id].sort((x,y)=>x-y))} className={`rounded-full border px-3 py-1 font-bold ${m?"border-[#D4AF37]/40 bg-[#D4AF37]/[0.12] text-[#F2D675]":"border-white/10 text-gray-500"}`}>{l.nome}</button>;})}
+        <button type="button" onClick={()=>setNovoFornecedorLojas(LOJAS_SC)} className="rounded-full border border-sky-400/20 px-3 py-1 font-black text-sky-200">Lojas SC</button>
+        <button type="button" onClick={()=>setNovoFornecedorLojas(LOJAS_RS)} className="rounded-full border border-sky-400/20 px-3 py-1 font-black text-sky-200">Lojas RS</button>
+      </div>
+      <p className="mt-1 text-[11px] text-gray-600">{novoFornecedorLojas.length?`O novo fornecedor vai aparecer só em: ${nomesLojasPecas(novoFornecedorLojas)}.`:"Sem loja marcada, o fornecedor aparece em todas as lojas."}</p>
+      <div className="mt-4 grid gap-2 md:grid-cols-2">{(fornecedoresQ.data||[]).map((f:any)=><div key={f.id} className="rounded-xl border border-white/[0.07] px-4 py-3">
+        <div className="flex items-center justify-between gap-3"><div><span className={f.ativo?'font-bold':'text-gray-600'}>{f.nome}</span><p className="mt-0.5 text-[11px] text-gray-500">{nomesLojasPecas(f.lojas||[])}</p></div><button type="button" onClick={()=>toggleFornecedor.mutate({id:Number(f.id),ativo:!f.ativo})} className="text-xs font-black text-[#F2D675]">{f.ativo?'Desativar':'Ativar'}</button></div>
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+          {LOJAS_PECAS.map((l)=>{const m=(f.lojas||[]).includes(l.id);return <button key={l.id} type="button" disabled={definirLojasFornecedor.isPending} onClick={()=>alternarLojaFornecedor(f,l.id)} className={`rounded-full border px-2.5 py-0.5 font-bold disabled:opacity-50 ${m?"border-[#D4AF37]/40 bg-[#D4AF37]/[0.12] text-[#F2D675]":"border-white/10 text-gray-500"}`}>{l.nome}</button>;})}
+          <button type="button" disabled={definirLojasFornecedor.isPending} onClick={()=>definirLojasFornecedor.mutate({id:Number(f.id),lojas:LOJAS_SC})} className="rounded-full border border-sky-400/20 px-2.5 py-0.5 font-black text-sky-200 disabled:opacity-50">Só SC</button>
+          <button type="button" disabled={definirLojasFornecedor.isPending} onClick={()=>definirLojasFornecedor.mutate({id:Number(f.id),lojas:LOJAS_RS})} className="rounded-full border border-sky-400/20 px-2.5 py-0.5 font-black text-sky-200 disabled:opacity-50">Só RS</button>
+          <button type="button" disabled={definirLojasFornecedor.isPending} onClick={()=>definirLojasFornecedor.mutate({id:Number(f.id),lojas:[]})} className="rounded-full border border-white/10 px-2.5 py-0.5 font-black text-gray-400 disabled:opacity-50">Todas</button>
+        </div>
+      </div>)}</div>
+    </div>}
 
     {fornecedorModal&&planejamentoId&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"><div className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#0a0a0a] p-5"><div className="flex items-start justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#D4AF37]/60">COTAÇÃO DO FORNECEDOR</p><h2 className="mt-1 text-2xl font-black">{fornecedorModal.nome}</h2><p className="mt-2 text-xs text-gray-500">{countMap.get(Number(fornecedorModal.id))||0}/{detalheQ.data?.itens?.length||0} preços recebidos</p></div><button type="button" onClick={()=>setFornecedorModal(null)} className="rounded-xl border border-white/10 p-2 text-gray-500"><X className="h-4 w-4"/></button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><button type="button" onClick={()=>arquivoCotacao.mutate({planejamentoId,fornecedorId:Number(fornecedorModal.id)})} className="rounded-2xl border border-[#D4AF37]/20 p-5 text-left"><Download className="h-5 w-5 text-[#F2D675]"/><p className="mt-3 font-black">Baixar arquivo de cotação</p><p className="mt-1 text-xs text-gray-600">Código e item travados. Só o preço fica editável.</p></button><label className="cursor-pointer rounded-2xl border border-emerald-400/20 p-5"><Upload className="h-5 w-5 text-emerald-300"/><p className="mt-3 font-black">Anexar arquivo preenchido</p><p className="mt-1 text-xs text-gray-600">Os preços entram automaticamente.</p><input type="file" accept=".xlsx" className="hidden" onChange={e=>{void importar(e.target.files?.[0]||null,Number(fornecedorModal.id));e.currentTarget.value='';}}/></label></div></div></div>}
     {exclusao && (() => {
