@@ -1062,7 +1062,7 @@ export default function ComprasPneus() {
                             const total = itensCotacao.length;
 
                             return (
-                              <th key={fornecedor.id} className="min-w-[185px] px-2 py-2">
+                              <th key={fornecedor.id} className="min-w-[132px] px-1.5 py-2">
                                 <button
                                   type="button"
                                   onClick={() => setFornecedorModal(fornecedor)}
@@ -1088,10 +1088,10 @@ export default function ComprasPneus() {
                           const menor = menorPrecoItem(item.id);
                           return (
                             <tr key={item.id} className="border-t border-white/[0.05]">
-                              <td className="sticky left-0 z-10 bg-[#090909] px-4 py-3 font-black text-white">
+                              <td className="sticky left-0 z-10 bg-[#090909] px-3 py-1.5 font-black text-white">
                                 {item.medida}
                               </td>
-                              <td className="px-4 py-3 text-right">
+                              <td className="px-3 py-1.5 text-right">
                                 <input
                                   type="number"
                                   min={0}
@@ -1103,10 +1103,10 @@ export default function ComprasPneus() {
                                       quantidadeFinal: Number(event.target.value || 0),
                                     })
                                   }
-                                  className="h-9 w-20 rounded-lg border border-white/10 bg-black/30 px-2 text-right font-black text-[#F2D675]"
+                                  className="h-8 w-16 rounded-lg border border-white/10 bg-black/30 px-2 text-right font-black text-[#F2D675]"
                                 />
                               </td>
-                              <td className="px-4 py-3 text-right text-gray-400">
+                              <td className="px-3 py-1.5 text-right text-xs text-gray-400">
                                 {item.melhorPrecoUf > 0 ? moeda(item.melhorPrecoUf) : "—"}
                               </td>
 
@@ -1135,13 +1135,13 @@ export default function ComprasPneus() {
                                 return (
                                   <td
                                     key={fornecedor.id}
-                                    className={`px-3 py-2 align-top ${
+                                    className={`px-1.5 py-1.5 align-top ${
                                       escolhidoMaisCaro
                                         ? "bg-[#D4AF37]/[0.16] shadow-[inset_0_0_0_2px_rgba(212,175,55,0.65)]"
                                         : ""
                                     }`}
                                   >
-                                    <div className="flex min-w-[170px] gap-1.5">
+                                    <div className="flex min-w-[124px] gap-1">
                                       <input
                                         value={valorAtual}
                                         onChange={(event) =>
@@ -1153,7 +1153,7 @@ export default function ComprasPneus() {
                                         onBlur={() => salvarValor(item.id, fornecedor.id)}
                                         inputMode="decimal"
                                         placeholder="0,00"
-                                        className={`h-9 min-w-0 flex-1 rounded-lg border px-2 text-right text-sm outline-none ${
+                                        className={`h-8 w-[76px] min-w-0 rounded-lg border px-1.5 text-right text-xs outline-none ${
                                           escolhidoMaisCaro
                                             ? "border-[#D4AF37] bg-[#D4AF37]/[0.12] font-black text-[#F2D675]"
                                             : ehMenor
@@ -1170,7 +1170,7 @@ export default function ComprasPneus() {
                                           })
                                         }
                                         title={escolhido ? "Fornecedor escolhido para este pneu" : "Comprar este pneu com este fornecedor"}
-                                        className={`h-9 rounded-lg px-2.5 text-[10px] font-black ${
+                                        className={`h-8 rounded-lg px-2 text-[9px] font-black ${
                                           escolhidoMaisCaro
                                             ? "bg-[#D4AF37] text-black"
                                             : "border border-white/10 text-gray-400 hover:border-[#D4AF37]/40 hover:text-[#F2D675]"
@@ -1187,14 +1187,14 @@ export default function ComprasPneus() {
                                       </button>
                                     </div>
                                     {(ehMenor || acimaDoMenor > 0) && (
-                                      <div className="mt-1 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.04em]">
+                                      <div className="mt-0.5 flex flex-wrap gap-1 text-[8px] font-black uppercase tracking-[0.04em]">
                                         {ehMenor && (
-                                          <span className="rounded-full bg-emerald-400/[0.08] px-2 py-0.5 text-emerald-300">
+                                          <span className="rounded-full bg-emerald-400/[0.08] px-1.5 py-px text-emerald-300">
                                             menor preço
                                           </span>
                                         )}
                                         {acimaDoMenor > 0 && (
-                                          <span className="rounded-full bg-amber-400/[0.12] px-2 py-0.5 text-amber-300">
+                                          <span className="rounded-full bg-amber-400/[0.12] px-1.5 py-px text-amber-300">
                                             +{moeda(acimaDoMenor)} vs menor
                                           </span>
                                         )}
