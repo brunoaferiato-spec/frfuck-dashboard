@@ -1086,6 +1086,14 @@ export default function ComprasPneus() {
                       <tbody>
                         {itensCotacao.map((item: any) => {
                           const menor = menorPrecoItem(item.id);
+                          // Empate: dois ou mais fornecedores com o mesmo menor preço.
+                          const fornecedoresNoMenor =
+                            menor === null
+                              ? 0
+                              : fornecedores.filter(
+                                  (f: any) => Number(cotacoes.get(`${item.id}:${f.id}`) || 0) === Number(menor)
+                                ).length;
+                          const empateNoMenor = fornecedoresNoMenor >= 2;
                           return (
                             <tr key={item.id} className="border-t border-white/[0.05]">
                               <td className="sticky left-0 z-10 bg-[#090909] px-3 py-1.5 font-black text-white">
@@ -1131,6 +1139,8 @@ export default function ComprasPneus() {
                                     ? Number(salvo) - Number(menor)
                                     : 0;
                                 const escolhidoMaisCaro = escolhido && !ehMenor;
+                                // No empate do menor preço, o escolhido ganha "✓ Comprar" verde para saber qual vale.
+                                const escolhidoNoEmpate = escolhido && Boolean(ehMenor) && empateNoMenor;
 
                                 return (
                                   <td
@@ -1138,6 +1148,8 @@ export default function ComprasPneus() {
                                     className={`px-1.5 py-1.5 align-top ${
                                       escolhidoMaisCaro
                                         ? "bg-[#D4AF37]/[0.16] shadow-[inset_0_0_0_2px_rgba(212,175,55,0.65)]"
+                                        : escolhidoNoEmpate
+                                        ? "bg-emerald-400/[0.08] shadow-[inset_0_0_0_2px_rgba(52,211,153,0.5)]"
                                         : indiceFornecedor % 2 === 0
                                         ? "bg-white/[0.045]"
                                         : ""
@@ -1175,10 +1187,12 @@ export default function ComprasPneus() {
                                         className={`h-8 rounded-lg px-2 text-[9px] font-black ${
                                           escolhidoMaisCaro
                                             ? "bg-[#D4AF37] text-black"
+                                            : escolhidoNoEmpate
+                                            ? "bg-emerald-400 text-black"
                                             : "border border-white/10 text-gray-400 hover:border-[#D4AF37]/40 hover:text-[#F2D675]"
                                         }`}
                                       >
-                                        {escolhidoMaisCaro ? (
+                                        {escolhidoMaisCaro || escolhidoNoEmpate ? (
                                           <>
                                             <Check className="mr-0.5 inline h-3.5 w-3.5" />
                                             Comprar
