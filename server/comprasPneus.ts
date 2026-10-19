@@ -3018,44 +3018,60 @@ export const comprasPneusRouter = router({
           .toFixed(2)
       );
 
+      const [planosPedido] = await pool.query<any[]>(
+        `SELECT lojaId FROM compras_pneus_planejamentos WHERE id = ? LIMIT 1`,
+        [input.planejamentoId]
+      );
+      const cidadePedido =
+        LOJAS_RELATORIO.find((loja) => loja.id === Number(planosPedido[0]?.lojaId || 0))?.nome || "";
+
       const workbook = new ExcelJS.Workbook();
+      // Linhas 1-2: pedido, cidade e fornecedor; linha 3: cabeçalho.
+      const LINHA_CABECALHO = 3;
       const worksheet = workbook.addWorksheet("Pedido", {
         views: [
           {
             state: "frozen",
-            ySplit: 1,
+            ySplit: LINHA_CABECALHO,
             showGridLines: false,
           },
         ],
       });
 
-      worksheet.columns = [
-        { header: "MEDIDA", key: "medida", width: 20 },
-        { header: "QUANTIDADE", key: "quantidade", width: 16 },
-        { header: "VALOR UNITÁRIO", key: "valorUnitario", width: 20 },
-        { header: "TOTAL", key: "total", width: 20 },
-      ];
+      [20, 16, 20, 20].forEach((largura, i) => {
+        worksheet.getColumn(i + 1).width = largura;
+      });
+      worksheet.mergeCells("A1:D1");
+      worksheet.getCell("A1").value = `PEDIDO DE PNEUS - ${cidadePedido.toUpperCase() || "LOJA"}`;
+      worksheet.getCell("A1").font = { bold: true, size: 14 };
+      worksheet.getCell("A1").alignment = { horizontal: "center" };
+      worksheet.mergeCells("A2:D2");
+      worksheet.getCell("A2").value = `Fornecedor: ${fornecedor.nome} • Entrega: ${cidadePedido || "—"} • Pedido nº ${input.planejamentoId}`;
+      worksheet.getCell("A2").font = { italic: true, color: { argb: "FF666666" } };
+      worksheet.getCell("A2").alignment = { horizontal: "center" };
+      worksheet.getRow(LINHA_CABECALHO).values = ["MEDIDA", "QUANTIDADE", "VALOR UNITÁRIO", "TOTAL"];
 
       for (const item of itens) {
         const quantidade = Number(item.quantidadeFinal || 0);
         const valorUnitario = Number(item.precoSelecionado || 0);
 
-        worksheet.addRow({
-          medida: item.medida,
+        worksheet.addRow([
+          item.medida,
           quantidade,
           valorUnitario,
-          total: Number((quantidade * valorUnitario).toFixed(2)),
-        });
+          Number((quantidade * valorUnitario).toFixed(2)),
+        ]);
       }
 
-      const linhaTotal = worksheet.addRow({
-        medida: "TOTAL DO PEDIDO",
-        quantidade: null,
-        valorUnitario: null,
-        total: totalPedido,
-      });
+      const linhaTotal = worksheet.addRow(["TOTAL DO PEDIDO", null, null, totalPedido]);
 
-      const cabecalho = worksheet.getRow(1);
+      for (let r = LINHA_CABECALHO + 1; r <= worksheet.rowCount; r += 1) {
+        worksheet.getCell(r, 2).numFmt = "0";
+        worksheet.getCell(r, 3).numFmt = '"R$" #,##0.00';
+        worksheet.getCell(r, 4).numFmt = '"R$" #,##0.00';
+      }
+
+      const cabecalho = worksheet.getRow(LINHA_CABECALHO);
       cabecalho.font = {
         bold: true,
         color: { argb: "FFFFFFFF" },
@@ -3069,10 +3085,6 @@ export const comprasPneusRouter = router({
         horizontal: "center",
         vertical: "middle",
       };
-
-      worksheet.getColumn(2).numFmt = "0";
-      worksheet.getColumn(3).numFmt = '"R$" #,##0.00';
-      worksheet.getColumn(4).numFmt = '"R$" #,##0.00';
 
       linhaTotal.font = { bold: true };
       linhaTotal.getCell(4).font = { bold: true };
@@ -3110,8 +3122,10 @@ export const comprasPneusRouter = router({
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
 
+      const cidadeSeguraPedido = normalizarTexto(cidadePedido).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
       return {
-        nome: `pedido-pneus-${nomeSeguro || input.fornecedorId}-${input.planejamentoId}.xlsx`,
+        nome: `pedido-pneus-${cidadeSeguraPedido ? `${cidadeSeguraPedido}-` : ""}${nomeSeguro || input.fornecedorId}-${input.planejamentoId}.xlsx`,
         mime: MIME_XLSX,
         base64: Buffer.from(buffer as any).toString("base64"),
       };

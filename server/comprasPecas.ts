@@ -236,24 +236,31 @@ export async function quoteBook(name: string, items: Array<{ codigo: string; ite
   return wb.xlsx.writeBuffer();
 }
 
-export async function orderBook(items: Array<any>) {
+// titulo (ex.: "PEDIDO DE PEÇAS - JOINVILLE") e subtitulo (fornecedor/entrega) nas linhas 1-2; cabeçalho na linha 3.
+export async function orderBook(items: Array<any>, titulo?: string, subtitulo?: string) {
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet("Pedido", { views: [{ state: "frozen", ySplit: 1, showGridLines: false }] });
-  ws.columns = [
-    { header: "CÓDIGO", key: "codigo", width: 20 },
-    { header: "ITEM", key: "item", width: 52 },
-    { header: "QUANTIDADE", key: "quantidade", width: 16 },
-    { header: "VALOR UNITÁRIO", key: "valorUnitario", width: 20 },
-    { header: "TOTAL", key: "total", width: 20 },
-  ];
-  items.forEach((x) => ws.addRow(x));
+  const H = 3;
+  const ws = wb.addWorksheet("Pedido", { views: [{ state: "frozen", ySplit: H, showGridLines: false }] });
+  [20, 52, 16, 20, 20].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  ws.mergeCells("A1:E1");
+  ws.getCell("A1").value = titulo || "PEDIDO";
+  ws.getCell("A1").font = { bold: true, size: 14 };
+  ws.getCell("A1").alignment = { horizontal: "center" };
+  ws.mergeCells("A2:E2");
+  ws.getCell("A2").value = subtitulo || "";
+  ws.getCell("A2").font = { italic: true, color: { argb: "FF666666" } };
+  ws.getCell("A2").alignment = { horizontal: "center" };
+  ws.getRow(H).values = ["CÓDIGO", "ITEM", "QUANTIDADE", "VALOR UNITÁRIO", "TOTAL"];
+  items.forEach((x) => ws.addRow([x.codigo, x.item, x.quantidade, x.valorUnitario, x.total]));
   const total = items.reduce((s, x) => s + Number(x.total || 0), 0);
-  const tr = ws.addRow({ codigo: "TOTAL DO PEDIDO", total: Number(total.toFixed(2)) });
-  ws.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-  ws.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111111" } };
-  ws.getColumn(3).numFmt = "0";
-  ws.getColumn(4).numFmt = '"R$" #,##0.00';
-  ws.getColumn(5).numFmt = '"R$" #,##0.00';
+  const tr = ws.addRow(["TOTAL DO PEDIDO", null, null, null, Number(total.toFixed(2))]);
+  ws.getRow(H).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  ws.getRow(H).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111111" } };
+  for (let r = H + 1; r <= ws.rowCount; r++) {
+    ws.getCell(r, 3).numFmt = "0";
+    ws.getCell(r, 4).numFmt = '"R$" #,##0.00';
+    ws.getCell(r, 5).numFmt = '"R$" #,##0.00';
+  }
   tr.font = { bold: true };
   tr.getCell(5).numFmt = '"R$" #,##0.00';
   ws.eachRow((row) => row.eachCell({ includeEmpty: true }, (cell) => { cell.protection = { locked: true }; }));
@@ -760,7 +767,14 @@ export const comprasPecasRouter = router({
     assertCompras(ctx); await ensure();
     const [p]=await db().query<any[]>(`SELECT * FROM compras_pecas_pedidos WHERE id=? LIMIT 1`,[input.pedidoId]); if(!p.length) throw new TRPCError({code:"NOT_FOUND",message:"Pedido não encontrado."});
     const [items]=await db().query<any[]>(`SELECT codigo,item,quantidade,valorUnitario,total FROM compras_pecas_pedido_itens WHERE pedidoId=? ORDER BY codigo`,[input.pedidoId]);
-    const buf=await orderBook(items.map((x)=>({codigo:String(x.codigo),item:String(x.item),quantidade:Number(x.quantidade||0),valorUnitario:Number(x.valorUnitario||0),total:Number(x.total||0)})));
-    return {nome:`pedido-pecas-${norm(p[0].fornecedorNome).toLowerCase().replace(/[^a-z0-9]+/g,"-")}-${p[0].planejamentoId}.xlsx`,mime:MIME_XLSX,base64:Buffer.from(buf as any).toString("base64")};
+    const [pl]=await db().query<any[]>(`SELECT lojaNome FROM compras_pecas_planejamentos WHERE id=? LIMIT 1`,[p[0].planejamentoId]);
+    const cidade=String(pl[0]?.lojaNome||"");
+    const buf=await orderBook(
+      items.map((x)=>({codigo:String(x.codigo),item:String(x.item),quantidade:Number(x.quantidade||0),valorUnitario:Number(x.valorUnitario||0),total:Number(x.total||0)})),
+      `PEDIDO DE PEÇAS - ${cidade.toUpperCase()||"LOJA"}`,
+      `Fornecedor: ${p[0].fornecedorNome} • Entrega: ${cidade||"—"} • Pedido nº ${p[0].planejamentoId}`
+    );
+    const seg=(s:string)=>norm(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    return {nome:`pedido-pecas-${cidade?`${seg(cidade)}-`:""}${seg(p[0].fornecedorNome)}-${p[0].planejamentoId}.xlsx`,mime:MIME_XLSX,base64:Buffer.from(buf as any).toString("base64")};
   }),
 });

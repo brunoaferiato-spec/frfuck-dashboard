@@ -641,7 +641,12 @@ function criarRouterInsumos(tipo: TipoInsumo) {
       );
       if (!p.length) throw new TRPCError({ code: "NOT_FOUND", message: "Pedido não encontrado." });
       const [items] = await db().query<any[]>(`SELECT codigo,item,quantidade,valorUnitario,total FROM compras_insumos_pedido_itens WHERE pedidoId=? ORDER BY id`, [input.pedidoId]);
-      const buf = await orderBook(items.map((x) => ({ codigo: x.codigo, item: x.item, quantidade: Number(x.quantidade), valorUnitario: Number(x.valorUnitario), total: Number(x.total) })));
+      const cidade = String(p[0].lojaNome || "");
+      const buf = await orderBook(
+        items.map((x) => ({ codigo: x.codigo, item: x.item, quantidade: Number(x.quantidade), valorUnitario: Number(x.valorUnitario), total: Number(x.total) })),
+        `PEDIDO DE INSUMOS DE ${tipo === "estoque" ? "ESTOQUE" : "LOJA"} - ${cidade.toUpperCase() || "LOJA"}`,
+        `Fornecedor: ${p[0].fornecedorNome} • Entrega: ${cidade || "—"} • Pedido nº ${p[0].planejamentoId}`
+      );
       return {
         nome: `pedido-insumos-${tipo}-${nomeArquivo(p[0].lojaNome || "loja")}-${nomeArquivo(p[0].fornecedorNome)}-${input.pedidoId}.xlsx`,
         mime: MIME_XLSX,
