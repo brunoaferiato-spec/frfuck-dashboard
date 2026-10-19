@@ -1075,6 +1075,50 @@ async function workbookCotacaoFornecedorBase64(
 }
 
 
+// Para cada medida ainda sem fornecedor escolhido, escolhe o menor preço entre os fornecedores
+// ativos que atendem a loja do planejamento (empate: menor id). Não mexe nas escolhas já feitas.
+async function preencherMenoresSemEscolha(planejamentoId: number) {
+  const pool = getPoolComprasPneus();
+  const [planos] = await pool.query<any[]>(
+    `SELECT lojaId FROM compras_pneus_planejamentos WHERE id = ? LIMIT 1`,
+    [planejamentoId]
+  );
+  const lojaId = Number(planos[0]?.lojaId || 0);
+
+  const [itens] = await pool.query<any[]>(
+    `SELECT id FROM compras_pneus_itens
+     WHERE planejamentoId = ? AND quantidadeFinal > 0 AND fornecedorSelecionadoId IS NULL`,
+    [planejamentoId]
+  );
+
+  let selecionados = 0;
+  for (const item of itens) {
+    const [cotacoes] = await pool.query<any[]>(
+      `SELECT c.fornecedorId, c.valor
+       FROM compras_pneus_cotacoes c
+       JOIN compras_pneus_fornecedores f ON f.id = c.fornecedorId AND f.ativo = 1
+       WHERE c.itemId = ? AND c.valor > 0
+         AND (
+           NOT EXISTS (SELECT 1 FROM compras_pneus_fornecedor_lojas fl WHERE fl.fornecedorId = f.id)
+           OR EXISTS (SELECT 1 FROM compras_pneus_fornecedor_lojas fl WHERE fl.fornecedorId = f.id AND fl.lojaId = ?)
+         )
+       ORDER BY c.valor ASC, c.fornecedorId ASC
+       LIMIT 1`,
+      [item.id, lojaId]
+    );
+    if (!cotacoes[0]) continue;
+
+    await pool.query(
+      `UPDATE compras_pneus_itens
+       SET fornecedorSelecionadoId = ?, precoSelecionado = ?
+       WHERE id = ? AND fornecedorSelecionadoId IS NULL`,
+      [Number(cotacoes[0].fornecedorId), Number(cotacoes[0].valor), Number(item.id)]
+    );
+    selecionados += 1;
+  }
+  return selecionados;
+}
+
 async function listarPromocionaisCalculados(lojaId?: number | null) {
   await ensureComprasPneus();
   const pool = getPoolComprasPneus();
@@ -2218,36 +2262,8 @@ export const comprasPneusRouter = router({
       await ensureComprasPneus();
       const pool = getPoolComprasPneus();
 
-      const [itens] = await pool.query<any[]>(
-        `SELECT id FROM compras_pneus_itens
-         WHERE planejamentoId = ? AND quantidadeFinal > 0`,
-        [input.planejamentoId]
-      );
-
-      for (const item of itens) {
-        const [cotacoes] = await pool.query<any[]>(
-          `SELECT fornecedorId, valor
-           FROM compras_pneus_cotacoes
-           WHERE itemId = ?
-           ORDER BY valor ASC, fornecedorId ASC
-           LIMIT 1`,
-          [item.id]
-        );
-        if (!cotacoes[0]) continue;
-
-        await pool.query(
-          `UPDATE compras_pneus_itens
-           SET fornecedorSelecionadoId = ?, precoSelecionado = ?
-           WHERE id = ?`,
-          [
-            Number(cotacoes[0].fornecedorId),
-            Number(cotacoes[0].valor),
-            Number(item.id),
-          ]
-        );
-      }
-
-      return { ok: true };
+      const selecionados = await preencherMenoresSemEscolha(input.planejamentoId);
+      return { ok: true, selecionados };
     }),
 
   arquivoCotacaoFornecedor: protectedProcedure
@@ -2513,6 +2529,9 @@ export const comprasPneusRouter = router({
         );
         return { ok: true, jaSalvo: true };
       }
+
+      // Medida sem escolha vai para o menor preço (mesma regra do total exibido na cotação).
+      await preencherMenoresSemEscolha(input.planejamentoId);
 
       const [itens] = await pool.query<any[]>(
         `SELECT i.id, i.medida, i.quantidadeFinal, i.precoSelecionado,

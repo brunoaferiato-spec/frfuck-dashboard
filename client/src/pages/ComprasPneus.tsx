@@ -284,7 +284,7 @@ export default function ComprasPneus() {
 
   const selecionarMenoresMutation = trpc.compras.pneus.selecionarMenores.useMutation({
     onSuccess: async () => {
-      setMensagem("Menores preços selecionados. Você ainda pode trocar manualmente.");
+      setMensagem("Medidas sem escolha receberam o menor preço. As escolhas que você já tinha feito foram mantidas.");
       await detalheQuery.refetch();
       await pedidosQuery.refetch();
     },
@@ -1239,15 +1239,30 @@ export default function ComprasPneus() {
                           );
                         })}
                       </tbody>
-                      {/* Total do pedido de cada fornecedor: só as medidas escolhidas nele (quantidade × preço). */}
+                      {/* Total do pedido de cada fornecedor (quantidade × preço). Cada medida conta no fornecedor
+                          escolhido; sem escolha, no menor preço (empate: menor id, igual ao servidor). */}
                       {(() => {
+                        const fornecedorDaMedida = (item: any) => {
+                          const escolhido = Number(item.fornecedorSelecionadoId || 0);
+                          if (escolhido && fornecedores.some((f: any) => Number(f.id) === escolhido)) return escolhido;
+                          let melhor = 0;
+                          let melhorValor = Infinity;
+                          for (const f of [...fornecedores].sort((a: any, b: any) => Number(a.id) - Number(b.id))) {
+                            const v = Number(cotacoes.get(`${item.id}:${f.id}`) || 0);
+                            if (v > 0 && v < melhorValor) {
+                              melhorValor = v;
+                              melhor = Number(f.id);
+                            }
+                          }
+                          return melhor;
+                        };
                         const totais = fornecedores.map((fornecedor: any) => {
                           let valor = 0;
                           let medidas = 0;
                           let pneus = 0;
                           for (const item of itensCotacao) {
-                            if (Number(item.fornecedorSelecionadoId || 0) !== Number(fornecedor.id)) continue;
-                            const preco = Number(cotacoes.get(`${item.id}:${fornecedor.id}`) || item.precoSelecionado || 0);
+                            if (fornecedorDaMedida(item) !== Number(fornecedor.id)) continue;
+                            const preco = Number(cotacoes.get(`${item.id}:${fornecedor.id}`) || 0);
                             const qtd = Number(item.quantidadeFinal || 0);
                             valor += preco * qtd;
                             medidas += 1;
@@ -1257,9 +1272,7 @@ export default function ComprasPneus() {
                         });
                         const totalGeral = totais.reduce((s, t) => s + t.valor, 0);
                         const pneusEscolhidos = totais.reduce((s, t) => s + t.pneus, 0);
-                        const semEscolha = itensCotacao.filter(
-                          (item: any) => !fornecedores.some((f: any) => Number(f.id) === Number(item.fornecedorSelecionadoId || 0))
-                        ).length;
+                        const semEscolha = itensCotacao.filter((item: any) => !fornecedorDaMedida(item)).length;
                         return (
                           <tfoot>
                             <tr className="border-t-2 border-[#D4AF37]/30 bg-[#D4AF37]/[0.04]">
@@ -1273,9 +1286,9 @@ export default function ComprasPneus() {
                               </td>
                               <td className="px-3 py-3 align-top">
                                 {semEscolha > 0 ? (
-                                  <p className="text-[10px] font-black leading-4 text-amber-300">{semEscolha} medida(s) sem fornecedor escolhido</p>
+                                  <p className="text-[10px] font-black leading-4 text-amber-300">{semEscolha} medida(s) sem nenhum preço</p>
                                 ) : (
-                                  <p className="text-[10px] font-black leading-4 text-emerald-300">Todas as medidas escolhidas</p>
+                                  <p className="text-[10px] font-black leading-4 text-emerald-300">Todas as medidas com preço</p>
                                 )}
                               </td>
                               {fornecedores.map((fornecedor: any, indiceFornecedor: number) => {
