@@ -1094,6 +1094,11 @@ export default function ComprasPneus() {
                                   (f: any) => Number(cotacoes.get(`${item.id}:${f.id}`) || 0) === Number(menor)
                                 ).length;
                           const empateNoMenor = fornecedoresNoMenor >= 2;
+                          // O fornecedor escolhido está entre os empatados no menor preço?
+                          const escolhaEstaNoMenor =
+                            menor !== null &&
+                            Number(item.fornecedorSelecionadoId || 0) > 0 &&
+                            Number(cotacoes.get(`${item.id}:${item.fornecedorSelecionadoId}`) || 0) === Number(menor);
                           return (
                             <tr key={item.id} className="border-t border-white/[0.05]">
                               <td className="sticky left-0 z-10 bg-[#090909] px-3 py-1.5 font-black text-white">
@@ -1141,6 +1146,8 @@ export default function ComprasPneus() {
                                 const escolhidoMaisCaro = escolhido && !ehMenor;
                                 // No empate do menor preço, o escolhido ganha "✓ Comprar" verde para saber qual vale.
                                 const escolhidoNoEmpate = escolhido && Boolean(ehMenor) && empateNoMenor;
+                                // Empatado no menor preço, mas outro fornecedor foi o escolhido: fica laranja.
+                                const empatadoNaoEscolhido = !escolhido && Boolean(ehMenor) && empateNoMenor && escolhaEstaNoMenor;
 
                                 return (
                                   <td
@@ -1150,6 +1157,8 @@ export default function ComprasPneus() {
                                         ? "bg-[#D4AF37]/[0.16] shadow-[inset_0_0_0_2px_rgba(212,175,55,0.65)]"
                                         : escolhidoNoEmpate
                                         ? "bg-emerald-400/[0.08] shadow-[inset_0_0_0_2px_rgba(52,211,153,0.5)]"
+                                        : empatadoNaoEscolhido
+                                        ? "bg-orange-400/[0.08] shadow-[inset_0_0_0_1px_rgba(251,146,60,0.45)]"
                                         : indiceFornecedor % 2 === 0
                                         ? "bg-white/[0.045]"
                                         : ""
@@ -1170,6 +1179,8 @@ export default function ComprasPneus() {
                                         className={`h-8 w-[76px] min-w-0 rounded-lg border px-1.5 text-right text-xs outline-none ${
                                           escolhidoMaisCaro
                                             ? "border-[#D4AF37] bg-[#D4AF37]/[0.12] font-black text-[#F2D675]"
+                                            : empatadoNaoEscolhido
+                                            ? "border-orange-400/40 bg-black/30 text-orange-300"
                                             : ehMenor
                                             ? "border-white/10 bg-black/30 text-emerald-200"
                                             : "border-white/10 bg-black/30 text-white"
@@ -1204,9 +1215,14 @@ export default function ComprasPneus() {
                                     </div>
                                     {(ehMenor || acimaDoMenor > 0) && (
                                       <div className="mt-0.5 flex flex-wrap gap-1 text-[8px] font-black uppercase tracking-[0.04em]">
-                                        {ehMenor && (
+                                        {ehMenor && !empatadoNaoEscolhido && (
                                           <span className="rounded-full bg-emerald-400/[0.08] px-1.5 py-px text-emerald-300">
                                             menor preço
+                                          </span>
+                                        )}
+                                        {empatadoNaoEscolhido && (
+                                          <span className="rounded-full bg-orange-400/[0.12] px-1.5 py-px text-orange-300">
+                                            mesmo preço • não escolhido
                                           </span>
                                         )}
                                         {acimaDoMenor > 0 && (
