@@ -1119,6 +1119,14 @@ async function preencherMenoresSemEscolha(planejamentoId: number) {
   return selecionados;
 }
 
+// Lojas de SC compram dos mesmos fornecedores: o custo promocional de qualquer uma delas
+// é o último preço pago naquela medida por qualquer loja do grupo. RS fica por loja.
+const LOJAS_SC_CUSTO_PROMOCIONAL = [1, 2, 3, 4];
+const CONDICAO_LOJA_CUSTO_PROMOCIONAL = `(
+  pl.lojaId = pr.lojaId
+  OR (pr.lojaId IN (${LOJAS_SC_CUSTO_PROMOCIONAL.join(",")}) AND pl.lojaId IN (${LOJAS_SC_CUSTO_PROMOCIONAL.join(",")}))
+)`;
+
 async function listarPromocionaisCalculados(lojaId?: number | null) {
   await ensureComprasPneus();
   const pool = getPoolComprasPneus();
@@ -1147,7 +1155,7 @@ async function listarPromocionaisCalculados(lojaId?: number | null) {
          FROM compras_pneus_pedido_itens pi
          JOIN compras_pneus_pedidos pe ON pe.id = pi.pedidoId
          JOIN compras_pneus_planejamentos pl ON pl.id = pe.planejamentoId
-         WHERE pl.lojaId = pr.lojaId
+         WHERE ${CONDICAO_LOJA_CUSTO_PROMOCIONAL}
            AND pi.medida = pr.medida
          ORDER BY pe.createdAt DESC, pe.id DESC
          LIMIT 1
@@ -1167,7 +1175,7 @@ async function listarPromocionaisCalculados(lojaId?: number | null) {
          FROM compras_pneus_pedido_itens pi
          JOIN compras_pneus_pedidos pe ON pe.id = pi.pedidoId
          JOIN compras_pneus_planejamentos pl ON pl.id = pe.planejamentoId
-         WHERE pl.lojaId = pr.lojaId
+         WHERE ${CONDICAO_LOJA_CUSTO_PROMOCIONAL}
            AND pi.medida = pr.medida
          ORDER BY pe.createdAt DESC, pe.id DESC
          LIMIT 1
