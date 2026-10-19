@@ -1047,12 +1047,12 @@ export default function ComprasPneus() {
                   </div>
 
                   <div className="overflow-x-auto">
-                    <table className="min-w-max w-full text-sm">
+                    <table className="w-max text-sm">
                       <thead className="bg-white/[0.025] text-left text-[10px] uppercase tracking-[0.08em] text-gray-600">
                         <tr>
-                          <th className="sticky left-0 z-10 bg-[#0d0d0d] px-4 py-3">Medida</th>
-                          <th className="px-4 py-3 text-right">Qtd interna</th>
-                          <th className="px-4 py-3 text-right">Melhor UF</th>
+                          <th className="sticky left-0 z-10 bg-[#0d0d0d] px-3 py-2">Medida</th>
+                          <th className="px-3 py-2 text-right">Qtd interna</th>
+                          <th className="px-3 py-2 text-right">Melhor UF</th>
                           {fornecedores.map((fornecedor: any) => {
                             const recebidos = ((detalheQuery.data?.cotacoes || []) as any[]).filter(
                               (cotacao) =>
@@ -1062,18 +1062,18 @@ export default function ComprasPneus() {
                             const total = itensCotacao.length;
 
                             return (
-                              <th key={fornecedor.id} className="min-w-[132px] px-1.5 py-2">
+                              <th key={fornecedor.id} className="w-[128px] px-1 py-2 align-bottom">
                                 <button
                                   type="button"
                                   onClick={() => setFornecedorModal(fornecedor)}
-                                  className="w-full rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-[#D4AF37]/25 hover:bg-[#D4AF37]/[0.06]"
+                                  className="w-full rounded-lg border border-transparent px-1.5 py-1 text-left transition hover:border-[#D4AF37]/25 hover:bg-[#D4AF37]/[0.06]"
                                   title={`Abrir opções de ${fornecedor.nome}`}
                                 >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="font-black text-gray-400 hover:text-[#F2D675]">
+                                  <div className="flex items-end justify-between gap-1">
+                                    <span className="text-[11px] font-black leading-tight text-gray-400 hover:text-[#F2D675]">
                                       {fornecedor.nome}
                                     </span>
-                                    <span className="rounded-full bg-white/[0.04] px-2 py-0.5 text-[9px] font-black text-gray-600">
+                                    <span className="shrink-0 rounded-full bg-white/[0.04] px-1.5 py-0.5 text-[8px] font-black text-gray-600">
                                       {recebidos}/{total}
                                     </span>
                                   </div>
