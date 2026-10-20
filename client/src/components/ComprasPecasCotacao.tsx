@@ -50,7 +50,7 @@ async function toBase64(file: File) {
   return btoa(s);
 }
 
-export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: ItemAnalise[]; arquivoNome: string }) {
+export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade }: { itens: ItemAnalise[]; arquivoNome: string; onTrocarCidade?: () => void }) {
   const utils = trpc.useUtils();
   const [aba, setAba] = useState<Aba>("cotacao");
   const [planejamentoId, setPlanejamentoId] = useState<number | null>(null);
@@ -226,14 +226,21 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
               value={lojaId}
               onChange={(e) => {
                 const nova = e.target.value;
+                if (nova === lojaId) return;
+                const tinhaRelatorio = Boolean(arquivoNome);
                 setLojaId(nova);
-                // Com um planejamento aberto, trocar a cidade fecha ele (fica salvo) e abre o histórico da nova cidade.
+                // O relatório importado é de uma cidade: trocar a cidade tira ele da tela,
+                // para não salvar o planejamento com os dados da cidade anterior.
+                onTrocarCidade?.();
+                setErro("");
                 if (planejamentoId) {
+                  // Planejamento aberto fecha (continua salvo) e abre o histórico da nova cidade.
                   setPlanejamentoId(null);
                   setFiltroLojaHistorico(nova);
                   setAba("historico");
-                  setErro("");
-                  setMensagem("Planejamento anterior continua salvo. Escolha o planejamento desta cidade no Histórico.");
+                  setMensagem("Planejamento anterior continua salvo. Importe o relatório desta cidade ou abra um planejamento dela no Histórico.");
+                } else if (tinhaRelatorio) {
+                  setMensagem("Cidade trocada: o relatório anterior foi tirado da tela. Importe o relatório desta cidade.");
                 }
               }}
               className="h-11 min-w-[190px] rounded-xl border border-white/10 bg-black/40 pl-9 pr-3 text-sm font-bold text-white disabled:opacity-60"

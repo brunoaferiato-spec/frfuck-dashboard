@@ -706,6 +706,16 @@ export default function ComprasPecas() {
     }
   }
 
+  // Troca de cidade na cotação: o relatório importado era da cidade anterior e sai da tela.
+  function limparRelatorio() {
+    setArquivoNome("");
+    setItens([]);
+    setExcluidos([]);
+    setAbaixoDoMinimo(0);
+    setMensagemCatalogo("");
+    setErro("");
+  }
+
   const itensVisiveis = useMemo(
     () =>
       mostrarSemCompra
@@ -791,7 +801,7 @@ export default function ComprasPecas() {
               type="file"
               accept=".csv,.xlsx,.xls"
               className="hidden"
-              onChange={(event) => importarArquivo(event.target.files?.[0] || null)}
+              onChange={(event) => { void importarArquivo(event.target.files?.[0] || null); event.currentTarget.value = ""; }}
             />
           </label>
 
@@ -815,7 +825,7 @@ export default function ComprasPecas() {
           )}
         </section>
 
-        <ComprasPecasCotacao arquivoNome={arquivoNome} itens={itens} />
+        <ComprasPecasCotacao arquivoNome={arquivoNome} itens={itens} onTrocarCidade={limparRelatorio} />
 
 
         {arquivoNome && (
