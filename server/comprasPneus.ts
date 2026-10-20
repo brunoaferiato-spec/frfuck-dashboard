@@ -452,6 +452,18 @@ async function ensureComprasPneus() {
     if (String(error?.code || "") !== "ER_DUP_KEYNAME") throw error;
   }
 
+  // Lixeira: planejamento excluído fica guardado (com quem excluiu e quando) e pode ser restaurado.
+  for (const coluna of [
+    "ADD COLUMN excluidoEm TIMESTAMP NULL",
+    "ADD COLUMN excluidoPorNome VARCHAR(160) NULL",
+  ]) {
+    try {
+      await pool.query(`ALTER TABLE compras_pneus_planejamentos ${coluna}`);
+    } catch (error: any) {
+      if (String(error?.code || "") !== "ER_DUP_FIELDNAME") throw error;
+    }
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS compras_pneus_itens (
       id INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -1155,7 +1167,7 @@ async function listarPromocionaisCalculados(lojaId?: number | null) {
          FROM compras_pneus_pedido_itens pi
          JOIN compras_pneus_pedidos pe ON pe.id = pi.pedidoId
          JOIN compras_pneus_planejamentos pl ON pl.id = pe.planejamentoId
-         WHERE ${CONDICAO_LOJA_CUSTO_PROMOCIONAL}
+         WHERE pl.excluidoEm IS NULL AND ${CONDICAO_LOJA_CUSTO_PROMOCIONAL}
            AND pi.medida = pr.medida
          ORDER BY pe.createdAt DESC, pe.id DESC
          LIMIT 1
@@ -1165,7 +1177,7 @@ async function listarPromocionaisCalculados(lojaId?: number | null) {
          FROM compras_pneus_pedido_itens pi
          JOIN compras_pneus_pedidos pe ON pe.id = pi.pedidoId
          JOIN compras_pneus_planejamentos pl ON pl.id = pe.planejamentoId
-         WHERE pl.lojaId = pr.lojaId
+         WHERE pl.excluidoEm IS NULL AND pl.lojaId = pr.lojaId
            AND pi.medida = pr.medida
          ORDER BY pe.createdAt DESC, pe.id DESC
          LIMIT 1
@@ -1175,7 +1187,7 @@ async function listarPromocionaisCalculados(lojaId?: number | null) {
          FROM compras_pneus_pedido_itens pi
          JOIN compras_pneus_pedidos pe ON pe.id = pi.pedidoId
          JOIN compras_pneus_planejamentos pl ON pl.id = pe.planejamentoId
-         WHERE ${CONDICAO_LOJA_CUSTO_PROMOCIONAL}
+         WHERE pl.excluidoEm IS NULL AND ${CONDICAO_LOJA_CUSTO_PROMOCIONAL}
            AND pi.medida = pr.medida
          ORDER BY pe.createdAt DESC, pe.id DESC
          LIMIT 1
@@ -2041,7 +2053,7 @@ export const comprasPneusRouter = router({
       await ensureComprasPneus();
       const pool = getPoolComprasPneus();
 
-      const condicoes: string[] = [];
+      const condicoes: string[] = ["p.excluidoEm IS NULL"];
       const params: any[] = [];
 
       if (input?.lojaId) {
@@ -2745,38 +2757,13 @@ export const comprasPneusRouter = router({
           });
         }
 
+        // Vai para a lixeira: nada é apagado, só fica marcado com quem excluiu e quando.
+        // A chave da análise é liberada para o mesmo relatório poder ser salvo de novo.
         await conn.query(
-          `DELETE pi
-           FROM compras_pneus_pedido_itens pi
-           INNER JOIN compras_pneus_pedidos pe ON pe.id = pi.pedidoId
-           WHERE pe.planejamentoId = ?`,
-          [input.planejamentoId]
-        );
-
-        await conn.query(
-          `DELETE FROM compras_pneus_pedidos
-           WHERE planejamentoId = ?`,
-          [input.planejamentoId]
-        );
-
-        await conn.query(
-          `DELETE c
-           FROM compras_pneus_cotacoes c
-           INNER JOIN compras_pneus_itens i ON i.id = c.itemId
-           WHERE i.planejamentoId = ?`,
-          [input.planejamentoId]
-        );
-
-        await conn.query(
-          `DELETE FROM compras_pneus_itens
-           WHERE planejamentoId = ?`,
-          [input.planejamentoId]
-        );
-
-        await conn.query(
-          `DELETE FROM compras_pneus_planejamentos
+          `UPDATE compras_pneus_planejamentos
+           SET excluidoEm = NOW(), excluidoPorNome = ?, chaveAnalise = NULL
            WHERE id = ?`,
-          [input.planejamentoId]
+          [String(ctx.user?.name || "Usuário"), input.planejamentoId]
         );
 
         await conn.commit();
@@ -2791,6 +2778,44 @@ export const comprasPneusRouter = router({
       } finally {
         conn.release();
       }
+    }),
+
+  // Lixeira: planejamentos excluídos (com quem excluiu e quando), para restaurar.
+  lixeira: protectedProcedure.query(async ({ ctx }) => {
+    assertCompras(ctx);
+    await ensureComprasPneus();
+    const pool = getPoolComprasPneus();
+    const [rows] = await pool.query<any[]>(
+      `SELECT p.id, p.lojaId, p.status, p.createdAt, p.excluidoEm, p.excluidoPorNome,
+              (SELECT COUNT(*) FROM compras_pneus_itens i WHERE i.planejamentoId = p.id AND i.quantidadeFinal > 0) AS totalItens
+       FROM compras_pneus_planejamentos p
+       WHERE p.excluidoEm IS NOT NULL
+       ORDER BY p.excluidoEm DESC
+       LIMIT 100`
+    );
+    return rows.map((x) => ({
+      id: Number(x.id),
+      lojaId: Number(x.lojaId),
+      lojaNome: LOJAS_RELATORIO.find((l) => l.id === Number(x.lojaId))?.nome || `Loja ${x.lojaId}`,
+      status: String(x.status),
+      totalItens: Number(x.totalItens || 0),
+      createdAt: x.createdAt,
+      excluidoEm: x.excluidoEm,
+      excluidoPorNome: x.excluidoPorNome ? String(x.excluidoPorNome) : "",
+    }));
+  }),
+
+  restaurarPlanejamento: protectedProcedure
+    .input(z.object({ planejamentoId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      assertCompras(ctx);
+      await ensureComprasPneus();
+      const pool = getPoolComprasPneus();
+      await pool.query(
+        `UPDATE compras_pneus_planejamentos SET excluidoEm = NULL, excluidoPorNome = NULL WHERE id = ?`,
+        [input.planejamentoId]
+      );
+      return { ok: true, planejamentoId: input.planejamentoId };
     }),
 
   historico: protectedProcedure
@@ -2809,7 +2834,7 @@ export const comprasPneusRouter = router({
       await ensureComprasPneus();
       const pool = getPoolComprasPneus();
 
-      const condicoes: string[] = [];
+      const condicoes: string[] = ["p.excluidoEm IS NULL"];
       const params: any[] = [];
 
       if (input.lojaId) {

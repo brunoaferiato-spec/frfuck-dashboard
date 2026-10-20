@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Boxes, Check, Download, MapPin, Plus, Save, Settings2, Store, Trash2, Upload, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import ComprasLixeira from "@/components/ComprasLixeira";
 
 // Compras de insumos: lista fixa de produtos com estoque mínimo (15 dias) por cidade.
 // O estoquista preenche só o estoque atual; o sistema sugere Solicitar = mínimo - atual (nunca negativo).
@@ -78,6 +79,17 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
   const listaInicialQ = api.listaInicialDisponivel.useQuery();
   const fornecedoresQ = api.fornecedores.useQuery();
   const planosQ = api.planejamentos.useQuery();
+  const lixeiraQ = api.lixeira.useQuery();
+  const restaurarPlanejamento = api.restaurarPlanejamento.useMutation({
+    onSuccess: async (d) => {
+      setMensagem(`Planejamento #${d.planejamentoId} restaurado. Ele voltou para o Histórico.`);
+      setErro("");
+      setFiltroLojaHistorico("todas");
+      await planosQ.refetch();
+      await lixeiraQ.refetch();
+    },
+    onError: (e) => setErro(e.message),
+  });
   const detalheQ = api.detalhe.useQuery({ planejamentoId: planejamentoId || 0 }, { enabled: !!planejamentoId });
   const pedidosQ = api.pedidos.useQuery({ planejamentoId: planejamentoId || 0 }, { enabled: !!planejamentoId });
 
@@ -185,7 +197,7 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
     onError: falha,
   });
   const excluirPlanejamento = api.excluirPlanejamento.useMutation({
-    onSuccess: async (d) => { ok(`Planejamento #${d.planejamentoId} excluído.`); setExclusao(null); setSenhaExclusao(""); if (planejamentoId === Number(d.planejamentoId)) novaContagem(); await planosQ.refetch(); setAba("historico"); },
+    onSuccess: async (d) => { ok(`Planejamento #${d.planejamentoId} enviado para a lixeira. Dá para restaurar no fim do Histórico.`); setExclusao(null); setSenhaExclusao(""); if (planejamentoId === Number(d.planejamentoId)) novaContagem(); await planosQ.refetch(); await lixeiraQ.refetch(); setAba("historico"); },
     onError: falha,
   });
 
@@ -429,12 +441,18 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                         {p.status === "pedido_salvo" && (
                           <button type="button" disabled={excluirPedidos.isPending} onClick={() => { setSenhaExclusao(""); excluirPlanejamento.reset(); excluirPedidos.reset(); setExclusao({ tipo: "pedidos", id: Number(p.id), lojaId: p.lojaId, texto: `Excluir os pedidos do Planejamento #${p.id}? A cotação será mantida.` }); }} className="h-9 rounded-lg border border-rose-400/20 px-3 text-[11px] font-black text-rose-200 disabled:opacity-50">Excluir pedido(s)</button>
                         )}
-                        <button type="button" disabled={excluirPlanejamento.isPending} onClick={() => { setSenhaExclusao(""); excluirPlanejamento.reset(); excluirPedidos.reset(); setExclusao({ tipo: "planejamento", id: Number(p.id), texto: `Excluir o Planejamento #${p.id}? Isso também excluirá cotações e pedidos vinculados.` }); }} className="h-9 rounded-lg border border-rose-500/30 bg-rose-500/[0.06] px-3 text-[11px] font-black text-rose-300 disabled:opacity-50"><Trash2 className="mr-1.5 inline h-3.5 w-3.5" />Excluir planejamento</button>
+                        <button type="button" disabled={excluirPlanejamento.isPending} onClick={() => { setSenhaExclusao(""); excluirPlanejamento.reset(); excluirPedidos.reset(); setExclusao({ tipo: "planejamento", id: Number(p.id), texto: `Excluir o Planejamento #${p.id}? Ele vai para a lixeira (com cotações e pedidos) e pode ser restaurado depois.` }); }} className="h-9 rounded-lg border border-rose-500/30 bg-rose-500/[0.06] px-3 text-[11px] font-black text-rose-300 disabled:opacity-50"><Trash2 className="mr-1.5 inline h-3.5 w-3.5" />Excluir planejamento</button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
+              <ComprasLixeira
+                itens={(lixeiraQ.data || []) as any}
+                carregando={lixeiraQ.isLoading}
+                restaurando={restaurarPlanejamento.isPending}
+                onRestaurar={(planejamentoIdRestaurar) => restaurarPlanejamento.mutate({ planejamentoId: planejamentoIdRestaurar })}
+              />
             </div>
           )}
 

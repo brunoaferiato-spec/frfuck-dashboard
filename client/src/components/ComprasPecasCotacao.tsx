@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Download, MapPin, Save, Settings2, Trash2, Upload, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import ComprasLixeira from "./ComprasLixeira";
 
 type ItemAnalise = {
   codigo: string;
@@ -69,6 +70,17 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
   const lojasQ = trpc.lojas.list.useQuery(undefined, { retry: false });
   const fornecedoresQ = trpc.compras.pecas.fornecedores.useQuery();
   const planosQ = trpc.compras.pecas.planejamentos.useQuery();
+  const lixeiraQ = trpc.compras.pecas.lixeira.useQuery();
+  const restaurarPlanejamento = trpc.compras.pecas.restaurarPlanejamento.useMutation({
+    onSuccess: async (d) => {
+      setErro("");
+      setMensagem(`Planejamento #${d.planejamentoId} restaurado. Ele voltou para o Histórico.`);
+      setFiltroLojaHistorico("todas");
+      await planosQ.refetch();
+      await lixeiraQ.refetch();
+    },
+    onError: (e) => setErro(e.message),
+  });
 
   const lojas = useMemo(() => {
     const recebidas = (lojasQ.data || []) as Array<{ id: number; nome: string }>;
@@ -148,7 +160,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
 
   const excluirPlanejamento = trpc.compras.pecas.excluirPlanejamento.useMutation({
     onSuccess: async (data) => {
-      setMensagem(`Planejamento #${data.planejamentoId} excluído.`);
+      setMensagem(`Planejamento #${data.planejamentoId} enviado para a lixeira. Dá para restaurar no fim do Histórico.`);
       setErro("");
       setExclusao(null);
       setSenhaExclusao("");
@@ -156,6 +168,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
         setPlanejamentoId(null);
       }
       await planosQ.refetch();
+      await lixeiraQ.refetch();
       setAba("historico");
     },
     onError: (e) => setErro(e.message),
@@ -452,7 +465,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
                 setExclusao({
                   tipo: "planejamento",
                   id: Number(p.id),
-                  texto: `Excluir o Planejamento #${p.id}? Isso também excluirá cotações e pedidos vinculados.`,
+                  texto: `Excluir o Planejamento #${p.id}? Ele vai para a lixeira (com cotações e pedidos) e pode ser restaurado depois.`,
                 });
               }}
               className="h-9 rounded-lg border border-rose-500/30 bg-rose-500/[0.06] px-3 text-[11px] font-black text-rose-300 disabled:opacity-50"
@@ -463,6 +476,12 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
           </div>
         </div>)}
       </div>
+      <ComprasLixeira
+        itens={(lixeiraQ.data || []) as any}
+        carregando={lixeiraQ.isLoading}
+        restaurando={restaurarPlanejamento.isPending}
+        onRestaurar={(id) => restaurarPlanejamento.mutate({ planejamentoId: id })}
+      />
     </div>}
 
     {aba==='fornecedores' && <div className="mt-5">

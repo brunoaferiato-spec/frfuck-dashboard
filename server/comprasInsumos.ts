@@ -112,6 +112,15 @@ async function ensure() {
     total DECIMAL(14,2) NOT NULL,
     PRIMARY KEY (id), KEY idx_ci_ped_item (pedidoId)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+
+  // Lixeira: planejamento excluído fica guardado (com quem excluiu e quando) e pode ser restaurado.
+  for (const coluna of ["ADD COLUMN excluidoEm TIMESTAMP NULL", "ADD COLUMN excluidoPorNome VARCHAR(160) NULL"]) {
+    try {
+      await p.query(`ALTER TABLE compras_insumos_planejamentos ${coluna}`);
+    } catch (error: any) {
+      if (error?.code !== "ER_DUP_FIELDNAME") throw error;
+    }
+  }
   ready = true;
 }
 
@@ -429,10 +438,28 @@ function criarRouterInsumos(tipo: TipoInsumo) {
       const [rows] = await db().query<any[]>(
         `SELECT p.id,p.lojaId,p.lojaNome,p.status,p.arquivoNome,p.createdAt,COUNT(i.id) totalItens,COALESCE(SUM(i.quantidadeFinal),0) totalQuantidade
            FROM compras_insumos_planejamentos p LEFT JOIN compras_insumos_itens i ON i.planejamentoId=p.id
-          WHERE p.tipo=? GROUP BY p.id ORDER BY p.createdAt DESC,p.id DESC LIMIT 100`,
+          WHERE p.tipo=? AND p.excluidoEm IS NULL GROUP BY p.id ORDER BY p.createdAt DESC,p.id DESC LIMIT 100`,
         [tipo]
       );
       return rows.map((x) => ({ ...x, id: Number(x.id), lojaId: x.lojaId == null ? null : Number(x.lojaId), totalItens: Number(x.totalItens || 0), totalQuantidade: Number(x.totalQuantidade || 0) }));
+    }),
+
+    // Lixeira: planejamentos excluídos (com quem excluiu e quando), para restaurar.
+    lixeira: protectedProcedure.query(async ({ ctx }) => {
+      assertCompras(ctx); await ensure();
+      const [rows] = await db().query<any[]>(
+        `SELECT p.id,p.lojaId,p.lojaNome,p.status,p.createdAt,p.excluidoEm,p.excluidoPorNome,COUNT(i.id) totalItens
+           FROM compras_insumos_planejamentos p LEFT JOIN compras_insumos_itens i ON i.planejamentoId=p.id
+          WHERE p.tipo=? AND p.excluidoEm IS NOT NULL GROUP BY p.id ORDER BY p.excluidoEm DESC LIMIT 100`,
+        [tipo]
+      );
+      return rows.map((x) => ({ id: Number(x.id), lojaId: x.lojaId == null ? null : Number(x.lojaId), lojaNome: String(x.lojaNome || ""), status: String(x.status), totalItens: Number(x.totalItens || 0), createdAt: x.createdAt, excluidoEm: x.excluidoEm, excluidoPorNome: String(x.excluidoPorNome || "") }));
+    }),
+
+    restaurarPlanejamento: protectedProcedure.input(z.object({ planejamentoId: id })).mutation(async ({ ctx, input }) => {
+      assertCompras(ctx); await ensure();
+      await db().query(`UPDATE compras_insumos_planejamentos SET excluidoEm=NULL, excluidoPorNome=NULL WHERE id=? AND tipo=?`, [input.planejamentoId, tipo]);
+      return { ok: true, planejamentoId: input.planejamentoId };
     }),
 
     detalhe: protectedProcedure.input(z.object({ planejamentoId: id })).query(async ({ ctx, input }) => {
@@ -617,11 +644,8 @@ function criarRouterInsumos(tipo: TipoInsumo) {
         await c.beginTransaction();
         const [planos] = await c.query<any[]>(`SELECT id FROM compras_insumos_planejamentos WHERE id=? AND tipo=? LIMIT 1`, [input.planejamentoId, tipo]);
         if (!planos.length) throw new TRPCError({ code: "NOT_FOUND", message: "Planejamento não encontrado." });
-        await c.query(`DELETE pi FROM compras_insumos_pedido_itens pi JOIN compras_insumos_pedidos p ON p.id=pi.pedidoId WHERE p.planejamentoId=?`, [input.planejamentoId]);
-        await c.query(`DELETE FROM compras_insumos_pedidos WHERE planejamentoId=?`, [input.planejamentoId]);
-        await c.query(`DELETE c FROM compras_insumos_cotacoes c JOIN compras_insumos_itens i ON i.id=c.itemId WHERE i.planejamentoId=?`, [input.planejamentoId]);
-        await c.query(`DELETE FROM compras_insumos_itens WHERE planejamentoId=?`, [input.planejamentoId]);
-        await c.query(`DELETE FROM compras_insumos_planejamentos WHERE id=?`, [input.planejamentoId]);
+        // Vai para a lixeira: nada é apagado, só fica marcado com quem excluiu e quando.
+        await c.query(`UPDATE compras_insumos_planejamentos SET excluidoEm=NOW(), excluidoPorNome=? WHERE id=?`, [String(ctx?.user?.name || "Usuário"), input.planejamentoId]);
         await c.commit();
         return { ok: true, planejamentoId: input.planejamentoId };
       } catch (e) { await c.rollback(); throw e; } finally { c.release(); }

@@ -58,6 +58,15 @@ async function ensure() {
     PRIMARY KEY (id), UNIQUE KEY uq_cp_fornecedor_nome (nome)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
+  // Lixeira: planejamento excluído fica guardado (com quem excluiu e quando) e pode ser restaurado.
+  for (const coluna of ["ADD COLUMN excluidoEm TIMESTAMP NULL", "ADD COLUMN excluidoPorNome VARCHAR(160) NULL"]) {
+    try {
+      await p.query(`ALTER TABLE compras_pecas_planejamentos ${coluna}`);
+    } catch (error: any) {
+      if (error?.code !== "ER_DUP_FIELDNAME") throw error;
+    }
+  }
+
   // Conversão do nosso código para o código do fornecedor (hoje só NEW KITS usa).
   await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_codigos_fornecedor (
     fornecedorId INT UNSIGNED NOT NULL,
@@ -526,8 +535,21 @@ export const comprasPecasRouter = router({
 
   planejamentos: protectedProcedure.query(async ({ ctx }) => {
     assertCompras(ctx); await ensure();
-    const [rows] = await db().query<any[]>(`SELECT p.id,p.lojaId,p.lojaNome,p.status,p.arquivoNome,p.createdAt,COUNT(i.id) totalItens,COALESCE(SUM(i.quantidadeFinal),0) totalQuantidade FROM compras_pecas_planejamentos p LEFT JOIN compras_pecas_itens i ON i.planejamentoId=p.id GROUP BY p.id ORDER BY p.createdAt DESC,p.id DESC LIMIT 100`);
+    const [rows] = await db().query<any[]>(`SELECT p.id,p.lojaId,p.lojaNome,p.status,p.arquivoNome,p.createdAt,COUNT(i.id) totalItens,COALESCE(SUM(i.quantidadeFinal),0) totalQuantidade FROM compras_pecas_planejamentos p LEFT JOIN compras_pecas_itens i ON i.planejamentoId=p.id WHERE p.excluidoEm IS NULL GROUP BY p.id ORDER BY p.createdAt DESC,p.id DESC LIMIT 100`);
     return rows.map((x) => ({ ...x, id: Number(x.id), totalItens: Number(x.totalItens||0), totalQuantidade: Number(x.totalQuantidade||0) }));
+  }),
+
+  // Lixeira: planejamentos excluídos (com quem excluiu e quando), para restaurar.
+  lixeira: protectedProcedure.query(async ({ ctx }) => {
+    assertCompras(ctx); await ensure();
+    const [rows] = await db().query<any[]>(`SELECT p.id,p.lojaId,p.lojaNome,p.status,p.createdAt,p.excluidoEm,p.excluidoPorNome,COUNT(i.id) totalItens FROM compras_pecas_planejamentos p LEFT JOIN compras_pecas_itens i ON i.planejamentoId=p.id WHERE p.excluidoEm IS NOT NULL GROUP BY p.id ORDER BY p.excluidoEm DESC LIMIT 100`);
+    return rows.map((x) => ({ id: Number(x.id), lojaId: x.lojaId == null ? null : Number(x.lojaId), lojaNome: String(x.lojaNome || ""), status: String(x.status), totalItens: Number(x.totalItens || 0), createdAt: x.createdAt, excluidoEm: x.excluidoEm, excluidoPorNome: String(x.excluidoPorNome || "") }));
+  }),
+
+  restaurarPlanejamento: protectedProcedure.input(z.object({ planejamentoId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    assertCompras(ctx); await ensure();
+    await db().query(`UPDATE compras_pecas_planejamentos SET excluidoEm=NULL, excluidoPorNome=NULL WHERE id=?`, [input.planejamentoId]);
+    return { ok: true, planejamentoId: input.planejamentoId };
   }),
 
   detalhe: protectedProcedure.input(z.object({ planejamentoId: z.number().int().positive() })).query(async ({ ctx, input }) => {
@@ -787,38 +809,10 @@ export const comprasPecasRouter = router({
           });
         }
 
+        // Vai para a lixeira: nada é apagado, só fica marcado com quem excluiu e quando.
         await c.query(
-          `DELETE pi
-           FROM compras_pecas_pedido_itens pi
-           INNER JOIN compras_pecas_pedidos p ON p.id = pi.pedidoId
-           WHERE p.planejamentoId = ?`,
-          [input.planejamentoId]
-        );
-
-        await c.query(
-          `DELETE FROM compras_pecas_pedidos
-           WHERE planejamentoId = ?`,
-          [input.planejamentoId]
-        );
-
-        await c.query(
-          `DELETE c
-           FROM compras_pecas_cotacoes c
-           INNER JOIN compras_pecas_itens i ON i.id = c.itemId
-           WHERE i.planejamentoId = ?`,
-          [input.planejamentoId]
-        );
-
-        await c.query(
-          `DELETE FROM compras_pecas_itens
-           WHERE planejamentoId = ?`,
-          [input.planejamentoId]
-        );
-
-        await c.query(
-          `DELETE FROM compras_pecas_planejamentos
-           WHERE id = ?`,
-          [input.planejamentoId]
+          `UPDATE compras_pecas_planejamentos SET excluidoEm=NOW(), excluidoPorNome=? WHERE id=?`,
+          [String(ctx?.user?.name || "Usuário"), input.planejamentoId]
         );
 
         await c.commit();

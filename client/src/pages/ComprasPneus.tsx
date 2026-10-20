@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import ComprasLixeira from "@/components/ComprasLixeira";
 import {
   AlertTriangle,
   Check,
@@ -211,16 +212,31 @@ export default function ComprasPneus() {
     trpc.compras.pneus.excluirPlanejamento.useMutation({
       onSuccess: async (data) => {
         setErro("");
-        setMensagem(`Planejamento #${data.planejamentoId} excluído.`);
+        setMensagem(`Planejamento #${data.planejamentoId} enviado para a lixeira. Dá para restaurar logo abaixo da lista.`);
         if (planejamentoId === Number(data.planejamentoId)) {
           setPlanejamentoId(null);
         }
         await planejamentosQuery.refetch();
+        await lixeiraQuery.refetch();
         await utils.compras.pneus.promocionais.invalidate();
+        await utils.compras.pneus.historico.invalidate();
       },
       onError: (error) =>
         setErro(error.message || "Não foi possível excluir o planejamento."),
     });
+
+  const lixeiraQuery = trpc.compras.pneus.lixeira.useQuery();
+  const restaurarPlanejamentoMutation = trpc.compras.pneus.restaurarPlanejamento.useMutation({
+    onSuccess: async (data) => {
+      setErro("");
+      setMensagem(`Planejamento #${data.planejamentoId} restaurado.`);
+      await planejamentosQuery.refetch();
+      await lixeiraQuery.refetch();
+      await utils.compras.pneus.promocionais.invalidate();
+      await utils.compras.pneus.historico.invalidate();
+    },
+    onError: (error) => setErro(error.message || "Não foi possível restaurar o planejamento."),
+  });
 
   const excluirPedidosRecenteMutation =
     trpc.compras.pneus.excluirPedidosPlanejamento.useMutation({
@@ -912,7 +928,7 @@ export default function ComprasPneus() {
                           disabled={excluirPlanejamentoRecenteMutation.isPending}
                           onClick={() => {
                             const confirmar = window.confirm(
-                              `Excluir o Planejamento #${item.id}? Isso excluirá também cotações e pedidos vinculados.`
+                              `Excluir o Planejamento #${item.id}? Ele vai para a lixeira e pode ser restaurado.`
                             );
 
                             if (confirmar) {
@@ -930,6 +946,13 @@ export default function ComprasPneus() {
                   ))}
                 </div>
               )}
+              <ComprasLixeira
+                itens={(lixeiraQuery.data || []) as any}
+                carregando={lixeiraQuery.isLoading}
+                restaurando={restaurarPlanejamentoMutation.isPending}
+                onRestaurar={(id) => restaurarPlanejamentoMutation.mutate({ planejamentoId: id })}
+                rotuloItens="medidas"
+              />
             </section>
 
           </div>
