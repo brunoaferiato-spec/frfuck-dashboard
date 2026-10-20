@@ -387,16 +387,19 @@ function aplicacaoSampelFrasle(codigo: string) {
 function arredondarCompra(
   necessidadeBruta: number,
   grupo: ItemPeca["grupo"],
-  ladoIndividual: "LD" | "LE" | null
+  ladoIndividual: "LD" | "LE" | null,
+  estoqueAtual: number
 ) {
   if (necessidadeBruta <= 0) return 0;
 
   // Arredonda para o inteiro mais próximo: 3,25 → 3; 3,5 → 4. (Abaixo de 0,75 o item já saiu da relação.)
   const inteiro = Math.max(1, Math.round(necessidadeBruta));
 
-  // Só quando a compra der 1 peça sem lado (e não for pastilha) sobe para 2, para formar o par.
+  // Compra de 1 peça sem lado (e não pastilha): o estoque precisa fechar em par.
+  // Tem 1 em estoque → compra 1 (fica 2). Tem 0 → compra 2 (fica 2).
   if (inteiro === 1 && grupo !== "Pastilha" && !ladoIndividual) {
-    return 2;
+    const estoque = Math.max(0, Math.round(Number(estoqueAtual) || 0));
+    return (estoque + 1) % 2 === 0 ? 1 : 2;
   }
 
   return inteiro;
@@ -415,6 +418,8 @@ export default function ComprasPecas() {
   const [diasAnalise, setDiasAnalise] = useState("120");
   const [diasProjecao, setDiasProjecao] = useState("30");
   const [abaixoDoMinimo, setAbaixoDoMinimo] = useState(0);
+  // Dias usados no relatório importado (cabeçalho "Venda Xd").
+  const [diasDoRelatorio, setDiasDoRelatorio] = useState(120);
   const [itens, setItens] = useState<ItemPeca[]>([]);
   const [excluidos, setExcluidos] = useState<ItemPeca[]>([]);
   const [erro, setErro] = useState("");
@@ -642,7 +647,8 @@ export default function ComprasPecas() {
         const quantidadeCompra = arredondarCompra(
           necessidadeBruta,
           classificacao.grupo,
-          ladoIndividual
+          ladoIndividual,
+          estoqueAtual
         );
 
         encontrados.push({
@@ -678,6 +684,7 @@ export default function ComprasPecas() {
 
       setArquivoNome(file.name);
       setAbaixoDoMinimo(descartadosAbaixo);
+      setDiasDoRelatorio(dias);
       setItens(encontrados);
       setExcluidos([]);
       setMensagemCatalogo("");
@@ -892,7 +899,7 @@ export default function ComprasPecas() {
                       <th className="px-3 py-3">Item</th>
                       <th className="px-3 py-3">Grupo</th>
                       <th className="px-3 py-3">Especificação / aplicação</th>
-                      <th className="px-3 py-3 text-right">Venda 60d</th>
+                      <th className="px-3 py-3 text-right">Venda {diasDoRelatorio}d</th>
                       <th className="px-3 py-3 text-right">Estoque</th>
                       <th className="px-3 py-3 text-right">Necessidade</th>
                       <th className="px-3 py-3 text-right">Compra</th>
@@ -1007,7 +1014,7 @@ export default function ComprasPecas() {
                             </span>
                           ) : (
                             <span className="text-gray-500">
-                              1 peça vira 2 (par)
+                              1 peça: completa o par no estoque
                             </span>
                           )}
                         </td>
