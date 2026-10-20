@@ -391,15 +391,15 @@ function arredondarCompra(
 ) {
   if (necessidadeBruta <= 0) return 0;
 
-  const inteiro = Math.ceil(necessidadeBruta);
+  // Arredonda para o inteiro mais próximo: 3,25 → 3; 3,5 → 4. (Abaixo de 0,75 o item já saiu da relação.)
+  const inteiro = Math.max(1, Math.round(necessidadeBruta));
 
-  // Pastilha e peça com lado não recebem arredondamento para número par.
-  if (grupo === "Pastilha" || ladoIndividual) {
-    return inteiro;
+  // Só quando a compra der 1 peça sem lado (e não for pastilha) sobe para 2, para formar o par.
+  if (inteiro === 1 && grupo !== "Pastilha" && !ladoIndividual) {
+    return 2;
   }
 
-  // Demais peças sempre sobem para o próximo número par.
-  return inteiro % 2 === 0 ? inteiro : inteiro + 1;
+  return inteiro;
 }
 
 function dinheiroNumero(valor: number) {
@@ -1003,11 +1003,11 @@ export default function ComprasPecas() {
                             </div>
                           ) : item.grupo === "Pastilha" ? (
                             <span className="text-gray-500">
-                              Sem arredondar para par
+                              Quantidade exata
                             </span>
                           ) : (
                             <span className="text-gray-500">
-                              Arredonda para par
+                              1 peça vira 2 (par)
                             </span>
                           )}
                         </td>
