@@ -223,7 +223,18 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
             <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">Cidade</label>
             <div className="relative">
               <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#D4AF37]" />
-              <select value={lojaId} disabled={Boolean(planejamentoId)} onChange={(e) => setLojaId(e.target.value)} className="h-11 min-w-[200px] rounded-xl border border-white/10 bg-black/40 pl-9 pr-3 text-sm font-bold text-white disabled:opacity-60">
+              <select value={lojaId} onChange={(e) => {
+                const nova = e.target.value;
+                setLojaId(nova);
+                // Com um planejamento aberto, trocar a cidade fecha ele (fica salvo) e abre o histórico da nova cidade.
+                if (planejamentoId) {
+                  setPlanejamentoId(null);
+                  setLinhas(null);
+                  setFiltroLojaHistorico(nova);
+                  setAba("historico");
+                  ok("Planejamento anterior continua salvo. Escolha o planejamento desta cidade no Histórico.");
+                }
+              }} className="h-11 min-w-[200px] rounded-xl border border-white/10 bg-black/40 pl-9 pr-3 text-sm font-bold text-white disabled:opacity-60">
                 {LOJAS.map((l) => <option key={l.id} value={String(l.id)}>{l.nome}</option>)}
               </select>
             </div>
@@ -375,7 +386,7 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                   <p className="font-black text-white">{detalheQ.data?.planejamento?.lojaNome || "Cidade não informada"}</p>
                   <p className="mt-1 text-xs text-gray-600">Para corrigir quantidades ou fornecedores, exclua os pedidos e reabra a cotação.</p>
                 </div>
-                <button type="button" disabled={excluirPedidos.isPending} onClick={() => { setSenhaExclusao(""); setExclusao({ tipo: "pedidos", id: Number(planejamentoId), texto: `Excluir todos os pedidos do Planejamento #${planejamentoId}? A cotação será mantida e poderá ser refeita.` }); }} className="h-10 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-4 text-xs font-black text-rose-300 disabled:opacity-50"><Trash2 className="mr-2 inline h-4 w-4" />Excluir pedidos e reabrir cotação</button>
+                <button type="button" disabled={excluirPedidos.isPending} onClick={() => { setSenhaExclusao(""); excluirPlanejamento.reset(); excluirPedidos.reset(); setExclusao({ tipo: "pedidos", id: Number(planejamentoId), texto: `Excluir todos os pedidos do Planejamento #${planejamentoId}? A cotação será mantida e poderá ser refeita.` }); }} className="h-10 rounded-xl border border-rose-500/30 bg-rose-500/[0.06] px-4 text-xs font-black text-rose-300 disabled:opacity-50"><Trash2 className="mr-2 inline h-4 w-4" />Excluir pedidos e reabrir cotação</button>
               </div>
               <div className="grid gap-3 lg:grid-cols-3">
                 {(pedidosQ.data || []).map((p: any) => (
@@ -416,9 +427,9 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                       </button>
                       <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.05] pt-3">
                         {p.status === "pedido_salvo" && (
-                          <button type="button" disabled={excluirPedidos.isPending} onClick={() => { setSenhaExclusao(""); setExclusao({ tipo: "pedidos", id: Number(p.id), lojaId: p.lojaId, texto: `Excluir os pedidos do Planejamento #${p.id}? A cotação será mantida.` }); }} className="h-9 rounded-lg border border-rose-400/20 px-3 text-[11px] font-black text-rose-200 disabled:opacity-50">Excluir pedido(s)</button>
+                          <button type="button" disabled={excluirPedidos.isPending} onClick={() => { setSenhaExclusao(""); excluirPlanejamento.reset(); excluirPedidos.reset(); setExclusao({ tipo: "pedidos", id: Number(p.id), lojaId: p.lojaId, texto: `Excluir os pedidos do Planejamento #${p.id}? A cotação será mantida.` }); }} className="h-9 rounded-lg border border-rose-400/20 px-3 text-[11px] font-black text-rose-200 disabled:opacity-50">Excluir pedido(s)</button>
                         )}
-                        <button type="button" disabled={excluirPlanejamento.isPending} onClick={() => { setSenhaExclusao(""); setExclusao({ tipo: "planejamento", id: Number(p.id), texto: `Excluir o Planejamento #${p.id}? Isso também excluirá cotações e pedidos vinculados.` }); }} className="h-9 rounded-lg border border-rose-500/30 bg-rose-500/[0.06] px-3 text-[11px] font-black text-rose-300 disabled:opacity-50"><Trash2 className="mr-1.5 inline h-3.5 w-3.5" />Excluir planejamento</button>
+                        <button type="button" disabled={excluirPlanejamento.isPending} onClick={() => { setSenhaExclusao(""); excluirPlanejamento.reset(); excluirPedidos.reset(); setExclusao({ tipo: "planejamento", id: Number(p.id), texto: `Excluir o Planejamento #${p.id}? Isso também excluirá cotações e pedidos vinculados.` }); }} className="h-9 rounded-lg border border-rose-500/30 bg-rose-500/[0.06] px-3 text-[11px] font-black text-rose-300 disabled:opacity-50"><Trash2 className="mr-1.5 inline h-3.5 w-3.5" />Excluir planejamento</button>
                       </div>
                     </div>
                   ))}
@@ -540,6 +551,8 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
         const enviando = excluirPedidos.isPending || excluirPlanejamento.isPending;
         const confirmar = () => {
           if (!senhaExclusao.trim() || enviando) return;
+          excluirPlanejamento.reset();
+          excluirPedidos.reset();
           if (exclusao.tipo === "pedidos") {
             setPlanejamentoId(exclusao.id);
             if (exclusao.lojaId) setLojaId(String(exclusao.lojaId));
@@ -559,6 +572,11 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                 <button type="button" onClick={() => { setExclusao(null); setSenhaExclusao(""); }} className="rounded-xl border border-white/10 p-2 text-gray-500"><X className="h-4 w-4" /></button>
               </div>
               <input type="password" autoFocus value={senhaExclusao} onChange={(e) => setSenhaExclusao(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") confirmar(); }} placeholder="Senha de exclusão" className="mt-4 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white" />
+              {(excluirPlanejamento.error || excluirPedidos.error) && !enviando && (
+                <div className="mt-3 rounded-xl border border-rose-400/25 bg-rose-400/[0.06] px-3 py-2 text-xs font-bold text-rose-200">
+                  {(excluirPlanejamento.error || excluirPedidos.error)?.message}
+                </div>
+              )}
               <div className="mt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => { setExclusao(null); setSenhaExclusao(""); }} className="h-10 rounded-xl border border-white/10 px-4 text-xs font-black text-gray-400">Cancelar</button>
                 <button type="button" disabled={!senhaExclusao.trim() || enviando} onClick={confirmar} className="h-10 rounded-xl border border-rose-500/30 bg-rose-500/[0.12] px-4 text-xs font-black text-rose-200 disabled:opacity-50"><Trash2 className="mr-2 inline h-4 w-4" />{enviando ? "Excluindo..." : "Excluir"}</button>

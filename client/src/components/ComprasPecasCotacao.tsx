@@ -224,8 +224,18 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
             <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#D4AF37]" />
             <select
               value={lojaId}
-              disabled={Boolean(planejamentoId)}
-              onChange={(e) => setLojaId(e.target.value)}
+              onChange={(e) => {
+                const nova = e.target.value;
+                setLojaId(nova);
+                // Com um planejamento aberto, trocar a cidade fecha ele (fica salvo) e abre o histórico da nova cidade.
+                if (planejamentoId) {
+                  setPlanejamentoId(null);
+                  setFiltroLojaHistorico(nova);
+                  setAba("historico");
+                  setErro("");
+                  setMensagem("Planejamento anterior continua salvo. Escolha o planejamento desta cidade no Histórico.");
+                }
+              }}
               className="h-11 min-w-[190px] rounded-xl border border-white/10 bg-black/40 pl-9 pr-3 text-sm font-bold text-white disabled:opacity-60"
             >
               {lojas.map((loja) => (
@@ -343,7 +353,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
               type="button"
               disabled={excluirPedidos.isPending}
               onClick={() => {
-                setSenhaExclusao("");
+                setSenhaExclusao(""); excluirPlanejamento.reset(); excluirPedidos.reset();
                 setExclusao({
                   tipo: "pedidos",
                   id: Number(planejamentoId),
@@ -413,7 +423,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
                 type="button"
                 disabled={excluirPedidos.isPending}
                 onClick={() => {
-                  setSenhaExclusao("");
+                  setSenhaExclusao(""); excluirPlanejamento.reset(); excluirPedidos.reset();
                   setExclusao({
                     tipo: "pedidos",
                     id: Number(p.id),
@@ -431,7 +441,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
               type="button"
               disabled={excluirPlanejamento.isPending}
               onClick={() => {
-                setSenhaExclusao("");
+                setSenhaExclusao(""); excluirPlanejamento.reset(); excluirPedidos.reset();
                 setExclusao({
                   tipo: "planejamento",
                   id: Number(p.id),
@@ -473,6 +483,8 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
       const enviando = excluirPedidos.isPending || excluirPlanejamento.isPending;
       const confirmar = () => {
         if (!senhaExclusao.trim() || enviando) return;
+        excluirPlanejamento.reset();
+        excluirPedidos.reset();
         if (exclusao.tipo === "pedidos") {
           setPlanejamentoId(exclusao.id);
           if (exclusao.lojaId) setLojaId(String(exclusao.lojaId));
@@ -499,6 +511,11 @@ export default function ComprasPecasCotacao({ itens, arquivoNome }: { itens: Ite
             placeholder="Senha de exclusão"
             className="mt-4 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white"
           />
+          {(excluirPlanejamento.error || excluirPedidos.error) && !enviando && (
+            <div className="mt-3 rounded-xl border border-rose-400/25 bg-rose-400/[0.06] px-3 py-2 text-xs font-bold text-rose-200">
+              {(excluirPlanejamento.error || excluirPedidos.error)?.message}
+            </div>
+          )}
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" onClick={() => { setExclusao(null); setSenhaExclusao(""); }} className="h-10 rounded-xl border border-white/10 px-4 text-xs font-black text-gray-400">Cancelar</button>
             <button type="button" disabled={!senhaExclusao.trim() || enviando} onClick={confirmar} className="h-10 rounded-xl border border-rose-500/30 bg-rose-500/[0.12] px-4 text-xs font-black text-rose-200 disabled:opacity-50">

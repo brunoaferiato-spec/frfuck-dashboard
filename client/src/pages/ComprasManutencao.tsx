@@ -335,7 +335,7 @@ export default function ComprasManutencao() {
                           <FileText className="h-3.5 w-3.5 text-[#D4AF37]" />
                           <button type="button" onClick={() => baixarAnexo.mutate({ anexoId: a.id })} className="max-w-[180px] truncate py-1 hover:text-[#F2D675]" title="Baixar">{a.nome}</button>
                           <Download className="h-3.5 w-3.5 text-gray-500" />
-                          <button type="button" onClick={() => { setSenha(""); setExclusao({ tipo: "anexo", id: a.id, texto: `Excluir o anexo "${a.nome}"?` }); }} className="px-1.5 py-1 text-gray-600 hover:text-rose-300" title="Excluir anexo"><X className="h-3.5 w-3.5" /></button>
+                          <button type="button" onClick={() => { setSenha(""); excluirServico.reset(); excluirAnexo.reset(); setExclusao({ tipo: "anexo", id: a.id, texto: `Excluir o anexo "${a.nome}"?` }); }} className="px-1.5 py-1 text-gray-600 hover:text-rose-300" title="Excluir anexo"><X className="h-3.5 w-3.5" /></button>
                         </span>
                       ))}
                       <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-dashed border-white/15 px-2 py-1 text-xs text-gray-400 hover:text-[#F2D675]">
@@ -344,7 +344,7 @@ export default function ComprasManutencao() {
                       </label>
                       <span className="flex-1" />
                       <button type="button" onClick={() => setForm({ id: s.id, data: s.data || hojeIso(), tipo: s.tipo as FormServico["tipo"], descricao: s.descricao, fornecedor: s.fornecedor, valor: s.valor == null ? "" : String(s.valor).replace(".", ","), garantiaAte: s.garantiaAte || "", arquivo: null })} className="text-xs font-black text-gray-400 hover:text-[#F2D675]">Editar</button>
-                      <button type="button" onClick={() => { setSenha(""); setExclusao({ tipo: "servico", id: s.id, texto: `Excluir a manutenção de ${dataBr(s.data)} e os anexos dela?` }); }} className="text-xs font-black text-rose-300/70 hover:text-rose-300"><Trash2 className="mr-1 inline h-3.5 w-3.5" />Excluir</button>
+                      <button type="button" onClick={() => { setSenha(""); excluirServico.reset(); excluirAnexo.reset(); setExclusao({ tipo: "servico", id: s.id, texto: `Excluir a manutenção de ${dataBr(s.data)} e os anexos dela?` }); }} className="text-xs font-black text-rose-300/70 hover:text-rose-300"><Trash2 className="mr-1 inline h-3.5 w-3.5" />Excluir</button>
                     </div>
                     {s.criadoPorNome && <p className="mt-2 text-[10px] text-gray-600">Registrado por {s.criadoPorNome}</p>}
                   </div>
@@ -359,6 +359,8 @@ export default function ComprasManutencao() {
         const enviando = excluirServico.isPending || excluirAnexo.isPending;
         const confirmar = () => {
           if (!senha.trim() || enviando) return;
+          excluirServico.reset();
+          excluirAnexo.reset();
           if (exclusao.tipo === "servico") excluirServico.mutate({ servicoId: exclusao.id, senha });
           else excluirAnexo.mutate({ anexoId: exclusao.id, senha });
         };
@@ -373,6 +375,11 @@ export default function ComprasManutencao() {
                 <button type="button" onClick={() => { setExclusao(null); setSenha(""); }} className="rounded-xl border border-white/10 p-2 text-gray-500"><X className="h-4 w-4" /></button>
               </div>
               <input type="password" autoFocus value={senha} onChange={(e) => setSenha(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") confirmar(); }} placeholder="Senha de exclusão" className="mt-4 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white" />
+              {(excluirServico.error || excluirAnexo.error) && !enviando && (
+                <div className="mt-3 rounded-xl border border-rose-400/25 bg-rose-400/[0.06] px-3 py-2 text-xs font-bold text-rose-200">
+                  {(excluirServico.error || excluirAnexo.error)?.message}
+                </div>
+              )}
               <div className="mt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => { setExclusao(null); setSenha(""); }} className="h-10 rounded-xl border border-white/10 px-4 text-xs font-black text-gray-400">Cancelar</button>
                 <button type="button" disabled={!senha.trim() || enviando} onClick={confirmar} className="h-10 rounded-xl border border-rose-500/30 bg-rose-500/[0.12] px-4 text-xs font-black text-rose-200 disabled:opacity-50"><Trash2 className="mr-2 inline h-4 w-4" />{enviando ? "Excluindo..." : "Excluir"}</button>
