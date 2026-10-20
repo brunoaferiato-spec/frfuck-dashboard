@@ -126,7 +126,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
   const selecionar = trpc.compras.pecas.selecionarFornecedor.useMutation({ onSuccess:async()=>{await detalheQ.refetch();}, onError:(e)=>setErro(e.message) });
   const menores = trpc.compras.pecas.selecionarMenores.useMutation({ onSuccess:async(d)=>{setMensagem(`${d.selecionados} menor(es) preço(s) selecionado(s).`);await detalheQ.refetch();}, onError:(e)=>setErro(e.message) });
   const arquivoCotacao = trpc.compras.pecas.arquivoCotacaoFornecedor.useMutation({ onSuccess:(d)=>baixar(d.nome,d.mime,d.base64), onError:(e)=>setErro(e.message) });
-  const importarCotacao = trpc.compras.pecas.importarCotacaoFornecedor.useMutation({ onSuccess:async(d)=>{setFornecedorModal(null);setMensagem(`${d.importados} preço(s) importado(s).`);await detalheQ.refetch();await planosQ.refetch();}, onError:(e)=>setErro(e.message) });
+  const importarCotacao = trpc.compras.pecas.importarCotacaoFornecedor.useMutation({ onSuccess:async(d)=>{setFornecedorModal(null);setMensagem(`${d.importados} preço(s) importado(s).${d.conversoes ? ` ${d.conversoes} código(s) do fornecedor guardados para o pedido.` : ""}`);await detalheQ.refetch();await planosQ.refetch();}, onError:(e)=>setErro(e.message) });
   const fechar = trpc.compras.pecas.fecharPedidos.useMutation({ onSuccess:async(d)=>{setMensagem(d.jaSalvo?"Pedidos já estavam salvos.":`${d.pedidos} pedido(s) salvo(s).`);await pedidosQ.refetch();await planosQ.refetch();setAba("pedidos");}, onError:(e)=>setErro(e.message) });
   const arquivoPedido = trpc.compras.pecas.arquivoPedido.useMutation({ onSuccess:(d)=>baixar(d.nome,d.mime,d.base64), onError:(e)=>setErro(e.message) });
 

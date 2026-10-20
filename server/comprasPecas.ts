@@ -58,6 +58,15 @@ async function ensure() {
     PRIMARY KEY (id), UNIQUE KEY uq_cp_fornecedor_nome (nome)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
+  // Conversão do nosso código para o código do fornecedor (hoje só NEW KITS usa).
+  await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_codigos_fornecedor (
+    fornecedorId INT UNSIGNED NOT NULL,
+    codigo VARCHAR(100) NOT NULL,
+    codigoFornecedor VARCHAR(100) NOT NULL,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (fornecedorId, codigo)
+  ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+
   // Lojas atendidas por cada fornecedor de peças. Sem nenhuma loja aqui = atende todas.
   await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_fornecedor_lojas (
     fornecedorId INT UNSIGNED NOT NULL,
@@ -169,6 +178,25 @@ export function norm(v: unknown) {
   return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
 }
 
+// Fornecedores que informam o próprio código na cotação e recebem o pedido com a conversão.
+const FORNECEDORES_COM_CODIGO_PROPRIO = new Set(["NEW KITS"]);
+
+function colunaCodigoDoFornecedor(nomeFornecedor: unknown) {
+  const nome = norm(nomeFornecedor);
+  return FORNECEDORES_COM_CODIGO_PROPRIO.has(nome) ? `CÓDIGO ${nome}` : undefined;
+}
+
+async function codigosDoFornecedor(fornecedorId: number, codigos: string[]) {
+  const mapa = new Map<string, string>();
+  if (!codigos.length) return mapa;
+  const [rows] = await db().query<any[]>(
+    `SELECT codigo, codigoFornecedor FROM compras_pecas_codigos_fornecedor WHERE fornecedorId=? AND codigo IN (${codigos.map(() => "?").join(",")})`,
+    [fornecedorId, ...codigos.map((c) => norm(c))]
+  );
+  for (const r of rows) mapa.set(String(r.codigo), String(r.codigoFornecedor));
+  return mapa;
+}
+
 export function parseMoney(v: unknown) {
   const s = String(v ?? "").trim().replace(/\s/g, "").replace(/R\$/gi, "").replace(/\./g, "").replace(",", ".").replace(/[^0-9.-]/g, "");
   const n = Number(s);
@@ -205,29 +233,44 @@ async function consultarPerfect(codigoOriginal: string) {
 
 // titulo (ex.: "COTAÇÃO DE PEÇAS - JOINVILLE") vai nas linhas 1-2; o cabeçalho fica na linha 3
 // (a importação procura o cabeçalho nas 12 primeiras linhas).
-export async function quoteBook(name: string, items: Array<{ codigo: string; item: string }>, titulo?: string) {
+// colunaCodigoFornecedor (ex.: "CÓDIGO NEW KITS"): coluna D liberada para o fornecedor informar o código dele;
+// vem preenchida com as conversões já conhecidas (item.codigoFornecedor).
+export async function quoteBook(
+  name: string,
+  items: Array<{ codigo: string; item: string; codigoFornecedor?: string | null }>,
+  titulo?: string,
+  colunaCodigoFornecedor?: string
+) {
   const wb = new ExcelJS.Workbook();
   const H = 3;
+  const ultima = colunaCodigoFornecedor ? "D" : "C";
   const ws = wb.addWorksheet("Cotação", { views: [{ state: "frozen", ySplit: H }] });
   ws.getColumn(1).width = 20;
   ws.getColumn(2).width = 55;
   ws.getColumn(3).width = 20;
-  ws.mergeCells("A1:C1");
+  if (colunaCodigoFornecedor) ws.getColumn(4).width = 24;
+  ws.mergeCells(`A1:${ultima}1`);
   ws.getCell("A1").value = titulo || "COTAÇÃO";
   ws.getCell("A1").font = { bold: true, size: 14 };
   ws.getCell("A1").alignment = { horizontal: "center" };
-  ws.mergeCells("A2:C2");
-  ws.getCell("A2").value = `Fornecedor: ${name} • preencha só a coluna com o seu nome`;
+  ws.mergeCells(`A2:${ultima}2`);
+  ws.getCell("A2").value = colunaCodigoFornecedor
+    ? `Fornecedor: ${name} • preencha o preço na coluna ${name} e o seu código na coluna ${colunaCodigoFornecedor}`
+    : `Fornecedor: ${name} • preencha só a coluna com o seu nome`;
   ws.getCell("A2").font = { italic: true, color: { argb: "FF666666" } };
   ws.getCell("A2").alignment = { horizontal: "center" };
-  ws.getRow(H).values = ["CÓDIGO", "ITEM", name];
-  items.forEach((x) => ws.addRow([x.codigo, x.item, null]));
+  ws.getRow(H).values = colunaCodigoFornecedor ? ["CÓDIGO", "ITEM", name, colunaCodigoFornecedor] : ["CÓDIGO", "ITEM", name];
+  items.forEach((x) => ws.addRow(colunaCodigoFornecedor ? [x.codigo, x.item, null, x.codigoFornecedor || null] : [x.codigo, x.item, null]));
   ws.getRow(H).font = { bold: true, color: { argb: "FFFFFFFF" } };
   ws.getRow(H).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111111" } };
   for (let r = H + 1; r <= ws.rowCount; r++) ws.getCell(r, 3).numFmt = '"R$" #,##0.00';
+  const editavel = (c: number) => c === 3 || (Boolean(colunaCodigoFornecedor) && c === 4);
   ws.eachRow((row, r) => row.eachCell({ includeEmpty: true }, (cell, c) => {
-    cell.protection = { locked: r <= H || c !== 3 };
+    cell.protection = { locked: r <= H || !editavel(c) };
   }));
+  if (colunaCodigoFornecedor) {
+    for (let r = H + 1; r <= ws.rowCount; r++) ws.getCell(r, 4).protection = { locked: false };
+  }
   await ws.protect("fr-cotacao-pecas", {
     selectLockedCells: false, selectUnlockedCells: true,
     formatCells: false, formatColumns: false, formatRows: false,
@@ -237,32 +280,44 @@ export async function quoteBook(name: string, items: Array<{ codigo: string; ite
 }
 
 // titulo (ex.: "PEDIDO DE PEÇAS - JOINVILLE") e subtitulo (fornecedor/entrega) nas linhas 1-2; cabeçalho na linha 3.
-export async function orderBook(items: Array<any>, titulo?: string, subtitulo?: string) {
+// colunaCodigoFornecedor (ex.: "CÓDIGO NEW KITS"): coluna extra ao lado do nosso código com a conversão do fornecedor.
+export async function orderBook(items: Array<any>, titulo?: string, subtitulo?: string, colunaCodigoFornecedor?: string) {
   const wb = new ExcelJS.Workbook();
   const H = 3;
+  const comCodigo = Boolean(colunaCodigoFornecedor);
   const ws = wb.addWorksheet("Pedido", { views: [{ state: "frozen", ySplit: H, showGridLines: false }] });
-  [20, 52, 16, 20, 20].forEach((w, i) => { ws.getColumn(i + 1).width = w; });
-  ws.mergeCells("A1:E1");
+  (comCodigo ? [20, 22, 52, 16, 20, 20] : [20, 52, 16, 20, 20]).forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  const ultima = comCodigo ? "F" : "E";
+  ws.mergeCells(`A1:${ultima}1`);
   ws.getCell("A1").value = titulo || "PEDIDO";
   ws.getCell("A1").font = { bold: true, size: 14 };
   ws.getCell("A1").alignment = { horizontal: "center" };
-  ws.mergeCells("A2:E2");
+  ws.mergeCells(`A2:${ultima}2`);
   ws.getCell("A2").value = subtitulo || "";
   ws.getCell("A2").font = { italic: true, color: { argb: "FF666666" } };
   ws.getCell("A2").alignment = { horizontal: "center" };
-  ws.getRow(H).values = ["CÓDIGO", "ITEM", "QUANTIDADE", "VALOR UNITÁRIO", "TOTAL"];
-  items.forEach((x) => ws.addRow([x.codigo, x.item, x.quantidade, x.valorUnitario, x.total]));
+  ws.getRow(H).values = comCodigo
+    ? ["CÓDIGO", colunaCodigoFornecedor, "ITEM", "QUANTIDADE", "VALOR UNITÁRIO", "TOTAL"]
+    : ["CÓDIGO", "ITEM", "QUANTIDADE", "VALOR UNITÁRIO", "TOTAL"];
+  items.forEach((x) =>
+    ws.addRow(
+      comCodigo
+        ? [x.codigo, x.codigoFornecedor || "", x.item, x.quantidade, x.valorUnitario, x.total]
+        : [x.codigo, x.item, x.quantidade, x.valorUnitario, x.total]
+    )
+  );
   const total = items.reduce((s, x) => s + Number(x.total || 0), 0);
-  const tr = ws.addRow(["TOTAL DO PEDIDO", null, null, null, Number(total.toFixed(2))]);
+  const tr = ws.addRow(comCodigo ? ["TOTAL DO PEDIDO", null, null, null, null, Number(total.toFixed(2))] : ["TOTAL DO PEDIDO", null, null, null, Number(total.toFixed(2))]);
   ws.getRow(H).font = { bold: true, color: { argb: "FFFFFFFF" } };
   ws.getRow(H).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111111" } };
+  const cQtd = comCodigo ? 4 : 3;
   for (let r = H + 1; r <= ws.rowCount; r++) {
-    ws.getCell(r, 3).numFmt = "0";
-    ws.getCell(r, 4).numFmt = '"R$" #,##0.00';
-    ws.getCell(r, 5).numFmt = '"R$" #,##0.00';
+    ws.getCell(r, cQtd).numFmt = "0";
+    ws.getCell(r, cQtd + 1).numFmt = '"R$" #,##0.00';
+    ws.getCell(r, cQtd + 2).numFmt = '"R$" #,##0.00';
   }
   tr.font = { bold: true };
-  tr.getCell(5).numFmt = '"R$" #,##0.00';
+  tr.getCell(cQtd + 2).numFmt = '"R$" #,##0.00';
   ws.eachRow((row) => row.eachCell({ includeEmpty: true }, (cell) => { cell.protection = { locked: true }; }));
   await ws.protect("fr-pedido-pecas", {
     selectLockedCells: true, selectUnlockedCells: false,
@@ -547,6 +602,7 @@ export const comprasPecasRouter = router({
   salvarCotacao: protectedProcedure.input(z.object({ itemId:z.number().int().positive(), fornecedorId:z.number().int().positive(), valor:z.number().positive() })).mutation(async ({ctx,input})=>{
     assertCompras(ctx); await ensure();
     await db().query(`INSERT INTO compras_pecas_cotacoes (itemId,fornecedorId,valor) VALUES (?,?,?) ON DUPLICATE KEY UPDATE valor=VALUES(valor)`,[input.itemId,input.fornecedorId,input.valor]);
+    await db().query(`UPDATE compras_pecas_itens SET precoSelecionado=? WHERE id=? AND fornecedorSelecionadoId=?`,[input.valor,input.itemId,input.fornecedorId]);
     await db().query(`UPDATE compras_pecas_planejamentos p JOIN compras_pecas_itens i ON i.planejamentoId=p.id SET p.status=CASE WHEN p.status='pedido_salvo' THEN p.status ELSE 'cotacao' END WHERE i.id=?`,[input.itemId]);
     return {ok:true};
   }),
@@ -578,7 +634,14 @@ export const comprasPecasRouter = router({
     const [items]=await db().query<any[]>(`SELECT codigo,item FROM compras_pecas_itens WHERE planejamentoId=? AND quantidadeFinal>0 ORDER BY codigo`,[input.planejamentoId]);
     const [pl]=await db().query<any[]>(`SELECT lojaNome FROM compras_pecas_planejamentos WHERE id=? LIMIT 1`,[input.planejamentoId]);
     const cidade=String(pl[0]?.lojaNome||"");
-    const buf=await quoteBook(String(f[0].nome),items.map((x)=>({codigo:String(x.codigo),item:String(x.item)})),`COTAÇÃO DE PEÇAS - ${cidade.toUpperCase()||"LOJA"}`);
+    const colunaCodigo=colunaCodigoDoFornecedor(f[0].nome);
+    const conversoes=colunaCodigo?await codigosDoFornecedor(Number(f[0].id),items.map((x)=>String(x.codigo))):new Map<string,string>();
+    const buf=await quoteBook(
+      String(f[0].nome),
+      items.map((x)=>({codigo:String(x.codigo),item:String(x.item),codigoFornecedor:conversoes.get(norm(x.codigo))||null})),
+      `COTAÇÃO DE PEÇAS - ${cidade.toUpperCase()||"LOJA"}`,
+      colunaCodigo
+    );
     const seg=(s:string)=>norm(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
     return {nome:`cotacao-pecas-${cidade?`${seg(cidade)}-`:""}${seg(f[0].nome)}-${input.planejamentoId}.xlsx`,mime:MIME_XLSX,base64:Buffer.from(buf as any).toString("base64")};
   }),
@@ -596,10 +659,25 @@ export const comprasPecasRouter = router({
     if(hi<0) throw new TRPCError({code:"BAD_REQUEST",message:"Planilha inválida ou de outro fornecedor."});
     const [items]=await db().query<any[]>(`SELECT id,codigo FROM compras_pecas_itens WHERE planejamentoId=?`,[input.planejamentoId]);
     const map=new Map(items.map((x)=>[norm(x.codigo),Number(x.id)])); let imported=0;
-    for(let i=hi+1;i<lines.length;i++){ const row=lines[i]||[]; const id=map.get(norm(row[ci])); if(!id) continue; const val=parseMoney(row[pi]); if(val<=0) continue; await db().query(`INSERT INTO compras_pecas_cotacoes (itemId,fornecedorId,valor) VALUES (?,?,?) ON DUPLICATE KEY UPDATE valor=VALUES(valor)`,[id,input.fornecedorId,val]); imported++; }
-    if(!imported) throw new TRPCError({code:"BAD_REQUEST",message:"Nenhum preço válido encontrado."});
+    // NEW KITS: a coluna "CÓDIGO NEW KITS" guarda a conversão (nosso código continua sendo o usado no sistema).
+    const colunaCodigo=colunaCodigoDoFornecedor(f[0].nome);
+    const idxCodigoFornecedor=colunaCodigo?(lines[hi]||[]).map(norm).indexOf(norm(colunaCodigo)):-1;
+    let conversoes=0;
+    for(let i=hi+1;i<lines.length;i++){
+      const row=lines[i]||[]; const nosso=norm(row[ci]); const id=map.get(nosso); if(!id) continue;
+      if(idxCodigoFornecedor>=0){
+        const codigoFornecedor=String(row[idxCodigoFornecedor]??"").trim().slice(0,100);
+        if(codigoFornecedor){ await db().query(`INSERT INTO compras_pecas_codigos_fornecedor (fornecedorId,codigo,codigoFornecedor) VALUES (?,?,?) ON DUPLICATE KEY UPDATE codigoFornecedor=VALUES(codigoFornecedor)`,[input.fornecedorId,nosso,codigoFornecedor]); conversoes++; }
+      }
+      const val=parseMoney(row[pi]); if(val<=0) continue;
+      await db().query(`INSERT INTO compras_pecas_cotacoes (itemId,fornecedorId,valor) VALUES (?,?,?) ON DUPLICATE KEY UPDATE valor=VALUES(valor)`,[id,input.fornecedorId,val]);
+      // Se este fornecedor já é o escolhido do item, o pedido passa a usar o preço novo.
+      await db().query(`UPDATE compras_pecas_itens SET precoSelecionado=? WHERE id=? AND fornecedorSelecionadoId=?`,[val,id,input.fornecedorId]);
+      imported++;
+    }
+    if(!imported) throw new TRPCError({code:"BAD_REQUEST",message:conversoes?`${conversoes} código(s) do fornecedor salvos, mas nenhum preço válido encontrado.`:"Nenhum preço válido encontrado."});
     await db().query(`UPDATE compras_pecas_planejamentos SET status=CASE WHEN status='pedido_salvo' THEN status ELSE 'cotacao' END WHERE id=?`,[input.planejamentoId]);
-    return {ok:true,fornecedorId:input.fornecedorId,importados:imported};
+    return {ok:true,fornecedorId:input.fornecedorId,importados:imported,conversoes};
   }),
 
   fecharPedidos: protectedProcedure.input(z.object({planejamentoId:z.number().int().positive()})).mutation(async({ctx,input})=>{
@@ -769,10 +847,14 @@ export const comprasPecasRouter = router({
     const [items]=await db().query<any[]>(`SELECT codigo,item,quantidade,valorUnitario,total FROM compras_pecas_pedido_itens WHERE pedidoId=? ORDER BY codigo`,[input.pedidoId]);
     const [pl]=await db().query<any[]>(`SELECT lojaNome FROM compras_pecas_planejamentos WHERE id=? LIMIT 1`,[p[0].planejamentoId]);
     const cidade=String(pl[0]?.lojaNome||"");
+    // NEW KITS: o pedido leva a coluna com o código deles (conversão informada na cotação).
+    const colunaCodigo=colunaCodigoDoFornecedor(p[0].fornecedorNome);
+    const conversoes=colunaCodigo?await codigosDoFornecedor(Number(p[0].fornecedorId),items.map((x)=>String(x.codigo))):new Map<string,string>();
     const buf=await orderBook(
-      items.map((x)=>({codigo:String(x.codigo),item:String(x.item),quantidade:Number(x.quantidade||0),valorUnitario:Number(x.valorUnitario||0),total:Number(x.total||0)})),
+      items.map((x)=>({codigo:String(x.codigo),codigoFornecedor:conversoes.get(norm(x.codigo))||"",item:String(x.item),quantidade:Number(x.quantidade||0),valorUnitario:Number(x.valorUnitario||0),total:Number(x.total||0)})),
       `PEDIDO DE PEÇAS - ${cidade.toUpperCase()||"LOJA"}`,
-      `Fornecedor: ${p[0].fornecedorNome} • Entrega: ${cidade||"—"} • Pedido nº ${p[0].planejamentoId}`
+      `Fornecedor: ${p[0].fornecedorNome} • Entrega: ${cidade||"—"} • Pedido nº ${p[0].planejamentoId}`,
+      colunaCodigo
     );
     const seg=(s:string)=>norm(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
     return {nome:`pedido-pecas-${cidade?`${seg(cidade)}-`:""}${seg(p[0].fornecedorNome)}-${p[0].planejamentoId}.xlsx`,mime:MIME_XLSX,base64:Buffer.from(buf as any).toString("base64")};
