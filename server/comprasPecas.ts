@@ -67,6 +67,13 @@ async function ensure() {
     }
   }
 
+  // Peça acima do limite de preço: 'aprovado' entra no pedido, 'negado' fica na cotação mas não é pedida.
+  try {
+    await p.query(`ALTER TABLE compras_pecas_itens ADD COLUMN aprovacaoValor VARCHAR(10) NULL`);
+  } catch (error: any) {
+    if (error?.code !== "ER_DUP_FIELDNAME") throw error;
+  }
+
   // Conversão do nosso código para o código do fornecedor (hoje só NEW KITS usa).
   await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_codigos_fornecedor (
     fornecedorId INT UNSIGNED NOT NULL,
@@ -185,6 +192,14 @@ async function ensure() {
 
 export function norm(v: unknown) {
   return String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+}
+
+// Limite de preço para pedir OK antes de comprar: bucha acima de R$ 30, qualquer peça acima de R$ 100.
+export const LIMITE_BUCHA = 30;
+export const LIMITE_PECA = 100;
+function acimaDoLimitePeca(grupo: unknown, preco: number) {
+  if (!(preco > 0)) return false;
+  return norm(grupo) === "BUCHA" ? preco > LIMITE_BUCHA : preco > LIMITE_PECA;
 }
 
 // Fornecedores que informam o próprio código na cotação e recebem o pedido com a conversão.
@@ -621,6 +636,16 @@ export const comprasPecasRouter = router({
       };
     }),
 
+  // OK ou Negar uma peça acima do limite de preço (null volta para "aguardando").
+  definirAprovacao: protectedProcedure.input(z.object({ itemId:z.number().int().positive(), aprovacao:z.enum(["aprovado","negado"]).nullable() })).mutation(async ({ctx,input})=>{
+    assertCompras(ctx); await ensure();
+    const [rows]=await db().query<any[]>(`SELECT p.status FROM compras_pecas_itens i JOIN compras_pecas_planejamentos p ON p.id=i.planejamentoId WHERE i.id=? LIMIT 1`,[input.itemId]);
+    if(!rows.length) throw new TRPCError({code:"NOT_FOUND",message:"Item não encontrado."});
+    if(String(rows[0].status)==="pedido_salvo") throw new TRPCError({code:"BAD_REQUEST",message:"O pedido já foi fechado. Exclua os pedidos para mudar a aprovação."});
+    await db().query(`UPDATE compras_pecas_itens SET aprovacaoValor=? WHERE id=?`,[input.aprovacao,input.itemId]);
+    return {ok:true,itemId:input.itemId,aprovacao:input.aprovacao};
+  }),
+
   salvarCotacao: protectedProcedure.input(z.object({ itemId:z.number().int().positive(), fornecedorId:z.number().int().positive(), valor:z.number().positive() })).mutation(async ({ctx,input})=>{
     assertCompras(ctx); await ensure();
     await db().query(`INSERT INTO compras_pecas_cotacoes (itemId,fornecedorId,valor) VALUES (?,?,?) ON DUPLICATE KEY UPDATE valor=VALUES(valor)`,[input.itemId,input.fornecedorId,input.valor]);
@@ -706,7 +731,12 @@ export const comprasPecasRouter = router({
     assertCompras(ctx); await ensure();
     const [old]=await db().query<any[]>(`SELECT id FROM compras_pecas_pedidos WHERE planejamentoId=? LIMIT 1`,[input.planejamentoId]);
     if(old.length) return {ok:true,jaSalvo:true,pedidos:0};
-    const [items]=await db().query<any[]>(`SELECT i.*,f.nome fornecedorNome FROM compras_pecas_itens i LEFT JOIN compras_pecas_fornecedores f ON f.id=i.fornecedorSelecionadoId WHERE i.planejamentoId=? AND i.quantidadeFinal>0 ORDER BY i.codigo`,[input.planejamentoId]);
+    const [todos]=await db().query<any[]>(`SELECT i.*,f.nome fornecedorNome FROM compras_pecas_itens i LEFT JOIN compras_pecas_fornecedores f ON f.id=i.fornecedorSelecionadoId WHERE i.planejamentoId=? AND i.quantidadeFinal>0 ORDER BY i.codigo`,[input.planejamentoId]);
+    // Peça acima do limite (bucha > R$30 ou qualquer peça > R$100) precisa de OK; negada não entra no pedido.
+    const aguardando=todos.filter((x)=>x.precoSelecionado!=null&&acimaDoLimitePeca(x.grupo,Number(x.precoSelecionado))&&!x.aprovacaoValor);
+    if(aguardando.length) throw new TRPCError({code:"BAD_REQUEST",message:`${aguardando.length} peça(s) acima do limite aguardando OK ou Negar.`});
+    const items=todos.filter((x)=>x.aprovacaoValor!=="negado");
+    if(!items.length) throw new TRPCError({code:"BAD_REQUEST",message:"Todas as peças foram negadas: não há pedido para fechar."});
     const missing=items.filter((x)=>!x.fornecedorSelecionadoId||x.precoSelecionado==null||Number(x.precoSelecionado)<=0);
     if(missing.length) throw new TRPCError({code:"BAD_REQUEST",message:`${missing.length} item(ns) ainda sem fornecedor/preço selecionado.`});
     const groups=new Map<number,any[]>(); for(const x of items){const id=Number(x.fornecedorSelecionadoId);groups.set(id,[...(groups.get(id)||[]),x]);}
