@@ -221,8 +221,22 @@ async function codigosDoFornecedor(fornecedorId: number, codigos: string[]) {
   return mapa;
 }
 
+// Lê preço vindo da planilha ou digitado: aceita "117,09", "117.09" (como o Excel entrega),
+// "1.234,56", "1,234.56" e número puro. Texto como "falta" vira 0.
 export function parseMoney(v: unknown) {
-  const s = String(v ?? "").trim().replace(/\s/g, "").replace(/R\$/gi, "").replace(/\./g, "").replace(",", ".").replace(/[^0-9.-]/g, "");
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  let s = String(v ?? "").trim().replace(/\s/g, "").replace(/R\$/gi, "").replace(/[^0-9.,-]/g, "");
+  if (!s) return 0;
+  const virgula = s.lastIndexOf(",");
+  const ponto = s.lastIndexOf(".");
+  if (virgula >= 0 && ponto >= 0) {
+    // O separador que vem por último é o decimal.
+    s = virgula > ponto ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  } else if (virgula >= 0) {
+    s = /^-?\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g, "") : s.replace(",", ".");
+  } else if (ponto >= 0 && /^-?\d{1,3}(\.\d{3})+$/.test(s)) {
+    s = s.replace(/\./g, ""); // "1.234" = mil duzentos e trinta e quatro
+  }
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
 }
