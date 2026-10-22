@@ -54,7 +54,8 @@ async function toBase64(file: File) {
 
 // tipo "amortecedores": mesmas telas com as tabelas de amortecedores, sem o limite de valor (OK/Negar)
 // e com a aplicação (carros) embaixo do item.
-export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade, tipo = "pecas" }: { itens: ItemAnalise[]; arquivoNome: string; onTrocarCidade?: () => void; tipo?: "pecas" | "amortecedores" }) {
+// bloqueioSalvar: motivo para não deixar salvar o planejamento ainda (ex.: falta o estoque dos itens de estoque mínimo).
+export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade, tipo = "pecas", bloqueioSalvar }: { itens: ItemAnalise[]; arquivoNome: string; onTrocarCidade?: () => void; tipo?: "pecas" | "amortecedores"; bloqueioSalvar?: string | null }) {
   const api = tipo === "amortecedores" ? trpc.compras.amortecedores : trpc.compras.pecas;
   const utils = trpc.useUtils();
   const [aba, setAba] = useState<Aba>("cotacao");
@@ -219,6 +220,10 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
   function salvarPlanejamento(){
     if (!lojaSelecionada) {
       setErro("Selecione a cidade da compra.");
+      return;
+    }
+    if (bloqueioSalvar) {
+      setErro(bloqueioSalvar);
       return;
     }
 

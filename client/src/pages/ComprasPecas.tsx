@@ -26,7 +26,8 @@ type ItemPeca = {
     | "Pastilha"
     | "Pivô"
     | "Terminal Axial"
-    | "Terminal de Direção";
+    | "Terminal de Direção"
+    | "Estoque mínimo";
   vendaPeriodo: number;
   estoqueAtual: number;
   necessidadeBruta: number;
@@ -405,6 +406,13 @@ function arredondarCompra(
   return inteiro;
 }
 
+// Códigos que não saem no relatório do sistema e precisam ficar sempre com estoque mínimo:
+// a cada planejamento é obrigatório informar o estoque atual; compra = mínimo − estoque.
+const ESTOQUE_MINIMO = [
+  { codigo: "SK402S", minimo: 100 },
+  { codigo: "SK404", minimo: 100 },
+];
+
 function dinheiroNumero(valor: number) {
   return valor.toLocaleString("pt-BR", {
     minimumFractionDigits: 1,
@@ -422,6 +430,7 @@ export default function ComprasPecas() {
   const [diasDoRelatorio, setDiasDoRelatorio] = useState(120);
   const [itens, setItens] = useState<ItemPeca[]>([]);
   const [excluidos, setExcluidos] = useState<ItemPeca[]>([]);
+  const [estoqueMinimo, setEstoqueMinimo] = useState<Record<string, string>>({});
   const [erro, setErro] = useState("");
   const [mensagemCatalogo, setMensagemCatalogo] = useState("");
   const [catalogoProgresso, setCatalogoProgresso] = useState({
@@ -687,6 +696,7 @@ export default function ComprasPecas() {
       setDiasDoRelatorio(dias);
       setItens(encontrados);
       setExcluidos([]);
+      setEstoqueMinimo({});
       setMensagemCatalogo("");
 
       const itensPerfect = encontrados.filter(
@@ -711,6 +721,7 @@ export default function ComprasPecas() {
     setArquivoNome("");
     setItens([]);
     setExcluidos([]);
+    setEstoqueMinimo({});
     setAbaixoDoMinimo(0);
     setMensagemCatalogo("");
     setErro("");
@@ -742,6 +753,39 @@ export default function ComprasPecas() {
       revisarCatalogo: revisarCatalogo.length,
     };
   }, [itens]);
+
+  // Itens de estoque mínimo entram no planejamento junto com os do relatório (só se faltar estoque).
+  const itensEstoqueMinimo = useMemo<ItemPeca[]>(
+    () =>
+      ESTOQUE_MINIMO.flatMap(({ codigo, minimo }) => {
+        const bruto = estoqueMinimo[codigo];
+        if (bruto === undefined || bruto === "") return [];
+        const estoqueAtual = Math.max(0, Math.floor(Number(bruto)));
+        const quantidadeCompra = Math.max(0, minimo - estoqueAtual);
+        if (!quantidadeCompra) return [];
+        return [{
+          id: `minimo-${codigo}`,
+          codigo,
+          item: codigo,
+          grupo: "Estoque mínimo" as const,
+          vendaPeriodo: 0,
+          estoqueAtual,
+          necessidadeBruta: quantidadeCompra,
+          quantidadeCompra,
+          arredondamentoPar: false,
+          ladoIndividual: null,
+          especificacaoStatus: "pendente" as const,
+          motivoRevisao: null,
+          especificacao: `Estoque mínimo de ${minimo} un.`,
+        }];
+      }),
+    [estoqueMinimo]
+  );
+  const itensParaCotacao = useMemo(() => [...itens, ...itensEstoqueMinimo], [itens, itensEstoqueMinimo]);
+  const faltaEstoqueMinimo =ESTOQUE_MINIMO.filter(({ codigo }) => !estoqueMinimo[codigo]).map(({ codigo }) => codigo);
+  const bloqueioSalvar = arquivoNome && faltaEstoqueMinimo.length
+    ? `Informe o estoque atual de ${faltaEstoqueMinimo.join(" e ")} (estoque mínimo) antes de salvar o planejamento.`
+    : null;
 
   function excluirItem(item: ItemPeca) {
     setItens((atuais) => atuais.filter((atual) => atual.id !== item.id));
@@ -823,9 +867,37 @@ export default function ComprasPecas() {
               {erro}
             </div>
           )}
+
+          {arquivoNome && (
+            <div className={`mt-5 rounded-2xl border p-4 ${faltaEstoqueMinimo.length ? "border-amber-400/30 bg-amber-400/[0.04]" : "border-emerald-400/20 bg-emerald-400/[0.03]"}`}>
+              <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">Estoque mínimo • obrigatório</p>
+              <p className="mt-1 text-xs text-gray-500">Esses códigos não saem no relatório. Informe o estoque atual de cada um; a compra completa até o mínimo.</p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                {ESTOQUE_MINIMO.map(({ codigo, minimo }) => {
+                  const valor = estoqueMinimo[codigo] ?? "";
+                  const compra = valor === "" ? null : Math.max(0, minimo - Number(valor));
+                  return (
+                    <label key={codigo} className="block w-full sm:w-64">
+                      <span className="mb-1 block text-xs font-black text-[#F2D675]">{codigo} <span className="font-bold text-gray-600">• mínimo {minimo}</span></span>
+                      <input
+                        value={valor}
+                        inputMode="numeric"
+                        placeholder="Estoque atual"
+                        onChange={(e) => setEstoqueMinimo((a) => ({ ...a, [codigo]: e.target.value.replace(/[^0-9]/g, "") }))}
+                        className={`h-11 w-full rounded-xl border bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-[#D4AF37]/50 ${valor === "" ? "border-amber-400/40" : "border-white/10"}`}
+                      />
+                      <span className={`mt-1 block text-[11px] font-bold ${compra === null ? "text-amber-300" : compra > 0 ? "text-emerald-300" : "text-gray-500"}`}>
+                        {compra === null ? "Falta informar" : compra > 0 ? `Comprar ${compra}` : "Estoque completo • não compra"}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </section>
 
-        <ComprasPecasCotacao arquivoNome={arquivoNome} itens={itens} onTrocarCidade={limparRelatorio} />
+        <ComprasPecasCotacao arquivoNome={arquivoNome} itens={itensParaCotacao} onTrocarCidade={limparRelatorio} bloqueioSalvar={bloqueioSalvar} />
 
 
         {arquivoNome && (
