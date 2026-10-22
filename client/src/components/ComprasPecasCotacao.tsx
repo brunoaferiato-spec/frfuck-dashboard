@@ -367,7 +367,34 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
     className="h-10 w-20 rounded-xl border border-[#D4AF37]/25 bg-black/30 px-2 text-center font-black text-[#F2D675] outline-none disabled:opacity-50"
     title="Quantidade de compra editável"
   />
-</td>{fornecedores.map((f:any)=>{const key=`${it.id}-${f.id}`;const saved=quoteMap.get(key);const val=local[key]!==undefined?local[key]:(saved?Number(saved).toFixed(2).replace('.',','):'');const sel=Number(it.fornecedorSelecionadoId)===Number(f.id);return <td key={f.id} className={`px-3 py-2 ${sel?'bg-[#D4AF37]/[0.06]':''}`}><div className="flex min-w-[190px] gap-2"><input value={val} placeholder="0,00" onChange={e=>setLocal(a=>({...a,[key]:e.target.value}))} onBlur={()=>{const n=Number(String(val).replace(/\./g,'').replace(',','.').replace(/[^0-9.-]/g,''));if(n>0)salvarCotacao.mutate({itemId:Number(it.id),fornecedorId:Number(f.id),valor:n});}} className="h-10 min-w-0 flex-1 rounded-xl border border-emerald-400/20 bg-black/30 px-3 text-right text-emerald-200 outline-none"/>{saved&&<button type="button" onClick={()=>selecionar.mutate({itemId:Number(it.id),fornecedorId:Number(f.id)})} className={`h-10 rounded-xl px-3 text-[10px] font-black ${sel?'bg-[#D4AF37] text-black':'border border-white/10 text-gray-400'}`}>{sel?'OK':'Escolher'}</button>}</div></td>})}</tr>})}</tbody></table></div>
+</td>{fornecedores.map((f:any)=>{const key=`${it.id}-${f.id}`;const saved=quoteMap.get(key);const val=local[key]!==undefined?local[key]:(saved?Number(saved).toFixed(2).replace('.',','):'');const sel=Number(it.fornecedorSelecionadoId)===Number(f.id);return <td key={f.id} className={`px-3 py-2 ${sel?'bg-[#D4AF37]/[0.06]':''}`}><div className="flex min-w-[190px] gap-2"><input value={val} placeholder="0,00" onChange={e=>setLocal(a=>({...a,[key]:e.target.value}))} onBlur={()=>{const n=Number(String(val).replace(/\./g,'').replace(',','.').replace(/[^0-9.-]/g,''));if(n>0)salvarCotacao.mutate({itemId:Number(it.id),fornecedorId:Number(f.id),valor:n});}} className="h-10 min-w-0 flex-1 rounded-xl border border-emerald-400/20 bg-black/30 px-3 text-right text-emerald-200 outline-none"/>{saved&&<button type="button" onClick={()=>selecionar.mutate({itemId:Number(it.id),fornecedorId:Number(f.id)})} className={`h-10 rounded-xl px-3 text-[10px] font-black ${sel?'bg-[#D4AF37] text-black':'border border-white/10 text-gray-400'}`}>{sel?'OK':'Escolher'}</button>}</div></td>})}</tr>})}</tbody>
+        {/* Total do pedido de cada fornecedor (quantidade × preço), igual ao de pneus. Cada peça conta no fornecedor
+            escolhido; sem escolha, no menor preço. Peça negada ou com quantidade 0 não entra, como no fechamento. */}
+        {(()=>{
+          const itensTotal=(detalheQ.data?.itens||[]).filter((it:any)=>Number(it.quantidadeFinal||0)>0&&it.aprovacaoValor!=="negado");
+          const fornecedorDaPeca=(it:any)=>{
+            const escolhido=Number(it.fornecedorSelecionadoId||0);
+            if(escolhido&&quoteMap.get(`${it.id}-${escolhido}`)) return escolhido;
+            let melhor=0;let melhorValor=Infinity;
+            for(const f of [...fornecedores].sort((a:any,b:any)=>Number(a.id)-Number(b.id))){const v=Number(quoteMap.get(`${it.id}-${f.id}`)||0);if(v>0&&v<melhorValor){melhorValor=v;melhor=Number(f.id);}}
+            return melhor;
+          };
+          const totais=fornecedores.map((f:any)=>{
+            let valor=0,pecas=0,quantidade=0;
+            for(const it of itensTotal){if(fornecedorDaPeca(it)!==Number(f.id))continue;const q=Number(it.quantidadeFinal||0);valor+=Number(quoteMap.get(`${it.id}-${f.id}`)||0)*q;pecas+=1;quantidade+=q;}
+            return {valor,pecas,quantidade};
+          });
+          const totalGeral=totais.reduce((s:number,t:any)=>s+t.valor,0);
+          const quantidadeTotal=totais.reduce((s:number,t:any)=>s+t.quantidade,0);
+          const semPreco=itensTotal.filter((it:any)=>!fornecedorDaPeca(it)).length;
+          return <tfoot><tr className="border-t-2 border-[#D4AF37]/30 bg-[#D4AF37]/[0.04]">
+            <td className="px-3 py-3 align-top"><p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">Total do pedido</p><p className="mt-1 text-sm font-black text-[#F2D675]">{moeda(totalGeral)}</p></td>
+            <td className="px-3 py-3 align-top">{semPreco>0?<p className="text-[10px] font-black leading-4 text-amber-300">{semPreco} peça(s) sem nenhum preço</p>:<p className="text-[10px] font-black leading-4 text-emerald-300">Todas as peças com preço</p>}</td>
+            <td className="px-3 py-3 text-right align-top"><p className="text-[10px] font-black uppercase text-gray-600">Qtd</p><p className="mt-1 text-sm font-black text-white">{quantidadeTotal}</p></td>
+            {fornecedores.map((f:any,i:number)=>{const t=totais[i];return <td key={f.id} className="px-3 py-3 text-right align-top">{t.pecas>0?<><p className="text-sm font-black text-[#F2D675]">{moeda(t.valor)}</p><p className="mt-0.5 text-[10px] text-gray-500">{t.pecas} peça(s) • {t.quantidade} un.</p></>:<p className="text-[11px] text-gray-600">—</p>}</td>})}
+          </tr></tfoot>;
+        })()}
+        </table></div>
       </>}
     </div>}
 
