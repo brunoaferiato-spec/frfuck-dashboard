@@ -338,7 +338,8 @@ export async function quoteBook(
 
 // titulo (ex.: "PEDIDO DE PEÇAS - JOINVILLE") e subtitulo (fornecedor/entrega) nas linhas 1-2; cabeçalho na linha 3.
 // colunaCodigoFornecedor (ex.: "CÓDIGO NEW KITS"): coluna extra ao lado do nosso código com a conversão do fornecedor.
-export async function orderBook(items: Array<any>, titulo?: string, subtitulo?: string, colunaCodigoFornecedor?: string) {
+// protegida=false: o fornecedor pode ajustar a planilha; o TOTAL vira fórmula para recalcular sozinho.
+export async function orderBook(items: Array<any>, titulo?: string, subtitulo?: string, colunaCodigoFornecedor?: string, protegida = true) {
   const wb = new ExcelJS.Workbook();
   const H = 3;
   const comCodigo = Boolean(colunaCodigoFornecedor);
@@ -375,6 +376,15 @@ export async function orderBook(items: Array<any>, titulo?: string, subtitulo?: 
   }
   tr.font = { bold: true };
   tr.getCell(cQtd + 2).numFmt = '"R$" #,##0.00';
+  if (!protegida) {
+    const L = (c: number) => String.fromCharCode(64 + c);
+    items.forEach((x, i) => {
+      const r = H + 1 + i;
+      ws.getCell(r, cQtd + 2).value = { formula: `${L(cQtd)}${r}*${L(cQtd + 1)}${r}`, result: Number(x.total || 0) };
+    });
+    if (items.length) tr.getCell(cQtd + 2).value = { formula: `SUM(${L(cQtd + 2)}${H + 1}:${L(cQtd + 2)}${H + items.length})`, result: Number(total.toFixed(2)) };
+    return wb.xlsx.writeBuffer();
+  }
   ws.eachRow((row) => row.eachCell({ includeEmpty: true }, (cell) => { cell.protection = { locked: true }; }));
   await ws.protect("fr-pedido-pecas", {
     selectLockedCells: true, selectUnlockedCells: false,
@@ -403,6 +413,7 @@ type ConfigCompras = {
   limiteValor: boolean; // OK/Negar acima de R$ 30 (bucha) / R$ 100 (peça)
   aplicacaoNoItem: boolean; // cotação e pedido levam "item — aplicação"
   precoFixo?: { fornecedor: string; valor: number }; // fornecedor com preço único em todos os itens, todas as lojas
+  pedidoDesprotegido?: boolean; // planilha de pedido sem proteção (o fornecedor faz ajustes nela)
 };
 
 // Preenche o preço fixo do fornecedor em todos os itens do planejamento e já deixa ele escolhido.
@@ -963,7 +974,8 @@ function criarRouterCompras(cfg: ConfigCompras) {
       items.map((x)=>({codigo:String(x.codigo),codigoFornecedor:conversoes.get(norm(x.codigo))||"",item:String(x.item),quantidade:Number(x.quantidade||0),valorUnitario:Number(x.valorUnitario||0),total:Number(x.total||0)})),
       `PEDIDO DE ${cfg.rotulo} - ${cidade.toUpperCase()||"LOJA"}`,
       `Fornecedor: ${p[0].fornecedorNome} • Entrega: ${cidade||"—"} • Pedido nº ${p[0].planejamentoId}`,
-      colunaCodigo
+      colunaCodigo,
+      !cfg.pedidoDesprotegido
     );
     const seg=(s:string)=>norm(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
     return {nome:`pedido-${cfg.arquivo}-${cidade?`${seg(cidade)}-`:""}${seg(p[0].fornecedorNome)}-${p[0].planejamentoId}.xlsx`,mime:MIME_XLSX,base64:Buffer.from(buf as any).toString("base64")};
@@ -972,5 +984,5 @@ function criarRouterCompras(cfg: ConfigCompras) {
 }
 
 export const comprasPecasRouter = criarRouterCompras({ prefixo: "compras_pecas", rotulo: "PEÇAS", arquivo: "pecas", limiteValor: true, aplicacaoNoItem: false });
-export const comprasAmortecedoresRouter = criarRouterCompras({ prefixo: "compras_amort", rotulo: "AMORTECEDORES", arquivo: "amortecedores", limiteValor: false, aplicacaoNoItem: true, precoFixo: { fornecedor: "NEW KITS", valor: 50 } });
+export const comprasAmortecedoresRouter = criarRouterCompras({ prefixo: "compras_amort", rotulo: "AMORTECEDORES", arquivo: "amortecedores", limiteValor: false, aplicacaoNoItem: true, precoFixo: { fornecedor: "NEW KITS", valor: 50 }, pedidoDesprotegido: true });
 
