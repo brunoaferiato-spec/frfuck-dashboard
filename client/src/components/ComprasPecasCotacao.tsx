@@ -119,7 +119,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
   const pedidosQ = api.pedidos.useQuery({ planejamentoId: planejamentoId || 0 }, { enabled: !!planejamentoId });
 
   const criarPlano = api.criarPlanejamento.useMutation({
-    onSuccess: async (d) => { setPlanejamentoId(Number(d.planejamentoId)); setMensagem(`Planejamento #${d.planejamentoId} salvo.`); setErro(""); await planosQ.refetch(); setAba("cotacao"); },
+    onSuccess: async (d) => { setPlanejamentoId(Number(d.planejamentoId)); setMensagem(`Planejamento #${d.planejamentoId} salvo.`); setErro(""); await fornecedoresQ.refetch(); await planosQ.refetch(); setAba("cotacao"); },
     onError: (e) => setErro(e.message),
   });
   const criarFornecedor = api.criarFornecedor.useMutation({ onSuccess: async()=>{setNovoFornecedor("");await fornecedoresQ.refetch();}, onError:(e)=>setErro(e.message) });

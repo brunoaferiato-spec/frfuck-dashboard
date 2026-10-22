@@ -402,7 +402,28 @@ type ConfigCompras = {
   arquivo: string; // nome dos arquivos baixados: cotacao-<arquivo>-...
   limiteValor: boolean; // OK/Negar acima de R$ 30 (bucha) / R$ 100 (peça)
   aplicacaoNoItem: boolean; // cotação e pedido levam "item — aplicação"
+  precoFixo?: { fornecedor: string; valor: number }; // fornecedor com preço único em todos os itens, todas as lojas
 };
+
+// Preenche o preço fixo do fornecedor em todos os itens do planejamento e já deixa ele escolhido.
+// Não sobrescreve preço digitado/importado nem uma escolha já feita; pedido fechado não muda.
+async function aplicarPrecoFixo(cfg: ConfigCompras, planejamentoId: number) {
+  if (!cfg.precoFixo) return;
+  const T = cfg.prefixo;
+  const [p] = await db().query<any[]>(`SELECT status FROM ${T}_planejamentos WHERE id=? LIMIT 1`, [planejamentoId]);
+  if (!p.length || String(p[0].status) === "pedido_salvo") return;
+  await db().query(`INSERT IGNORE INTO ${T}_fornecedores (nome,ativo) VALUES (?,1)`, [cfg.precoFixo.fornecedor]);
+  const [f] = await db().query<any[]>(`SELECT id FROM ${T}_fornecedores WHERE nome=? LIMIT 1`, [cfg.precoFixo.fornecedor]);
+  const fid = Number(f[0]?.id || 0);
+  if (!fid) return;
+  await db().query(`INSERT IGNORE INTO ${T}_cotacoes (itemId,fornecedorId,valor) SELECT id,?,? FROM ${T}_itens WHERE planejamentoId=?`, [fid, cfg.precoFixo.valor, planejamentoId]);
+  await db().query(
+    `UPDATE ${T}_itens i JOIN ${T}_cotacoes c ON c.itemId=i.id AND c.fornecedorId=?
+        SET i.fornecedorSelecionadoId=?, i.precoSelecionado=c.valor
+      WHERE i.planejamentoId=? AND i.fornecedorSelecionadoId IS NULL`,
+    [fid, fid, planejamentoId]
+  );
+}
 
 function itemComAplicacao(cfg: ConfigCompras, item: unknown, especificacao: unknown) {
   const ap = String(especificacao ?? "").trim();
@@ -602,6 +623,7 @@ function criarRouterCompras(cfg: ConfigCompras) {
         await c.query(`INSERT INTO ${T}_itens (planejamentoId,codigo,item,grupo,especificacao,vendaPeriodo,estoqueAtual,necessidade,quantidadeFinal,lado) VALUES (?,?,?,?,?,?,?,?,?,?)`, [id,x.codigo,x.item,x.grupo,x.especificacao || null,x.vendaPeriodo,x.estoqueAtual,x.necessidade,x.quantidadeFinal,x.lado || null]);
       }
       await c.commit();
+      await aplicarPrecoFixo(cfg, id);
       return { ok: true, planejamentoId: id, totalItens: buy.length };
     } catch (e) { await c.rollback(); throw e; } finally { c.release(); }
   }),
@@ -627,6 +649,7 @@ function criarRouterCompras(cfg: ConfigCompras) {
 
   detalhe: protectedProcedure.input(z.object({ planejamentoId: z.number().int().positive() })).query(async ({ ctx, input }) => {
     assertCompras(ctx); await ensure(T);
+    await aplicarPrecoFixo(cfg, input.planejamentoId); // cotações já abertas também recebem o preço fixo
     const [pRows] = await db().query<any[]>(`SELECT * FROM ${T}_planejamentos WHERE id=? LIMIT 1`, [input.planejamentoId]);
     if (!pRows.length) throw new TRPCError({ code: "NOT_FOUND", message: "Planejamento não encontrado." });
     const [items] = await db().query<any[]>(`SELECT i.*,f.nome fornecedorSelecionadoNome FROM ${T}_itens i LEFT JOIN ${T}_fornecedores f ON f.id=i.fornecedorSelecionadoId WHERE i.planejamentoId=? ORDER BY i.codigo`, [input.planejamentoId]);
@@ -949,5 +972,5 @@ function criarRouterCompras(cfg: ConfigCompras) {
 }
 
 export const comprasPecasRouter = criarRouterCompras({ prefixo: "compras_pecas", rotulo: "PEÇAS", arquivo: "pecas", limiteValor: true, aplicacaoNoItem: false });
-export const comprasAmortecedoresRouter = criarRouterCompras({ prefixo: "compras_amort", rotulo: "AMORTECEDORES", arquivo: "amortecedores", limiteValor: false, aplicacaoNoItem: true });
+export const comprasAmortecedoresRouter = criarRouterCompras({ prefixo: "compras_amort", rotulo: "AMORTECEDORES", arquivo: "amortecedores", limiteValor: false, aplicacaoNoItem: true, precoFixo: { fornecedor: "NEW KITS", valor: 50 } });
 
