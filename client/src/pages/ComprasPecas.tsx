@@ -409,8 +409,8 @@ function arredondarCompra(
 // Códigos que não saem no relatório do sistema e precisam ficar sempre com estoque mínimo:
 // a cada planejamento é obrigatório informar o estoque atual; compra = mínimo − estoque.
 const ESTOQUE_MINIMO = [
-  { codigo: "SK402S", minimo: 100 },
-  { codigo: "SK404", minimo: 100 },
+  { codigo: "SK402S", item: "KIT AMORTECEDOR DIANTEIRO", minimo: 100 },
+  { codigo: "SK404", item: "KIT AMORTECEDOR TRASEIRO", minimo: 100 },
 ];
 
 function dinheiroNumero(valor: number) {
@@ -757,7 +757,7 @@ export default function ComprasPecas() {
   // Itens de estoque mínimo entram no planejamento junto com os do relatório (só se faltar estoque).
   const itensEstoqueMinimo = useMemo<ItemPeca[]>(
     () =>
-      ESTOQUE_MINIMO.flatMap(({ codigo, minimo }) => {
+      ESTOQUE_MINIMO.flatMap(({ codigo, item, minimo }) => {
         const bruto = estoqueMinimo[codigo];
         if (bruto === undefined || bruto === "") return [];
         const estoqueAtual = Math.max(0, Math.floor(Number(bruto)));
@@ -766,7 +766,7 @@ export default function ComprasPecas() {
         return [{
           id: `minimo-${codigo}`,
           codigo,
-          item: codigo,
+          item,
           grupo: "Estoque mínimo" as const,
           vendaPeriodo: 0,
           estoqueAtual,
@@ -873,12 +873,12 @@ export default function ComprasPecas() {
               <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">Estoque mínimo • obrigatório</p>
               <p className="mt-1 text-xs text-gray-500">Esses códigos não saem no relatório. Informe o estoque atual de cada um; a compra completa até o mínimo.</p>
               <div className="mt-3 flex flex-wrap gap-3">
-                {ESTOQUE_MINIMO.map(({ codigo, minimo }) => {
+                {ESTOQUE_MINIMO.map(({ codigo, item, minimo }) => {
                   const valor = estoqueMinimo[codigo] ?? "";
                   const compra = valor === "" ? null : Math.max(0, minimo - Number(valor));
                   return (
                     <label key={codigo} className="block w-full sm:w-64">
-                      <span className="mb-1 block text-xs font-black text-[#F2D675]">{codigo} <span className="font-bold text-gray-600">• mínimo {minimo}</span></span>
+                      <span className="mb-1 block text-xs font-black text-[#F2D675]">{codigo} <span className="font-bold text-gray-400">{item}</span> <span className="font-bold text-gray-600">• mínimo {minimo}</span></span>
                       <input
                         value={valor}
                         inputMode="numeric"
