@@ -788,20 +788,24 @@ function criarRouterCompras(cfg: ConfigCompras) {
   fecharPedidos: protectedProcedure.input(z.object({planejamentoId:z.number().int().positive()})).mutation(async({ctx,input})=>{
     assertCompras(ctx); await ensure(T);
     const [old]=await db().query<any[]>(`SELECT id FROM ${T}_pedidos WHERE planejamentoId=? LIMIT 1`,[input.planejamentoId]);
-    if(old.length) return {ok:true,jaSalvo:true,pedidos:0};
+    if(old.length) return {ok:true,jaSalvo:true,pedidos:0,semPreco:0};
     const [todos]=await db().query<any[]>(`SELECT i.*,f.nome fornecedorNome FROM ${T}_itens i LEFT JOIN ${T}_fornecedores f ON f.id=i.fornecedorSelecionadoId WHERE i.planejamentoId=? AND i.quantidadeFinal>0 ORDER BY i.codigo`,[input.planejamentoId]);
     // Peça acima do limite (bucha > R$30 ou qualquer peça > R$100) precisa de OK; negada não entra no pedido.
     const aguardando=todos.filter((x)=>cfg.limiteValor&&x.precoSelecionado!=null&&acimaDoLimitePeca(x.grupo,Number(x.precoSelecionado))&&!x.aprovacaoValor);
     if(aguardando.length) throw new TRPCError({code:"BAD_REQUEST",message:`${aguardando.length} peça(s) acima do limite aguardando OK ou Negar.`});
-    const items=todos.filter((x)=>x.aprovacaoValor!=="negado");
-    if(!items.length) throw new TRPCError({code:"BAD_REQUEST",message:"Todas as peças foram negadas: não há pedido para fechar."});
+    // Peça que nenhum fornecedor cotou (sem preço em ninguém) fica fora do pedido em vez de travar o fechamento.
+    const [cotadas]=todos.length?await db().query<any[]>(`SELECT DISTINCT itemId FROM ${T}_cotacoes WHERE valor>0 AND itemId IN (${todos.map(()=>"?").join(",")})`,todos.map((x)=>Number(x.id))):[[]as any[]];
+    const comPreco=new Set(cotadas.map((r:any)=>Number(r.itemId)));
+    const semPreco=todos.filter((x)=>x.aprovacaoValor!=="negado"&&!comPreco.has(Number(x.id))).length;
+    const items=todos.filter((x)=>x.aprovacaoValor!=="negado"&&comPreco.has(Number(x.id)));
+    if(!items.length) throw new TRPCError({code:"BAD_REQUEST",message:"Nenhuma peça com preço para pedir: não há pedido para fechar."});
     const missing=items.filter((x)=>!x.fornecedorSelecionadoId||x.precoSelecionado==null||Number(x.precoSelecionado)<=0);
-    if(missing.length) throw new TRPCError({code:"BAD_REQUEST",message:`${missing.length} item(ns) ainda sem fornecedor/preço selecionado.`});
+    if(missing.length) throw new TRPCError({code:"BAD_REQUEST",message:`${missing.length} item(ns) com preço, mas sem fornecedor escolhido. Clique em Escolher ou em Selecionar menores preços.`});
     const groups=new Map<number,any[]>(); for(const x of items){const id=Number(x.fornecedorSelecionadoId);groups.set(id,[...(groups.get(id)||[]),x]);}
     const c=await db().getConnection();
     try{ await c.beginTransaction();
       for(const [fid,list] of groups){ const qty=list.reduce((s,x)=>s+Number(x.quantidadeFinal||0),0); const total=list.reduce((s,x)=>s+Number(x.quantidadeFinal||0)*Number(x.precoSelecionado||0),0); const [r]=await c.query<any>(`INSERT INTO ${T}_pedidos (planejamentoId,fornecedorId,fornecedorNome,totalItens,totalQuantidade,totalValor) VALUES (?,?,?,?,?,?)`,[input.planejamentoId,fid,String(list[0].fornecedorNome||"Fornecedor"),list.length,qty,total]); const pid=Number(r.insertId); for(const x of list){const q=Number(x.quantidadeFinal||0),v=Number(x.precoSelecionado||0),t=Number((q*v).toFixed(2)); await c.query(`INSERT INTO ${T}_pedido_itens (pedidoId,codigo,item,quantidade,valorUnitario,total) VALUES (?,?,?,?,?,?)`,[pid,x.codigo,itemComAplicacao(cfg,x.item,x.especificacao),q,v,t]);}}
-      await c.query(`UPDATE ${T}_planejamentos SET status='pedido_salvo' WHERE id=?`,[input.planejamentoId]); await c.commit(); return {ok:true,jaSalvo:false,pedidos:groups.size};
+      await c.query(`UPDATE ${T}_planejamentos SET status='pedido_salvo' WHERE id=?`,[input.planejamentoId]); await c.commit(); return {ok:true,jaSalvo:false,pedidos:groups.size,semPreco};
     }catch(e){await c.rollback();throw e;}finally{c.release();}
   }),
 

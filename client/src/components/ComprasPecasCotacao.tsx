@@ -143,7 +143,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
   const menores = api.selecionarMenores.useMutation({ onSuccess:async(d)=>{setMensagem(`${d.selecionados} menor(es) preço(s) selecionado(s).`);await detalheQ.refetch();}, onError:(e)=>setErro(e.message) });
   const arquivoCotacao = api.arquivoCotacaoFornecedor.useMutation({ onSuccess:(d)=>baixar(d.nome,d.mime,d.base64), onError:(e)=>setErro(e.message) });
   const importarCotacao = api.importarCotacaoFornecedor.useMutation({ onSuccess:async(d)=>{setFornecedorModal(null);setMensagem(`${d.importados} preço(s) importado(s).${d.conversoes ? ` ${d.conversoes} código(s) do fornecedor guardados para o pedido.` : ""}`);await detalheQ.refetch();await planosQ.refetch();}, onError:(e)=>setErro(e.message) });
-  const fechar = api.fecharPedidos.useMutation({ onSuccess:async(d)=>{setMensagem(d.jaSalvo?"Pedidos já estavam salvos.":`${d.pedidos} pedido(s) salvo(s).`);await pedidosQ.refetch();await planosQ.refetch();setAba("pedidos");}, onError:(e)=>setErro(e.message) });
+  const fechar = api.fecharPedidos.useMutation({ onSuccess:async(d)=>{setMensagem(d.jaSalvo?"Pedidos já estavam salvos.":`${d.pedidos} pedido(s) salvo(s).${d.semPreco?` ${d.semPreco} peça(s) sem preço em nenhum fornecedor ficaram fora do pedido.`:""}`);await pedidosQ.refetch();await planosQ.refetch();setAba("pedidos");}, onError:(e)=>setErro(e.message) });
   const arquivoPedido = api.arquivoPedido.useMutation({ onSuccess:(d)=>baixar(d.nome,d.mime,d.base64), onError:(e)=>setErro(e.message) });
 
   const excluirPedidos = api.excluirPedidosPlanejamento.useMutation({
@@ -393,7 +393,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
           const semPreco=itensTotal.filter((it:any)=>!fornecedorDaPeca(it)).length;
           return <tfoot><tr className="border-t-2 border-[#D4AF37]/30 bg-[#D4AF37]/[0.04]">
             <td className="px-3 py-3 align-top"><p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">Total do pedido</p><p className="mt-1 text-sm font-black text-[#F2D675]">{moeda(totalGeral)}</p></td>
-            <td className="px-3 py-3 align-top">{semPreco>0?<p className="text-[10px] font-black leading-4 text-amber-300">{semPreco} peça(s) sem nenhum preço</p>:<p className="text-[10px] font-black leading-4 text-emerald-300">Todas as peças com preço</p>}</td>
+            <td className="px-3 py-3 align-top">{semPreco>0?<p className="text-[10px] font-black leading-4 text-amber-300">{semPreco} peça(s) sem nenhum preço • fica(m) fora do pedido</p>:<p className="text-[10px] font-black leading-4 text-emerald-300">Todas as peças com preço</p>}</td>
             <td className="px-3 py-3 text-right align-top"><p className="text-[10px] font-black uppercase text-gray-600">Qtd</p><p className="mt-1 text-sm font-black text-white">{quantidadeTotal}</p></td>
             {fornecedores.map((f:any,i:number)=>{const t=totais[i];return <td key={f.id} className="px-3 py-3 text-right align-top">{t.pecas>0?<><p className="text-sm font-black text-[#F2D675]">{moeda(t.valor)}</p><p className="mt-0.5 text-[10px] text-gray-500">{t.pecas} peça(s) • {t.quantidade} un.</p></>:<p className="text-[11px] text-gray-600">—</p>}</td>})}
           </tr></tfoot>;
