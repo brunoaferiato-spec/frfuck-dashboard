@@ -13,6 +13,7 @@ type ItemAnalise = {
   quantidadeCompra: number;
   ladoIndividual?: string | null;
   motivoRevisao?: string | null;
+  especificacao?: string | null;
 };
 
 type Aba = "cotacao" | "pedidos" | "historico" | "fornecedores";
@@ -51,7 +52,10 @@ async function toBase64(file: File) {
   return btoa(s);
 }
 
-export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade }: { itens: ItemAnalise[]; arquivoNome: string; onTrocarCidade?: () => void }) {
+// tipo "amortecedores": mesmas telas com as tabelas de amortecedores, sem o limite de valor (OK/Negar)
+// e com a aplicação (carros) embaixo do item.
+export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade, tipo = "pecas" }: { itens: ItemAnalise[]; arquivoNome: string; onTrocarCidade?: () => void; tipo?: "pecas" | "amortecedores" }) {
+  const api = tipo === "amortecedores" ? trpc.compras.amortecedores : trpc.compras.pecas;
   const utils = trpc.useUtils();
   const [aba, setAba] = useState<Aba>("cotacao");
   const [planejamentoId, setPlanejamentoId] = useState<number | null>(null);
@@ -68,10 +72,10 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
   const [erro, setErro] = useState("");
 
   const lojasQ = trpc.lojas.list.useQuery(undefined, { retry: false });
-  const fornecedoresQ = trpc.compras.pecas.fornecedores.useQuery();
-  const planosQ = trpc.compras.pecas.planejamentos.useQuery();
-  const lixeiraQ = trpc.compras.pecas.lixeira.useQuery();
-  const restaurarPlanejamento = trpc.compras.pecas.restaurarPlanejamento.useMutation({
+  const fornecedoresQ = api.fornecedores.useQuery();
+  const planosQ = api.planejamentos.useQuery();
+  const lixeiraQ = api.lixeira.useQuery();
+  const restaurarPlanejamento = api.restaurarPlanejamento.useMutation({
     onSuccess: async (d) => {
       setErro("");
       setMensagem(`Planejamento #${d.planejamentoId} restaurado. Ele voltou para o Histórico.`);
@@ -111,16 +115,16 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
       ),
     [planosQ.data, filtroLojaHistorico]
   );
-  const detalheQ = trpc.compras.pecas.detalhe.useQuery({ planejamentoId: planejamentoId || 0 }, { enabled: !!planejamentoId });
-  const pedidosQ = trpc.compras.pecas.pedidos.useQuery({ planejamentoId: planejamentoId || 0 }, { enabled: !!planejamentoId });
+  const detalheQ = api.detalhe.useQuery({ planejamentoId: planejamentoId || 0 }, { enabled: !!planejamentoId });
+  const pedidosQ = api.pedidos.useQuery({ planejamentoId: planejamentoId || 0 }, { enabled: !!planejamentoId });
 
-  const criarPlano = trpc.compras.pecas.criarPlanejamento.useMutation({
+  const criarPlano = api.criarPlanejamento.useMutation({
     onSuccess: async (d) => { setPlanejamentoId(Number(d.planejamentoId)); setMensagem(`Planejamento #${d.planejamentoId} salvo.`); setErro(""); await planosQ.refetch(); setAba("cotacao"); },
     onError: (e) => setErro(e.message),
   });
-  const criarFornecedor = trpc.compras.pecas.criarFornecedor.useMutation({ onSuccess: async()=>{setNovoFornecedor("");await fornecedoresQ.refetch();}, onError:(e)=>setErro(e.message) });
-  const toggleFornecedor = trpc.compras.pecas.definirFornecedorAtivo.useMutation({ onSuccess:async()=>{await fornecedoresQ.refetch();} });
-  const atualizarQuantidade = trpc.compras.pecas.atualizarQuantidade.useMutation({
+  const criarFornecedor = api.criarFornecedor.useMutation({ onSuccess: async()=>{setNovoFornecedor("");await fornecedoresQ.refetch();}, onError:(e)=>setErro(e.message) });
+  const toggleFornecedor = api.definirFornecedorAtivo.useMutation({ onSuccess:async()=>{await fornecedoresQ.refetch();} });
+  const atualizarQuantidade = api.atualizarQuantidade.useMutation({
     onSuccess: async (data) => {
       setQuantidadeLocal((atual) => {
         const novo = { ...atual };
@@ -134,15 +138,15 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
     },
     onError: (e) => setErro(e.message),
   });
-  const salvarCotacao = trpc.compras.pecas.salvarCotacao.useMutation({ onSuccess:async()=>{await detalheQ.refetch();await planosQ.refetch();}, onError:(e)=>setErro(e.message) });
-  const selecionar = trpc.compras.pecas.selecionarFornecedor.useMutation({ onSuccess:async()=>{await detalheQ.refetch();}, onError:(e)=>setErro(e.message) });
-  const menores = trpc.compras.pecas.selecionarMenores.useMutation({ onSuccess:async(d)=>{setMensagem(`${d.selecionados} menor(es) preço(s) selecionado(s).`);await detalheQ.refetch();}, onError:(e)=>setErro(e.message) });
-  const arquivoCotacao = trpc.compras.pecas.arquivoCotacaoFornecedor.useMutation({ onSuccess:(d)=>baixar(d.nome,d.mime,d.base64), onError:(e)=>setErro(e.message) });
-  const importarCotacao = trpc.compras.pecas.importarCotacaoFornecedor.useMutation({ onSuccess:async(d)=>{setFornecedorModal(null);setMensagem(`${d.importados} preço(s) importado(s).${d.conversoes ? ` ${d.conversoes} código(s) do fornecedor guardados para o pedido.` : ""}`);await detalheQ.refetch();await planosQ.refetch();}, onError:(e)=>setErro(e.message) });
-  const fechar = trpc.compras.pecas.fecharPedidos.useMutation({ onSuccess:async(d)=>{setMensagem(d.jaSalvo?"Pedidos já estavam salvos.":`${d.pedidos} pedido(s) salvo(s).`);await pedidosQ.refetch();await planosQ.refetch();setAba("pedidos");}, onError:(e)=>setErro(e.message) });
-  const arquivoPedido = trpc.compras.pecas.arquivoPedido.useMutation({ onSuccess:(d)=>baixar(d.nome,d.mime,d.base64), onError:(e)=>setErro(e.message) });
+  const salvarCotacao = api.salvarCotacao.useMutation({ onSuccess:async()=>{await detalheQ.refetch();await planosQ.refetch();}, onError:(e)=>setErro(e.message) });
+  const selecionar = api.selecionarFornecedor.useMutation({ onSuccess:async()=>{await detalheQ.refetch();}, onError:(e)=>setErro(e.message) });
+  const menores = api.selecionarMenores.useMutation({ onSuccess:async(d)=>{setMensagem(`${d.selecionados} menor(es) preço(s) selecionado(s).`);await detalheQ.refetch();}, onError:(e)=>setErro(e.message) });
+  const arquivoCotacao = api.arquivoCotacaoFornecedor.useMutation({ onSuccess:(d)=>baixar(d.nome,d.mime,d.base64), onError:(e)=>setErro(e.message) });
+  const importarCotacao = api.importarCotacaoFornecedor.useMutation({ onSuccess:async(d)=>{setFornecedorModal(null);setMensagem(`${d.importados} preço(s) importado(s).${d.conversoes ? ` ${d.conversoes} código(s) do fornecedor guardados para o pedido.` : ""}`);await detalheQ.refetch();await planosQ.refetch();}, onError:(e)=>setErro(e.message) });
+  const fechar = api.fecharPedidos.useMutation({ onSuccess:async(d)=>{setMensagem(d.jaSalvo?"Pedidos já estavam salvos.":`${d.pedidos} pedido(s) salvo(s).`);await pedidosQ.refetch();await planosQ.refetch();setAba("pedidos");}, onError:(e)=>setErro(e.message) });
+  const arquivoPedido = api.arquivoPedido.useMutation({ onSuccess:(d)=>baixar(d.nome,d.mime,d.base64), onError:(e)=>setErro(e.message) });
 
-  const excluirPedidos = trpc.compras.pecas.excluirPedidosPlanejamento.useMutation({
+  const excluirPedidos = api.excluirPedidosPlanejamento.useMutation({
     onSuccess: async (data) => {
       setMensagem(
         `${data.excluidos || 0} pedido(s) excluído(s). A cotação foi reaberta.`
@@ -158,7 +162,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
     onError: (e) => setErro(e.message),
   });
 
-  const excluirPlanejamento = trpc.compras.pecas.excluirPlanejamento.useMutation({
+  const excluirPlanejamento = api.excluirPlanejamento.useMutation({
     onSuccess: async (data) => {
       setMensagem(`Planejamento #${data.planejamentoId} enviado para a lixeira. Dá para restaurar no fim do Histórico.`);
       setErro("");
@@ -185,7 +189,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
     if (!lojaDaCotacao) return;
     setNovoFornecedorLojas(LOJAS_RS.includes(lojaDaCotacao) ? LOJAS_RS : LOJAS_SC.includes(lojaDaCotacao) ? LOJAS_SC : [lojaDaCotacao]);
   }, [lojaDaCotacao]);
-  const definirLojasFornecedor = trpc.compras.pecas.definirLojasFornecedor.useMutation({ onSuccess: async () => { await fornecedoresQ.refetch(); }, onError: (e) => setErro(e.message) });
+  const definirLojasFornecedor = api.definirLojasFornecedor.useMutation({ onSuccess: async () => { await fornecedoresQ.refetch(); }, onError: (e) => setErro(e.message) });
   function alternarLojaFornecedor(f: any, alvo: number) {
     const atuais: number[] = f.lojas || [];
     const novas = atuais.includes(alvo) ? atuais.filter((x) => x !== alvo) : [...atuais, alvo];
@@ -206,10 +210,10 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
     }
     const bucha = String(it.grupo || "").toUpperCase() === "BUCHA";
     const limite = bucha ? 30 : 100;
-    const acima = preco > limite;
+    const acima = tipo === "pecas" && preco > limite;
     return { preco, limite, acima, bucha, aprovacao: (it.aprovacaoValor || null) as "aprovado" | "negado" | null };
   }
-  const definirAprovacao = trpc.compras.pecas.definirAprovacao.useMutation({ onSuccess: async () => { setErro(""); await detalheQ.refetch(); }, onError: (e) => setErro(e.message) });
+  const definirAprovacao = api.definirAprovacao.useMutation({ onSuccess: async () => { setErro(""); await detalheQ.refetch(); }, onError: (e) => setErro(e.message) });
   const countMap = useMemo(()=>{ const m=new Map<number,number>(); for(const q of detalheQ.data?.cotacoes || []) m.set(Number(q.fornecedorId),(m.get(Number(q.fornecedorId))||0)+1); return m;},[detalheQ.data?.cotacoes]);
 
   function salvarPlanejamento(){
@@ -318,7 +322,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
     {aba==='cotacao' && <div className="mt-5">
       {!planejamentoId ? <div className="rounded-2xl border border-white/[0.06] p-8 text-center text-gray-500">Salve o planejamento para iniciar a cotação.</div> : fornecedores.length===0 ? <div className="rounded-2xl border border-white/[0.06] p-8 text-center text-gray-500">Cadastre fornecedores na aba Fornecedores.</div> : <>
         <div className="mb-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={()=>menores.mutate({planejamentoId})} className="h-10 rounded-xl border border-emerald-400/20 px-4 text-xs font-black text-emerald-200"><Check className="mr-2 inline h-4 w-4"/>Selecionar menores preços</button><button type="button" onClick={()=>fechar.mutate({planejamentoId})} className="h-10 rounded-xl bg-[#D4AF37] px-4 text-xs font-black text-black"><Save className="mr-2 inline h-4 w-4"/>Fechar cotação e salvar pedidos</button></div>
-        <div className="overflow-x-auto"><table className="min-w-[950px] w-full text-xs"><thead className="bg-white/[0.025] text-[9px] uppercase text-gray-600"><tr><th className="px-3 py-3 text-left">Código</th><th className="px-3 py-3 text-left">Item</th><th className="px-3 py-3 text-right">Qtd interna</th>{fornecedores.map((f:any)=><th key={f.id} className="px-3 py-3 text-center"><button type="button" onClick={()=>setFornecedorModal(f)} className="font-black text-gray-300 hover:text-[#F2D675]">{f.nome}</button><span className="ml-2 rounded-full bg-white/[0.04] px-2 py-1">{countMap.get(Number(f.id))||0}/{detalheQ.data?.itens?.length||0}</span></th>)}</tr></thead><tbody>{(detalheQ.data?.itens||[]).map((it:any)=>{const lim=limiteDoItem(it);const pedido=detalheQ.data?.planejamento?.status==="pedido_salvo";return <tr key={it.id} className={`border-t border-white/[0.05] ${lim.acima&&!lim.aprovacao?"bg-rose-500/[0.10] shadow-[inset_3px_0_0_0_rgba(244,63,94,0.85)]":""} ${lim.acima&&lim.aprovacao==="negado"?"opacity-50":""}`}><td className={`px-3 py-3 font-black ${lim.acima&&lim.aprovacao==="negado"?"text-gray-500 line-through":"text-[#F2D675]"}`}>{it.codigo}</td><td className="px-3 py-3 font-bold"><span className={lim.acima&&lim.aprovacao==="negado"?"line-through":""}>{it.item}</span>{lim.acima&&(<div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-black">{!lim.aprovacao&&<span className="rounded-full bg-rose-500/[0.15] px-2 py-0.5 text-rose-200">{lim.bucha?"Bucha":"Peça"} acima de {moeda(lim.limite)} • {moeda(lim.preco)} • aguardando OK</span>}{lim.aprovacao==="aprovado"&&<span className="rounded-full bg-emerald-400/[0.12] px-2 py-0.5 text-emerald-300">Aprovado ({moeda(lim.preco)})</span>}{lim.aprovacao==="negado"&&<span className="rounded-full bg-rose-500/[0.12] px-2 py-0.5 text-rose-300">Negado • não entra no pedido</span>}{!pedido&&lim.aprovacao!=="aprovado"&&<button type="button" disabled={definirAprovacao.isPending} onClick={()=>definirAprovacao.mutate({itemId:Number(it.id),aprovacao:"aprovado"})} className="rounded-lg bg-emerald-400 px-2 py-0.5 text-black disabled:opacity-50">✓ OK</button>}{!pedido&&lim.aprovacao!=="negado"&&<button type="button" disabled={definirAprovacao.isPending} onClick={()=>definirAprovacao.mutate({itemId:Number(it.id),aprovacao:"negado"})} className="rounded-lg border border-rose-400/40 px-2 py-0.5 text-rose-200 disabled:opacity-50">✕ Negar</button>}</div>)}</td><td className="px-3 py-2 text-right">
+        <div className="overflow-x-auto"><table className="min-w-[950px] w-full text-xs"><thead className="bg-white/[0.025] text-[9px] uppercase text-gray-600"><tr><th className="px-3 py-3 text-left">Código</th><th className="px-3 py-3 text-left">Item</th><th className="px-3 py-3 text-right">Qtd interna</th>{fornecedores.map((f:any)=><th key={f.id} className="px-3 py-3 text-center"><button type="button" onClick={()=>setFornecedorModal(f)} className="font-black text-gray-300 hover:text-[#F2D675]">{f.nome}</button><span className="ml-2 rounded-full bg-white/[0.04] px-2 py-1">{countMap.get(Number(f.id))||0}/{detalheQ.data?.itens?.length||0}</span></th>)}</tr></thead><tbody>{(detalheQ.data?.itens||[]).map((it:any)=>{const lim=limiteDoItem(it);const pedido=detalheQ.data?.planejamento?.status==="pedido_salvo";return <tr key={it.id} className={`border-t border-white/[0.05] ${lim.acima&&!lim.aprovacao?"bg-rose-500/[0.10] shadow-[inset_3px_0_0_0_rgba(244,63,94,0.85)]":""} ${lim.acima&&lim.aprovacao==="negado"?"opacity-50":""}`}><td className={`px-3 py-3 font-black ${lim.acima&&lim.aprovacao==="negado"?"text-gray-500 line-through":"text-[#F2D675]"}`}>{it.codigo}</td><td className="px-3 py-3 font-bold"><span className={lim.acima&&lim.aprovacao==="negado"?"line-through":""}>{it.item}</span>{tipo==="amortecedores"&&<div className="mt-1 max-w-[420px] text-[11px] font-semibold leading-4 text-sky-200/80">{it.especificacao||"Sem aplicação cadastrada"}</div>}{lim.acima&&(<div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-black">{!lim.aprovacao&&<span className="rounded-full bg-rose-500/[0.15] px-2 py-0.5 text-rose-200">{lim.bucha?"Bucha":"Peça"} acima de {moeda(lim.limite)} • {moeda(lim.preco)} • aguardando OK</span>}{lim.aprovacao==="aprovado"&&<span className="rounded-full bg-emerald-400/[0.12] px-2 py-0.5 text-emerald-300">Aprovado ({moeda(lim.preco)})</span>}{lim.aprovacao==="negado"&&<span className="rounded-full bg-rose-500/[0.12] px-2 py-0.5 text-rose-300">Negado • não entra no pedido</span>}{!pedido&&lim.aprovacao!=="aprovado"&&<button type="button" disabled={definirAprovacao.isPending} onClick={()=>definirAprovacao.mutate({itemId:Number(it.id),aprovacao:"aprovado"})} className="rounded-lg bg-emerald-400 px-2 py-0.5 text-black disabled:opacity-50">✓ OK</button>}{!pedido&&lim.aprovacao!=="negado"&&<button type="button" disabled={definirAprovacao.isPending} onClick={()=>definirAprovacao.mutate({itemId:Number(it.id),aprovacao:"negado"})} className="rounded-lg border border-rose-400/40 px-2 py-0.5 text-rose-200 disabled:opacity-50">✕ Negar</button>}</div>)}</td><td className="px-3 py-2 text-right">
   <input
     type="number"
     min={0}

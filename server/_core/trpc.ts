@@ -15,6 +15,7 @@ export const publicProcedure = t.procedure;
 const ROTAS_PERFIL_COMPRAS = [
   "compras.pneus.",
   "compras.pecas.",
+  "compras.amortecedores.",
   "compras.insumosEstoque.",
   "compras.insumosLoja.",
   "compras.manutencao.",

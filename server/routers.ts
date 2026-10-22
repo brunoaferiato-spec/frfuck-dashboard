@@ -82,7 +82,7 @@ import { rhFeriasRouter } from "./rhFerias";
 import { rhExperienciaRouter } from "./rhExperiencia";
 import { rhRescisoesRouter } from "./rhRescisoes";
 import { comprasPneusRouter } from "./comprasPneus";
-import { comprasPecasRouter } from "./comprasPecas";
+import { comprasPecasRouter, comprasAmortecedoresRouter } from "./comprasPecas";
 import { comprasInsumosEstoqueRouter, comprasInsumosLojaRouter } from "./comprasInsumos";
 import { comprasManutencaoRouter } from "./comprasManutencao";
 
@@ -2003,6 +2003,7 @@ export const appRouter = router({
       ),
     pneus: comprasPneusRouter,
     pecas: comprasPecasRouter,
+    amortecedores: comprasAmortecedoresRouter,
     insumosEstoque: comprasInsumosEstoqueRouter,
     insumosLoja: comprasInsumosLojaRouter,
     manutencao: comprasManutencaoRouter,

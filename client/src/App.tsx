@@ -28,6 +28,7 @@ import RHFeriasPlanejamento from "./pages/RHFeriasPlanejamento";
 import ComprasShell from "./components/ComprasShell";
 import ComprasPneus from "./pages/ComprasPneus";
 import ComprasPecas from "./pages/ComprasPecas";
+import ComprasAmortecedores from "./pages/ComprasAmortecedores";
 import ComprasPlaceholder from "./pages/ComprasPlaceholder";
 import ComprasInsumos from "./pages/ComprasInsumos";
 import ComprasManutencao from "./pages/ComprasManutencao";
@@ -296,6 +297,12 @@ function Router() {
       <Route path="/compras/pecas">
         <RotaCompras>
           <ComprasPecas />
+        </RotaCompras>
+      </Route>
+
+      <Route path="/compras/amortecedores">
+        <RotaCompras>
+          <ComprasAmortecedores />
         </RotaCompras>
       </Route>
 

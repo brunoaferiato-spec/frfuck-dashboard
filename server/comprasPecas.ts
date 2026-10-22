@@ -4,12 +4,13 @@ import ExcelJS from "exceljs";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { consultarCatalogoPerfectLocal } from "./catalogoPerfectPecas";
+import { APLICACOES_AMORTECEDORES } from "./amortecedoresAplicacoes";
 import { protectedProcedure, router } from "./_core/trpc";
 
 const MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const MAX_FILE = 8 * 1024 * 1024;
 let pool: mysql.Pool | null = null;
-let ready = false;
+const prontos = new Set<string>();
 
 export function assertCompras(ctx: any) {
   const role = String(ctx?.user?.role || "");
@@ -47,10 +48,11 @@ export function db() {
   return pool;
 }
 
-async function ensure() {
-  if (ready) return;
+// T = prefixo das tabelas: compras_pecas (peças) ou compras_amort (amortecedores).
+async function ensure(T = "compras_pecas") {
+  if (prontos.has(T)) return;
   const p = db();
-  await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_fornecedores (
+  await p.query(`CREATE TABLE IF NOT EXISTS ${T}_fornecedores (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     nome VARCHAR(160) NOT NULL,
     ativo TINYINT(1) NOT NULL DEFAULT 1,
@@ -58,24 +60,8 @@ async function ensure() {
     PRIMARY KEY (id), UNIQUE KEY uq_cp_fornecedor_nome (nome)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
-  // Lixeira: planejamento excluído fica guardado (com quem excluiu e quando) e pode ser restaurado.
-  for (const coluna of ["ADD COLUMN excluidoEm TIMESTAMP NULL", "ADD COLUMN excluidoPorNome VARCHAR(160) NULL"]) {
-    try {
-      await p.query(`ALTER TABLE compras_pecas_planejamentos ${coluna}`);
-    } catch (error: any) {
-      if (error?.code !== "ER_DUP_FIELDNAME") throw error;
-    }
-  }
-
-  // Peça acima do limite de preço: 'aprovado' entra no pedido, 'negado' fica na cotação mas não é pedida.
-  try {
-    await p.query(`ALTER TABLE compras_pecas_itens ADD COLUMN aprovacaoValor VARCHAR(10) NULL`);
-  } catch (error: any) {
-    if (error?.code !== "ER_DUP_FIELDNAME") throw error;
-  }
-
   // Conversão do nosso código para o código do fornecedor (hoje só NEW KITS usa).
-  await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_codigos_fornecedor (
+  await p.query(`CREATE TABLE IF NOT EXISTS ${T}_codigos_fornecedor (
     fornecedorId INT UNSIGNED NOT NULL,
     codigo VARCHAR(100) NOT NULL,
     codigoFornecedor VARCHAR(100) NOT NULL,
@@ -84,13 +70,13 @@ async function ensure() {
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
   // Lojas atendidas por cada fornecedor de peças. Sem nenhuma loja aqui = atende todas.
-  await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_fornecedor_lojas (
+  await p.query(`CREATE TABLE IF NOT EXISTS ${T}_fornecedor_lojas (
     fornecedorId INT UNSIGNED NOT NULL,
     lojaId INT UNSIGNED NOT NULL,
     PRIMARY KEY (fornecedorId, lojaId)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
-  await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_planejamentos (
+  await p.query(`CREATE TABLE IF NOT EXISTS ${T}_planejamentos (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     lojaId INT UNSIGNED NULL,
     lojaNome VARCHAR(120) NULL,
@@ -104,7 +90,7 @@ async function ensure() {
 
   try {
     await p.query(
-      `ALTER TABLE compras_pecas_planejamentos
+      `ALTER TABLE ${T}_planejamentos
        ADD COLUMN lojaId INT UNSIGNED NULL AFTER id`
     );
   } catch (error: any) {
@@ -113,14 +99,14 @@ async function ensure() {
 
   try {
     await p.query(
-      `ALTER TABLE compras_pecas_planejamentos
+      `ALTER TABLE ${T}_planejamentos
        ADD COLUMN lojaNome VARCHAR(120) NULL AFTER lojaId`
     );
   } catch (error: any) {
     if (error?.code !== "ER_DUP_FIELDNAME") throw error;
   }
 
-  await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_itens (
+  await p.query(`CREATE TABLE IF NOT EXISTS ${T}_itens (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     planejamentoId INT UNSIGNED NOT NULL,
     codigo VARCHAR(100) NOT NULL,
@@ -139,7 +125,7 @@ async function ensure() {
     KEY idx_cp_item_codigo (codigo)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
-  await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_cotacoes (
+  await p.query(`CREATE TABLE IF NOT EXISTS ${T}_cotacoes (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     itemId INT UNSIGNED NOT NULL,
     fornecedorId INT UNSIGNED NOT NULL,
@@ -149,7 +135,7 @@ async function ensure() {
     UNIQUE KEY uq_cp_cot_item_fornecedor (itemId, fornecedorId)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
-  await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_pedidos (
+  await p.query(`CREATE TABLE IF NOT EXISTS ${T}_pedidos (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     planejamentoId INT UNSIGNED NOT NULL,
     fornecedorId INT UNSIGNED NOT NULL,
@@ -162,7 +148,7 @@ async function ensure() {
     UNIQUE KEY uq_cp_pedido_plan_fornecedor (planejamentoId, fornecedorId)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
-  await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_pedido_itens (
+  await p.query(`CREATE TABLE IF NOT EXISTS ${T}_pedido_itens (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     pedidoId INT UNSIGNED NOT NULL,
     codigo VARCHAR(100) NOT NULL,
@@ -173,7 +159,7 @@ async function ensure() {
     PRIMARY KEY (id), KEY idx_cp_pedido_item (pedidoId)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
 
-  await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_catalogo_cache (
+  if (T === "compras_pecas") await p.query(`CREATE TABLE IF NOT EXISTS compras_pecas_catalogo_cache (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     codigo VARCHAR(100) NOT NULL,
     fonte VARCHAR(40) NOT NULL,
@@ -187,7 +173,40 @@ async function ensure() {
     PRIMARY KEY (id),
     UNIQUE KEY uq_cp_catalogo_codigo_fonte (codigo, fonte)
   ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
-  ready = true;
+  // Lixeira: planejamento excluído fica guardado (com quem excluiu e quando) e pode ser restaurado.
+  for (const coluna of ["ADD COLUMN excluidoEm TIMESTAMP NULL", "ADD COLUMN excluidoPorNome VARCHAR(160) NULL"]) {
+    try {
+      await p.query(`ALTER TABLE ${T}_planejamentos ${coluna}`);
+    } catch (error: any) {
+      if (error?.code !== "ER_DUP_FIELDNAME") throw error;
+    }
+  }
+
+  // Peça acima do limite de preço: 'aprovado' entra no pedido, 'negado' fica na cotação mas não é pedida.
+  try {
+    await p.query(`ALTER TABLE ${T}_itens ADD COLUMN aprovacaoValor VARCHAR(10) NULL`);
+  } catch (error: any) {
+    if (error?.code !== "ER_DUP_FIELDNAME") throw error;
+  }
+
+  // Amortecedores: aplicação (carros) de cada código, lida do Impacto Prime. Carga inicial só com a tabela vazia.
+  if (T === "compras_amort") {
+    await p.query(`CREATE TABLE IF NOT EXISTS compras_amort_aplicacoes (
+      codigo VARCHAR(100) NOT NULL,
+      aplicacao TEXT NOT NULL,
+      updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (codigo)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    const [qtd] = await p.query<any[]>(`SELECT COUNT(*) total FROM compras_amort_aplicacoes`);
+    if (!Number(qtd[0]?.total || 0)) {
+      const lista = Object.entries(APLICACOES_AMORTECEDORES);
+      for (let i = 0; i < lista.length; i += 200) {
+        const lote = lista.slice(i, i + 200);
+        await p.query(`INSERT IGNORE INTO compras_amort_aplicacoes (codigo, aplicacao) VALUES ${lote.map(() => "(?,?)").join(",")}`, lote.flat());
+      }
+    }
+  }
+  prontos.add(T);
 }
 
 export function norm(v: unknown) {
@@ -210,11 +229,11 @@ function colunaCodigoDoFornecedor(nomeFornecedor: unknown) {
   return FORNECEDORES_COM_CODIGO_PROPRIO.has(nome) ? `CÓDIGO ${nome}` : undefined;
 }
 
-async function codigosDoFornecedor(fornecedorId: number, codigos: string[]) {
+async function codigosDoFornecedor(T: string, fornecedorId: number, codigos: string[]) {
   const mapa = new Map<string, string>();
   if (!codigos.length) return mapa;
   const [rows] = await db().query<any[]>(
-    `SELECT codigo, codigoFornecedor FROM compras_pecas_codigos_fornecedor WHERE fornecedorId=? AND codigo IN (${codigos.map(() => "?").join(",")})`,
+    `SELECT codigo, codigoFornecedor FROM ${T}_codigos_fornecedor WHERE fornecedorId=? AND codigo IN (${codigos.map(() => "?").join(",")})`,
     [fornecedorId, ...codigos.map((c) => norm(c))]
   );
   for (const r of rows) mapa.set(String(r.codigo), String(r.codigoFornecedor));
@@ -377,7 +396,32 @@ const itemSchema = z.object({
   lado: z.string().max(10).nullable().optional(),
 });
 
-export const comprasPecasRouter = router({
+type ConfigCompras = {
+  prefixo: "compras_pecas" | "compras_amort";
+  rotulo: string; // título dos arquivos: "PEÇAS", "AMORTECEDORES"
+  arquivo: string; // nome dos arquivos baixados: cotacao-<arquivo>-...
+  limiteValor: boolean; // OK/Negar acima de R$ 30 (bucha) / R$ 100 (peça)
+  aplicacaoNoItem: boolean; // cotação e pedido levam "item — aplicação"
+};
+
+function itemComAplicacao(cfg: ConfigCompras, item: unknown, especificacao: unknown) {
+  const ap = String(especificacao ?? "").trim();
+  return cfg.aplicacaoNoItem && ap ? `${String(item ?? "")} — ${ap}`.slice(0, 500) : String(item ?? "");
+}
+
+function criarRouterCompras(cfg: ConfigCompras) {
+  const T = cfg.prefixo;
+  return router({
+
+  // Aplicação (carros) por código; só amortecedores têm essa base.
+  buscarAplicacoes: protectedProcedure.input(z.object({ codigos: z.array(z.string().min(1).max(100)).max(5000) })).mutation(async ({ ctx, input }) => {
+    assertCompras(ctx); await ensure(T);
+    const codigos = Array.from(new Set(input.codigos.map((c) => norm(c))));
+    if (T !== "compras_amort" || !codigos.length) return [] as Array<{ codigo: string; aplicacao: string }>;
+    const [rows] = await db().query<any[]>(`SELECT codigo, aplicacao FROM compras_amort_aplicacoes WHERE codigo IN (${codigos.map(() => "?").join(",")})`, codigos);
+    return rows.map((r) => ({ codigo: String(r.codigo), aplicacao: String(r.aplicacao) }));
+  }),
+
 
   consultarCatalogoPerfect: protectedProcedure
     .input(
@@ -396,7 +440,7 @@ export const comprasPecasRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       assertCompras(ctx);
-      await ensure();
+      await ensure(T);
 
       const permitidos = new Set([
         "PIVÔ",
@@ -489,11 +533,11 @@ export const comprasPecasRouter = router({
 
 
   fornecedores: protectedProcedure.query(async ({ ctx }) => {
-    assertCompras(ctx); await ensure();
+    assertCompras(ctx); await ensure(T);
     const [rows] = await db().query<any[]>(
       `SELECT f.id,f.nome,f.ativo,GROUP_CONCAT(fl.lojaId ORDER BY fl.lojaId) lojas
-         FROM compras_pecas_fornecedores f
-         LEFT JOIN compras_pecas_fornecedor_lojas fl ON fl.fornecedorId=f.id
+         FROM ${T}_fornecedores f
+         LEFT JOIN ${T}_fornecedor_lojas fl ON fl.fornecedorId=f.id
         GROUP BY f.id ORDER BY f.ativo DESC,f.nome ASC`
     );
     // lojas vazio = atende todas as lojas
@@ -501,32 +545,32 @@ export const comprasPecasRouter = router({
   }),
 
   criarFornecedor: protectedProcedure.input(z.object({ nome: z.string().trim().min(2).max(160), lojas: z.array(z.number().int().positive()).max(20).optional() })).mutation(async ({ ctx, input }) => {
-    assertCompras(ctx); await ensure();
-    await db().query(`INSERT INTO compras_pecas_fornecedores (nome,ativo) VALUES (?,1) ON DUPLICATE KEY UPDATE ativo=1,nome=VALUES(nome)`, [input.nome.trim()]);
+    assertCompras(ctx); await ensure(T);
+    await db().query(`INSERT INTO ${T}_fornecedores (nome,ativo) VALUES (?,1) ON DUPLICATE KEY UPDATE ativo=1,nome=VALUES(nome)`, [input.nome.trim()]);
     if (input.lojas?.length) {
-      const [f] = await db().query<any[]>(`SELECT id FROM compras_pecas_fornecedores WHERE nome=? LIMIT 1`, [input.nome.trim()]);
+      const [f] = await db().query<any[]>(`SELECT id FROM ${T}_fornecedores WHERE nome=? LIMIT 1`, [input.nome.trim()]);
       const fid = Number(f[0]?.id || 0);
-      if (fid) for (const lojaId of new Set(input.lojas)) await db().query(`INSERT IGNORE INTO compras_pecas_fornecedor_lojas (fornecedorId,lojaId) VALUES (?,?)`, [fid, lojaId]);
+      if (fid) for (const lojaId of new Set(input.lojas)) await db().query(`INSERT IGNORE INTO ${T}_fornecedor_lojas (fornecedorId,lojaId) VALUES (?,?)`, [fid, lojaId]);
     }
     return { ok: true };
   }),
 
   // Em quais lojas o fornecedor aparece na cotação (lista vazia = todas).
   definirLojasFornecedor: protectedProcedure.input(z.object({ id: z.number().int().positive(), lojas: z.array(z.number().int().positive()).max(20) })).mutation(async ({ ctx, input }) => {
-    assertCompras(ctx); await ensure();
+    assertCompras(ctx); await ensure(T);
     const c = await db().getConnection();
     try {
       await c.beginTransaction();
-      await c.query(`DELETE FROM compras_pecas_fornecedor_lojas WHERE fornecedorId=?`, [input.id]);
-      for (const lojaId of new Set(input.lojas)) await c.query(`INSERT INTO compras_pecas_fornecedor_lojas (fornecedorId,lojaId) VALUES (?,?)`, [input.id, lojaId]);
+      await c.query(`DELETE FROM ${T}_fornecedor_lojas WHERE fornecedorId=?`, [input.id]);
+      for (const lojaId of new Set(input.lojas)) await c.query(`INSERT INTO ${T}_fornecedor_lojas (fornecedorId,lojaId) VALUES (?,?)`, [input.id, lojaId]);
       await c.commit();
       return { ok: true };
     } catch (e) { await c.rollback(); throw e; } finally { c.release(); }
   }),
 
   definirFornecedorAtivo: protectedProcedure.input(z.object({ id: z.number().int().positive(), ativo: z.boolean() })).mutation(async ({ ctx, input }) => {
-    assertCompras(ctx); await ensure();
-    await db().query(`UPDATE compras_pecas_fornecedores SET ativo=? WHERE id=?`, [input.ativo ? 1 : 0, input.id]);
+    assertCompras(ctx); await ensure(T);
+    await db().query(`UPDATE ${T}_fornecedores SET ativo=? WHERE id=?`, [input.ativo ? 1 : 0, input.id]);
     return { ok: true };
   }),
 
@@ -536,14 +580,14 @@ export const comprasPecasRouter = router({
     arquivoNome: z.string().max(255).nullable().optional(),
     itens: z.array(itemSchema).min(1).max(5000)
   })).mutation(async ({ ctx, input }) => {
-    assertCompras(ctx); await ensure();
+    assertCompras(ctx); await ensure(T);
     const buy = input.itens.filter((x) => x.quantidadeFinal > 0);
     if (!buy.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Não há itens para cotação." });
     const c = await db().getConnection();
     try {
       await c.beginTransaction();
       const [r] = await c.query<any>(
-        `INSERT INTO compras_pecas_planejamentos
+        `INSERT INTO ${T}_planejamentos
            (lojaId,lojaNome,status,arquivoNome,criadoPorNome)
          VALUES (?,?,'planejamento',?,?)`,
         [
@@ -555,7 +599,7 @@ export const comprasPecasRouter = router({
       );
       const id = Number(r.insertId);
       for (const x of buy) {
-        await c.query(`INSERT INTO compras_pecas_itens (planejamentoId,codigo,item,grupo,especificacao,vendaPeriodo,estoqueAtual,necessidade,quantidadeFinal,lado) VALUES (?,?,?,?,?,?,?,?,?,?)`, [id,x.codigo,x.item,x.grupo,x.especificacao || null,x.vendaPeriodo,x.estoqueAtual,x.necessidade,x.quantidadeFinal,x.lado || null]);
+        await c.query(`INSERT INTO ${T}_itens (planejamentoId,codigo,item,grupo,especificacao,vendaPeriodo,estoqueAtual,necessidade,quantidadeFinal,lado) VALUES (?,?,?,?,?,?,?,?,?,?)`, [id,x.codigo,x.item,x.grupo,x.especificacao || null,x.vendaPeriodo,x.estoqueAtual,x.necessidade,x.quantidadeFinal,x.lado || null]);
       }
       await c.commit();
       return { ok: true, planejamentoId: id, totalItens: buy.length };
@@ -563,34 +607,34 @@ export const comprasPecasRouter = router({
   }),
 
   planejamentos: protectedProcedure.query(async ({ ctx }) => {
-    assertCompras(ctx); await ensure();
-    const [rows] = await db().query<any[]>(`SELECT p.id,p.lojaId,p.lojaNome,p.status,p.arquivoNome,p.createdAt,COUNT(i.id) totalItens,COALESCE(SUM(i.quantidadeFinal),0) totalQuantidade FROM compras_pecas_planejamentos p LEFT JOIN compras_pecas_itens i ON i.planejamentoId=p.id WHERE p.excluidoEm IS NULL GROUP BY p.id ORDER BY p.createdAt DESC,p.id DESC LIMIT 100`);
+    assertCompras(ctx); await ensure(T);
+    const [rows] = await db().query<any[]>(`SELECT p.id,p.lojaId,p.lojaNome,p.status,p.arquivoNome,p.createdAt,COUNT(i.id) totalItens,COALESCE(SUM(i.quantidadeFinal),0) totalQuantidade FROM ${T}_planejamentos p LEFT JOIN ${T}_itens i ON i.planejamentoId=p.id WHERE p.excluidoEm IS NULL GROUP BY p.id ORDER BY p.createdAt DESC,p.id DESC LIMIT 100`);
     return rows.map((x) => ({ ...x, id: Number(x.id), totalItens: Number(x.totalItens||0), totalQuantidade: Number(x.totalQuantidade||0) }));
   }),
 
   // Lixeira: planejamentos excluídos (com quem excluiu e quando), para restaurar.
   lixeira: protectedProcedure.query(async ({ ctx }) => {
-    assertCompras(ctx); await ensure();
-    const [rows] = await db().query<any[]>(`SELECT p.id,p.lojaId,p.lojaNome,p.status,p.createdAt,p.excluidoEm,p.excluidoPorNome,COUNT(i.id) totalItens FROM compras_pecas_planejamentos p LEFT JOIN compras_pecas_itens i ON i.planejamentoId=p.id WHERE p.excluidoEm IS NOT NULL GROUP BY p.id ORDER BY p.excluidoEm DESC LIMIT 100`);
+    assertCompras(ctx); await ensure(T);
+    const [rows] = await db().query<any[]>(`SELECT p.id,p.lojaId,p.lojaNome,p.status,p.createdAt,p.excluidoEm,p.excluidoPorNome,COUNT(i.id) totalItens FROM ${T}_planejamentos p LEFT JOIN ${T}_itens i ON i.planejamentoId=p.id WHERE p.excluidoEm IS NOT NULL GROUP BY p.id ORDER BY p.excluidoEm DESC LIMIT 100`);
     return rows.map((x) => ({ id: Number(x.id), lojaId: x.lojaId == null ? null : Number(x.lojaId), lojaNome: String(x.lojaNome || ""), status: String(x.status), totalItens: Number(x.totalItens || 0), createdAt: x.createdAt, excluidoEm: x.excluidoEm, excluidoPorNome: String(x.excluidoPorNome || "") }));
   }),
 
   restaurarPlanejamento: protectedProcedure.input(z.object({ planejamentoId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
-    assertCompras(ctx); await ensure();
-    await db().query(`UPDATE compras_pecas_planejamentos SET excluidoEm=NULL, excluidoPorNome=NULL WHERE id=?`, [input.planejamentoId]);
+    assertCompras(ctx); await ensure(T);
+    await db().query(`UPDATE ${T}_planejamentos SET excluidoEm=NULL, excluidoPorNome=NULL WHERE id=?`, [input.planejamentoId]);
     return { ok: true, planejamentoId: input.planejamentoId };
   }),
 
   detalhe: protectedProcedure.input(z.object({ planejamentoId: z.number().int().positive() })).query(async ({ ctx, input }) => {
-    assertCompras(ctx); await ensure();
-    const [pRows] = await db().query<any[]>(`SELECT * FROM compras_pecas_planejamentos WHERE id=? LIMIT 1`, [input.planejamentoId]);
+    assertCompras(ctx); await ensure(T);
+    const [pRows] = await db().query<any[]>(`SELECT * FROM ${T}_planejamentos WHERE id=? LIMIT 1`, [input.planejamentoId]);
     if (!pRows.length) throw new TRPCError({ code: "NOT_FOUND", message: "Planejamento não encontrado." });
-    const [items] = await db().query<any[]>(`SELECT i.*,f.nome fornecedorSelecionadoNome FROM compras_pecas_itens i LEFT JOIN compras_pecas_fornecedores f ON f.id=i.fornecedorSelecionadoId WHERE i.planejamentoId=? ORDER BY i.codigo`, [input.planejamentoId]);
+    const [items] = await db().query<any[]>(`SELECT i.*,f.nome fornecedorSelecionadoNome FROM ${T}_itens i LEFT JOIN ${T}_fornecedores f ON f.id=i.fornecedorSelecionadoId WHERE i.planejamentoId=? ORDER BY i.codigo`, [input.planejamentoId]);
     const ids = items.map((x) => Number(x.id));
     let quotes:any[]=[];
     if (ids.length) {
       const ph=ids.map(()=>"?").join(",");
-      const [q] = await db().query<any[]>(`SELECT c.itemId,c.fornecedorId,c.valor,f.nome fornecedorNome FROM compras_pecas_cotacoes c JOIN compras_pecas_fornecedores f ON f.id=c.fornecedorId WHERE c.itemId IN (${ph})`, ids);
+      const [q] = await db().query<any[]>(`SELECT c.itemId,c.fornecedorId,c.valor,f.nome fornecedorNome FROM ${T}_cotacoes c JOIN ${T}_fornecedores f ON f.id=c.fornecedorId WHERE c.itemId IN (${ph})`, ids);
       quotes=q;
     }
     return {
@@ -609,12 +653,12 @@ export const comprasPecasRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       assertCompras(ctx);
-      await ensure();
+      await ensure(T);
 
       const [rows] = await db().query<any[]>(
         `SELECT i.id, p.status
-         FROM compras_pecas_itens i
-         INNER JOIN compras_pecas_planejamentos p
+         FROM ${T}_itens i
+         INNER JOIN ${T}_planejamentos p
            ON p.id = i.planejamentoId
          WHERE i.id = ?
          LIMIT 1`,
@@ -637,7 +681,7 @@ export const comprasPecasRouter = router({
       }
 
       await db().query(
-        `UPDATE compras_pecas_itens
+        `UPDATE ${T}_itens
          SET quantidadeFinal = ?
          WHERE id = ?`,
         [input.quantidadeFinal, input.itemId]
@@ -652,64 +696,64 @@ export const comprasPecasRouter = router({
 
   // OK ou Negar uma peça acima do limite de preço (null volta para "aguardando").
   definirAprovacao: protectedProcedure.input(z.object({ itemId:z.number().int().positive(), aprovacao:z.enum(["aprovado","negado"]).nullable() })).mutation(async ({ctx,input})=>{
-    assertCompras(ctx); await ensure();
-    const [rows]=await db().query<any[]>(`SELECT p.status FROM compras_pecas_itens i JOIN compras_pecas_planejamentos p ON p.id=i.planejamentoId WHERE i.id=? LIMIT 1`,[input.itemId]);
+    assertCompras(ctx); await ensure(T);
+    const [rows]=await db().query<any[]>(`SELECT p.status FROM ${T}_itens i JOIN ${T}_planejamentos p ON p.id=i.planejamentoId WHERE i.id=? LIMIT 1`,[input.itemId]);
     if(!rows.length) throw new TRPCError({code:"NOT_FOUND",message:"Item não encontrado."});
     if(String(rows[0].status)==="pedido_salvo") throw new TRPCError({code:"BAD_REQUEST",message:"O pedido já foi fechado. Exclua os pedidos para mudar a aprovação."});
-    await db().query(`UPDATE compras_pecas_itens SET aprovacaoValor=? WHERE id=?`,[input.aprovacao,input.itemId]);
+    await db().query(`UPDATE ${T}_itens SET aprovacaoValor=? WHERE id=?`,[input.aprovacao,input.itemId]);
     return {ok:true,itemId:input.itemId,aprovacao:input.aprovacao};
   }),
 
   salvarCotacao: protectedProcedure.input(z.object({ itemId:z.number().int().positive(), fornecedorId:z.number().int().positive(), valor:z.number().positive() })).mutation(async ({ctx,input})=>{
-    assertCompras(ctx); await ensure();
-    await db().query(`INSERT INTO compras_pecas_cotacoes (itemId,fornecedorId,valor) VALUES (?,?,?) ON DUPLICATE KEY UPDATE valor=VALUES(valor)`,[input.itemId,input.fornecedorId,input.valor]);
-    await db().query(`UPDATE compras_pecas_itens SET precoSelecionado=? WHERE id=? AND fornecedorSelecionadoId=?`,[input.valor,input.itemId,input.fornecedorId]);
-    await db().query(`UPDATE compras_pecas_planejamentos p JOIN compras_pecas_itens i ON i.planejamentoId=p.id SET p.status=CASE WHEN p.status='pedido_salvo' THEN p.status ELSE 'cotacao' END WHERE i.id=?`,[input.itemId]);
+    assertCompras(ctx); await ensure(T);
+    await db().query(`INSERT INTO ${T}_cotacoes (itemId,fornecedorId,valor) VALUES (?,?,?) ON DUPLICATE KEY UPDATE valor=VALUES(valor)`,[input.itemId,input.fornecedorId,input.valor]);
+    await db().query(`UPDATE ${T}_itens SET precoSelecionado=? WHERE id=? AND fornecedorSelecionadoId=?`,[input.valor,input.itemId,input.fornecedorId]);
+    await db().query(`UPDATE ${T}_planejamentos p JOIN ${T}_itens i ON i.planejamentoId=p.id SET p.status=CASE WHEN p.status='pedido_salvo' THEN p.status ELSE 'cotacao' END WHERE i.id=?`,[input.itemId]);
     return {ok:true};
   }),
 
   selecionarFornecedor: protectedProcedure.input(z.object({itemId:z.number().int().positive(),fornecedorId:z.number().int().positive()})).mutation(async({ctx,input})=>{
-    assertCompras(ctx); await ensure();
-    const [r]=await db().query<any[]>(`SELECT valor FROM compras_pecas_cotacoes WHERE itemId=? AND fornecedorId=? LIMIT 1`,[input.itemId,input.fornecedorId]);
+    assertCompras(ctx); await ensure(T);
+    const [r]=await db().query<any[]>(`SELECT valor FROM ${T}_cotacoes WHERE itemId=? AND fornecedorId=? LIMIT 1`,[input.itemId,input.fornecedorId]);
     if(!r.length) throw new TRPCError({code:"BAD_REQUEST",message:"Fornecedor sem preço para esse item."});
-    await db().query(`UPDATE compras_pecas_itens SET fornecedorSelecionadoId=?,precoSelecionado=? WHERE id=?`,[input.fornecedorId,Number(r[0].valor),input.itemId]);
+    await db().query(`UPDATE ${T}_itens SET fornecedorSelecionadoId=?,precoSelecionado=? WHERE id=?`,[input.fornecedorId,Number(r[0].valor),input.itemId]);
     return {ok:true};
   }),
 
   selecionarMenores: protectedProcedure.input(z.object({planejamentoId:z.number().int().positive()})).mutation(async({ctx,input})=>{
-    assertCompras(ctx); await ensure();
-    const [items]=await db().query<any[]>(`SELECT id FROM compras_pecas_itens WHERE planejamentoId=? AND quantidadeFinal>0`,[input.planejamentoId]);
+    assertCompras(ctx); await ensure(T);
+    const [items]=await db().query<any[]>(`SELECT id FROM ${T}_itens WHERE planejamentoId=? AND quantidadeFinal>0`,[input.planejamentoId]);
     let n=0;
     for(const it of items){
-      const [q]=await db().query<any[]>(`SELECT fornecedorId,valor FROM compras_pecas_cotacoes WHERE itemId=? ORDER BY valor ASC LIMIT 1`,[it.id]);
+      const [q]=await db().query<any[]>(`SELECT fornecedorId,valor FROM ${T}_cotacoes WHERE itemId=? ORDER BY valor ASC LIMIT 1`,[it.id]);
       if(!q.length) continue;
-      await db().query(`UPDATE compras_pecas_itens SET fornecedorSelecionadoId=?,precoSelecionado=? WHERE id=?`,[Number(q[0].fornecedorId),Number(q[0].valor),it.id]); n++;
+      await db().query(`UPDATE ${T}_itens SET fornecedorSelecionadoId=?,precoSelecionado=? WHERE id=?`,[Number(q[0].fornecedorId),Number(q[0].valor),it.id]); n++;
     }
     return {ok:true,selecionados:n};
   }),
 
   arquivoCotacaoFornecedor: protectedProcedure.input(z.object({planejamentoId:z.number().int().positive(),fornecedorId:z.number().int().positive()})).mutation(async({ctx,input})=>{
-    assertCompras(ctx); await ensure();
-    const [f]=await db().query<any[]>(`SELECT id,nome FROM compras_pecas_fornecedores WHERE id=? AND ativo=1 LIMIT 1`,[input.fornecedorId]);
+    assertCompras(ctx); await ensure(T);
+    const [f]=await db().query<any[]>(`SELECT id,nome FROM ${T}_fornecedores WHERE id=? AND ativo=1 LIMIT 1`,[input.fornecedorId]);
     if(!f.length) throw new TRPCError({code:"NOT_FOUND",message:"Fornecedor não encontrado."});
-    const [items]=await db().query<any[]>(`SELECT codigo,item FROM compras_pecas_itens WHERE planejamentoId=? AND quantidadeFinal>0 ORDER BY codigo`,[input.planejamentoId]);
-    const [pl]=await db().query<any[]>(`SELECT lojaNome FROM compras_pecas_planejamentos WHERE id=? LIMIT 1`,[input.planejamentoId]);
+    const [items]=await db().query<any[]>(`SELECT codigo,item,especificacao FROM ${T}_itens WHERE planejamentoId=? AND quantidadeFinal>0 ORDER BY codigo`,[input.planejamentoId]);
+    const [pl]=await db().query<any[]>(`SELECT lojaNome FROM ${T}_planejamentos WHERE id=? LIMIT 1`,[input.planejamentoId]);
     const cidade=String(pl[0]?.lojaNome||"");
     const colunaCodigo=colunaCodigoDoFornecedor(f[0].nome);
-    const conversoes=colunaCodigo?await codigosDoFornecedor(Number(f[0].id),items.map((x)=>String(x.codigo))):new Map<string,string>();
+    const conversoes=colunaCodigo?await codigosDoFornecedor(T,Number(f[0].id),items.map((x)=>String(x.codigo))):new Map<string,string>();
     const buf=await quoteBook(
       String(f[0].nome),
-      items.map((x)=>({codigo:String(x.codigo),item:String(x.item),codigoFornecedor:conversoes.get(norm(x.codigo))||null})),
-      `COTAÇÃO DE PEÇAS - ${cidade.toUpperCase()||"LOJA"}`,
+      items.map((x)=>({codigo:String(x.codigo),item:itemComAplicacao(cfg,x.item,x.especificacao),codigoFornecedor:conversoes.get(norm(x.codigo))||null})),
+      `COTAÇÃO DE ${cfg.rotulo} - ${cidade.toUpperCase()||"LOJA"}`,
       colunaCodigo
     );
     const seg=(s:string)=>norm(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-    return {nome:`cotacao-pecas-${cidade?`${seg(cidade)}-`:""}${seg(f[0].nome)}-${input.planejamentoId}.xlsx`,mime:MIME_XLSX,base64:Buffer.from(buf as any).toString("base64")};
+    return {nome:`cotacao-${cfg.arquivo}-${cidade?`${seg(cidade)}-`:""}${seg(f[0].nome)}-${input.planejamentoId}.xlsx`,mime:MIME_XLSX,base64:Buffer.from(buf as any).toString("base64")};
   }),
 
   importarCotacaoFornecedor: protectedProcedure.input(z.object({planejamentoId:z.number().int().positive(),fornecedorId:z.number().int().positive(),arquivoNome:z.string().min(1),arquivoBase64:z.string().min(1)})).mutation(async({ctx,input})=>{
-    assertCompras(ctx); await ensure();
-    const [f]=await db().query<any[]>(`SELECT id,nome FROM compras_pecas_fornecedores WHERE id=? AND ativo=1 LIMIT 1`,[input.fornecedorId]);
+    assertCompras(ctx); await ensure(T);
+    const [f]=await db().query<any[]>(`SELECT id,nome FROM ${T}_fornecedores WHERE id=? AND ativo=1 LIMIT 1`,[input.fornecedorId]);
     if(!f.length) throw new TRPCError({code:"NOT_FOUND",message:"Fornecedor não encontrado."});
     const buffer=Buffer.from(input.arquivoBase64,"base64");
     if(!buffer.length || buffer.length>MAX_FILE) throw new TRPCError({code:"BAD_REQUEST",message:"Arquivo inválido ou maior que 8 MB."});
@@ -718,7 +762,7 @@ export const comprasPecasRouter = router({
     let hi=-1,ci=-1,pi=-1; const expected=norm(f[0].nome);
     for(let i=0;i<Math.min(lines.length,12);i++){ const row=(lines[i]||[]).map(norm); const c=row.indexOf("CODIGO"); const p=row.indexOf(expected); if(c>=0&&p>=0){hi=i;ci=c;pi=p;break;} }
     if(hi<0) throw new TRPCError({code:"BAD_REQUEST",message:"Planilha inválida ou de outro fornecedor."});
-    const [items]=await db().query<any[]>(`SELECT id,codigo FROM compras_pecas_itens WHERE planejamentoId=?`,[input.planejamentoId]);
+    const [items]=await db().query<any[]>(`SELECT id,codigo FROM ${T}_itens WHERE planejamentoId=?`,[input.planejamentoId]);
     const map=new Map(items.map((x)=>[norm(x.codigo),Number(x.id)])); let imported=0;
     // NEW KITS: a coluna "CÓDIGO NEW KITS" guarda a conversão (nosso código continua sendo o usado no sistema).
     const colunaCodigo=colunaCodigoDoFornecedor(f[0].nome);
@@ -728,26 +772,26 @@ export const comprasPecasRouter = router({
       const row=lines[i]||[]; const nosso=norm(row[ci]); const id=map.get(nosso); if(!id) continue;
       if(idxCodigoFornecedor>=0){
         const codigoFornecedor=String(row[idxCodigoFornecedor]??"").trim().slice(0,100);
-        if(codigoFornecedor){ await db().query(`INSERT INTO compras_pecas_codigos_fornecedor (fornecedorId,codigo,codigoFornecedor) VALUES (?,?,?) ON DUPLICATE KEY UPDATE codigoFornecedor=VALUES(codigoFornecedor)`,[input.fornecedorId,nosso,codigoFornecedor]); conversoes++; }
+        if(codigoFornecedor){ await db().query(`INSERT INTO ${T}_codigos_fornecedor (fornecedorId,codigo,codigoFornecedor) VALUES (?,?,?) ON DUPLICATE KEY UPDATE codigoFornecedor=VALUES(codigoFornecedor)`,[input.fornecedorId,nosso,codigoFornecedor]); conversoes++; }
       }
       const val=parseMoney(row[pi]); if(val<=0) continue;
-      await db().query(`INSERT INTO compras_pecas_cotacoes (itemId,fornecedorId,valor) VALUES (?,?,?) ON DUPLICATE KEY UPDATE valor=VALUES(valor)`,[id,input.fornecedorId,val]);
+      await db().query(`INSERT INTO ${T}_cotacoes (itemId,fornecedorId,valor) VALUES (?,?,?) ON DUPLICATE KEY UPDATE valor=VALUES(valor)`,[id,input.fornecedorId,val]);
       // Se este fornecedor já é o escolhido do item, o pedido passa a usar o preço novo.
-      await db().query(`UPDATE compras_pecas_itens SET precoSelecionado=? WHERE id=? AND fornecedorSelecionadoId=?`,[val,id,input.fornecedorId]);
+      await db().query(`UPDATE ${T}_itens SET precoSelecionado=? WHERE id=? AND fornecedorSelecionadoId=?`,[val,id,input.fornecedorId]);
       imported++;
     }
     if(!imported) throw new TRPCError({code:"BAD_REQUEST",message:conversoes?`${conversoes} código(s) do fornecedor salvos, mas nenhum preço válido encontrado.`:"Nenhum preço válido encontrado."});
-    await db().query(`UPDATE compras_pecas_planejamentos SET status=CASE WHEN status='pedido_salvo' THEN status ELSE 'cotacao' END WHERE id=?`,[input.planejamentoId]);
+    await db().query(`UPDATE ${T}_planejamentos SET status=CASE WHEN status='pedido_salvo' THEN status ELSE 'cotacao' END WHERE id=?`,[input.planejamentoId]);
     return {ok:true,fornecedorId:input.fornecedorId,importados:imported,conversoes};
   }),
 
   fecharPedidos: protectedProcedure.input(z.object({planejamentoId:z.number().int().positive()})).mutation(async({ctx,input})=>{
-    assertCompras(ctx); await ensure();
-    const [old]=await db().query<any[]>(`SELECT id FROM compras_pecas_pedidos WHERE planejamentoId=? LIMIT 1`,[input.planejamentoId]);
+    assertCompras(ctx); await ensure(T);
+    const [old]=await db().query<any[]>(`SELECT id FROM ${T}_pedidos WHERE planejamentoId=? LIMIT 1`,[input.planejamentoId]);
     if(old.length) return {ok:true,jaSalvo:true,pedidos:0};
-    const [todos]=await db().query<any[]>(`SELECT i.*,f.nome fornecedorNome FROM compras_pecas_itens i LEFT JOIN compras_pecas_fornecedores f ON f.id=i.fornecedorSelecionadoId WHERE i.planejamentoId=? AND i.quantidadeFinal>0 ORDER BY i.codigo`,[input.planejamentoId]);
+    const [todos]=await db().query<any[]>(`SELECT i.*,f.nome fornecedorNome FROM ${T}_itens i LEFT JOIN ${T}_fornecedores f ON f.id=i.fornecedorSelecionadoId WHERE i.planejamentoId=? AND i.quantidadeFinal>0 ORDER BY i.codigo`,[input.planejamentoId]);
     // Peça acima do limite (bucha > R$30 ou qualquer peça > R$100) precisa de OK; negada não entra no pedido.
-    const aguardando=todos.filter((x)=>x.precoSelecionado!=null&&acimaDoLimitePeca(x.grupo,Number(x.precoSelecionado))&&!x.aprovacaoValor);
+    const aguardando=todos.filter((x)=>cfg.limiteValor&&x.precoSelecionado!=null&&acimaDoLimitePeca(x.grupo,Number(x.precoSelecionado))&&!x.aprovacaoValor);
     if(aguardando.length) throw new TRPCError({code:"BAD_REQUEST",message:`${aguardando.length} peça(s) acima do limite aguardando OK ou Negar.`});
     const items=todos.filter((x)=>x.aprovacaoValor!=="negado");
     if(!items.length) throw new TRPCError({code:"BAD_REQUEST",message:"Todas as peças foram negadas: não há pedido para fechar."});
@@ -756,8 +800,8 @@ export const comprasPecasRouter = router({
     const groups=new Map<number,any[]>(); for(const x of items){const id=Number(x.fornecedorSelecionadoId);groups.set(id,[...(groups.get(id)||[]),x]);}
     const c=await db().getConnection();
     try{ await c.beginTransaction();
-      for(const [fid,list] of groups){ const qty=list.reduce((s,x)=>s+Number(x.quantidadeFinal||0),0); const total=list.reduce((s,x)=>s+Number(x.quantidadeFinal||0)*Number(x.precoSelecionado||0),0); const [r]=await c.query<any>(`INSERT INTO compras_pecas_pedidos (planejamentoId,fornecedorId,fornecedorNome,totalItens,totalQuantidade,totalValor) VALUES (?,?,?,?,?,?)`,[input.planejamentoId,fid,String(list[0].fornecedorNome||"Fornecedor"),list.length,qty,total]); const pid=Number(r.insertId); for(const x of list){const q=Number(x.quantidadeFinal||0),v=Number(x.precoSelecionado||0),t=Number((q*v).toFixed(2)); await c.query(`INSERT INTO compras_pecas_pedido_itens (pedidoId,codigo,item,quantidade,valorUnitario,total) VALUES (?,?,?,?,?,?)`,[pid,x.codigo,x.item,q,v,t]);}}
-      await c.query(`UPDATE compras_pecas_planejamentos SET status='pedido_salvo' WHERE id=?`,[input.planejamentoId]); await c.commit(); return {ok:true,jaSalvo:false,pedidos:groups.size};
+      for(const [fid,list] of groups){ const qty=list.reduce((s,x)=>s+Number(x.quantidadeFinal||0),0); const total=list.reduce((s,x)=>s+Number(x.quantidadeFinal||0)*Number(x.precoSelecionado||0),0); const [r]=await c.query<any>(`INSERT INTO ${T}_pedidos (planejamentoId,fornecedorId,fornecedorNome,totalItens,totalQuantidade,totalValor) VALUES (?,?,?,?,?,?)`,[input.planejamentoId,fid,String(list[0].fornecedorNome||"Fornecedor"),list.length,qty,total]); const pid=Number(r.insertId); for(const x of list){const q=Number(x.quantidadeFinal||0),v=Number(x.precoSelecionado||0),t=Number((q*v).toFixed(2)); await c.query(`INSERT INTO ${T}_pedido_itens (pedidoId,codigo,item,quantidade,valorUnitario,total) VALUES (?,?,?,?,?,?)`,[pid,x.codigo,itemComAplicacao(cfg,x.item,x.especificacao),q,v,t]);}}
+      await c.query(`UPDATE ${T}_planejamentos SET status='pedido_salvo' WHERE id=?`,[input.planejamentoId]); await c.commit(); return {ok:true,jaSalvo:false,pedidos:groups.size};
     }catch(e){await c.rollback();throw e;}finally{c.release();}
   }),
 
@@ -766,7 +810,7 @@ export const comprasPecasRouter = router({
     .mutation(async ({ ctx, input }) => {
       assertCompras(ctx);
       assertSenhaExclusao(input.senha);
-      await ensure();
+      await ensure(T);
       const c = await db().getConnection();
 
       try {
@@ -774,29 +818,29 @@ export const comprasPecasRouter = router({
 
         const [pedidos] = await c.query<any[]>(
           `SELECT id
-           FROM compras_pecas_pedidos
+           FROM ${T}_pedidos
            WHERE planejamentoId = ?`,
           [input.planejamentoId]
         );
 
         await c.query(
           `DELETE pi
-           FROM compras_pecas_pedido_itens pi
-           INNER JOIN compras_pecas_pedidos p ON p.id = pi.pedidoId
+           FROM ${T}_pedido_itens pi
+           INNER JOIN ${T}_pedidos p ON p.id = pi.pedidoId
            WHERE p.planejamentoId = ?`,
           [input.planejamentoId]
         );
 
         await c.query(
-          `DELETE FROM compras_pecas_pedidos
+          `DELETE FROM ${T}_pedidos
            WHERE planejamentoId = ?`,
           [input.planejamentoId]
         );
 
         const [cotacoes] = await c.query<any[]>(
           `SELECT COUNT(*) AS total
-           FROM compras_pecas_cotacoes c
-           INNER JOIN compras_pecas_itens i ON i.id = c.itemId
+           FROM ${T}_cotacoes c
+           INNER JOIN ${T}_itens i ON i.id = c.itemId
            WHERE i.planejamentoId = ?`,
           [input.planejamentoId]
         );
@@ -805,7 +849,7 @@ export const comprasPecasRouter = router({
           Number(cotacoes[0]?.total || 0) > 0 ? "cotacao" : "planejamento";
 
         await c.query(
-          `UPDATE compras_pecas_planejamentos
+          `UPDATE ${T}_planejamentos
            SET status = ?
            WHERE id = ?`,
           [novoStatus, input.planejamentoId]
@@ -832,7 +876,7 @@ export const comprasPecasRouter = router({
     .mutation(async ({ ctx, input }) => {
       assertCompras(ctx);
       assertSenhaExclusao(input.senha);
-      await ensure();
+      await ensure(T);
       const c = await db().getConnection();
 
       try {
@@ -840,7 +884,7 @@ export const comprasPecasRouter = router({
 
         const [planos] = await c.query<any[]>(
           `SELECT id
-           FROM compras_pecas_planejamentos
+           FROM ${T}_planejamentos
            WHERE id = ?
            LIMIT 1`,
           [input.planejamentoId]
@@ -855,7 +899,7 @@ export const comprasPecasRouter = router({
 
         // Vai para a lixeira: nada é apagado, só fica marcado com quem excluiu e quando.
         await c.query(
-          `UPDATE compras_pecas_planejamentos SET excluidoEm=NOW(), excluidoPorNome=? WHERE id=?`,
+          `UPDATE ${T}_planejamentos SET excluidoEm=NOW(), excluidoPorNome=? WHERE id=?`,
           [String(ctx?.user?.name || "Usuário"), input.planejamentoId]
         );
 
@@ -874,27 +918,32 @@ export const comprasPecasRouter = router({
     }),
 
   pedidos: protectedProcedure.input(z.object({planejamentoId:z.number().int().positive()})).query(async({ctx,input})=>{
-    assertCompras(ctx); await ensure();
-    const [rows]=await db().query<any[]>(`SELECT * FROM compras_pecas_pedidos WHERE planejamentoId=? ORDER BY fornecedorNome`,[input.planejamentoId]);
+    assertCompras(ctx); await ensure(T);
+    const [rows]=await db().query<any[]>(`SELECT * FROM ${T}_pedidos WHERE planejamentoId=? ORDER BY fornecedorNome`,[input.planejamentoId]);
     return rows.map((x)=>({...x,id:Number(x.id),planejamentoId:Number(x.planejamentoId),fornecedorId:Number(x.fornecedorId),totalItens:Number(x.totalItens||0),totalQuantidade:Number(x.totalQuantidade||0),totalValor:Number(x.totalValor||0)}));
   }),
 
   arquivoPedido: protectedProcedure.input(z.object({pedidoId:z.number().int().positive()})).mutation(async({ctx,input})=>{
-    assertCompras(ctx); await ensure();
-    const [p]=await db().query<any[]>(`SELECT * FROM compras_pecas_pedidos WHERE id=? LIMIT 1`,[input.pedidoId]); if(!p.length) throw new TRPCError({code:"NOT_FOUND",message:"Pedido não encontrado."});
-    const [items]=await db().query<any[]>(`SELECT codigo,item,quantidade,valorUnitario,total FROM compras_pecas_pedido_itens WHERE pedidoId=? ORDER BY codigo`,[input.pedidoId]);
-    const [pl]=await db().query<any[]>(`SELECT lojaNome FROM compras_pecas_planejamentos WHERE id=? LIMIT 1`,[p[0].planejamentoId]);
+    assertCompras(ctx); await ensure(T);
+    const [p]=await db().query<any[]>(`SELECT * FROM ${T}_pedidos WHERE id=? LIMIT 1`,[input.pedidoId]); if(!p.length) throw new TRPCError({code:"NOT_FOUND",message:"Pedido não encontrado."});
+    const [items]=await db().query<any[]>(`SELECT codigo,item,quantidade,valorUnitario,total FROM ${T}_pedido_itens WHERE pedidoId=? ORDER BY codigo`,[input.pedidoId]);
+    const [pl]=await db().query<any[]>(`SELECT lojaNome FROM ${T}_planejamentos WHERE id=? LIMIT 1`,[p[0].planejamentoId]);
     const cidade=String(pl[0]?.lojaNome||"");
     // NEW KITS: o pedido leva a coluna com o código deles (conversão informada na cotação).
     const colunaCodigo=colunaCodigoDoFornecedor(p[0].fornecedorNome);
-    const conversoes=colunaCodigo?await codigosDoFornecedor(Number(p[0].fornecedorId),items.map((x)=>String(x.codigo))):new Map<string,string>();
+    const conversoes=colunaCodigo?await codigosDoFornecedor(T,Number(p[0].fornecedorId),items.map((x)=>String(x.codigo))):new Map<string,string>();
     const buf=await orderBook(
       items.map((x)=>({codigo:String(x.codigo),codigoFornecedor:conversoes.get(norm(x.codigo))||"",item:String(x.item),quantidade:Number(x.quantidade||0),valorUnitario:Number(x.valorUnitario||0),total:Number(x.total||0)})),
-      `PEDIDO DE PEÇAS - ${cidade.toUpperCase()||"LOJA"}`,
+      `PEDIDO DE ${cfg.rotulo} - ${cidade.toUpperCase()||"LOJA"}`,
       `Fornecedor: ${p[0].fornecedorNome} • Entrega: ${cidade||"—"} • Pedido nº ${p[0].planejamentoId}`,
       colunaCodigo
     );
     const seg=(s:string)=>norm(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-    return {nome:`pedido-pecas-${cidade?`${seg(cidade)}-`:""}${seg(p[0].fornecedorNome)}-${p[0].planejamentoId}.xlsx`,mime:MIME_XLSX,base64:Buffer.from(buf as any).toString("base64")};
+    return {nome:`pedido-${cfg.arquivo}-${cidade?`${seg(cidade)}-`:""}${seg(p[0].fornecedorNome)}-${p[0].planejamentoId}.xlsx`,mime:MIME_XLSX,base64:Buffer.from(buf as any).toString("base64")};
   }),
 });
+}
+
+export const comprasPecasRouter = criarRouterCompras({ prefixo: "compras_pecas", rotulo: "PEÇAS", arquivo: "pecas", limiteValor: true, aplicacaoNoItem: false });
+export const comprasAmortecedoresRouter = criarRouterCompras({ prefixo: "compras_amort", rotulo: "AMORTECEDORES", arquivo: "amortecedores", limiteValor: false, aplicacaoNoItem: true });
+
