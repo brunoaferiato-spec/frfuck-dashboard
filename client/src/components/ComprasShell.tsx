@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, Boxes, Car, CircleDot, Hammer, LogOut, Menu, Package, ShoppingCart, Store, Wrench, X } from "lucide-react";
+import { ArrowLeft, BellRing, Boxes, Car, CircleDot, Hammer, LogOut, Menu, Package, ShieldCheck, ShoppingCart, Store, Wrench, X } from "lucide-react";
+import { trpc } from "@/lib/trpc";
 import { ReactNode, useState } from "react";
 import { useLocation } from "wouter";
 
@@ -10,7 +11,38 @@ const itens = [
   { label: "Insumos de estoque", rota: "/compras/insumos/estoque", icon: Boxes },
   { label: "Insumos de loja", rota: "/compras/insumos/loja", icon: Store },
   { label: "Manutenção", rota: "/compras/manutencao", icon: Hammer },
+  { label: "Garantias", rota: "/compras/garantias", icon: ShieldCheck },
 ];
+
+// Aviso das garantias de pneu em todas as telas de Compras, até cada garantia ser finalizada.
+function AvisoGarantias({ onAbrir }: { onAbrir: () => void }) {
+  const avisosQ = trpc.compras.garantias.avisos.useQuery(undefined, { refetchInterval: 5 * 60 * 1000, retry: false });
+  const a = avisosQ.data;
+  if (!a || !a.total) return null;
+  const urgente = a.vencidas > 0;
+  const partes = [
+    a.vencidas ? `${a.vencidas} com prazo vencido (pneu novo ou reembolso)` : "",
+    a.venceLogo ? `${a.venceLogo} vence(m) em até 7 dias` : "",
+    a.cobrar ? `${a.cobrar} para cobrar o fornecedor` : "",
+    a.naoEnviadas ? `${a.naoEnviadas} ainda não enviada(s)` : "",
+    a.avisarCliente ? `${a.avisarCliente} com laudo: avisar o cliente` : "",
+    a.guardaVencida ? `${a.guardaVencida} com 60 dias de guarda vencidos` : "",
+  ].filter(Boolean);
+  return (
+    <button
+      type="button"
+      onClick={onAbrir}
+      className={`flex w-full flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2.5 text-left text-xs font-bold ${
+        urgente ? "border-rose-400/30 bg-rose-500/[0.10] text-rose-100" : partes.length ? "border-amber-400/25 bg-amber-400/[0.07] text-amber-100" : "border-white/[0.06] bg-white/[0.02] text-gray-400"
+      }`}
+    >
+      <BellRing className="h-4 w-4 shrink-0" />
+      <span className="font-black">Garantias: {a.total} em andamento</span>
+      {partes.map((p) => <span key={p}>• {p}</span>)}
+      <span className="ml-auto underline">Ver garantias</span>
+    </button>
+  );
+}
 
 export default function ComprasShell({ children }: { children: ReactNode }) {
   const { logout, user } = useAuth();
@@ -137,6 +169,7 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
             </p>
           </div>
         </header>
+        {location !== "/compras/garantias" && <AvisoGarantias onAbrir={() => navigate("/compras/garantias")} />}
         {children}
       </div>
     </div>

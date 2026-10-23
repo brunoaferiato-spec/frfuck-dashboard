@@ -32,6 +32,7 @@ import ComprasAmortecedores from "./pages/ComprasAmortecedores";
 import ComprasPlaceholder from "./pages/ComprasPlaceholder";
 import ComprasInsumos from "./pages/ComprasInsumos";
 import ComprasManutencao from "./pages/ComprasManutencao";
+import ComprasGarantias from "./pages/ComprasGarantias";
 
 function TelaCarregando() {
   return (
@@ -321,6 +322,12 @@ function Router() {
       <Route path="/compras/manutencao">
         <RotaCompras>
           <ComprasManutencao />
+        </RotaCompras>
+      </Route>
+
+      <Route path="/compras/garantias">
+        <RotaCompras>
+          <ComprasGarantias />
         </RotaCompras>
       </Route>
 

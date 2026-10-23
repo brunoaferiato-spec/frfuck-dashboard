@@ -85,6 +85,7 @@ import { comprasPneusRouter } from "./comprasPneus";
 import { comprasPecasRouter, comprasAmortecedoresRouter } from "./comprasPecas";
 import { comprasInsumosEstoqueRouter, comprasInsumosLojaRouter } from "./comprasInsumos";
 import { comprasManutencaoRouter } from "./comprasManutencao";
+import { comprasGarantiasRouter } from "./comprasGarantias";
 
 const funcaoSchema = z.enum([
   "mecanico",
@@ -2007,6 +2008,7 @@ export const appRouter = router({
     insumosEstoque: comprasInsumosEstoqueRouter,
     insumosLoja: comprasInsumosLojaRouter,
     manutencao: comprasManutencaoRouter,
+    garantias: comprasGarantiasRouter,
   }),
 
   contasBancarias: router({

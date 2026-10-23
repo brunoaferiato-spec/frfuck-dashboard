@@ -19,6 +19,7 @@ const ROTAS_PERFIL_COMPRAS = [
   "compras.insumosEstoque.",
   "compras.insumosLoja.",
   "compras.manutencao.",
+  "compras.garantias.",
 ];
 // Do auth, só entrar/sair/sessão: cadastro de usuários fica fora do perfil Compras.
 const ROTAS_EXATAS_PERFIL_COMPRAS = new Set(["lojas.list", "auth.me", "auth.login", "auth.logout"]);
