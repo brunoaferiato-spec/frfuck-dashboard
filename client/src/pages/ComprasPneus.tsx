@@ -107,7 +107,7 @@ export default function ComprasPneus() {
   const somenteLeitura = String(user?.role || "") === "pneus_leitura";
 
   const [aba, setAba] = useState<Aba>("planejamento");
-  const [lojaId, setLojaId] = useState("1");
+  const [lojaId, setLojaId] = useState(() => (somenteLeitura ? "" : "1"));
   const [diasAnalise, setDiasAnalise] = useState("60");
   const [diasProjecao, setDiasProjecao] = useState("21");
   const [arquivoVendas, setArquivoVendas] = useState<File | null>(null);
@@ -820,11 +820,29 @@ export default function ComprasPneus() {
                 <div>
                   <h2 className="font-black">Planejamentos</h2>
                   <p className="mt-1 text-xs text-gray-600">
-                    Filtre por período e exclua planejamentos ou pedidos quando necessário.
+                    {somenteLeitura ? "Escolha a loja e o período para ver os planejamentos, cotações e pedidos." : "Filtre por período e exclua planejamentos ou pedidos quando necessário."}
                   </p>
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className={`grid gap-2 ${somenteLeitura ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+                  {somenteLeitura && (
+                    <div>
+                      <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">Loja</label>
+                      <select
+                        value={lojaId}
+                        onChange={(event) => {
+                          setLojaId(event.target.value);
+                          setPlanejamentoId(null);
+                        }}
+                        className="h-10 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-xs text-white"
+                      >
+                        <option value="">Todas as lojas</option>
+                        {lojas.map((loja: any) => (
+                          <option key={loja.id} value={loja.id}>{loja.nome}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div>
                     <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">
                       Data inicial
@@ -900,6 +918,7 @@ export default function ComprasPneus() {
                       >
                         <p className="font-black text-white">
                           Planejamento #{item.id}
+                          {item.lojaId ? <span className="ml-2 text-xs font-bold text-[#F2D675]">{lojas.find((l: any) => Number(l.id) === Number(item.lojaId))?.nome || ""}</span> : null}
                         </p>
                         <p className="mt-2 text-xs text-gray-500">
                           {item.totalMedidas} medidas • {item.totalPneus} pneus
