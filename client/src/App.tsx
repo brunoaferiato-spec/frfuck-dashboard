@@ -81,6 +81,7 @@ function perfilAtual(user: any) {
     liderRh: role === "rh" && lojaId <= 0,
     adminOuGestor: role === "admin" || role === "gestor",
     compras: role === "compras",
+    pneusLeitura: role === "pneus_leitura",
   };
 }
 
@@ -212,7 +213,7 @@ function RotaCompras({ children }: { children: ReactNode }) {
   if (!user) return <Home />;
 
   const role = String(user.role || "");
-  if (!["compras", "admin", "gestor"].includes(role)) {
+  if (!["compras", "admin", "gestor", "pneus_leitura"].includes(role)) {
     return (
       <AcessoNegado
         descricao="O módulo de Compras é exclusivo para Compras, Admin e Gestor."
@@ -222,6 +223,14 @@ function RotaCompras({ children }: { children: ReactNode }) {
   }
 
   return <ComprasShell>{children}</ComprasShell>;
+}
+
+// Perfil "Pneus (somente visualizar)": qualquer endereço fora de Pneus volta para a tela de pneus.
+function TravaPneusLeitura({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [local] = useLocation();
+  if (user && perfilAtual(user).pneusLeitura && !local.startsWith("/compras/pneus")) return <Redirect to="/compras/pneus" />;
+  return <>{children}</>;
 }
 
 function Router() {
@@ -390,7 +399,9 @@ export default function App() {
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <TravaPneusLeitura>
+            <Router />
+          </TravaPneusLeitura>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

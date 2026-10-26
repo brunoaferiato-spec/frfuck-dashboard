@@ -102,6 +102,9 @@ function baixarBase64(nome: string, mime: string, base64: string) {
 export default function ComprasPneus() {
   const { user } = useAuth();
   const utils = trpc.useUtils();
+  // Perfil "Pneus (somente visualizar)": vê planejamentos, cotações, pedidos e histórico das lojas, sem alterar nada.
+  // O servidor também recusa qualquer alteração desse perfil.
+  const somenteLeitura = String(user?.role || "") === "pneus_leitura";
 
   const [aba, setAba] = useState<Aba>("planejamento");
   const [lojaId, setLojaId] = useState("1");
@@ -507,7 +510,7 @@ export default function ComprasPneus() {
   );
   const medidasComprar = itensAnalise.filter((item) => item.quantidadeFinal > 0).length;
 
-  const abas = [
+  const abasTodas = [
     ["planejamento", "Planejamento"],
     ["cotacao", "Cotação"],
     ["pedidos", "Pedidos"],
@@ -515,6 +518,7 @@ export default function ComprasPneus() {
     ["historico", "Histórico"],
     ["config", "Configurações"],
   ] as const;
+  const abas = abasTodas.filter(([valor]) => !somenteLeitura || ["planejamento", "cotacao", "pedidos", "historico"].includes(valor));
 
   return (
     <main className="min-h-full bg-[#050505] p-4 text-white sm:p-6 lg:p-8">
@@ -535,6 +539,12 @@ export default function ComprasPneus() {
             </div>
           )}
         </div>
+
+        {somenteLeitura && (
+          <div className="mt-4 rounded-xl border border-sky-400/20 bg-sky-400/[0.05] px-4 py-3 text-sm text-sky-100">
+            Acesso somente para visualizar: você pode consultar os planejamentos, cotações e pedidos de pneus das lojas, mas não alterar nada.
+          </div>
+        )}
 
         <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
           {abas.map(([valor, label]) => (
@@ -567,6 +577,7 @@ export default function ComprasPneus() {
 
         {aba === "planejamento" && (
           <div className="mt-5 space-y-5">
+            {!somenteLeitura && (
             <section className="rounded-3xl border border-[#D4AF37]/20 bg-[#0a0a0a] p-5 sm:p-6">
               <div className="flex items-center gap-3">
                 <Settings className="h-5 w-5 text-[#F2D675]" />
@@ -701,8 +712,9 @@ export default function ComprasPneus() {
                 )}
               </div>
             </section>
+            )}
 
-            {itensAnalise.length > 0 && (
+            {!somenteLeitura && itensAnalise.length > 0 && (
               <section className="overflow-hidden rounded-3xl border border-white/[0.08] bg-[#090909]">
                 <div className="flex flex-col gap-3 border-b border-white/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -901,7 +913,7 @@ export default function ComprasPneus() {
                         </p>
                       </button>
 
-                      <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.05] pt-3">
+                      <div className={`mt-4 ${somenteLeitura ? "hidden" : "flex"} flex-wrap gap-2 border-t border-white/[0.05] pt-3`}>
                         {item.status === "pedido_salvo" && (
                           <button
                             type="button"
@@ -946,19 +958,20 @@ export default function ComprasPneus() {
                   ))}
                 </div>
               )}
-              <ComprasLixeira
+              {!somenteLeitura && <ComprasLixeira
                 itens={(lixeiraQuery.data || []) as any}
                 carregando={lixeiraQuery.isLoading}
                 restaurando={restaurarPlanejamentoMutation.isPending}
                 onRestaurar={(id) => restaurarPlanejamentoMutation.mutate({ planejamentoId: id })}
                 rotuloItens="medidas"
-              />
+              />}
             </section>
 
           </div>
         )}
 
         {aba === "cotacao" && (
+          <fieldset disabled={somenteLeitura} className="m-0 min-w-0 border-0 p-0">
           <div className="mt-5 space-y-5">
             {!planejamentoId ? (
               <div className="rounded-3xl border border-amber-400/20 bg-amber-400/[0.04] p-6 text-sm text-amber-100">
@@ -1344,9 +1357,11 @@ export default function ComprasPneus() {
               </>
             )}
           </div>
+          </fieldset>
         )}
 
         {aba === "pedidos" && (
+          <fieldset disabled={somenteLeitura} className="m-0 min-w-0 border-0 p-0">
           <div className="mt-5">
             {!planejamentoId ? (
               <div className="rounded-3xl border border-amber-400/20 bg-amber-400/[0.04] p-6 text-sm text-amber-100">
@@ -1420,6 +1435,7 @@ export default function ComprasPneus() {
               </div>
             )}
           </div>
+          </fieldset>
         )}
 
         {aba === "promocionais" && (

@@ -47,7 +47,10 @@ function AvisoGarantias({ onAbrir }: { onAbrir: () => void }) {
 export default function ComprasShell({ children }: { children: ReactNode }) {
   const { logout, user } = useAuth();
   // Perfil Compras não tem dashboard principal: só o módulo de Compras.
-  const somenteCompras = String(user?.role || "") === "compras";
+  const somenteCompras = ["compras", "pneus_leitura"].includes(String(user?.role || ""));
+  // Perfil de visualização de pneus: menu só com Pneus e sem avisos de outras áreas.
+  const somentePneus = String(user?.role || "") === "pneus_leitura";
+  const itensMenu = somentePneus ? itens.filter((i) => i.rota === "/compras/pneus") : itens;
   const [location, navigate] = useLocation();
   const [menuAberto, setMenuAberto] = useState(false);
 
@@ -78,7 +81,7 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
       </div>
 
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {itens.map((item) => {
+        {itensMenu.map((item) => {
           const Icon = item.icon;
           const ativo = location === item.rota || (item.rota === "/compras/insumos/estoque" && location === "/compras/insumos");
           return (
@@ -169,7 +172,7 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
             </p>
           </div>
         </header>
-        {location !== "/compras/garantias" && <AvisoGarantias onAbrir={() => navigate("/compras/garantias")} />}
+        {location !== "/compras/garantias" && !somentePneus && <AvisoGarantias onAbrir={() => navigate("/compras/garantias")} />}
         {children}
       </div>
     </div>

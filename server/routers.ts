@@ -633,7 +633,7 @@ export const appRouter = router({
           name: z.string().min(2, "Nome muito curto"),
           email: z.string().email("Email inválido"),
           password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
-          role: z.enum(["admin", "gestor", "rh", "compras", "financeiro"]),
+          role: z.enum(["admin", "gestor", "rh", "compras", "financeiro", "pneus_leitura"]),
           lojaId: z.number().nullable().optional(),
         })
       )
@@ -690,7 +690,7 @@ export const appRouter = router({
           name: z.string().min(2, "Nome muito curto"),
           email: z.string().email("Email inválido"),
           password: z.string().optional(),
-          role: z.enum(["admin", "gestor", "rh", "compras", "financeiro"]),
+          role: z.enum(["admin", "gestor", "rh", "compras", "financeiro", "pneus_leitura"]),
           lojaId: z.number().nullable().optional(),
           isActive: z.boolean(),
         })

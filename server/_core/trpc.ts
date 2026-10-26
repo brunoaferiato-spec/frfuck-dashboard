@@ -21,6 +21,8 @@ const ROTAS_PERFIL_COMPRAS = [
   "compras.manutencao.",
   "compras.garantias.",
 ];
+export const PERFIL_PNEUS_LEITURA = "pneus_leitura";
+
 // Do auth, só entrar/sair/sessão: cadastro de usuários fica fora do perfil Compras.
 const ROTAS_EXATAS_PERFIL_COMPRAS = new Set(["lojas.list", "auth.me", "auth.login", "auth.logout"]);
 
@@ -37,6 +39,15 @@ const requireUser = t.middleware(async opts => {
 
   if (String(ctx.user.role || "") === "compras" && !perfilComprasPodeAcessar(path)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "O perfil Compras tem acesso somente ao módulo de Compras." });
+  }
+
+  // Perfil "Pneus (somente visualizar)": só consultas de pneus (cotações, pedidos e histórico) e a lista de lojas.
+  // Qualquer alteração (salvar, importar, excluir, baixar planilha) é recusada aqui, mesmo fora da tela.
+  if (String(ctx.user.role || "") === PERFIL_PNEUS_LEITURA) {
+    const leitura = opts.type === "query" && (path === "lojas.list" || path.startsWith("compras.pneus."));
+    if (!leitura) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Seu acesso é somente para visualizar as cotações e pedidos de pneus." });
+    }
   }
 
   return next({

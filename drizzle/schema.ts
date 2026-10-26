@@ -22,7 +22,7 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   passwordHash: varchar("passwordHash", { length: 255 }),
   isActive: boolean("isActive").default(true),
-  role: mysqlEnum("role", ["user", "admin", "gestor", "rh", "compras", "financeiro"]).default("user").notNull(),
+  role: mysqlEnum("role", ["user", "admin", "gestor", "rh", "compras", "financeiro", "pneus_leitura"]).default("user").notNull(),
   lojaId: int("lojaId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

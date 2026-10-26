@@ -22,9 +22,10 @@ type PerfilAcesso =
   | "rh_lider"
   | "rh_caixa"
   | "compras"
-  | "financeiro";
+  | "financeiro"
+  | "pneus_leitura";
 
-type RoleBackend = "admin" | "gestor" | "rh" | "compras" | "financeiro";
+type RoleBackend = "admin" | "gestor" | "rh" | "compras" | "financeiro" | "pneus_leitura";
 
 type UserItem = {
   id: number;
@@ -49,6 +50,7 @@ const PERFIS: Array<{ valor: PerfilAcesso; nome: string; descricao: string; cor:
   { valor: "rh_lider", nome: "Líder RH", descricao: "Visão gerencial do RH de todas as lojas.", cor: "border-sky-400/30 bg-sky-400/[0.08] text-sky-200" },
   { valor: "rh_caixa", nome: "Caixa Líder", descricao: "Somente o Meu Dia da própria loja.", cor: "border-violet-400/30 bg-violet-400/[0.08] text-violet-200" },
   { valor: "compras", nome: "Compras", descricao: "Somente o módulo de Compras (pneus, peças, insumos e manutenção).", cor: "border-emerald-400/30 bg-emerald-400/[0.08] text-emerald-200" },
+  { valor: "pneus_leitura", nome: "Pneus (somente visualizar)", descricao: "Só vê planejamentos, cotações, pedidos e histórico de pneus das 6 lojas. Não altera nada.", cor: "border-sky-400/30 bg-sky-400/[0.08] text-sky-200" },
   { valor: "financeiro", nome: "Financeiro", descricao: "Perfil financeiro.", cor: "border-white/15 bg-white/[0.05] text-gray-300" },
 ];
 
@@ -61,7 +63,8 @@ function perfilDoUsuario(user: UserItem): PerfilAcesso {
     user.role === "admin" ||
     user.role === "gestor" ||
     user.role === "compras" ||
-    user.role === "financeiro"
+    user.role === "financeiro" ||
+    user.role === "pneus_leitura"
   ) {
     return user.role;
   }

@@ -297,7 +297,7 @@ function perfilCompras(ctx: any) {
   const role = String(ctx.user?.role || "");
   return {
     role,
-    autorizado: ["compras", "admin", "gestor"].includes(role),
+    autorizado: ["compras", "admin", "gestor", "pneus_leitura"].includes(role),
   };
 }
 
