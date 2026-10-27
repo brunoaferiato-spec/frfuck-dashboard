@@ -38,6 +38,8 @@ import EstoqueConferencia from "./pages/EstoqueConferencia";
 import EstoquePainel from "./pages/EstoquePainel";
 import EstoqueComprasOS from "./pages/EstoqueComprasOS";
 import EstoquePainelComprasOS from "./pages/EstoquePainelComprasOS";
+import EstoqueSemanal from "./pages/EstoqueSemanal";
+import EstoquePainelSemanal from "./pages/EstoquePainelSemanal";
 
 function TelaCarregando() {
   return (
@@ -237,7 +239,7 @@ function TravaPneusLeitura({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [local] = useLocation();
   if (user && perfilAtual(user).pneusLeitura && !local.startsWith("/compras/pneus")) return <Redirect to="/compras/pneus" />;
-  if (user && perfilAtual(user).estoquista && !["/estoque", "/estoque/compras-os"].includes(local)) return <Redirect to="/estoque" />;
+  if (user && perfilAtual(user).estoquista && !["/estoque", "/estoque/compras-os", "/estoque/semanal"].includes(local)) return <Redirect to="/estoque" />;
   if (user && perfilAtual(user).supervisorEstoque && !local.startsWith("/estoque")) return <Redirect to="/estoque/painel" />;
   return <>{children}</>;
 }
@@ -356,6 +358,16 @@ function Router() {
       <Route path="/estoque/painel/compras-os">
         <RotaEstoque>
           <EstoquePainelComprasOS />
+        </RotaEstoque>
+      </Route>
+      <Route path="/estoque/painel/semanal">
+        <RotaEstoque>
+          <EstoquePainelSemanal />
+        </RotaEstoque>
+      </Route>
+      <Route path="/estoque/semanal">
+        <RotaEstoque>
+          <EstoqueSemanal />
         </RotaEstoque>
       </Route>
       <Route path="/estoque/compras-os">

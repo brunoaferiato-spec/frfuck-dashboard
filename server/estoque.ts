@@ -4,13 +4,13 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { db } from "./comprasPecas";
 import { EMPRESAS, empresaDaLoja } from "@shared/empresas";
 import { avaliarCompraOS } from "@shared/comprasOS";
+import { conferirLojaDoRelatorio, exigirSupervisor, iso, nomeUsuario, perfil, podeVerLoja } from "./estoqueBase";
+import { semanalRouter } from "./estoqueSemanal";
 
 // Conferência diária de estoque: o estoquista de cada loja manda o "Resumo geral venda de itens" do dia anterior
 // e confere item por item (foto obrigatória + quantidade contada). A contagem é às cegas: o estoque do sistema
 // só aparece depois de concluir. O supervisor de estoque vê o painel das 6 lojas e trata as diferenças.
 
-export const PERFIL_ESTOQUE = "estoque"; // estoquista de uma loja (users.lojaId)
-export const PERFIL_SUPERVISOR_ESTOQUE = "estoque_supervisor";
 const MAX_FOTO = 4 * 1024 * 1024;
 const DIAS_GUARDAR_FOTOS = 30; // fotos mais antigas são apagadas; as contagens ficam para sempre
 let ready = false;
@@ -101,46 +101,10 @@ async function ensure() {
   }
 }
 
-// Quem pode o quê: estoquista só a própria loja; supervisor, admin e gestor todas.
-function perfil(ctx: any) {
-  const role = String(ctx?.user?.role || "");
-  const lojaId = Number(ctx?.user?.lojaId || 0);
-  if (role === PERFIL_ESTOQUE) {
-    if (!lojaId) throw new TRPCError({ code: "FORBIDDEN", message: "Seu usuário de estoque está sem loja. Peça para cadastrarem a loja no seu usuário." });
-    return { supervisor: false, lojaId };
-  }
-  if ([PERFIL_SUPERVISOR_ESTOQUE, "admin", "gestor"].includes(role)) return { supervisor: true, lojaId: 0 };
-  throw new TRPCError({ code: "FORBIDDEN", message: "Acesso não autorizado ao estoque." });
-}
-
-function exigirSupervisor(ctx: any) {
-  const p = perfil(ctx);
-  if (!p.supervisor) throw new TRPCError({ code: "FORBIDDEN", message: "Somente o supervisor de estoque." });
-  return p;
-}
-
-function nomeUsuario(ctx: any) {
-  return String(ctx?.user?.name || "Usuário");
-}
-
-function semAcento(v: string) {
-  return String(v || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
-}
-
-function iso(v: unknown) {
-  if (!v) return null;
-  if (v instanceof Date) return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
-  return String(v).slice(0, 10);
-}
-
 async function carregarConferencia(id: number) {
   const [r] = await db().query<any[]>(`SELECT * FROM estoque_conferencias WHERE id=? LIMIT 1`, [id]);
   if (!r.length) throw new TRPCError({ code: "NOT_FOUND", message: "Conferência não encontrada." });
   return r[0];
-}
-
-function podeVerLoja(p: { supervisor: boolean; lojaId: number }, lojaId: number) {
-  if (!p.supervisor && Number(lojaId) !== p.lojaId) throw new TRPCError({ code: "FORBIDDEN", message: "Essa conferência é de outra loja." });
 }
 
 // Itens da conferência. Às cegas: com a conferência em andamento, o estoquista não recebe o estoque do sistema.
@@ -176,15 +140,6 @@ function resumoConferencia(conf: any) {
 
 const id = z.number().int().positive();
 const dataIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-
-// O relatório precisa ser da loja (título "F. JOINVILLE - ...").
-function conferirLojaDoRelatorio(lojaId: number, lojaRelatorio: string) {
-  const empresa = empresaDaLoja(lojaId);
-  if (!empresa) throw new TRPCError({ code: "BAD_REQUEST", message: "Loja inválida." });
-  const lojaPdf = semAcento(lojaRelatorio);
-  const daLoja = !lojaPdf || [empresa.loja, empresa.cidade].some((n) => lojaPdf.includes(semAcento(n)) || semAcento(n).includes(lojaPdf));
-  if (!daLoja) throw new TRPCError({ code: "BAD_REQUEST", message: `Esse relatório é de ${lojaRelatorio}, não de ${empresa.loja}.` });
-}
 
 // ---------- Compras x OS ----------
 async function carregarComprasOS(id: number) {
@@ -381,6 +336,7 @@ const comprasOSRouter = router({
 
 export const estoqueRouter = router({
   comprasOS: comprasOSRouter,
+  semanal: semanalRouter,
   // Perfil de quem está usando (o estoquista já tem a loja fixa).
   meuPerfil: protectedProcedure.query(({ ctx }) => {
     const p = perfil(ctx);

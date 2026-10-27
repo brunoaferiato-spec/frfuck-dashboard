@@ -30,8 +30,8 @@ export default function EstoquePainelComprasOS() {
           <h1 className="mt-1 text-2xl font-black">Compras x OS das lojas</h1>
           <p className="mt-1 text-sm text-gray-500">Compras que não saíram no mesmo dia ou feitas com a peça no estoque, com a justificativa do estoquista.</p>
         </div>
-        <label className="text-xs font-bold text-gray-400">Compras do dia
-          <input type="date" value={data} onChange={(e) => { setData(e.target.value); setAberta(null); }} className="mt-1 block h-11 rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white [color-scheme:dark]" />
+        <label className="w-full text-xs font-bold text-gray-400 sm:w-auto">Compras do dia
+          <input type="date" value={data} onChange={(e) => { setData(e.target.value); setAberta(null); }} className="mt-1 block h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white [color-scheme:dark]" />
         </label>
       </div>
 

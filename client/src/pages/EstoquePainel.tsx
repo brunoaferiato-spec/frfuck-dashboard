@@ -30,8 +30,8 @@ export default function EstoquePainel() {
           <h1 className="mt-1 text-2xl font-black">Painel das lojas</h1>
           <p className="mt-1 text-sm text-gray-500">Conferência das vendas do dia escolhido (normalmente, ontem).</p>
         </div>
-        <label className="text-xs font-bold text-gray-400">Vendas do dia
-          <input type="date" value={data} onChange={(e) => { setData(e.target.value); setAberta(null); }} className="mt-1 block h-11 rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white [color-scheme:dark]" />
+        <label className="w-full text-xs font-bold text-gray-400 sm:w-auto">Vendas do dia
+          <input type="date" value={data} onChange={(e) => { setData(e.target.value); setAberta(null); }} className="mt-1 block h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white [color-scheme:dark]" />
         </label>
       </div>
 
