@@ -3,6 +3,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { db } from "./comprasPecas";
 import { EMPRESAS, empresaDaLoja } from "@shared/empresas";
+import { avaliarCompraOS } from "@shared/comprasOS";
 
 // Conferência diária de estoque: o estoquista de cada loja manda o "Resumo geral venda de itens" do dia anterior
 // e confere item por item (foto obrigatória + quantidade contada). A contagem é às cegas: o estoque do sistema
@@ -50,6 +51,42 @@ async function ensure() {
       tratadoPorNome VARCHAR(160) NULL,
       tratadoEm TIMESTAMP NULL,
       PRIMARY KEY (id), KEY idx_est_item_conf (conferenciaId, ordem)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    // Conferência "Compras x OS": só os produtos comprados no dia que não saíram certinho, com a justificativa do estoquista.
+    await p.query(`CREATE TABLE IF NOT EXISTS estoque_comprasos (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      lojaId INT UNSIGNED NOT NULL,
+      dataRelatorio DATE NOT NULL,
+      arquivoNome VARCHAR(255) NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'andamento',
+      totalProdutos INT NOT NULL DEFAULT 0,
+      totalComprados INT NOT NULL DEFAULT 0,
+      totalErrados INT NOT NULL DEFAULT 0,
+      criadoPorNome VARCHAR(160) NULL,
+      concluidaPorNome VARCHAR(160) NULL,
+      concluidaEm TIMESTAMP NULL,
+      createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id), UNIQUE KEY uq_est_cos_loja_data (lojaId, dataRelatorio)
+    ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    await p.query(`CREATE TABLE IF NOT EXISTS estoque_comprasos_itens (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      comprasOsId INT UNSIGNED NOT NULL,
+      ordem INT NOT NULL,
+      codigo VARCHAR(60) NOT NULL,
+      item VARCHAR(300) NOT NULL,
+      motivo VARCHAR(500) NOT NULL,
+      qtdComprada DECIMAL(12,2) NOT NULL DEFAULT 0,
+      estoqueAntes DECIMAL(12,2) NOT NULL DEFAULT 0,
+      qtdFinal DECIMAL(12,2) NOT NULL DEFAULT 0,
+      movimentos TEXT NULL,
+      justificativa VARCHAR(1000) NULL,
+      justificadoPorNome VARCHAR(160) NULL,
+      justificadoEm TIMESTAMP NULL,
+      tratado TINYINT(1) NOT NULL DEFAULT 0,
+      tratadoObs VARCHAR(500) NULL,
+      tratadoPorNome VARCHAR(160) NULL,
+      tratadoEm TIMESTAMP NULL,
+      PRIMARY KEY (id), KEY idx_est_cos_item (comprasOsId, ordem)
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     ready = true;
   }
@@ -140,7 +177,210 @@ function resumoConferencia(conf: any) {
 const id = z.number().int().positive();
 const dataIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
+// O relatório precisa ser da loja (título "F. JOINVILLE - ...").
+function conferirLojaDoRelatorio(lojaId: number, lojaRelatorio: string) {
+  const empresa = empresaDaLoja(lojaId);
+  if (!empresa) throw new TRPCError({ code: "BAD_REQUEST", message: "Loja inválida." });
+  const lojaPdf = semAcento(lojaRelatorio);
+  const daLoja = !lojaPdf || [empresa.loja, empresa.cidade].some((n) => lojaPdf.includes(semAcento(n)) || semAcento(n).includes(lojaPdf));
+  if (!daLoja) throw new TRPCError({ code: "BAD_REQUEST", message: `Esse relatório é de ${lojaRelatorio}, não de ${empresa.loja}.` });
+}
+
+// ---------- Compras x OS ----------
+async function carregarComprasOS(id: number) {
+  const [r] = await db().query<any[]>(`SELECT * FROM estoque_comprasos WHERE id=? LIMIT 1`, [id]);
+  if (!r.length) throw new TRPCError({ code: "NOT_FOUND", message: "Conferência não encontrada." });
+  return r[0];
+}
+
+function resumoComprasOS(c: any) {
+  return {
+    id: Number(c.id), lojaId: Number(c.lojaId), loja: empresaDaLoja(Number(c.lojaId))?.loja || `Loja ${c.lojaId}`,
+    dataRelatorio: iso(c.dataRelatorio)!, status: String(c.status) as "andamento" | "concluida",
+    totalProdutos: Number(c.totalProdutos), totalComprados: Number(c.totalComprados), totalErrados: Number(c.totalErrados),
+    arquivoNome: c.arquivoNome ? String(c.arquivoNome) : "", criadoPorNome: c.criadoPorNome ? String(c.criadoPorNome) : "",
+    concluidaPorNome: c.concluidaPorNome ? String(c.concluidaPorNome) : "", concluidaEm: c.concluidaEm ? String(c.concluidaEm) : null,
+  };
+}
+
+type MovimentoSalvo = { tipo: string; documento: string; qtdAnterior: number; qtdMovimento: number; qtdFinal: number };
+
+async function itensComprasOS(comprasOsId: number) {
+  const [rows] = await db().query<any[]>(`SELECT * FROM estoque_comprasos_itens WHERE comprasOsId=? ORDER BY ordem`, [comprasOsId]);
+  return rows.map((x) => {
+    let movimentos: MovimentoSalvo[] = [];
+    try { movimentos = JSON.parse(String(x.movimentos || "[]")); } catch { movimentos = []; }
+    return {
+      id: Number(x.id), ordem: Number(x.ordem), codigo: String(x.codigo), item: String(x.item), motivo: String(x.motivo),
+      qtdComprada: Number(x.qtdComprada), estoqueAntes: Number(x.estoqueAntes), qtdFinal: Number(x.qtdFinal), movimentos,
+      justificativa: x.justificativa ? String(x.justificativa) : "", justificadoPorNome: x.justificadoPorNome ? String(x.justificadoPorNome) : "",
+      tratado: !!Number(x.tratado), tratadoObs: x.tratadoObs ? String(x.tratadoObs) : "", tratadoPorNome: x.tratadoPorNome ? String(x.tratadoPorNome) : "",
+    };
+  });
+}
+
+const movimentoInput = z.object({
+  tipo: z.string().trim().max(40),
+  documento: z.string().trim().max(60),
+  qtdAnterior: z.number().min(-1000000).max(1000000),
+  qtdMovimento: z.number().min(-1000000).max(1000000),
+  qtdFinal: z.number().min(-1000000).max(1000000),
+});
+
+const comprasOSRouter = router({
+  // Última conferência da loja (a que está em andamento primeiro).
+  atual: protectedProcedure.input(z.object({ lojaId: id.nullable() })).query(async ({ ctx, input }) => {
+    const p = perfil(ctx);
+    await ensure();
+    const lojaId = p.supervisor ? Number(input.lojaId || 0) : p.lojaId;
+    if (!lojaId) return null;
+    const [r] = await db().query<any[]>(
+      `SELECT * FROM estoque_comprasos WHERE lojaId=? ORDER BY (status='andamento') DESC, dataRelatorio DESC, id DESC LIMIT 1`,
+      [lojaId]
+    );
+    if (!r.length) return null;
+    return { conferencia: resumoComprasOS(r[0]), itens: await itensComprasOS(Number(r[0].id)) };
+  }),
+
+  // Recebe os produtos lidos do PDF; o servidor separa os errados pela mesma regra da tela.
+  iniciar: protectedProcedure
+    .input(z.object({
+      lojaId: id,
+      lojaRelatorio: z.string().max(120),
+      dataRelatorio: dataIso,
+      arquivoNome: z.string().max(255),
+      produtos: z.array(z.object({
+        codigo: z.string().trim().min(1).max(60),
+        item: z.string().trim().max(300),
+        movimentos: z.array(movimentoInput).max(500),
+      })).min(1, "O relatório não tem produtos.").max(3000),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const p = perfil(ctx);
+      await ensure();
+      const lojaId = p.supervisor ? input.lojaId : p.lojaId;
+      conferirLojaDoRelatorio(lojaId, input.lojaRelatorio);
+      const [existe] = await db().query<any[]>(`SELECT * FROM estoque_comprasos WHERE lojaId=? AND dataRelatorio=? LIMIT 1`, [lojaId, input.dataRelatorio]);
+      if (existe.length) {
+        if (String(existe[0].status) === "concluida") throw new TRPCError({ code: "BAD_REQUEST", message: "O Compras x OS desse dia já foi conferido nessa loja." });
+        return { ok: true, comprasOsId: Number(existe[0].id), retomada: true, errados: Number(existe[0].totalErrados) };
+      }
+      const produtos = input.produtos.map((x) => ({ ...x, item: x.item || x.codigo, movimentos: x.movimentos.map((m) => ({ ...m, tipo: m.tipo.toUpperCase() })) }));
+      const comprados = produtos.filter((x) => x.movimentos.some((m) => m.tipo === "COMPRA")).length;
+      const errados = produtos.map(avaliarCompraOS).filter((x): x is NonNullable<typeof x> => !!x);
+      const c = await db().getConnection();
+      try {
+        await c.beginTransaction();
+        // Sem nada errado o dia já fica concluído.
+        const [r] = await c.query<any>(
+          `INSERT INTO estoque_comprasos (lojaId, dataRelatorio, arquivoNome, status, totalProdutos, totalComprados, totalErrados, criadoPorNome, concluidaPorNome, concluidaEm)
+           VALUES (?,?,?,?,?,?,?,?,?,${errados.length ? "NULL" : "NOW()"})`,
+          [lojaId, input.dataRelatorio, input.arquivoNome || null, errados.length ? "andamento" : "concluida", produtos.length, comprados, errados.length,
+           nomeUsuario(ctx), errados.length ? null : nomeUsuario(ctx)]
+        );
+        const cosId = Number(r.insertId);
+        if (errados.length) {
+          await c.query(
+            `INSERT INTO estoque_comprasos_itens (comprasOsId, ordem, codigo, item, motivo, qtdComprada, estoqueAntes, qtdFinal, movimentos) VALUES ${errados.map(() => "(?,?,?,?,?,?,?,?,?)").join(",")}`,
+            errados.flatMap((x, j) => [cosId, j + 1, x.codigo, x.item, x.motivo.slice(0, 500), x.qtdComprada, x.estoqueAntes, x.qtdFinal, JSON.stringify(x.movimentos)])
+          );
+        }
+        await c.commit();
+        return { ok: true, comprasOsId: cosId, retomada: false, errados: errados.length };
+      } catch (e) { await c.rollback(); throw e; } finally { c.release(); }
+    }),
+
+  // Justificativa do estoquista para um item errado.
+  justificar: protectedProcedure
+    .input(z.object({ itemId: id, justificativa: z.string().trim().min(5, "Escreva a justificativa (pelo menos 5 letras).").max(1000) }))
+    .mutation(async ({ ctx, input }) => {
+      const p = perfil(ctx);
+      await ensure();
+      const [r] = await db().query<any[]>(
+        `SELECT c.lojaId, c.status FROM estoque_comprasos_itens i JOIN estoque_comprasos c ON c.id=i.comprasOsId WHERE i.id=? LIMIT 1`,
+        [input.itemId]
+      );
+      if (!r.length) throw new TRPCError({ code: "NOT_FOUND", message: "Item não encontrado." });
+      podeVerLoja(p, Number(r[0].lojaId));
+      if (String(r[0].status) !== "andamento") throw new TRPCError({ code: "BAD_REQUEST", message: "Essa conferência já foi concluída." });
+      await db().query(`UPDATE estoque_comprasos_itens SET justificativa=?, justificadoPorNome=?, justificadoEm=NOW() WHERE id=?`, [input.justificativa, nomeUsuario(ctx), input.itemId]);
+      return { ok: true };
+    }),
+
+  concluir: protectedProcedure.input(z.object({ comprasOsId: id })).mutation(async ({ ctx, input }) => {
+    const p = perfil(ctx);
+    await ensure();
+    const c = await carregarComprasOS(input.comprasOsId);
+    podeVerLoja(p, Number(c.lojaId));
+    if (String(c.status) === "concluida") return { ok: true };
+    const [f] = await db().query<any[]>(
+      `SELECT COUNT(*) n FROM estoque_comprasos_itens WHERE comprasOsId=? AND (justificativa IS NULL OR justificativa='')`,
+      [input.comprasOsId]
+    );
+    if (Number(f[0].n)) throw new TRPCError({ code: "BAD_REQUEST", message: `Ainda faltam ${f[0].n} item(ns) sem justificativa.` });
+    await db().query(`UPDATE estoque_comprasos SET status='concluida', concluidaPorNome=?, concluidaEm=NOW() WHERE id=?`, [nomeUsuario(ctx), input.comprasOsId]);
+    return { ok: true };
+  }),
+
+  // Painel do supervisor: as 6 lojas num dia.
+  painel: protectedProcedure.input(z.object({ data: dataIso })).query(async ({ ctx, input }) => {
+    exigirSupervisor(ctx);
+    await ensure();
+    const [confs] = await db().query<any[]>(
+      `SELECT c.*,
+              (SELECT COUNT(*) FROM estoque_comprasos_itens i WHERE i.comprasOsId=c.id AND i.justificativa IS NOT NULL AND i.justificativa<>'') justificados,
+              (SELECT COUNT(*) FROM estoque_comprasos_itens i WHERE i.comprasOsId=c.id AND i.tratado=0) pendentes
+         FROM estoque_comprasos c WHERE c.dataRelatorio=?`,
+      [input.data]
+    );
+    // Itens ainda sem tratar de qualquer dia (para nada ficar esquecido).
+    const [abertas] = await db().query<any[]>(
+      `SELECT c.lojaId, COUNT(*) n FROM estoque_comprasos_itens i JOIN estoque_comprasos c ON c.id=i.comprasOsId
+        WHERE c.status='concluida' AND i.tratado=0 GROUP BY c.lojaId`
+    );
+    return EMPRESAS.map((e) => {
+      const c = confs.find((x) => Number(x.lojaId) === e.lojaId);
+      return {
+        lojaId: e.lojaId, loja: e.loja,
+        conferencia: c ? { ...resumoComprasOS(c), justificados: Number(c.justificados), pendentes: Number(c.pendentes) } : null,
+        pendentesTotal: Number(abertas.find((a) => Number(a.lojaId) === e.lojaId)?.n || 0),
+      };
+    });
+  }),
+
+  detalhe: protectedProcedure.input(z.object({ comprasOsId: id })).query(async ({ ctx, input }) => {
+    exigirSupervisor(ctx);
+    await ensure();
+    const c = await carregarComprasOS(input.comprasOsId);
+    return { conferencia: resumoComprasOS(c), itens: await itensComprasOS(Number(c.id)) };
+  }),
+
+  // Conferências com itens ainda sem tratar, de qualquer dia.
+  pendencias: protectedProcedure.query(async ({ ctx }) => {
+    exigirSupervisor(ctx);
+    await ensure();
+    const [rows] = await db().query<any[]>(
+      `SELECT c.*, COUNT(*) pendentes FROM estoque_comprasos_itens i JOIN estoque_comprasos c ON c.id=i.comprasOsId
+        WHERE c.status='concluida' AND i.tratado=0 GROUP BY c.id ORDER BY c.dataRelatorio DESC LIMIT 60`
+    );
+    return rows.map((c) => ({ ...resumoComprasOS(c), pendentes: Number(c.pendentes) }));
+  }),
+
+  tratar: protectedProcedure
+    .input(z.object({ itemId: id, tratado: z.boolean(), obs: z.string().trim().max(500) }))
+    .mutation(async ({ ctx, input }) => {
+      exigirSupervisor(ctx);
+      await ensure();
+      await db().query(
+        `UPDATE estoque_comprasos_itens SET tratado=?, tratadoObs=?, tratadoPorNome=?, tratadoEm=${input.tratado ? "NOW()" : "NULL"} WHERE id=?`,
+        [input.tratado ? 1 : 0, input.obs || null, input.tratado ? nomeUsuario(ctx) : null, input.itemId]
+      );
+      return { ok: true };
+    }),
+});
+
 export const estoqueRouter = router({
+  comprasOS: comprasOSRouter,
   // Perfil de quem está usando (o estoquista já tem a loja fixa).
   meuPerfil: protectedProcedure.query(({ ctx }) => {
     const p = perfil(ctx);
@@ -182,12 +422,7 @@ export const estoqueRouter = router({
       const p = perfil(ctx);
       await ensure();
       const lojaId = p.supervisor ? input.lojaId : p.lojaId;
-      const empresa = empresaDaLoja(lojaId);
-      if (!empresa) throw new TRPCError({ code: "BAD_REQUEST", message: "Loja inválida." });
-      // O relatório precisa ser da loja (título "F. JOINVILLE - ...").
-      const lojaPdf = semAcento(input.lojaRelatorio);
-      const daLoja = !lojaPdf || [empresa.loja, empresa.cidade].some((n) => lojaPdf.includes(semAcento(n)) || semAcento(n).includes(lojaPdf));
-      if (!daLoja) throw new TRPCError({ code: "BAD_REQUEST", message: `Esse relatório é de ${input.lojaRelatorio}, não de ${empresa.loja}.` });
+      conferirLojaDoRelatorio(lojaId, input.lojaRelatorio);
 
       const [existe] = await db().query<any[]>(`SELECT * FROM estoque_conferencias WHERE lojaId=? AND dataRelatorio=? LIMIT 1`, [lojaId, input.dataRelatorio]);
       if (existe.length) {

@@ -1,5 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, ClipboardCheck, LayoutGrid, LogOut, Warehouse } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, LayoutGrid, LogOut, ShoppingCart, Warehouse } from "lucide-react";
 import { ReactNode } from "react";
 import { useLocation } from "wouter";
 
@@ -11,7 +11,11 @@ export default function EstoqueShell({ children }: { children: ReactNode }) {
   const supervisor = ["estoque_supervisor", "admin", "gestor"].includes(role);
   const itens = [
     { label: "Conferência", rota: "/estoque", icon: ClipboardCheck },
-    ...(supervisor ? [{ label: "Painel das lojas", rota: "/estoque/painel", icon: LayoutGrid }] : []),
+    { label: "Compras x OS", rota: "/estoque/compras-os", icon: ShoppingCart },
+    ...(supervisor ? [
+      { label: "Painel das lojas", rota: "/estoque/painel", icon: LayoutGrid },
+      { label: "Painel compras x OS", rota: "/estoque/painel/compras-os", icon: LayoutGrid },
+    ] : []),
   ];
 
   async function sair() {
