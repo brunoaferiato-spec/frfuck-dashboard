@@ -5,7 +5,7 @@ import type { AppRouter } from "../../../server/routers";
 import { trpc } from "@/lib/trpc";
 import { EMPRESAS } from "@shared/empresas";
 import type { TextoPdfItem } from "@shared/resumoVendaItens";
-import { itensErradosCompraOS, lerComprasOS, type RelatorioCompraOS } from "@shared/comprasOS";
+import { conferirCompraOS, lerComprasOS, type RelatorioCompraOS } from "@shared/comprasOS";
 
 // Compras x OS: o estoquista só compra peça para carro que está na loja, então toda compra tem que sair no mesmo dia.
 // Ele anexa o relatório do dia, o sistema mostra só o que está errado e ele justifica um por um.
@@ -131,8 +131,9 @@ function NovoRelatorio({ lojaId, setErro, onIniciado }: { lojaId: number; setErr
   }
 
   const r = lido?.relatorio;
-  const errados = r ? itensErradosCompraOS(r).length : 0;
-  const comprados = r ? r.produtos.filter((p) => p.movimentos.some((m) => m.tipo === "COMPRA")).length : 0;
+  const conferencia = r ? conferirCompraOS(r.produtos) : null;
+  const errados = conferencia?.errados.length || 0;
+  const comprados = conferencia?.comprados || 0;
 
   return (
     <section className="rounded-3xl border border-[#D4AF37]/20 bg-[#0a0a0a] p-4 sm:p-6">
@@ -165,6 +166,12 @@ function NovoRelatorio({ lojaId, setErro, onIniciado }: { lojaId: number; setErr
             <div className="rounded-xl border border-white/[0.06] p-3"><p className="text-[10px] font-black uppercase text-gray-500">Produtos comprados</p><p className="mt-1 font-black">{comprados}</p></div>
             <div className={`rounded-xl border p-3 ${errados ? "border-rose-400/25" : "border-emerald-400/25"}`}><p className="text-[10px] font-black uppercase text-gray-500">Para justificar</p><p className={`mt-1 font-black ${errados ? "text-rose-300" : "text-emerald-300"}`}>{errados}</p></div>
           </div>
+          {!!conferencia?.notas.length && (
+            <div className="rounded-xl border border-sky-400/20 bg-sky-400/[0.05] p-3 text-xs text-sky-100">
+              <p className="font-black">Compra de reposição desconsiderada</p>
+              {conferencia.notas.map((n) => <p key={n.documento} className="mt-0.5">Nota {n.documento}: {n.produtos} produtos, {n.pecas.toLocaleString("pt-BR")} peças</p>)}
+            </div>
+          )}
           <div className="flex gap-2">
             <button type="button" onClick={() => setLido(null)} className="h-12 flex-1 rounded-xl border border-white/10 text-sm font-black text-gray-400">Trocar arquivo</button>
             <button type="button" disabled={iniciar.isPending || !r.dataFim}

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { db } from "./comprasPecas";
 import { EMPRESAS, empresaDaLoja } from "@shared/empresas";
-import { avaliarCompraOS } from "@shared/comprasOS";
+import { conferirCompraOS, type NotaReposicao } from "@shared/comprasOS";
 import { SEM_COMPRA, conferirLojaDoRelatorio, dataSP, exigirSupervisor, iso, nomeUsuario, perfil, podeVerLoja } from "./estoqueBase";
 import { semanalRouter } from "./estoqueSemanal";
 import { premiacoesRouter } from "./estoquePremiacoes";
@@ -89,6 +89,12 @@ async function ensure() {
       tratadoEm TIMESTAMP NULL,
       PRIMARY KEY (id), KEY idx_est_cos_item (comprasOsId, ordem)
     ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+    // Notas de reposição desconsideradas (para o supervisor conferir).
+    try {
+      await p.query(`ALTER TABLE estoque_comprasos ADD COLUMN notasReposicao TEXT NULL`);
+    } catch (error: any) {
+      if (error?.code !== "ER_DUP_FIELDNAME") throw error;
+    }
     ready = true;
   }
   // Uma vez por dia apaga as fotos antigas para não lotar o banco.
@@ -149,6 +155,10 @@ async function carregarComprasOS(id: number) {
   return r[0];
 }
 
+function lerNotas(v: unknown): NotaReposicao[] {
+  try { return v ? JSON.parse(String(v)) : []; } catch { return []; }
+}
+
 function resumoComprasOS(c: any) {
   return {
     id: Number(c.id), lojaId: Number(c.lojaId), loja: empresaDaLoja(Number(c.lojaId))?.loja || `Loja ${c.lojaId}`,
@@ -156,6 +166,7 @@ function resumoComprasOS(c: any) {
     totalProdutos: Number(c.totalProdutos), totalComprados: Number(c.totalComprados), totalErrados: Number(c.totalErrados),
     arquivoNome: c.arquivoNome ? String(c.arquivoNome) : "", criadoPorNome: c.criadoPorNome ? String(c.criadoPorNome) : "",
     concluidaPorNome: c.concluidaPorNome ? String(c.concluidaPorNome) : "", concluidaEm: c.concluidaEm ? String(c.concluidaEm) : null,
+    notasReposicao: lerNotas(c.notasReposicao),
   };
 }
 
@@ -222,17 +233,17 @@ const comprasOSRouter = router({
         return { ok: true, comprasOsId: Number(existe[0].id), retomada: true, errados: Number(existe[0].totalErrados) };
       }
       const produtos = input.produtos.map((x) => ({ ...x, item: x.item || x.codigo, movimentos: x.movimentos.map((m) => ({ ...m, tipo: m.tipo.toUpperCase() })) }));
-      const comprados = produtos.filter((x) => x.movimentos.some((m) => m.tipo === "COMPRA")).length;
-      const errados = produtos.map(avaliarCompraOS).filter((x): x is NonNullable<typeof x> => !!x);
+      // Pneu e notas de reposição (mesma nota em 5+ produtos) ficam fora da conferência.
+      const { comprados, errados, notas } = conferirCompraOS(produtos);
       const c = await db().getConnection();
       try {
         await c.beginTransaction();
         // Sem nada errado o dia já fica concluído.
         const [r] = await c.query<any>(
-          `INSERT INTO estoque_comprasos (lojaId, dataRelatorio, arquivoNome, status, totalProdutos, totalComprados, totalErrados, criadoPorNome, concluidaPorNome, concluidaEm)
-           VALUES (?,?,?,?,?,?,?,?,?,${errados.length ? "NULL" : "NOW()"})`,
+          `INSERT INTO estoque_comprasos (lojaId, dataRelatorio, arquivoNome, status, totalProdutos, totalComprados, totalErrados, criadoPorNome, concluidaPorNome, concluidaEm, notasReposicao)
+           VALUES (?,?,?,?,?,?,?,?,?,${errados.length ? "NULL" : "NOW()"},?)`,
           [lojaId, input.dataRelatorio, input.arquivoNome || null, errados.length ? "andamento" : "concluida", produtos.length, comprados, errados.length,
-           nomeUsuario(ctx), errados.length ? null : nomeUsuario(ctx)]
+           nomeUsuario(ctx), errados.length ? null : nomeUsuario(ctx), notas.length ? JSON.stringify(notas) : null]
         );
         const cosId = Number(r.insertId);
         if (errados.length) {

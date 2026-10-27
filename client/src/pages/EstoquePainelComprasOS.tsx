@@ -105,6 +105,14 @@ export function DetalheComprasOS({ comprasOsId, onFechar }: { comprasOsId: numbe
         <button type="button" onClick={onFechar} className="rounded-xl border border-white/10 p-2 text-gray-400"><X className="h-4 w-4" /></button>
       </div>
 
+      {d.conferencia.notasReposicao.length > 0 && (
+        <div className="mt-3 rounded-2xl border border-sky-400/20 bg-sky-400/[0.05] p-3 text-xs text-sky-100">
+          <p className="font-black">Notas tratadas como compra de reposição (desconsideradas)</p>
+          {d.conferencia.notasReposicao.map((n) => <p key={n.documento} className="mt-0.5">Nota {n.documento}: {n.produtos} produtos, {n.pecas.toLocaleString("pt-BR")} peças</p>)}
+        </div>
+      )}
+      {d.itens.length === 0 && <p className="mt-3 text-sm text-emerald-300">Nenhum item errado nesse dia.</p>}
+
       <div className="mt-3 space-y-2">
         {d.itens.map((i) => (
           <div key={i.id} className={`rounded-2xl border p-3 ${i.tratado ? "border-white/10" : "border-rose-400/25 bg-rose-500/[0.03]"}`}>

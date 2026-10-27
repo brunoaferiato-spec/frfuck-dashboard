@@ -131,7 +131,7 @@ export default function EstoquePainelGeral() {
               ? { tom: "andamento" as Tom, texto: `Justificando • ${cc.justificados} de ${cc.totalErrados}` }
               : cc.totalErrados
                 ? { tom: (cc.pendentes ? "erro" : "ok") as Tom, texto: `${cc.totalErrados} errado(s)${cc.pendentes ? `, ${cc.pendentes} para tratar` : " • tratados"}` }
-                : { tom: "ok" as Tom, texto: `Tudo certo • ${cc.totalComprados} comprados` };
+                : { tom: "ok" as Tom, texto: `Tudo certo • ${cc.totalComprados} comprados${cc.notasReposicao.length ? " • teve reposição" : ""}` };
 
           const semanalLinha = !s || !semanal?.numero
             ? { tom: "neutro" as Tom, texto: "—" }
@@ -150,7 +150,7 @@ export default function EstoquePainelGeral() {
                   : <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-300/80"><CheckCircle2 className="h-3.5 w-3.5" />Em dia</span>}
               </div>
               <Linha icon={ClipboardCheck} titulo="Resumo de vendas" {...resumoLinha} onClick={rc ? () => setAberto({ tipo: "resumo", id: rc.id }) : undefined} />
-              <Linha icon={ShoppingCart} titulo="Compras x OS" {...comprasLinha} onClick={cc?.totalErrados ? () => setAberto({ tipo: "compras", id: cc.id }) : undefined} />
+              <Linha icon={ShoppingCart} titulo="Compras x OS" {...comprasLinha} onClick={cc && (cc.totalErrados || cc.notasReposicao.length) ? () => setAberto({ tipo: "compras", id: cc.id }) : undefined} />
               <Linha icon={CalendarDays} titulo="Contagem semanal" {...semanalLinha} onClick={s?.iniciada ? () => setAberto({ tipo: "semanal", lojaId: r.lojaId, semanaInicio: semana }) : undefined} />
             </section>
           );
