@@ -69,7 +69,7 @@ export default function EstoqueConferencia() {
   return (
     <main className="mx-auto max-w-3xl p-3 pb-24 sm:p-6">
       <div className="mb-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]/65">Estoque • conferência diária</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]/65">Estoque • resumo geral de vendas de itens</p>
         <h1 className="mt-1 text-2xl font-black">{perfilQ.data?.loja || "Conferência de estoque"}</h1>
       </div>
 

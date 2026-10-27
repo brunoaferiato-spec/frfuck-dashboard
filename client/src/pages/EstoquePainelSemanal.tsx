@@ -34,7 +34,7 @@ export default function EstoquePainelSemanal() {
         </div>
         <label className="w-full text-xs font-bold text-gray-400 sm:w-auto">Semana
           <select value={semana} onChange={(e) => { setSemana(e.target.value); setLoja(null); }} className="mt-1 block h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white">
-            {semanas.map((s) => <option key={s} value={s}>Semana {semanaDoCiclo(s)} • {dataBr(s)} a {dataBr(somarDias(s, 6))}</option>)}
+            {semanas.map((s) => <option key={s} value={s}>Semana {semanaDoCiclo(s)} • {dataBr(s)} a {dataBr(somarDias(s, 5))}</option>)}
           </select>
         </label>
       </div>
@@ -58,7 +58,7 @@ export default function EstoquePainelSemanal() {
         })}
       </div>
 
-      {loja && <Detalhe lojaId={loja} semanaInicio={semana} onFechar={() => setLoja(null)} />}
+      {loja && <DetalheSemanal lojaId={loja} semanaInicio={semana} onFechar={() => setLoja(null)} />}
 
       {(pendenciasQ.data || []).length > 0 && (
         <section className="mt-6 rounded-3xl border border-rose-400/20 bg-[#0a0a0a] p-4">
@@ -79,7 +79,7 @@ export default function EstoquePainelSemanal() {
   );
 }
 
-function Detalhe({ lojaId, semanaInicio, onFechar }: { lojaId: number; semanaInicio: string; onFechar: () => void }) {
+export function DetalheSemanal({ lojaId, semanaInicio, onFechar }: { lojaId: number; semanaInicio: string; onFechar: () => void }) {
   const utils = trpc.useUtils();
   const semanaQ = trpc.estoque.semanal.semana.useQuery({ lojaId, semanaInicio });
   const [verFoto, setVerFoto] = useState<number | null>(null);

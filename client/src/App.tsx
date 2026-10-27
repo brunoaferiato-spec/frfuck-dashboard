@@ -35,11 +35,10 @@ import ComprasManutencao from "./pages/ComprasManutencao";
 import ComprasGarantias from "./pages/ComprasGarantias";
 import EstoqueShell from "./components/EstoqueShell";
 import EstoqueConferencia from "./pages/EstoqueConferencia";
-import EstoquePainel from "./pages/EstoquePainel";
 import EstoqueComprasOS from "./pages/EstoqueComprasOS";
-import EstoquePainelComprasOS from "./pages/EstoquePainelComprasOS";
 import EstoqueSemanal from "./pages/EstoqueSemanal";
-import EstoquePainelSemanal from "./pages/EstoquePainelSemanal";
+import EstoquePainelGeral from "./pages/EstoquePainelGeral";
+import EstoquePremiacoes from "./pages/EstoquePremiacoes";
 
 function TelaCarregando() {
   return (
@@ -355,16 +354,13 @@ function Router() {
         </RotaCompras>
       </Route>
 
-      <Route path="/estoque/painel/compras-os">
+      <Route path="/estoque/premiacoes">
         <RotaEstoque>
-          <EstoquePainelComprasOS />
+          <EstoquePremiacoes />
         </RotaEstoque>
       </Route>
-      <Route path="/estoque/painel/semanal">
-        <RotaEstoque>
-          <EstoquePainelSemanal />
-        </RotaEstoque>
-      </Route>
+      <Route path="/estoque/painel/compras-os"><Redirect to="/estoque/painel" /></Route>
+      <Route path="/estoque/painel/semanal"><Redirect to="/estoque/painel" /></Route>
       <Route path="/estoque/semanal">
         <RotaEstoque>
           <EstoqueSemanal />
@@ -377,7 +373,7 @@ function Router() {
       </Route>
       <Route path="/estoque/painel">
         <RotaEstoque>
-          <EstoquePainel />
+          <EstoquePainelGeral />
         </RotaEstoque>
       </Route>
 

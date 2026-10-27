@@ -5,6 +5,8 @@ import { empresaDaLoja } from "@shared/empresas";
 
 export const PERFIL_ESTOQUE = "estoque"; // estoquista de uma loja (users.lojaId)
 export const PERFIL_SUPERVISOR_ESTOQUE = "estoque_supervisor";
+// Compras x OS marcado como "não teve compra nesse dia" (fica no nome do arquivo).
+export const SEM_COMPRA = "SEM COMPRA NO DIA";
 
 // Quem pode o quê: estoquista só a própria loja; supervisor, admin e gestor todas.
 export function perfil(ctx: any) {
@@ -36,6 +38,11 @@ export function iso(v: unknown) {
   if (!v) return null;
   if (v instanceof Date) return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
   return String(v).slice(0, 10);
+}
+
+// Datas no horário de Brasília (o servidor roda em UTC).
+export function dataSP(d: Date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(d);
 }
 
 export function podeVerLoja(p: { supervisor: boolean; lojaId: number }, lojaId: number) {

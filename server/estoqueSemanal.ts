@@ -6,7 +6,7 @@ import { EMPRESAS, empresaDaLoja } from "@shared/empresas";
 import { GRUPOS_ESTOQUE, INICIO_CICLO, gruposDaSemana, segundaDaSemana, semanaDoCiclo, somarDias, type GrupoEstoque } from "@shared/estoqueSemanal";
 import { conferirLojaDoRelatorio, exigirSupervisor, iso, nomeUsuario, perfil, podeVerLoja } from "./estoqueBase";
 
-// Contagem semanal: ciclo de 4 semanas com grupos de peças. Sem dia certo, mas tem que entregar até domingo.
+// Contagem semanal: ciclo de 4 semanas com grupos de peças. Sem dia certo, mas tem que entregar até sábado.
 // Para cada grupo o estoquista anexa o PDF "ESTOQUE DE ITENS", as fotos das folhas contadas
 // e as alterações/ajustes (ou marca que não teve alteração). O supervisor vê as 6 lojas e trata os ajustes.
 
@@ -84,7 +84,7 @@ function lerGrupos(v: unknown): Grupos {
 
 // Situação da semana: pendente (ainda dá tempo), atrasada, entregue ou entregue com atraso.
 function situacao(semanaInicio: string, reg: any) {
-  const fim = somarDias(semanaInicio, 6);
+  const fim = somarDias(semanaInicio, 5);
   if (reg && String(reg.status) === "entregue") {
     const entregue = reg.entregueEm ? new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(reg.entregueEm)) : fim;
     return entregue > fim ? "entregue_atraso" : "entregue";
@@ -142,7 +142,7 @@ async function montarSemana(lojaId: number, semanaInicio: string) {
   return {
     id: reg ? Number(reg.id) : null,
     lojaId, loja: empresaDaLoja(lojaId)?.loja || `Loja ${lojaId}`,
-    semanaInicio, semanaFim: somarDias(semanaInicio, 6), numero: semanaDoCiclo(semanaInicio),
+    semanaInicio, semanaFim: somarDias(semanaInicio, 5), numero: semanaDoCiclo(semanaInicio),
     status: situacao(semanaInicio, reg),
     entreguePorNome: reg?.entreguePorNome ? String(reg.entreguePorNome) : "",
     grupos: gruposDaSemana(semanaInicio).map((g) => {
@@ -184,7 +184,7 @@ export const semanalRouter = router({
     for (let s = atual, n = 0; s >= INICIO_CICLO && n < 8; s = somarDias(s, -7), n++) {
       const reg = regs.find((r) => iso(r.semanaInicio) === s);
       semanas.push({
-        semanaInicio: s, semanaFim: somarDias(s, 6), numero: semanaDoCiclo(s),
+        semanaInicio: s, semanaFim: somarDias(s, 5), numero: semanaDoCiclo(s),
         grupos: gruposDaSemana(s).map((g) => GRUPOS_ESTOQUE[g]), status: situacao(s, reg),
       });
     }
@@ -333,7 +333,7 @@ export const semanalRouter = router({
         WHERE s.status='entregue' AND a.tratado=0 GROUP BY s.lojaId`
     );
     return {
-      semanaInicio: semana, semanaFim: somarDias(semana, 6), numero: semanaDoCiclo(semana),
+      semanaInicio: semana, semanaFim: somarDias(semana, 5), numero: semanaDoCiclo(semana),
       grupos: gruposDaSemana(semana).map((g) => GRUPOS_ESTOQUE[g]),
       lojas: EMPRESAS.map((e) => {
         const r = regs.find((x) => Number(x.lojaId) === e.lojaId);

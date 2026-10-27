@@ -63,7 +63,7 @@ export default function EstoquePainel() {
         })}
       </div>
 
-      {aberta && <Detalhe conferenciaId={aberta} onFechar={() => setAberta(null)} />}
+      {aberta && <DetalheResumoVendas conferenciaId={aberta} onFechar={() => setAberta(null)} />}
 
       {(pendenciasQ.data || []).length > 0 && (
         <section className="mt-6 rounded-3xl border border-rose-400/20 bg-[#0a0a0a] p-4">
@@ -83,7 +83,7 @@ export default function EstoquePainel() {
   );
 }
 
-function Detalhe({ conferenciaId, onFechar }: { conferenciaId: number; onFechar: () => void }) {
+export function DetalheResumoVendas({ conferenciaId, onFechar }: { conferenciaId: number; onFechar: () => void }) {
   const utils = trpc.useUtils();
   const detalheQ = trpc.estoque.detalhe.useQuery({ conferenciaId });
   const [soDiferencas, setSoDiferencas] = useState(true);

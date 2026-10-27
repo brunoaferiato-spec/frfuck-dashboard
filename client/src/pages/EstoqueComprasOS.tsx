@@ -15,6 +15,10 @@ function dataBr(iso: string | null | undefined) {
   const [a, m, d] = iso.split("-");
   return `${d}/${m}/${a}`;
 }
+function hojeIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 const qtd = (n: number | null | undefined) => (n == null ? "—" : Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 2 }));
 
 async function lerPdf(file: File): Promise<RelatorioCompraOS> {
@@ -77,7 +81,7 @@ export default function EstoqueComprasOS() {
       <div className="mb-4">
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]/65">Estoque • compras x OS</p>
         <h1 className="mt-1 text-2xl font-black">{perfilQ.data?.loja || "Compras x OS"}</h1>
-        <p className="mt-1 text-sm text-gray-500">Toda peça comprada tem que sair no mesmo dia, e não pode comprar o que já tem no estoque.</p>
+        <p className="mt-1 text-sm text-gray-500">Toda peça comprada tem que sair no mesmo dia, e não pode comprar o que já tem no estoque. Envie todo dia, ao fechar a loja.</p>
       </div>
 
       {perfilQ.data?.supervisor && (
@@ -108,6 +112,8 @@ function NovoRelatorio({ lojaId, setErro, onIniciado }: { lojaId: number; setErr
   const [lendo, setLendo] = useState(false);
   const [lido, setLido] = useState<{ arquivo: string; relatorio: RelatorioCompraOS } | null>(null);
   const iniciar = trpc.estoque.comprasOS.iniciar.useMutation({ onSuccess: () => { setLido(null); onIniciado(); }, onError: (e) => setErro(e.message) });
+  const semCompra = trpc.estoque.comprasOS.semCompra.useMutation({ onSuccess: () => onIniciado(), onError: (e) => setErro(e.message) });
+  const [diaSemCompra, setDiaSemCompra] = useState(hojeIso());
 
   async function escolher(file: File | null) {
     if (!file) return;
@@ -137,7 +143,20 @@ function NovoRelatorio({ lojaId, setErro, onIniciado }: { lojaId: number; setErr
           <span className="mt-1 text-xs text-gray-500">PDF do relatório do dia</span>
           <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => { void escolher(e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
         </label>
-      ) : (
+      ) : null}
+      {!lido && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-white/[0.06] p-3">
+          <p className="w-full text-xs font-bold text-gray-400">A loja não comprou nada no dia? Marque aqui em vez de anexar o relatório.</p>
+          <input type="date" value={diaSemCompra} max={hojeIso()} onChange={(e) => setDiaSemCompra(e.target.value)}
+            className="h-11 flex-1 rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white [color-scheme:dark]" />
+          <button type="button" disabled={semCompra.isPending || !diaSemCompra}
+            onClick={() => { setErro(""); if (window.confirm(`Confirmar que a loja não teve nenhuma compra em ${dataBr(diaSemCompra)}?`)) semCompra.mutate({ lojaId, data: diaSemCompra }); }}
+            className="h-11 flex-1 rounded-xl border border-white/15 px-3 text-sm font-black text-gray-200 disabled:opacity-50">
+            {semCompra.isPending ? "Salvando…" : "Não teve compra nesse dia"}
+          </button>
+        </div>
+      )}
+      {lido && r ? (
         <div className="space-y-3">
           <p className="text-sm text-gray-400">Relatório lido:</p>
           <div className="grid grid-cols-2 gap-2 text-sm">
@@ -155,7 +174,7 @@ function NovoRelatorio({ lojaId, setErro, onIniciado }: { lojaId: number; setErr
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -258,7 +277,7 @@ function Resultado({ atual }: { atual: Atual }) {
       {c.totalErrados === 0 ? (
         <div className="mt-3 flex items-center gap-3 rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.06] p-4 text-emerald-200">
           <CheckCircle2 className="h-8 w-8 shrink-0" />
-          <div><p className="text-lg font-black">Tudo certo!</p><p className="text-sm">As compras de {c.totalComprados} produto(s) saíram no mesmo dia.</p></div>
+          <div><p className="text-lg font-black">Tudo certo!</p><p className="text-sm">{c.totalComprados ? `As compras de ${c.totalComprados} produto(s) saíram no mesmo dia.` : "Dia sem compras registrado."}</p></div>
         </div>
       ) : (
         <>

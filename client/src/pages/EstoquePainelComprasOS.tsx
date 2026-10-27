@@ -63,7 +63,7 @@ export default function EstoquePainelComprasOS() {
         })}
       </div>
 
-      {aberta && <Detalhe comprasOsId={aberta} onFechar={() => setAberta(null)} />}
+      {aberta && <DetalheComprasOS comprasOsId={aberta} onFechar={() => setAberta(null)} />}
 
       {(pendenciasQ.data || []).length > 0 && (
         <section className="mt-6 rounded-3xl border border-rose-400/20 bg-[#0a0a0a] p-4">
@@ -83,7 +83,7 @@ export default function EstoquePainelComprasOS() {
   );
 }
 
-function Detalhe({ comprasOsId, onFechar }: { comprasOsId: number; onFechar: () => void }) {
+export function DetalheComprasOS({ comprasOsId, onFechar }: { comprasOsId: number; onFechar: () => void }) {
   const utils = trpc.useUtils();
   const detalheQ = trpc.estoque.comprasOS.detalhe.useQuery({ comprasOsId });
   const [obs, setObs] = useState<Record<number, string>>({});

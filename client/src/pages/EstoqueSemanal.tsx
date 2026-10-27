@@ -80,7 +80,7 @@ export default function EstoqueSemanal() {
       <div className="mb-4">
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]/65">Estoque • contagem semanal</p>
         <h1 className="mt-1 text-2xl font-black">{perfilQ.data?.loja || "Contagem semanal"}</h1>
-        <p className="mt-1 text-sm text-gray-500">Sem dia certo: conte os grupos da semana e entregue até domingo.</p>
+        <p className="mt-1 text-sm text-gray-500">Sem dia certo: conte os grupos da semana e entregue até sábado.</p>
       </div>
 
       {perfilQ.data?.supervisor && (

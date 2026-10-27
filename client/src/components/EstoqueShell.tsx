@@ -1,5 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, BarChart3, CalendarDays, CalendarRange, ClipboardCheck, LayoutGrid, LogOut, ShoppingCart, Warehouse, type LucideIcon } from "lucide-react";
+import { ArrowLeft, CalendarDays, ClipboardCheck, LayoutGrid, LogOut, ShoppingCart, Trophy, Warehouse, type LucideIcon } from "lucide-react";
 import { ReactNode } from "react";
 import { useLocation } from "wouter";
 
@@ -9,14 +9,13 @@ import { useLocation } from "wouter";
 type Item = { label: string; curto: string; rota: string; icon: LucideIcon };
 
 const CONTAGENS: Item[] = [
-  { label: "Contagem diária", curto: "Diária", rota: "/estoque", icon: ClipboardCheck },
+  { label: "Resumo geral de vendas de itens", curto: "Resumo vendas", rota: "/estoque", icon: ClipboardCheck },
   { label: "Compras x OS", curto: "Compras x OS", rota: "/estoque/compras-os", icon: ShoppingCart },
   { label: "Contagem semanal", curto: "Semanal", rota: "/estoque/semanal", icon: CalendarDays },
 ];
 const PAINEIS: Item[] = [
-  { label: "Contagem diária", curto: "Diária", rota: "/estoque/painel", icon: LayoutGrid },
-  { label: "Compras x OS", curto: "Compras x OS", rota: "/estoque/painel/compras-os", icon: BarChart3 },
-  { label: "Contagem semanal", curto: "Semanal", rota: "/estoque/painel/semanal", icon: CalendarRange },
+  { label: "Painel das lojas", curto: "Painel", rota: "/estoque/painel", icon: LayoutGrid },
+  { label: "Premiações", curto: "Premiações", rota: "/estoque/premiacoes", icon: Trophy },
 ];
 
 export default function EstoqueShell({ children }: { children: ReactNode }) {
@@ -25,7 +24,7 @@ export default function EstoqueShell({ children }: { children: ReactNode }) {
   const [location, navigate] = useLocation();
   const supervisor = ["estoque_supervisor", "admin", "gestor"].includes(role);
   const voltaDashboard = ["admin", "gestor"].includes(role);
-  const noPainel = location.startsWith("/estoque/painel");
+  const noPainel = location.startsWith("/estoque/painel") || location.startsWith("/estoque/premiacoes");
   const abas = supervisor && noPainel ? PAINEIS : CONTAGENS;
 
   async function sair() {
@@ -42,8 +41,8 @@ export default function EstoqueShell({ children }: { children: ReactNode }) {
             const ativo = location === i.rota;
             return (
               <button key={i.rota} type="button" onClick={() => navigate(i.rota)}
-                className={`group flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-bold transition ${ativo ? "bg-[#D4AF37] text-black shadow-[0_8px_24px_-12px_rgba(212,175,55,0.8)]" : "text-gray-400 hover:bg-white/[0.04] hover:text-white"}`}>
-                <i.icon className={`h-[18px] w-[18px] ${ativo ? "" : "text-gray-500 group-hover:text-[#F2D675]"}`} />{i.label}
+                className={`group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-bold leading-tight transition ${ativo ? "bg-[#D4AF37] text-black shadow-[0_8px_24px_-12px_rgba(212,175,55,0.8)]" : "text-gray-400 hover:bg-white/[0.04] hover:text-white"}`}>
+                <i.icon className={`h-[18px] w-[18px] shrink-0 ${ativo ? "" : "text-gray-500 group-hover:text-[#F2D675]"}`} />{i.label}
               </button>
             );
           })}
@@ -65,7 +64,7 @@ export default function EstoqueShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="mt-8 space-y-7">
           <Secao titulo="Contagens" itens={CONTAGENS} />
-          {supervisor && <Secao titulo="Painéis das lojas" itens={PAINEIS} />}
+          {supervisor && <Secao titulo="Supervisor" itens={PAINEIS} />}
         </nav>
         <div className="mt-auto space-y-1 border-t border-white/[0.06] pt-3">
           {voltaDashboard && (
@@ -91,7 +90,7 @@ export default function EstoqueShell({ children }: { children: ReactNode }) {
             {supervisor && (
               <div className="flex rounded-xl border border-white/10 bg-black/40 p-0.5 text-xs font-black">
                 <button type="button" onClick={() => navigate("/estoque")} className={`rounded-lg px-2.5 py-1.5 ${!noPainel ? "bg-[#D4AF37] text-black" : "text-gray-400"}`}>Contagens</button>
-                <button type="button" onClick={() => navigate("/estoque/painel")} className={`rounded-lg px-2.5 py-1.5 ${noPainel ? "bg-[#D4AF37] text-black" : "text-gray-400"}`}>Painéis</button>
+                <button type="button" onClick={() => navigate("/estoque/painel")} className={`rounded-lg px-2.5 py-1.5 ${noPainel ? "bg-[#D4AF37] text-black" : "text-gray-400"}`}>Painel</button>
               </div>
             )}
             {voltaDashboard && (
@@ -101,11 +100,11 @@ export default function EstoqueShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <div className="pb-24 lg:pb-0">{children}</div>
+        <div className={abas.length ? "pb-24 lg:pb-0" : ""}>{children}</div>
 
         {/* Abas embaixo (celular) */}
-        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-[#080808]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
-          <div className="mx-auto grid max-w-md grid-cols-3">
+        {abas.length > 0 && <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.08] bg-[#080808]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
+          <div className="mx-auto grid max-w-md" style={{ gridTemplateColumns: `repeat(${abas.length}, minmax(0, 1fr))` }}>
             {abas.map((i) => {
               const ativo = location === i.rota;
               return (
@@ -116,7 +115,7 @@ export default function EstoqueShell({ children }: { children: ReactNode }) {
               );
             })}
           </div>
-        </nav>
+        </nav>}
       </div>
     </div>
   );

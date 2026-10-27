@@ -4,8 +4,9 @@ import { protectedProcedure, router } from "./_core/trpc";
 import { db } from "./comprasPecas";
 import { EMPRESAS, empresaDaLoja } from "@shared/empresas";
 import { avaliarCompraOS } from "@shared/comprasOS";
-import { conferirLojaDoRelatorio, exigirSupervisor, iso, nomeUsuario, perfil, podeVerLoja } from "./estoqueBase";
+import { SEM_COMPRA, conferirLojaDoRelatorio, dataSP, exigirSupervisor, iso, nomeUsuario, perfil, podeVerLoja } from "./estoqueBase";
 import { semanalRouter } from "./estoqueSemanal";
+import { premiacoesRouter } from "./estoquePremiacoes";
 
 // Conferência diária de estoque: o estoquista de cada loja manda o "Resumo geral venda de itens" do dia anterior
 // e confere item por item (foto obrigatória + quantidade contada). A contagem é às cegas: o estoque do sistema
@@ -262,6 +263,24 @@ const comprasOSRouter = router({
       return { ok: true };
     }),
 
+  // Dia sem nenhuma compra: o relatório sai vazio, então o estoquista só marca o dia (fica concluído).
+  semCompra: protectedProcedure.input(z.object({ lojaId: id, data: dataIso })).mutation(async ({ ctx, input }) => {
+    const p = perfil(ctx);
+    await ensure();
+    const lojaId = p.supervisor ? input.lojaId : p.lojaId;
+    if (!empresaDaLoja(lojaId)) throw new TRPCError({ code: "BAD_REQUEST", message: "Loja inválida." });
+    if (input.data > dataSP()) throw new TRPCError({ code: "BAD_REQUEST", message: "Esse dia ainda não chegou." });
+    if (new Date(`${input.data}T12:00:00Z`).getUTCDay() === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Domingo a loja não abre." });
+    const [existe] = await db().query<any[]>(`SELECT id FROM estoque_comprasos WHERE lojaId=? AND dataRelatorio=? LIMIT 1`, [lojaId, input.data]);
+    if (existe.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Esse dia já tem Compras x OS enviado." });
+    await db().query(
+      `INSERT INTO estoque_comprasos (lojaId, dataRelatorio, arquivoNome, status, totalProdutos, totalComprados, totalErrados, criadoPorNome, concluidaPorNome, concluidaEm)
+       VALUES (?,?,?,'concluida',0,0,0,?,?,NOW())`,
+      [lojaId, input.data, SEM_COMPRA, nomeUsuario(ctx), nomeUsuario(ctx)]
+    );
+    return { ok: true };
+  }),
+
   concluir: protectedProcedure.input(z.object({ comprasOsId: id })).mutation(async ({ ctx, input }) => {
     const p = perfil(ctx);
     await ensure();
@@ -337,6 +356,7 @@ const comprasOSRouter = router({
 export const estoqueRouter = router({
   comprasOS: comprasOSRouter,
   semanal: semanalRouter,
+  premiacoes: premiacoesRouter,
   // Perfil de quem está usando (o estoquista já tem a loja fixa).
   meuPerfil: protectedProcedure.query(({ ctx }) => {
     const p = perfil(ctx);
