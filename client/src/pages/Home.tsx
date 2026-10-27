@@ -1188,6 +1188,7 @@ export default function Home() {
     { label: "Gestão RH", icon: ShieldCheck, rota: "/rh/gestao", adminOnly: true },
     // Mesmos perfis liberados na rota /compras (App.tsx).
     { label: "Compras", icon: ShoppingCart, rota: "/compras/pecas", perfis: ["compras", "admin", "gestor"] },
+    { label: "Estoque", icon: ShoppingCart, rota: "/estoque/painel", perfis: ["admin", "gestor"] },
     { label: "Usuários", icon: ShieldCheck, rota: "/usuarios", adminOnly: true },
   ] as { label: string; icon: typeof ShieldCheck; rota: string; ativo?: boolean; adminOnly?: boolean; perfis?: string[] }[];
 

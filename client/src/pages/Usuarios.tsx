@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { EMPRESAS, empresaDaLoja } from "@shared/empresas";
 
 type PerfilAcesso =
   | "admin"
@@ -23,9 +24,11 @@ type PerfilAcesso =
   | "rh_caixa"
   | "compras"
   | "financeiro"
-  | "pneus_leitura";
+  | "pneus_leitura"
+  | "estoque"
+  | "estoque_supervisor";
 
-type RoleBackend = "admin" | "gestor" | "rh" | "compras" | "financeiro" | "pneus_leitura";
+type RoleBackend = "admin" | "gestor" | "rh" | "compras" | "financeiro" | "pneus_leitura" | "estoque" | "estoque_supervisor";
 
 type UserItem = {
   id: number;
@@ -51,6 +54,8 @@ const PERFIS: Array<{ valor: PerfilAcesso; nome: string; descricao: string; cor:
   { valor: "rh_caixa", nome: "Caixa Líder", descricao: "Somente o Meu Dia da própria loja.", cor: "border-violet-400/30 bg-violet-400/[0.08] text-violet-200" },
   { valor: "compras", nome: "Compras", descricao: "Somente o módulo de Compras (pneus, peças, insumos e manutenção).", cor: "border-emerald-400/30 bg-emerald-400/[0.08] text-emerald-200" },
   { valor: "pneus_leitura", nome: "Pneus (somente visualizar)", descricao: "Só vê planejamentos, cotações, pedidos e histórico de pneus das 6 lojas. Não altera nada.", cor: "border-sky-400/30 bg-sky-400/[0.08] text-sky-200" },
+  { valor: "estoque", nome: "Estoque (loja)", descricao: "Estoquista: faz a conferência diária do estoque da própria loja.", cor: "border-orange-400/30 bg-orange-400/[0.08] text-orange-200" },
+  { valor: "estoque_supervisor", nome: "Supervisor de estoque", descricao: "Painel das 6 lojas: vê as conferências, fotos e diferenças, e trata cada uma.", cor: "border-orange-300/40 bg-orange-300/[0.10] text-orange-100" },
   { valor: "financeiro", nome: "Financeiro", descricao: "Perfil financeiro.", cor: "border-white/15 bg-white/[0.05] text-gray-300" },
 ];
 
@@ -64,7 +69,9 @@ function perfilDoUsuario(user: UserItem): PerfilAcesso {
     user.role === "gestor" ||
     user.role === "compras" ||
     user.role === "financeiro" ||
-    user.role === "pneus_leitura"
+    user.role === "pneus_leitura" ||
+    user.role === "estoque" ||
+    user.role === "estoque_supervisor"
   ) {
     return user.role;
   }
@@ -216,9 +223,13 @@ export default function Usuarios() {
       avisar("Selecione a loja da Caixa Líder.", true);
       return;
     }
+    if (perfil === "estoque" && !lojaId) {
+      avisar("Selecione a loja do estoquista.", true);
+      return;
+    }
 
     const role = roleBackendDoPerfil(perfil);
-    const lojaIdBackend = perfil === "rh_caixa" ? Number(lojaId) : null;
+    const lojaIdBackend = perfil === "rh_caixa" || perfil === "estoque" ? Number(lojaId) : null;
 
     if (editingUserId) {
       updateMutation.mutate({
@@ -334,7 +345,7 @@ export default function Usuarios() {
                       type="button"
                       onClick={() => {
                         setPerfil(p.valor);
-                        if (p.valor !== "rh_caixa") setLojaId("");
+                        if (p.valor !== "rh_caixa" && p.valor !== "estoque") setLojaId("");
                       }}
                       className={`flex h-10 items-center justify-between rounded-xl border px-3 text-xs font-black transition ${perfil === p.valor ? p.cor : "border-white/10 text-gray-500 hover:border-white/20 hover:text-gray-300"}`}
                     >
@@ -345,6 +356,21 @@ export default function Usuarios() {
                 </div>
                 {perfilSelecionado && <p className="mt-2 text-[11px] leading-5 text-gray-500">{perfilSelecionado.descricao}</p>}
               </div>
+
+              {perfil === "estoque" && (
+                <div>
+                  <label className={rotulo}>Loja do estoquista</label>
+                  <div className="relative">
+                    <Store className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-gray-600" />
+                    <select value={lojaId} onChange={(e) => setLojaId(e.target.value)} className={`${campo} pl-9`} required>
+                      <option value="">Selecione a loja</option>
+                      {EMPRESAS.map((e) => (
+                        <option key={e.lojaId} value={String(e.lojaId)}>{e.loja}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               {perfil === "rh_caixa" && (
                 <div>
@@ -445,10 +471,10 @@ export default function Usuarios() {
 
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.04em] ${p?.cor || "border-white/10 text-gray-400"}`}>{p?.nome || user.role}</span>
-                      {user.role === "rh" && Number(user.lojaId || 0) > 0 && (
+                      {(user.role === "rh" || user.role === "estoque") && Number(user.lojaId || 0) > 0 && (
                         <span className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-[10px] font-black text-gray-300">
                           <Store className="h-3 w-3" />
-                          {loja?.nome || `Loja ${user.lojaId}`}
+                          {loja?.nome || empresaDaLoja(user.lojaId)?.loja || `Loja ${user.lojaId}`}
                         </span>
                       )}
                       <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${user.isActive ? "bg-emerald-400/[0.10] text-emerald-300" : "bg-rose-400/[0.10] text-rose-300"}`}>

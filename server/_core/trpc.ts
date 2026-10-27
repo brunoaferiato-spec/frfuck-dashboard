@@ -41,6 +41,11 @@ const requireUser = t.middleware(async opts => {
     throw new TRPCError({ code: "FORBIDDEN", message: "O perfil Compras tem acesso somente ao módulo de Compras." });
   }
 
+  // Perfis de estoque (estoquista da loja e supervisor): só a conferência de estoque.
+  if (["estoque", "estoque_supervisor"].includes(String(ctx.user.role || "")) && !(path === "lojas.list" || path.startsWith("estoque."))) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Seu acesso é somente ao estoque." });
+  }
+
   // Perfil "Pneus (somente visualizar)": só consultas de pneus (cotações, pedidos e histórico) e a lista de lojas.
   // Qualquer alteração (salvar, importar, excluir, baixar planilha) é recusada aqui, mesmo fora da tela.
   if (String(ctx.user.role || "") === PERFIL_PNEUS_LEITURA) {

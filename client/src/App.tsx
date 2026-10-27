@@ -33,6 +33,9 @@ import ComprasPlaceholder from "./pages/ComprasPlaceholder";
 import ComprasInsumos from "./pages/ComprasInsumos";
 import ComprasManutencao from "./pages/ComprasManutencao";
 import ComprasGarantias from "./pages/ComprasGarantias";
+import EstoqueShell from "./components/EstoqueShell";
+import EstoqueConferencia from "./pages/EstoqueConferencia";
+import EstoquePainel from "./pages/EstoquePainel";
 
 function TelaCarregando() {
   return (
@@ -82,6 +85,8 @@ function perfilAtual(user: any) {
     adminOuGestor: role === "admin" || role === "gestor",
     compras: role === "compras",
     pneusLeitura: role === "pneus_leitura",
+    estoquista: role === "estoque",
+    supervisorEstoque: role === "estoque_supervisor",
   };
 }
 
@@ -230,7 +235,19 @@ function TravaPneusLeitura({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [local] = useLocation();
   if (user && perfilAtual(user).pneusLeitura && !local.startsWith("/compras/pneus")) return <Redirect to="/compras/pneus" />;
+  if (user && perfilAtual(user).estoquista && local !== "/estoque") return <Redirect to="/estoque" />;
+  if (user && perfilAtual(user).supervisorEstoque && !local.startsWith("/estoque")) return <Redirect to="/estoque/painel" />;
   return <>{children}</>;
+}
+
+function RotaEstoque({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <TelaCarregando />;
+  if (!user) return <Home />;
+  if (!["estoque", "estoque_supervisor", "admin", "gestor"].includes(String(user.role || ""))) {
+    return <AcessoNegado descricao="O módulo de Estoque é para estoquistas, supervisor de estoque, Admin e Gestor." destino="/" />;
+  }
+  return <EstoqueShell>{children}</EstoqueShell>;
 }
 
 function Router() {
@@ -332,6 +349,18 @@ function Router() {
         <RotaCompras>
           <ComprasManutencao />
         </RotaCompras>
+      </Route>
+
+      <Route path="/estoque/painel">
+        <RotaEstoque>
+          <EstoquePainel />
+        </RotaEstoque>
+      </Route>
+
+      <Route path="/estoque">
+        <RotaEstoque>
+          <EstoqueConferencia />
+        </RotaEstoque>
       </Route>
 
       <Route path="/compras/garantias">

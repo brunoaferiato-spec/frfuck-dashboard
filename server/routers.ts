@@ -86,6 +86,7 @@ import { comprasPecasRouter, comprasAmortecedoresRouter } from "./comprasPecas";
 import { comprasInsumosEstoqueRouter, comprasInsumosLojaRouter } from "./comprasInsumos";
 import { comprasManutencaoRouter } from "./comprasManutencao";
 import { comprasGarantiasRouter } from "./comprasGarantias";
+import { estoqueRouter } from "./estoque";
 
 const funcaoSchema = z.enum([
   "mecanico",
@@ -633,7 +634,7 @@ export const appRouter = router({
           name: z.string().min(2, "Nome muito curto"),
           email: z.string().email("Email inválido"),
           password: z.string().min(6, "A senha deve ter pelo menos 6 caracteres"),
-          role: z.enum(["admin", "gestor", "rh", "compras", "financeiro", "pneus_leitura"]),
+          role: z.enum(["admin", "gestor", "rh", "compras", "financeiro", "pneus_leitura", "estoque", "estoque_supervisor"]),
           lojaId: z.number().nullable().optional(),
         })
       )
@@ -690,7 +691,7 @@ export const appRouter = router({
           name: z.string().min(2, "Nome muito curto"),
           email: z.string().email("Email inválido"),
           password: z.string().optional(),
-          role: z.enum(["admin", "gestor", "rh", "compras", "financeiro", "pneus_leitura"]),
+          role: z.enum(["admin", "gestor", "rh", "compras", "financeiro", "pneus_leitura", "estoque", "estoque_supervisor"]),
           lojaId: z.number().nullable().optional(),
           isActive: z.boolean(),
         })
@@ -764,6 +765,8 @@ export const appRouter = router({
       return { success: true };
     }),
   }),
+
+  estoque: estoqueRouter,
 
   lojas: router({
     list: protectedProcedure.query(() => getLojas()),
