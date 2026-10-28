@@ -116,15 +116,22 @@ function getRegraConsultorSulTexto(totalCarrosBruto: number) {
   })} / carro`;
 }
 
+// Faixas da comissão da supervisora (total de carros das 6 cidades).
+const FAIXAS_SUPERVISORA_ACI = [
+  { minimo: 0, maximo: 2399, faixa: "Até 2.399 carros", valorPorCarro: 0.5 },
+  { minimo: 2400, maximo: 2699, faixa: "2.400 a 2.699 carros", valorPorCarro: 0.75 },
+  { minimo: 2700, maximo: 2999, faixa: "2.700 a 2.999 carros", valorPorCarro: 1 },
+  { minimo: 3000, maximo: 3199, faixa: "3.000 a 3.199 carros", valorPorCarro: 1.25 },
+  { minimo: 3200, maximo: 4199, faixa: "3.200 a 4.199 carros", valorPorCarro: 1.5 },
+  { minimo: 4200, maximo: null, faixa: "4.200 carros ou mais", valorPorCarro: 2 },
+] as const;
+
 function getValorPorCarroSupervisoraAci(totalCarrosBruto: number) {
   const totalCarros = Number(totalCarrosBruto || 0);
-
-  if (totalCarros >= 4200) return 2;
-  if (totalCarros >= 3200) return 1.5;
-  if (totalCarros >= 3000) return 1.25;
-  if (totalCarros >= 2700) return 1;
-  if (totalCarros >= 2400) return 0.75;
-  return 0.5;
+  const faixa = [...FAIXAS_SUPERVISORA_ACI]
+    .reverse()
+    .find((item) => totalCarros >= item.minimo);
+  return faixa ? faixa.valorPorCarro : 0.5;
 }
 
 function calcularSupervisoraAci(args: {
@@ -3196,8 +3203,15 @@ const isMensalUnico =
                         <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
                           R$ {money(calculoAci.valorPorCarro)}
                         </td>
-                        <td className="p-2 text-right text-yellow-300 font-semibold whitespace-nowrap">
-                          R$ {money(calculoAci.comissao)}
+                        <td className="p-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => onOpenRegraSemanaEditor(linha, 1)}
+                            className="whitespace-nowrap text-yellow-300 font-semibold hover:underline underline-offset-4"
+                            title="Ver regra da comissão"
+                          >
+                            R$ {money(calculoAci.comissao)}
+                          </button>
                         </td>
                         <td className="p-2 text-right text-green-400 font-bold whitespace-nowrap">
                           R$ {money(calculoAci.totalComFixo)}
@@ -10579,6 +10593,42 @@ if (funcao === "gerente") {
       };
     }
 
+    if (linha.quadrante === "supervisora_consultores_pj") {
+      const cidadesAci = [
+        { nome: "Joinville", carros: Number(linha.sem1 || 0) },
+        { nome: "Blumenau", carros: Number(linha.sem2 || 0) },
+        { nome: "São José", carros: Number(linha.sem3 || 0) },
+        { nome: "Florianópolis", carros: Number(linha.sem4 || 0) },
+        { nome: "Gravataí", carros: Number((linha as any).sem5 || 0) },
+        { nome: "São Leopoldo", carros: Number((linha as any).sem6 || 0) },
+      ];
+      const calculoAci = calcularSupervisoraAci({
+        joinville: cidadesAci[0].carros,
+        blumenau: cidadesAci[1].carros,
+        saoJose: cidadesAci[2].carros,
+        florianopolis: cidadesAci[3].carros,
+        gravatai: cidadesAci[4].carros,
+        saoLeopoldo: cidadesAci[5].carros,
+      });
+
+      return {
+        linha,
+        semana,
+        isConsultor: true,
+        isRecepcao: false,
+        isSupervisor: false,
+        isSupervisoraAci: true,
+        base: calculoAci.totalCarros,
+        percentual: calculoAci.valorPorCarro,
+        comissao: calculoAci.comissao,
+        regraTexto: `R$ ${money(calculoAci.valorPorCarro)} / carro`,
+        metaTitulo: "Meta - Supervisora de Consultor de Vendas - PJ",
+        baseLabel: "Total de carros (6 cidades)",
+        extra: "",
+        cidadesAci,
+      };
+    }
+
     if (isSupervisor) {
       const lojaIdSupervisor = Number(linha.loja_id);
 
@@ -14972,6 +15022,62 @@ if (
                       As premiações são acumulativas.
                     </p>
                   </div>
+                ) : (detalheSemanaAtual as any).isSupervisoraAci ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-400">
+                      Fixo de R$ {money(ACI_SUPERVISORA_SALARIO_FIXO)} + valor por carro
+                      sobre o total de carros das 6 cidades. O valor da faixa vale para
+                      todos os carros.
+                    </p>
+
+                    {FAIXAS_SUPERVISORA_ACI.map((meta, index) => {
+                      const totalCarros = Number(detalheSemanaAtual.base || 0);
+                      const faixaAtual =
+                        totalCarros >= meta.minimo &&
+                        (meta.maximo === null || totalCarros <= meta.maximo);
+
+                      return (
+                        <div
+                          key={`meta-supervisora-aci-${index}`}
+                          className={`flex items-center justify-between rounded-lg border p-3 ${
+                            faixaAtual
+                              ? "border-green-500/40 bg-green-500/[0.06]"
+                              : "border-white/[0.07] bg-black/20"
+                          }`}
+                        >
+                          <p
+                            className={
+                              faixaAtual
+                                ? "font-semibold text-green-400"
+                                : "font-semibold text-white"
+                            }
+                          >
+                            {meta.faixa}
+                            {faixaAtual ? " • faixa atual" : ""}
+                          </p>
+                          <p className="text-sm text-yellow-300">
+                            R$ {money(meta.valorPorCarro)} por carro
+                          </p>
+                        </div>
+                      );
+                    })}
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-white/[0.07] pt-3 text-xs sm:grid-cols-3">
+                      {((detalheSemanaAtual as any).cidadesAci || []).map(
+                        (cidade: { nome: string; carros: number }) => (
+                          <div
+                            key={cidade.nome}
+                            className="flex items-center justify-between gap-2"
+                          >
+                            <span className="text-gray-400">{cidade.nome}</span>
+                            <span className="text-white">
+                              {cidade.carros.toLocaleString("pt-BR")}
+                            </span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
                 ) : detalheSemanaAtual.isSupervisor ? (
                   <div className="space-y-5">
                     <div>
@@ -15181,7 +15287,8 @@ if (
                       ? "Regra aplicada"
                       : "% aplicado"}
                   </span>
-                  {(detalheSemanaAtual as any).isConsultorSulMensal ? (
+                  {(detalheSemanaAtual as any).isConsultorSulMensal ||
+                  (detalheSemanaAtual as any).isSupervisoraAci ? (
                     <span className="font-semibold text-yellow-300">
                       R$ {money(detalheSemanaAtual.percentual || 0)} / carro
                     </span>
