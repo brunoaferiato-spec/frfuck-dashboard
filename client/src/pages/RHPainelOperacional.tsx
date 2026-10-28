@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import {
   Check,
@@ -10,6 +10,13 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const LOJAS = [
   { id: 1, nome: "Joinville" },
@@ -77,6 +84,46 @@ function diasAte(valor?: string | null) {
   return Math.round((alvo.getTime() - hoje.getTime()) / 86_400_000);
 }
 
+const NOMES_PERIODO_PONTO: Record<string, string> = {
+  entrada: "Entrada",
+  saida_almoco: "Saída almoço",
+  retorno_almoco: "Retorno almoço",
+  saida: "Saída",
+};
+
+function descricaoPendenciaPonto(item: any) {
+  if (item.fase === "cadastro") {
+    return item.tipoCadastro === "jornada" ? "Sem jornada" : "Sem cadastro";
+  }
+  const tipo = String(item.tipoOcorrencia || "");
+  const minutos = Number(item.minutosAtraso || 0);
+  if (tipo === "atraso") return `${minutos} min de atraso`;
+  if (tipo === "almoco_excedido") return `${minutos} min de almoço excedido`;
+  if (tipo === "sem_batida" || tipo === "ausente_relatorio") return "Sem batida";
+  if (tipo === "falta") return "Falta";
+  if (tipo === "saida_antecipada") return "Saída antecipada";
+  return "Ocorrência";
+}
+
+function fasePendenciaPonto(item: any) {
+  if (item.fase === "cadastro") return "Ajustar cadastro / jornada";
+  if (item.fase === "classificar") return "Aguardando tratativa da Caixa Líder";
+  if (item.fase === "documento") return "Aguardando documento";
+  if (item.fase === "concluir") return "Documento anexado • falta concluir";
+  return "Pendente";
+}
+
+function dataBR(valor?: string | null) {
+  const texto = String(valor || "").slice(0, 10);
+  return texto ? texto.split("-").reverse().join("/") : "";
+}
+
+type DetalhePonto = {
+  lojaNome: string;
+  titulo: string;
+  itens: any[];
+};
+
 type Atencao = {
   id: string;
   label: string;
@@ -88,6 +135,7 @@ type Atencao = {
 export default function RHPainelOperacional() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
+  const [detalhePonto, setDetalhePonto] = useState<DetalhePonto | null>(null);
 
   const hoje = hojeCivil();
   const diaSemana = new Date().getDay();
@@ -182,16 +230,17 @@ export default function RHPainelOperacional() {
           (item) => String(item.periodo) === periodo.periodo
         );
 
-        const pendenciasPeriodo = pendenciasLoja.filter(
+        const itensPeriodo = pendenciasLoja.filter(
           (item) => String(item.periodo) === periodo.periodo
-        ).length;
+        );
 
         const passouHorario = minutosAgora() >= minutosHorario(periodo.hora);
 
         return {
           ...periodo,
           ok: Boolean(conferencia),
-          pendencias: pendenciasPeriodo,
+          pendencias: itensPeriodo.length,
+          itensPendentes: itensPeriodo,
           atrasado: !conferencia && passouHorario,
         };
       });
@@ -292,6 +341,7 @@ export default function RHPainelOperacional() {
         ...loja,
         ponto,
         pontoPendente,
+        pendenciasPonto: pendenciasLoja,
         caixa,
         caixaDiferenca,
         atencoes,
@@ -435,8 +485,14 @@ export default function RHPainelOperacional() {
                       {loja.pontoPendente > 0 && (
                         <button
                           type="button"
-                          onClick={() => navigate("/rh/gestao/detalhes")}
-                          className="text-[9px] font-black text-rose-300 hover:text-rose-200"
+                          onClick={() =>
+                            setDetalhePonto({
+                              lojaNome: loja.nome,
+                              titulo: "Todas as pendências do ponto",
+                              itens: loja.pendenciasPonto,
+                            })
+                          }
+                          className="text-[9px] font-black text-rose-300 hover:text-rose-200 hover:underline"
                         >
                           {loja.pontoPendente} pend.
                         </button>
@@ -453,7 +509,21 @@ export default function RHPainelOperacional() {
                         {loja.ponto.map((item) => (
                           <div
                             key={item.periodo}
+                            role={item.pendencias > 0 ? "button" : undefined}
+                            title={item.pendencias > 0 ? "Ver pendências deste horário" : undefined}
+                            onClick={
+                              item.pendencias > 0
+                                ? () =>
+                                    setDetalhePonto({
+                                      lojaNome: loja.nome,
+                                      titulo: `${item.hora} • ${item.curto}`,
+                                      itens: item.itensPendentes,
+                                    })
+                                : undefined
+                            }
                             className={`rounded-lg border px-1.5 py-1.5 ${
+                              item.pendencias > 0 ? "cursor-pointer transition hover:brightness-150 " : ""
+                            }${
                               item.ok
                                 ? item.pendencias > 0
                                   ? "border-amber-400/20 bg-amber-400/[0.05]"
@@ -579,6 +649,60 @@ export default function RHPainelOperacional() {
           })}
         </section>
       </main>
+
+      <Dialog open={!!detalhePonto} onOpenChange={(aberto) => !aberto && setDetalhePonto(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto border-[#D4AF37]/20 bg-[#0b0b0b] text-white sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#F2D675]">
+              {detalhePonto?.lojaNome} • {detalhePonto?.titulo}
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {detalhePonto?.itens.length || 0} pendência(s) do ponto
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            {(detalhePonto?.itens || []).map((item) => (
+              <div
+                key={item.id}
+                className="rounded-lg border border-white/[0.07] bg-black/30 p-3 text-sm"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-bold text-white">{item.funcionarioNome || "Sem nome"}</p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {dataBR(item.dataReferencia)} •{" "}
+                      {NOMES_PERIODO_PONTO[String(item.periodo)] || item.periodo}
+                      {item.horarioPrevisto ? ` • previsto ${String(item.horarioPrevisto).slice(0, 5)}` : ""}
+                      {/^\d{1,2}:\d{2}/.test(String(item.horarioBatida || ""))
+                        ? ` • batida ${String(item.horarioBatida).slice(0, 5)}`
+                        : ""}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-rose-400/20 bg-rose-400/[0.06] px-2 py-0.5 text-[11px] font-bold text-rose-300">
+                    {descricaoPendenciaPonto(item)}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs font-semibold text-amber-300">
+                  {fasePendenciaPonto(item)}
+                </p>
+                {item.mensagem && (
+                  <p className="mt-1 text-xs text-gray-400">{item.mensagem}</p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate("/rh/gestao/detalhes")}
+            className="mt-2 flex h-9 w-full items-center justify-center gap-1 rounded-lg border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] text-xs font-bold text-[#F2D675] hover:bg-[#D4AF37]/[0.12]"
+          >
+            Abrir na Gestão do RH para tratar
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
