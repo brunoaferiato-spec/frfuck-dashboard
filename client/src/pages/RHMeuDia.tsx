@@ -523,7 +523,7 @@ function nomeStatus(status: string) {
     atraso_registrado: "Atraso registrado",
     atraso: "Atraso +15 min",
     almoco_excedido: "Almoço excedido",
-    intervalo_inferior: "Intervalo inferior",
+    intervalo_inferior: "Intervalo menor • sem advertência",
     sem_batida: "Sem batida",
     falta: "Falta",
     falta_tratada: "Falta já registrada",

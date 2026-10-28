@@ -18,6 +18,11 @@ import {
   X,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import {
+  erroDuracaoAlmoco,
+  minutosDuracaoAlmoco,
+  textoDuracaoAlmoco,
+} from "@shared/duracaoAlmoco";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -399,10 +404,7 @@ export default function GestaoFuncionarios() {
       cargoConfianca: Boolean(Number(func.cargoConfianca || 0)),
       isPj: Boolean(Number(func.isPj || 0)),
       horarioEntrada1: func.horarioEntrada1 || "",
-      duracaoAlmocoMinutos:
-        func.duracaoAlmocoMinutos !== null && func.duracaoAlmocoMinutos !== undefined
-          ? String(func.duracaoAlmocoMinutos)
-          : "",
+      duracaoAlmocoMinutos: textoDuracaoAlmoco(func.duracaoAlmocoMinutos),
       horarioSaida2: func.horarioSaida2 || "",
     });
     setIsOpen(true);
@@ -550,6 +552,12 @@ export default function GestaoFuncionarios() {
       return;
     }
 
+    const erroAlmoco = erroDuracaoAlmoco(formData.duracaoAlmocoMinutos);
+    if (erroAlmoco) {
+      alert(erroAlmoco);
+      return;
+    }
+
     try {
       const payload = {
         lojaId,
@@ -568,9 +576,7 @@ export default function GestaoFuncionarios() {
         cargoConfianca: formData.cargoConfianca,
         isPj: formData.isPj,
         horarioEntrada1: formData.horarioEntrada1 || null,
-        duracaoAlmocoMinutos: formData.duracaoAlmocoMinutos
-          ? Number(formData.duracaoAlmocoMinutos)
-          : null,
+        duracaoAlmocoMinutos: minutosDuracaoAlmoco(formData.duracaoAlmocoMinutos),
         horarioSaida1: null,
         horarioEntrada2: null,
         horarioSaida2: formData.horarioSaida2 || null,
@@ -1211,7 +1217,10 @@ export default function GestaoFuncionarios() {
                     <label className="mb-2 block text-xs font-medium text-white/50">
                       Tempo de almoço
                     </label>
-                    <select
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="horas:minutos, ex.: 0:15 ou 1:30"
                       value={formData.duracaoAlmocoMinutos}
                       onChange={(e) =>
                         setFormData((prev) => ({
@@ -1219,17 +1228,13 @@ export default function GestaoFuncionarios() {
                           duracaoAlmocoMinutos: e.target.value,
                         }))
                       }
-                      className={classeCampo(false)}
-                    >
-                      <option value="">Selecione</option>
-                      <option value="30">30 minutos</option>
-                      <option value="45">45 minutos</option>
-                      <option value="60">1 hora</option>
-                      <option value="90">1h30</option>
-                      <option value="120">2 horas</option>
-                      <option value="150">2h30</option>
-                      <option value="180">3 horas</option>
-                    </select>
+                      className={classeCampo(!!erroDuracaoAlmoco(formData.duracaoAlmocoMinutos))}
+                    />
+                    {erroDuracaoAlmoco(formData.duracaoAlmocoMinutos) && (
+                      <p className="mt-1 text-xs text-red-400">
+                        {erroDuracaoAlmoco(formData.duracaoAlmocoMinutos)}
+                      </p>
+                    )}
                   </div>
 
                   <div>

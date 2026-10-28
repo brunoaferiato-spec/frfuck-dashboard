@@ -41,6 +41,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  erroDuracaoAlmoco,
+  minutosDuracaoAlmoco,
+  textoDuracaoAlmoco,
+} from "@shared/duracaoAlmoco";
+import {
   computeFolhaLinha,
   computeSupervisor,
   createParcelasVale,
@@ -4151,11 +4156,7 @@ function abrirEdicaoFuncionarioDetalhe() {
     horarioEntrada1: String(
       funcionario.horarioEntrada1 || funcionario.horario_entrada_1 || ""
     ),
-    duracaoAlmocoMinutos:
-      funcionario.duracaoAlmocoMinutos !== null &&
-      funcionario.duracaoAlmocoMinutos !== undefined
-        ? String(funcionario.duracaoAlmocoMinutos)
-        : "",
+    duracaoAlmocoMinutos: textoDuracaoAlmoco(funcionario.duracaoAlmocoMinutos),
     horarioSaida2: String(
       funcionario.horarioSaida2 || funcionario.horario_saida_2 || ""
     ),
@@ -4193,6 +4194,12 @@ async function salvarEdicaoFuncionarioDetalhe() {
     return;
   }
 
+  const erroAlmoco = erroDuracaoAlmoco(funcionarioEdicaoForm.duracaoAlmocoMinutos);
+  if (erroAlmoco) {
+    alert(erroAlmoco);
+    return;
+  }
+
   try {
     await updateFuncionarioDetalheMutation.mutateAsync({
       id: Number(funcionario.id),
@@ -4214,9 +4221,7 @@ async function salvarEdicaoFuncionarioDetalhe() {
       cargoConfianca: funcionarioEdicaoForm.cargoConfianca,
         isPj: funcionarioEdicaoForm.isPj,
       horarioEntrada1: funcionarioEdicaoForm.horarioEntrada1 || null,
-      duracaoAlmocoMinutos: funcionarioEdicaoForm.duracaoAlmocoMinutos
-        ? Number(funcionarioEdicaoForm.duracaoAlmocoMinutos)
-        : null,
+      duracaoAlmocoMinutos: minutosDuracaoAlmoco(funcionarioEdicaoForm.duracaoAlmocoMinutos),
       horarioSaida1: null,
       horarioEntrada2: null,
       horarioSaida2: funcionarioEdicaoForm.horarioSaida2 || null,
@@ -13333,8 +13338,11 @@ if (
 
                       <div>
                         <Label className="text-gray-300">Tempo de almoço</Label>
-                        <select
-                          className="mt-1 h-10 w-full rounded-md border border-[#D4AF37]/20 bg-[#0b0b0b] px-3 text-sm text-white"
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="horas:minutos, ex.: 0:15 ou 1:30"
+                          className="mt-1"
                           value={funcionarioEdicaoForm.duracaoAlmocoMinutos}
                           onChange={(e) =>
                             setFuncionarioEdicaoForm((prev) => ({
@@ -13342,16 +13350,12 @@ if (
                               duracaoAlmocoMinutos: e.target.value,
                             }))
                           }
-                        >
-                          <option value="">Selecione</option>
-                          <option value="30">30 minutos</option>
-                          <option value="45">45 minutos</option>
-                          <option value="60">1 hora</option>
-                          <option value="90">1h30</option>
-                          <option value="120">2 horas</option>
-                          <option value="150">2h30</option>
-                          <option value="180">3 horas</option>
-                        </select>
+                        />
+                        {erroDuracaoAlmoco(funcionarioEdicaoForm.duracaoAlmocoMinutos) && (
+                          <p className="mt-1 text-xs text-red-400">
+                            {erroDuracaoAlmoco(funcionarioEdicaoForm.duracaoAlmocoMinutos)}
+                          </p>
+                        )}
                       </div>
 
                       <div>
