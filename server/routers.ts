@@ -67,6 +67,7 @@ import {
 
 import { signAuthToken, comparePassword, hashPassword } from "./auth";
 import { COOKIE_NAME } from "@shared/const";
+import { EMPRESAS } from "@shared/empresas";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router, protectedProcedure } from "./_core/trpc";
 import { z } from "zod";
@@ -769,7 +770,21 @@ export const appRouter = router({
   estoque: estoqueRouter,
 
   lojas: router({
-    list: protectedProcedure.query(() => getLojas()),
+    // A tabela lojas do banco não tem todas as lojas; completa com as 6 empresas.
+    list: protectedProcedure.query(async () => {
+      const doBanco = (await getLojas()) as any[];
+      const porId = new Map(doBanco.map((loja) => [Number(loja.id), loja]));
+      const completas = EMPRESAS.map((empresa) => {
+        const loja = porId.get(empresa.lojaId);
+        return loja
+          ? { ...loja, nome: loja.nome || empresa.loja }
+          : { id: empresa.lojaId, nome: empresa.loja, metaTotal: "0.00" };
+      });
+      const extras = doBanco.filter(
+        (loja) => !EMPRESAS.some((empresa) => empresa.lojaId === Number(loja.id))
+      );
+      return [...completas, ...extras];
+    }),
 
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
