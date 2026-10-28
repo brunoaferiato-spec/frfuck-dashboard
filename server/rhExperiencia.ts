@@ -197,6 +197,7 @@ export const rhExperienciaRouter = router({
 
        WHERE f.dataAdmissao IS NOT NULL
          AND f.dataAdmissao <= CURDATE()
+         AND COALESCE(f.isPj, 0) = 0
          AND (
            (f.status = 'ativo' AND f.dataAdmissao >= DATE_SUB(CURDATE(), INTERVAL 180 DAY))
            OR d.id IS NOT NULL
