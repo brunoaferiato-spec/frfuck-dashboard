@@ -1306,6 +1306,14 @@ export const comprasPneusRouter = router({
       await ensureComprasPneus();
       const pool = getPoolComprasPneus();
 
+      // Só Gravataí (7) trocou de sistema em 19/10.
+      if (input.arquivoVendasAntigoBase64 && input.lojaId !== 7) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "O relatório do sistema antigo só é usado em Gravataí.",
+        });
+      }
+
       const bufferVendasAntigo = input.arquivoVendasAntigoBase64
         ? bufferXlsx(
             input.arquivoVendasAntigoBase64,

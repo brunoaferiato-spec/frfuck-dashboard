@@ -70,9 +70,10 @@ function numeroInput(valor: string) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// Troca de sistema em 19/10/2026: até 19/12 as vendas de 60 dias ficam divididas entre o
+// Gravataí trocou de sistema em 19/10/2026: até 19/12 as vendas de 60 dias ficam divididas entre o
 // sistema antigo e o novo, então o planejamento aceita o relatório antigo para somar as vendas.
 const TRANSICAO_SISTEMA_ATIVA = new Date() < new Date(2026, 11, 20);
+const LOJAS_TRANSICAO_SISTEMA = ["7"];
 
 async function arquivoParaBase64(file: File) {
   if (file.size > 8 * 1024 * 1024) {
@@ -117,6 +118,8 @@ export default function ComprasPneus() {
   const [arquivoVendas, setArquivoVendas] = useState<File | null>(null);
   const [arquivoEstoque, setArquivoEstoque] = useState<File | null>(null);
   const [arquivoVendasAntigo, setArquivoVendasAntigo] = useState<File | null>(null);
+  const transicaoSistema =
+    TRANSICAO_SISTEMA_ATIVA && LOJAS_TRANSICAO_SISTEMA.includes(lojaId);
   const [itensAnalise, setItensAnalise] = useState<ItemAnalise[]>([]);
   const [planejamentoId, setPlanejamentoId] = useState<number | null>(null);
   const [chaveAnalise, setChaveAnalise] = useState("");
@@ -404,7 +407,7 @@ export default function ComprasPneus() {
     }
 
     try {
-      const arquivoAntigo = TRANSICAO_SISTEMA_ATIVA ? arquivoVendasAntigo : null;
+      const arquivoAntigo = transicaoSistema ? arquivoVendasAntigo : null;
       const [vendasBase64, estoqueBase64, antigoBase64] = await Promise.all([
         arquivoParaBase64(arquivoVendas),
         arquivoParaBase64(arquivoEstoque),
@@ -469,7 +472,7 @@ export default function ComprasPneus() {
       diasAnalise: Number(diasAnalise),
       diasProjecao: Number(diasProjecao),
       arquivoVendasNome: arquivoVendas
-        ? (TRANSICAO_SISTEMA_ATIVA && arquivoVendasAntigo
+        ? (transicaoSistema && arquivoVendasAntigo
             ? `${arquivoVendas.name} + antigo ${arquivoVendasAntigo.name}`
             : arquivoVendas.name
           ).slice(0, 255)
@@ -666,9 +669,9 @@ export default function ComprasPneus() {
               </div>
 
               <div
-                className={`mt-5 grid gap-4 ${TRANSICAO_SISTEMA_ATIVA ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}
+                className={`mt-5 grid gap-4 ${transicaoSistema ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}
               >
-                {TRANSICAO_SISTEMA_ATIVA && (
+                {transicaoSistema && (
                   <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-sky-400/25 bg-sky-400/[0.03] p-5 text-center hover:bg-sky-400/[0.06]">
                     <FileSpreadsheet className="h-7 w-7 text-sky-300" />
                     <p className="mt-3 font-black">Vendas do sistema antigo</p>
@@ -706,7 +709,7 @@ export default function ComprasPneus() {
                 <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.03] p-5 text-center hover:bg-[#D4AF37]/[0.06]">
                   <FileSpreadsheet className="h-7 w-7 text-[#F2D675]" />
                   <p className="mt-3 font-black">
-                    {TRANSICAO_SISTEMA_ATIVA ? "Vendas + estoque (sistema novo)" : "Vendas + estoque"}
+                    {transicaoSistema ? "Vendas + estoque (sistema novo)" : "Vendas + estoque"}
                   </p>
                   <p className="mt-1 text-xs text-gray-500">
                     Medida, melhor compra UF, vendas e estoque
