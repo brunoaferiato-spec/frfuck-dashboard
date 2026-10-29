@@ -70,6 +70,10 @@ function numeroInput(valor: string) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Troca de sistema em 19/10/2026: até 19/12 as vendas de 60 dias ficam divididas entre o
+// sistema antigo e o novo, então o planejamento aceita o relatório antigo para somar as vendas.
+const TRANSICAO_SISTEMA_ATIVA = new Date() < new Date(2026, 11, 20);
+
 async function arquivoParaBase64(file: File) {
   if (file.size > 8 * 1024 * 1024) {
     throw new Error("O arquivo deve ter no máximo 8 MB.");
@@ -112,6 +116,7 @@ export default function ComprasPneus() {
   const [diasProjecao, setDiasProjecao] = useState("21");
   const [arquivoVendas, setArquivoVendas] = useState<File | null>(null);
   const [arquivoEstoque, setArquivoEstoque] = useState<File | null>(null);
+  const [arquivoVendasAntigo, setArquivoVendasAntigo] = useState<File | null>(null);
   const [itensAnalise, setItensAnalise] = useState<ItemAnalise[]>([]);
   const [planejamentoId, setPlanejamentoId] = useState<number | null>(null);
   const [chaveAnalise, setChaveAnalise] = useState("");
@@ -399,9 +404,11 @@ export default function ComprasPneus() {
     }
 
     try {
-      const [vendasBase64, estoqueBase64] = await Promise.all([
+      const arquivoAntigo = TRANSICAO_SISTEMA_ATIVA ? arquivoVendasAntigo : null;
+      const [vendasBase64, estoqueBase64, antigoBase64] = await Promise.all([
         arquivoParaBase64(arquivoVendas),
         arquivoParaBase64(arquivoEstoque),
+        arquivoAntigo ? arquivoParaBase64(arquivoAntigo) : Promise.resolve(null),
       ]);
 
       const resposta = await analisarMutation.mutateAsync({
@@ -412,13 +419,22 @@ export default function ComprasPneus() {
         arquivoVendasBase64: vendasBase64,
         arquivoEstoqueNome: arquivoEstoque.name,
         arquivoEstoqueBase64: estoqueBase64,
+        ...(arquivoAntigo && antigoBase64
+          ? {
+              arquivoVendasAntigoNome: arquivoAntigo.name,
+              arquivoVendasAntigoBase64: antigoBase64,
+            }
+          : {}),
       });
 
       setItensAnalise(resposta.itens as ItemAnalise[]);
       setPlanejamentoId(null);
       setChaveAnalise(String(resposta.chaveAnalise || ""));
       setMensagem(
-        `${resposta.totalComprar} medidas para comprar • ${resposta.totalPneus} pneus sugeridos • loja confirmada: ${resposta.lojaRelatorio?.nome || "—"}.`
+        `${resposta.totalComprar} medidas para comprar • ${resposta.totalPneus} pneus sugeridos • loja confirmada: ${resposta.lojaRelatorio?.nome || "—"}` +
+          (resposta.vendasSistemaAntigo !== null
+            ? ` • ${resposta.vendasSistemaAntigo} vendas do sistema antigo somadas.`
+            : ".")
       );
     } catch (error: any) {
       setErro(error?.message || "Não foi possível analisar os relatórios.");
@@ -452,7 +468,12 @@ export default function ComprasPneus() {
       lojaId: Number(lojaId),
       diasAnalise: Number(diasAnalise),
       diasProjecao: Number(diasProjecao),
-      arquivoVendasNome: arquivoVendas?.name || null,
+      arquivoVendasNome: arquivoVendas
+        ? (TRANSICAO_SISTEMA_ATIVA && arquivoVendasAntigo
+            ? `${arquivoVendas.name} + antigo ${arquivoVendasAntigo.name}`
+            : arquivoVendas.name
+          ).slice(0, 255)
+        : null,
       arquivoEstoqueNome: arquivoEstoque?.name || null,
       chaveAnalise,
       itens: itensAnalise,
@@ -598,6 +619,7 @@ export default function ComprasPneus() {
                       setLojaId(event.target.value);
                       setArquivoVendas(null);
                       setArquivoEstoque(null);
+                      setArquivoVendasAntigo(null);
                       setItensAnalise([]);
                       setPlanejamentoId(null);
                       setChaveAnalise("");
@@ -643,10 +665,49 @@ export default function ComprasPneus() {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <div
+                className={`mt-5 grid gap-4 ${TRANSICAO_SISTEMA_ATIVA ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}
+              >
+                {TRANSICAO_SISTEMA_ATIVA && (
+                  <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-sky-400/25 bg-sky-400/[0.03] p-5 text-center hover:bg-sky-400/[0.06]">
+                    <FileSpreadsheet className="h-7 w-7 text-sky-300" />
+                    <p className="mt-3 font-black">Vendas do sistema antigo</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Estoque Mínimo do sistema antigo, mesmos dias. Só as vendas são usadas
+                      (somadas às do novo). Até 19/12.
+                    </p>
+                    <p className="mt-3 max-w-full truncate text-xs font-bold text-sky-300">
+                      {arquivoVendasAntigo?.name || "Selecionar relatório .xlsx (opcional)"}
+                    </p>
+                    {arquivoVendasAntigo && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setArquivoVendasAntigo(null);
+                        }}
+                        className="mt-2 text-[11px] font-bold text-gray-400 underline hover:text-white"
+                      >
+                        Remover
+                      </button>
+                    )}
+                    <input
+                      type="file"
+                      accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                      className="hidden"
+                      onChange={(event) => {
+                        setArquivoVendasAntigo(event.target.files?.[0] || null);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                )}
+
                 <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.03] p-5 text-center hover:bg-[#D4AF37]/[0.06]">
                   <FileSpreadsheet className="h-7 w-7 text-[#F2D675]" />
-                  <p className="mt-3 font-black">Vendas + estoque</p>
+                  <p className="mt-3 font-black">
+                    {TRANSICAO_SISTEMA_ATIVA ? "Vendas + estoque (sistema novo)" : "Vendas + estoque"}
+                  </p>
                   <p className="mt-1 text-xs text-gray-500">
                     Medida, melhor compra UF, vendas e estoque
                   </p>

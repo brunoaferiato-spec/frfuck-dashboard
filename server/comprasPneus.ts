@@ -1295,12 +1295,23 @@ export const comprasPneusRouter = router({
         arquivoVendasBase64: z.string().min(1),
         arquivoEstoqueNome: z.string().min(1).max(255),
         arquivoEstoqueBase64: z.string().min(1),
+        // Transição de sistema (19/10 a 19/12/2026): relatório do sistema antigo, só para somar
+        // as vendas de antes de 19/10. O estoque continua vindo só do sistema novo.
+        arquivoVendasAntigoNome: z.string().min(1).max(255).optional(),
+        arquivoVendasAntigoBase64: z.string().min(1).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       assertCompras(ctx);
       await ensureComprasPneus();
       const pool = getPoolComprasPneus();
+
+      const bufferVendasAntigo = input.arquivoVendasAntigoBase64
+        ? bufferXlsx(
+            input.arquivoVendasAntigoBase64,
+            "O relatório de vendas do sistema antigo"
+          )
+        : null;
 
       const bufferVendas = bufferXlsx(
         input.arquivoVendasBase64,
@@ -1326,7 +1337,26 @@ export const comprasPneusRouter = router({
         linhasEstoque
       );
 
-      const chaveAnalise = createHash("sha256")
+      if (bufferVendasAntigo) {
+        const lojaAntigo = detectarLojaRelatorio(
+          lerLinhasXlsx(bufferVendasAntigo, "o relatório do sistema antigo")
+        );
+        if (!lojaAntigo) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Não consegui identificar a loja no relatório do sistema antigo. Confirme se o arquivo correto foi selecionado.",
+          });
+        }
+        if (lojaAntigo.id !== lojaRelatorio.id) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `O relatório do sistema antigo é de ${lojaAntigo.nome}, mas os outros são de ${lojaRelatorio.nome}.`,
+          });
+        }
+      }
+
+      const hashAnalise = createHash("sha256")
         .update(String(input.lojaId))
         .update("|")
         .update(String(input.diasAnalise))
@@ -1335,11 +1365,32 @@ export const comprasPneusRouter = router({
         .update("|")
         .update(bufferVendas)
         .update("|")
-        .update(bufferEstoque)
-        .digest("hex");
+        .update(bufferEstoque);
+      if (bufferVendasAntigo) hashAnalise.update("|antigo|").update(bufferVendasAntigo);
+      const chaveAnalise = hashAnalise.digest("hex");
 
       const vendas = parseRelatorioVendas(bufferVendas);
       const estoqueMarcas = parseRelatorioMarcas(bufferEstoque);
+
+      // Soma as vendas do sistema antigo por medida. Cada sistema só tem as vendas do seu
+      // período (o novo começa em 19/10), então somar não conta a mesma venda duas vezes.
+      let vendasSistemaAntigo = 0;
+      if (bufferVendasAntigo) {
+        const porMedida = new Map(vendas.map((item) => [item.medida, item]));
+        for (const antigo of parseRelatorioVendas(bufferVendasAntigo)) {
+          vendasSistemaAntigo += antigo.vendas;
+          const atual = porMedida.get(antigo.medida);
+          if (atual) {
+            atual.vendas += antigo.vendas;
+            if (!atual.melhorPrecoUf) atual.melhorPrecoUf = antigo.melhorPrecoUf;
+          } else if (antigo.vendas > 0) {
+            // Medida que vendia antes mas não aparece no sistema novo: estoque zerado.
+            const novo = { ...antigo, estoque: 0 };
+            vendas.push(novo);
+            porMedida.set(novo.medida, novo);
+          }
+        }
+      }
 
       const [regrasRows] = await pool.query<any[]>(
         `SELECT medida, promocional, jogosMinimos
@@ -1428,6 +1479,7 @@ export const comprasPneusRouter = router({
           0
         ),
         chaveAnalise,
+        vendasSistemaAntigo: bufferVendasAntigo ? vendasSistemaAntigo : null,
         lojaRelatorio: {
           id: lojaRelatorio.id,
           nome: lojaRelatorio.nome,
