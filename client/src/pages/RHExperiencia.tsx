@@ -55,7 +55,23 @@ type RegistroExperiencia = {
   segundaDecisaoEm?: string | null;
   segundaDecisaoPorNome?: string | null;
   segundaObservacao?: string | null;
+  saiuExperiencia?: {
+    tipo: "manual" | "rescisao" | "inativo";
+    texto: string;
+    data: string | null;
+    porNome: string | null;
+    observacao: string | null;
+  } | null;
 };
+
+type MotivoSaida = "pedido_demissao" | "dispensa" | "abandono" | "outro";
+
+const MOTIVOS_SAIDA: Array<{ valor: MotivoSaida; nome: string }> = [
+  { valor: "pedido_demissao", nome: "Pediu demissão" },
+  { valor: "dispensa", nome: "Dispensado pela empresa" },
+  { valor: "abandono", nome: "Abandono / não voltou" },
+  { valor: "outro", nome: "Outro (escreva na observação)" },
+];
 
 type FiltroStatus =
   | "todos"
@@ -157,10 +173,15 @@ function normalizar(valor: unknown) {
 }
 
 function concluido(item: RegistroExperiencia) {
-  return item.primeiraDecisao === "encerrar" || Boolean(item.segundaDecisao);
+  return (
+    Boolean(item.saiuExperiencia) ||
+    item.primeiraDecisao === "encerrar" ||
+    Boolean(item.segundaDecisao)
+  );
 }
 
 function faseAtual(item: RegistroExperiencia) {
+  if (item.saiuExperiencia) return "saiu";
   if (item.primeiraDecisao === "encerrar") return "encerrado_primeiro";
   if (item.segundaDecisao === "efetivar") return "efetivado";
   if (item.segundaDecisao === "encerrar") return "encerrado_segundo";
@@ -185,6 +206,7 @@ function podeEfetivarHistorico(item: RegistroExperiencia) {
 
 function textoPrazo(item: RegistroExperiencia) {
   if (concluido(item)) {
+    if (item.saiuExperiencia) return "Saiu antes do fim";
     if (item.primeiraDecisao === "encerrar") return "Decisão registrada no 1º período";
     if (item.segundaDecisao === "efetivar") return "Efetivação registrada";
     return "Encerramento registrado";
@@ -203,6 +225,10 @@ function textoPrazo(item: RegistroExperiencia) {
 }
 
 function classePrazo(item: RegistroExperiencia) {
+  if (item.saiuExperiencia) {
+    return "border-white/15 bg-white/[0.04] text-gray-300";
+  }
+
   if (concluido(item)) {
     return "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-200";
   }
@@ -235,6 +261,7 @@ export default function RHExperiencia() {
   const [statusFiltro, setStatusFiltro] = useState<FiltroStatus>("todos");
   const [busca, setBusca] = useState("");
   const [observacoes, setObservacoes] = useState<Record<number, string>>({});
+  const [saidaAberta, setSaidaAberta] = useState<number | null>(null);
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
 
@@ -425,6 +452,46 @@ export default function RHExperiencia() {
       setErro(error.message || "Não foi possível registrar a decisão.");
     },
   });
+
+  const saidaMutation = trpc.rhExperiencia.registrarSaida.useMutation({
+    onSuccess: async (_, variables) => {
+      setErro("");
+      setMensagem("Saída antes do fim da experiência registrada.");
+      setObservacoes((atual) => ({ ...atual, [variables.funcionarioId]: "" }));
+      setSaidaAberta(null);
+      await utils.rhExperiencia.listar.invalidate();
+    },
+    onError: (error) => {
+      setMensagem("");
+      setErro(error.message || "Não foi possível registrar a saída.");
+    },
+  });
+
+  function registrarSaida(item: RegistroExperiencia, motivo: MotivoSaida) {
+    setErro("");
+    setMensagem("");
+
+    const observacao = observacoes[item.funcionarioId]?.trim() || "";
+    if (motivo === "outro" && !observacao) {
+      setErro("Escreva na observação qual foi o motivo da saída.");
+      return;
+    }
+
+    const nomeMotivo = MOTIVOS_SAIDA.find((m) => m.valor === motivo)?.nome || "";
+    if (
+      !window.confirm(
+        `Confirma que ${item.funcionarioNome} saiu antes do fim da experiência?\n\nMotivo: ${nomeMotivo}\n\nIsso só encerra a experiência. Não inativa o funcionário nem abre rescisão.`
+      )
+    ) {
+      return;
+    }
+
+    saidaMutation.mutate({
+      funcionarioId: item.funcionarioId,
+      motivo,
+      observacao: observacao || null,
+    });
+  }
 
   function efetivarFuncionarioHistorico(item: RegistroExperiencia) {
     setErro("");
@@ -696,7 +763,30 @@ export default function RHExperiencia() {
                         </div>
                       </div>
 
-                      {concluido(item) ? (
+                      {item.saiuExperiencia ? (
+                        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                          <p className="text-xs font-black text-gray-200">
+                            {item.saiuExperiencia.texto}
+                          </p>
+                          {item.saiuExperiencia.observacao && (
+                            <p className="mt-1 text-[11px] text-gray-400">
+                              {item.saiuExperiencia.observacao}
+                            </p>
+                          )}
+                          <p className="mt-1 text-[11px] text-gray-500">
+                            {[
+                              item.saiuExperiencia.data
+                                ? item.saiuExperiencia.tipo === "manual"
+                                  ? `Registrado em ${formatarData(item.saiuExperiencia.data)}`
+                                  : `Último dia ${formatarData(item.saiuExperiencia.data)}`
+                                : null,
+                              item.saiuExperiencia.porNome,
+                            ]
+                              .filter(Boolean)
+                              .join(" • ") || "Experiência encerrada automaticamente"}
+                          </p>
+                        </div>
+                      ) : concluido(item) ? (
                         <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.03] p-3">
                           <p className="text-xs font-black text-emerald-200">
                             {item.primeiraDecisao === "encerrar"
@@ -840,6 +930,43 @@ export default function RHExperiencia() {
                               </div>
                             </div>
                           ) : null}
+
+                          {saidaAberta === item.funcionarioId ? (
+                            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                              <p className="text-xs font-black text-white">
+                                Qual foi o motivo da saída?
+                              </p>
+                              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                {MOTIVOS_SAIDA.map((motivo) => (
+                                  <Button
+                                    key={motivo.valor}
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => registrarSaida(item, motivo.valor)}
+                                    disabled={saidaMutation.isPending}
+                                    className="h-10 border-white/10 bg-transparent text-xs font-bold text-gray-200 hover:bg-white/[0.06]"
+                                  >
+                                    {motivo.nome}
+                                  </Button>
+                                ))}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setSaidaAberta(null)}
+                                className="mt-2 text-[11px] font-bold text-gray-500 hover:text-gray-300"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setSaidaAberta(item.funcionarioId)}
+                              className="w-full rounded-xl border border-white/[0.08] bg-transparent py-2 text-[11px] font-bold text-gray-400 hover:bg-white/[0.04] hover:text-gray-200"
+                            >
+                              Saiu antes do fim (pedido, dispensa, abandono)
+                            </button>
+                          )}
 
                           {emAtraso && (
                             <div className="flex items-start gap-2 rounded-xl border border-rose-400/20 bg-rose-400/[0.06] px-3 py-2.5 text-xs leading-5 text-rose-200">

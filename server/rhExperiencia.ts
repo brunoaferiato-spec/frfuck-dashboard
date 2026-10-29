@@ -163,6 +163,98 @@ async function buscarFuncionario(pool: mysql.Pool, funcionarioId: number) {
   return funcionario;
 }
 
+const MOTIVOS_SAIDA_EXPERIENCIA = {
+  pedido_demissao: "Pediu demissão",
+  dispensa: "Dispensado pela empresa",
+  abandono: "Abandono / não voltou",
+  outro: "Outro motivo",
+} as const;
+
+type SaidaExperiencia = {
+  tipo: "manual" | "rescisao" | "inativo";
+  texto: string;
+  data: string | null;
+  porNome: string | null;
+  observacao: string | null;
+};
+
+// Rescisões não canceladas, da mais nova para a mais antiga, por funcionário.
+async function rescisoesAbertasPorFuncionario(pool: mysql.Pool) {
+  const mapa = new Map<number, any[]>();
+  try {
+    const [rows] = await pool.query<any[]>(
+      `SELECT funcionarioId, origem, status, criadoPorNome,
+              DATE_FORMAT(dataSolicitacao, '%Y-%m-%d') AS dataSolicitacao,
+              DATE_FORMAT(COALESCE(ultimoDiaInformado, dataPrevistaDesligamento, dataSolicitacao), '%Y-%m-%d') AS ultimoDia
+         FROM rh_rescisoes_processos
+        WHERE status <> 'cancelada'
+        ORDER BY id DESC`
+    );
+    for (const row of rows || []) {
+      const id = Number(row.funcionarioId);
+      mapa.set(id, [...(mapa.get(id) || []), row]);
+    }
+  } catch (error: any) {
+    // Banco sem o módulo de rescisões ainda: segue só com as decisões.
+    if (error?.code !== "ER_NO_SUCH_TABLE") throw error;
+  }
+  return mapa;
+}
+
+function calcularSaidaExperiencia(
+  row: any,
+  dataAdmissao: string,
+  rescisoes: any[]
+): SaidaExperiencia | null {
+  // Experiência já decidida antes (efetivado ou encerrado) não muda.
+  if (
+    row.primeiraDecisao === "encerrar" ||
+    row.segundaDecisao === "efetivar" ||
+    row.segundaDecisao === "encerrar"
+  ) {
+    return null;
+  }
+
+  if (row.primeiraDecisao === "saiu" || row.segundaDecisao === "saiu") {
+    const segunda = row.segundaDecisao === "saiu";
+    return {
+      tipo: "manual",
+      texto: "Saiu antes do fim da experiência",
+      data: String((segunda ? row.segundaDecisaoEm : row.primeiraDecisaoEm) || "").slice(0, 10) || null,
+      porNome: (segunda ? row.segundaDecisaoPorNome : row.primeiraDecisaoPorNome) ?? null,
+      observacao: (segunda ? row.segundaObservacao : row.primeiraObservacao) ?? null,
+    };
+  }
+
+  const rescisao = rescisoes.find(
+    (item) => String(item.dataSolicitacao || "") >= dataAdmissao
+  );
+  if (rescisao) {
+    return {
+      tipo: "rescisao",
+      texto:
+        rescisao.origem === "pedido_demissao"
+          ? "Saiu na experiência: pediu demissão"
+          : "Saiu na experiência: dispensado pela empresa",
+      data: rescisao.ultimoDia || null,
+      porNome: rescisao.criadoPorNome ?? null,
+      observacao: null,
+    };
+  }
+
+  if (String(row.funcionarioStatus || "") === "inativo") {
+    return {
+      tipo: "inativo",
+      texto: "Saiu na experiência: funcionário inativado",
+      data: row.dataDesligamento || null,
+      porNome: null,
+      observacao: null,
+    };
+  }
+
+  return null;
+}
+
 export const rhExperienciaRouter = router({
   listar: protectedProcedure.query(async ({ ctx }) => {
     await ensureRhExperienciaTable();
@@ -176,8 +268,10 @@ export const rhExperienciaRouter = router({
          f.nome AS funcionarioNome,
          f.funcao AS funcionarioFuncao,
          f.lojaId,
+         f.status AS funcionarioStatus,
          COALESCE(l.nome, CONCAT('Loja ', f.lojaId)) AS lojaNome,
          DATE_FORMAT(f.dataAdmissao, '%Y-%m-%d') AS dataAdmissao,
+         DATE_FORMAT(f.dataDesligamento, '%Y-%m-%d') AS dataDesligamento,
 
          d.primeiraDecisao,
          d.primeiraObservacao,
@@ -207,6 +301,8 @@ export const rhExperienciaRouter = router({
        LIMIT 1000`
     );
 
+    const rescisoes = await rescisoesAbertasPorFuncionario(pool);
+
     return (rows || []).map((row: any) => {
       const dataAdmissao = String(row.dataAdmissao).slice(0, 10);
       const datas = calcularDatasExperiencia(dataAdmissao);
@@ -219,6 +315,11 @@ export const rhExperienciaRouter = router({
         lojaNome: row.lojaNome,
         dataAdmissao,
         ...datas,
+        saiuExperiencia: calcularSaidaExperiencia(
+          row,
+          dataAdmissao,
+          rescisoes.get(Number(row.funcionarioId)) || []
+        ),
 
         primeiraDecisao: row.primeiraDecisao ?? null,
         primeiraObservacao: row.primeiraObservacao ?? null,
@@ -447,6 +548,13 @@ export const rhExperienciaRouter = router({
 
       const atual = existentes?.[0];
 
+      if (atual?.primeiraDecisao === "saiu" || atual?.segundaDecisao === "saiu") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Este funcionario ja tem saida registrada durante a experiencia.",
+        });
+      }
+
       if (atual?.primeiraDecisao === "encerrar") {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -497,6 +605,106 @@ export const rhExperienciaRouter = router({
           usuarioNome,
         ]
       );
+
+      return { success: true };
+    }),
+
+  // Saída antes do fim (pedido, dispensa, abandono) sem rescisão no sistema.
+  // Só encerra a experiência: não inativa o funcionário nem abre rescisão.
+  registrarSaida: protectedProcedure
+    .input(
+      z.object({
+        funcionarioId: z.number().int().positive(),
+        motivo: z.enum(["pedido_demissao", "dispensa", "abandono", "outro"]),
+        observacao: z.string().trim().max(3000).nullable().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      await ensureRhExperienciaTable();
+      assertGestaoExperiencia(ctx);
+
+      const observacaoInformada = String(input.observacao || "").trim();
+      if (input.motivo === "outro" && !observacaoInformada) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Informe na observação qual foi o motivo da saída.",
+        });
+      }
+
+      const pool = getPoolExperiencia();
+      const funcionario = await buscarFuncionario(pool, input.funcionarioId);
+      const [dataAdmissaoRows] = await pool.query<any[]>(
+        `SELECT DATE_FORMAT(dataAdmissao, '%Y-%m-%d') AS dataAdmissao
+           FROM funcionarios
+          WHERE id = ?
+          LIMIT 1`,
+        [input.funcionarioId]
+      );
+      const dataAdmissao = String(dataAdmissaoRows?.[0]?.dataAdmissao || "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dataAdmissao)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Não foi possível identificar a data de admissão do funcionário.",
+        });
+      }
+
+      const [existentes] = await pool.query<any[]>(
+        `SELECT *
+           FROM rh_experiencia_decisoes
+          WHERE funcionarioId = ?
+            AND DATE(dataAdmissao) = ?
+          LIMIT 1`,
+        [input.funcionarioId, dataAdmissao]
+      );
+      const atual = existentes?.[0];
+
+      if (atual?.primeiraDecisao === "encerrar" || atual?.primeiraDecisao === "saiu" || atual?.segundaDecisao) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A experiência deste funcionário já está encerrada.",
+        });
+      }
+
+      const usuarioId = Number(ctx.user?.id || 0) || null;
+      const usuarioNome = String(ctx.user?.name || ctx.user?.email || "Líder de RH");
+      const observacao = observacaoInformada
+        ? `${MOTIVOS_SAIDA_EXPERIENCIA[input.motivo]} • ${observacaoInformada}`
+        : MOTIVOS_SAIDA_EXPERIENCIA[input.motivo];
+
+      if (atual?.primeiraDecisao === "prorrogar") {
+        await pool.query(
+          `UPDATE rh_experiencia_decisoes
+              SET segundaDecisao = 'saiu',
+                  segundaObservacao = ?,
+                  segundaDecisaoPorUsuarioId = ?,
+                  segundaDecisaoPorNome = ?,
+                  segundaDecisaoEm = NOW()
+            WHERE id = ?`,
+          [observacao, usuarioId, usuarioNome, Number(atual.id)]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO rh_experiencia_decisoes (
+             funcionarioId, lojaId, dataAdmissao,
+             primeiraDecisao, primeiraObservacao,
+             primeiraDecisaoPorUsuarioId, primeiraDecisaoPorNome, primeiraDecisaoEm
+           ) VALUES (?, ?, ?, 'saiu', ?, ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE
+             primeiraDecisao = 'saiu',
+             primeiraObservacao = VALUES(primeiraObservacao),
+             primeiraDecisaoPorUsuarioId = VALUES(primeiraDecisaoPorUsuarioId),
+             primeiraDecisaoPorNome = VALUES(primeiraDecisaoPorNome),
+             primeiraDecisaoEm = NOW()`,
+          [
+            input.funcionarioId,
+            Number(funcionario.lojaId),
+            dataAdmissao,
+            observacao,
+            usuarioId,
+            usuarioNome,
+          ]
+        );
+      }
 
       return { success: true };
     }),

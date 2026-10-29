@@ -269,6 +269,7 @@ export default function RHPainelOperacional() {
 
       const experienciasAtencao = experiencias.filter((item) => {
         if (Number(item.lojaId) !== loja.id) return false;
+        if (item.saiuExperiencia) return false;
         if (item.primeiraDecisao === "encerrar" || item.segundaDecisao) return false;
 
         const segundo = item.primeiraDecisao === "prorrogar";

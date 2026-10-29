@@ -1823,6 +1823,25 @@ export const rhRescisoesRouter = router({
         [usuarioId, usuarioNome, Number(input.id)]
       );
 
+      // Rescisão finalizada: inativa o funcionário com a data do último dia
+      // de trabalho. A Folha mostra até o mês desse dia e some no mês seguinte.
+      await pool.query(
+        `UPDATE funcionarios f
+           JOIN rh_rescisoes_processos r ON r.funcionarioId = f.id
+            SET f.status = 'inativo',
+                f.dataDesligamento = TIMESTAMP(
+                  COALESCE(r.ultimoDiaInformado, r.dataPrevistaDesligamento, CURDATE()),
+                  '12:00:00'
+                ),
+                f.motivoDesligamento = CASE
+                  WHEN r.origem = 'pedido_demissao' THEN 'Pedido de demissão'
+                  ELSE 'Desligamento pela empresa'
+                END
+          WHERE r.id = ?
+            AND f.status <> 'inativo'`,
+        [Number(input.id)]
+      );
+
       return { success: true };
     }),
 
