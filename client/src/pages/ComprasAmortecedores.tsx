@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, RotateCcw, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, RotateCcw, Trash2, Upload } from "lucide-react";
 import * as XLSX from "xlsx";
 import ComprasPecasCotacao from "@/components/ComprasPecasCotacao";
 import { trpc } from "@/lib/trpc";
+import { combinarVendasSistemaAntigo, transicaoSistemaAtiva } from "@/lib/comprasTransicaoSistema";
 
 // Compra de amortecedores: mesmo relatório e mesma conta de peças
 // (venda ÷ dias analisados × dias projetados − estoque; abaixo de 0,75 sai; 1 peça sem lado completa o par).
@@ -108,8 +109,26 @@ function numero(valor: number) {
   return valor.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 2 });
 }
 
+async function lerLinhasArquivo(file: File) {
+  let linhas: LinhaBruta[] = [];
+  if (file.name.toLowerCase().endsWith(".csv")) {
+    linhas = separarCSV(await file.text());
+  } else {
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: false, raw: false });
+    linhas = XLSX.utils.sheet_to_json<LinhaBruta>(workbook.Sheets[workbook.SheetNames[0]], { defval: "", raw: false });
+  }
+  if (!linhas.length) throw new Error("O relatório está vazio ou não pôde ser lido.");
+  return linhas;
+}
+
 export default function ComprasAmortecedores() {
   const [arquivoNome, setArquivoNome] = useState("");
+  // Gravataí até 19/12: relatório do sistema antigo só para somar a venda do período.
+  const [lojaCotacao, setLojaCotacao] = useState("1");
+  const [relatorioAntigo, setRelatorioAntigo] = useState<{ nome: string; linhas: LinhaBruta[] } | null>(null);
+  const [ultimoArquivoNovo, setUltimoArquivoNovo] = useState<File | null>(null);
+  const [avisoTransicao, setAvisoTransicao] = useState("");
+  const transicaoSistema = transicaoSistemaAtiva(lojaCotacao);
   const [diasAnalise, setDiasAnalise] = useState("120");
   const [diasProjecao, setDiasProjecao] = useState("30");
   const [diasDoRelatorio, setDiasDoRelatorio] = useState(120);
@@ -120,18 +139,35 @@ export default function ComprasAmortecedores() {
   const [mostrarSemCompra, setMostrarSemCompra] = useState(true);
   const buscarAplicacoes = trpc.compras.amortecedores.buscarAplicacoes.useMutation();
 
-  async function importarArquivo(file: File | null) {
+  async function importarAntigo(file: File | null) {
     if (!file) return;
     setErro("");
     try {
-      let linhas: LinhaBruta[] = [];
-      if (file.name.toLowerCase().endsWith(".csv")) {
-        linhas = separarCSV(await file.text());
-      } else {
-        const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: false, raw: false });
-        linhas = XLSX.utils.sheet_to_json<LinhaBruta>(workbook.Sheets[workbook.SheetNames[0]], { defval: "", raw: false });
+      const antigo = { nome: file.name, linhas: await lerLinhasArquivo(file) };
+      setRelatorioAntigo(antigo);
+      if (ultimoArquivoNovo) await importarArquivo(ultimoArquivoNovo, antigo);
+    } catch (error: any) {
+      setRelatorioAntigo(null);
+      setErro(error?.message || "Não foi possível ler o relatório do sistema antigo.");
+    }
+  }
+
+  async function importarArquivo(file: File | null, antigo: { nome: string; linhas: LinhaBruta[] } | null = relatorioAntigo) {
+    if (!file) return;
+    setErro("");
+    try {
+      let linhas = await lerLinhasArquivo(file);
+
+      let aviso = "";
+      if (antigo && transicaoSistema) {
+        const combinado = combinarVendasSistemaAntigo(linhas, antigo.linhas);
+        linhas = combinado.linhas;
+        aviso =
+          `${combinado.vendasSomadas.toLocaleString("pt-BR")} vendas do sistema antigo somadas.` +
+          (combinado.soNoAntigo.length
+            ? ` ${combinado.soNoAntigo.length} código(s) só tinham venda no sistema antigo e entram com estoque 0: ${combinado.soNoAntigo.slice(0, 15).join(", ")}${combinado.soNoAntigo.length > 15 ? "…" : ""}. Confira se não mudaram de código.`
+            : "");
       }
-      if (!linhas.length) throw new Error("O relatório está vazio ou não pôde ser lido.");
 
       const dias = Math.max(1, Number(diasAnalise) || 120);
       const projecao = Math.max(1, Number(diasProjecao) || 30);
@@ -167,7 +203,9 @@ export default function ComprasAmortecedores() {
         : [];
       const porCodigo = new Map(aplicacoes.map((a) => [normalizarTexto(a.codigo), a.aplicacao]));
 
-      setArquivoNome(file.name);
+      setArquivoNome(antigo && transicaoSistema ? `${file.name} + antigo ${antigo.nome}` : file.name);
+      setUltimoArquivoNovo(file);
+      setAvisoTransicao(aviso);
       setAbaixoDoMinimo(descartadosAbaixo);
       setDiasDoRelatorio(dias);
       setItens(encontrados.map((x) => ({ ...x, especificacao: porCodigo.get(normalizarTexto(x.codigo)) || null })));
@@ -183,6 +221,9 @@ export default function ComprasAmortecedores() {
   // Troca de cidade na cotação: o relatório importado era da cidade anterior e sai da tela.
   function limparRelatorio() {
     setArquivoNome("");
+    setRelatorioAntigo(null);
+    setUltimoArquivoNovo(null);
+    setAvisoTransicao("");
     setItens([]);
     setExcluidos([]);
     setAbaixoDoMinimo(0);
@@ -226,12 +267,35 @@ export default function ComprasAmortecedores() {
             </label>
           </div>
 
-          <label className="mt-6 flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.025] px-4 text-center hover:border-[#D4AF37]/45">
-            <Upload className="h-7 w-7 text-[#F2D675]" />
-            <span className="mt-3 font-black text-[#F2D675]">{buscarAplicacoes.isPending ? "Buscando aplicações..." : "Selecionar relatório .csv ou .xlsx"}</span>
-            <span className="mt-1 text-xs text-gray-600">Mesmo relatório de compra de peças: Código, Item, Venda Período e Estoque Atual</span>
-            <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { void importarArquivo(event.target.files?.[0] || null); event.currentTarget.value = ""; }} />
-          </label>
+          <div className={`mt-6 grid gap-4 ${transicaoSistema ? "lg:grid-cols-2" : ""}`}>
+            {transicaoSistema && (
+              <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-sky-400/25 bg-sky-400/[0.03] px-4 text-center hover:border-sky-400/45">
+                <FileSpreadsheet className="h-7 w-7 text-sky-300" />
+                <span className="mt-3 font-black text-sky-300">{relatorioAntigo ? relatorioAntigo.nome : "Vendas do sistema antigo (Gravataí)"}</span>
+                <span className="mt-1 text-xs text-gray-600">Mesmo relatório, mesmos dias, tirado do sistema antigo. Só a Venda Período é usada (somada à do novo). Até 19/12.</span>
+                {relatorioAntigo && (
+                  <button
+                    type="button"
+                    onClick={(event) => { event.preventDefault(); setRelatorioAntigo(null); if (ultimoArquivoNovo) void importarArquivo(ultimoArquivoNovo, null); }}
+                    className="mt-2 text-[11px] font-bold text-gray-400 underline hover:text-white"
+                  >
+                    Remover
+                  </button>
+                )}
+                <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { void importarAntigo(event.target.files?.[0] || null); event.currentTarget.value = ""; }} />
+              </label>
+            )}
+            <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.025] px-4 text-center hover:border-[#D4AF37]/45">
+              <Upload className="h-7 w-7 text-[#F2D675]" />
+              <span className="mt-3 font-black text-[#F2D675]">{buscarAplicacoes.isPending ? "Buscando aplicações..." : transicaoSistema ? "Relatório do sistema novo (.csv ou .xlsx)" : "Selecionar relatório .csv ou .xlsx"}</span>
+              <span className="mt-1 text-xs text-gray-600">Mesmo relatório de compra de peças: Código, Item, Venda Período e Estoque Atual</span>
+              <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { void importarArquivo(event.target.files?.[0] || null); event.currentTarget.value = ""; }} />
+            </label>
+          </div>
+
+          {avisoTransicao && (
+            <div className="mt-3 rounded-xl border border-sky-400/20 bg-sky-400/[0.04] p-3 text-xs font-bold text-sky-200">{avisoTransicao}</div>
+          )}
 
           {arquivoNome && (
             <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-bold text-emerald-300">
@@ -249,7 +313,7 @@ export default function ComprasAmortecedores() {
           )}
         </section>
 
-        <ComprasPecasCotacao tipo="amortecedores" arquivoNome={arquivoNome} itens={itens} onTrocarCidade={limparRelatorio} />
+        <ComprasPecasCotacao tipo="amortecedores" arquivoNome={arquivoNome} itens={itens} onTrocarCidade={limparRelatorio} onLojaChange={setLojaCotacao} />
 
         {arquivoNome && (
           <>

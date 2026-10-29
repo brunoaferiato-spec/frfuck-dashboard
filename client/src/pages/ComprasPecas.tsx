@@ -10,6 +10,7 @@ import {
 import * as XLSX from "xlsx";
 import ComprasPecasCotacao from "@/components/ComprasPecasCotacao";
 import { trpc } from "@/lib/trpc";
+import { combinarVendasSistemaAntigo, transicaoSistemaAtiva } from "@/lib/comprasTransicaoSistema";
 import { consultarCatalogoSampelFrasle } from "@shared/catalogoSampelFrasle";
 
 type LinhaBruta = Record<string, unknown>;
@@ -420,8 +421,41 @@ function dinheiroNumero(valor: number) {
   });
 }
 
+async function lerLinhasArquivo(file: File) {
+  let linhas: LinhaBruta[] = [];
+
+  if (file.name.toLowerCase().endsWith(".csv")) {
+    const texto = await file.text();
+    linhas = separarCSV(texto);
+  } else {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, {
+      type: "array",
+      cellDates: false,
+      raw: false,
+    });
+    const primeira = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[primeira];
+    linhas = XLSX.utils.sheet_to_json<LinhaBruta>(sheet, {
+      defval: "",
+      raw: false,
+    });
+  }
+
+  if (!linhas.length) {
+    throw new Error("O relatório está vazio ou não pôde ser lido.");
+  }
+  return linhas;
+}
+
 export default function ComprasPecas() {
   const [arquivoNome, setArquivoNome] = useState("");
+  // Gravataí até 19/12: relatório do sistema antigo só para somar a venda do período.
+  const [lojaCotacao, setLojaCotacao] = useState("1");
+  const [relatorioAntigo, setRelatorioAntigo] = useState<{ nome: string; linhas: LinhaBruta[] } | null>(null);
+  const [ultimoArquivoNovo, setUltimoArquivoNovo] = useState<File | null>(null);
+  const [avisoTransicao, setAvisoTransicao] = useState("");
+  const transicaoSistema = transicaoSistemaAtiva(lojaCotacao);
   // Período do relatório e da compra (padrão: últimos 120 dias → compra para 30 dias).
   const [diasAnalise, setDiasAnalise] = useState("120");
   const [diasProjecao, setDiasProjecao] = useState("30");
@@ -557,34 +591,39 @@ export default function ComprasPecas() {
     }
   }
 
-  async function importarArquivo(file: File | null) {
+  async function importarAntigo(file: File | null) {
+    if (!file) return;
+    setErro("");
+    try {
+      const antigo = { nome: file.name, linhas: await lerLinhasArquivo(file) };
+      setRelatorioAntigo(antigo);
+      if (ultimoArquivoNovo) await importarArquivo(ultimoArquivoNovo, antigo);
+    } catch (error: any) {
+      setRelatorioAntigo(null);
+      setErro(error?.message || "Não foi possível ler o relatório do sistema antigo.");
+    }
+  }
+
+  async function importarArquivo(
+    file: File | null,
+    antigo: { nome: string; linhas: LinhaBruta[] } | null = relatorioAntigo
+  ) {
     if (!file) return;
 
     setErro("");
 
     try {
-      let linhas: LinhaBruta[] = [];
+      let linhas = await lerLinhasArquivo(file);
 
-      if (file.name.toLowerCase().endsWith(".csv")) {
-        const texto = await file.text();
-        linhas = separarCSV(texto);
-      } else {
-        const buffer = await file.arrayBuffer();
-        const workbook = XLSX.read(buffer, {
-          type: "array",
-          cellDates: false,
-          raw: false,
-        });
-        const primeira = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[primeira];
-        linhas = XLSX.utils.sheet_to_json<LinhaBruta>(sheet, {
-          defval: "",
-          raw: false,
-        });
-      }
-
-      if (!linhas.length) {
-        throw new Error("O relatório está vazio ou não pôde ser lido.");
+      let aviso = "";
+      if (antigo && transicaoSistema) {
+        const combinado = combinarVendasSistemaAntigo(linhas, antigo.linhas);
+        linhas = combinado.linhas;
+        aviso =
+          `${combinado.vendasSomadas.toLocaleString("pt-BR")} vendas do sistema antigo somadas.` +
+          (combinado.soNoAntigo.length
+            ? ` ${combinado.soNoAntigo.length} código(s) só tinham venda no sistema antigo e entram com estoque 0: ${combinado.soNoAntigo.slice(0, 15).join(", ")}${combinado.soNoAntigo.length > 15 ? "…" : ""}. Confira se não mudaram de código.`
+            : "");
       }
 
       const encontrados: ItemPeca[] = [];
@@ -691,7 +730,9 @@ export default function ComprasPecas() {
         });
       }
 
-      setArquivoNome(file.name);
+      setArquivoNome(antigo && transicaoSistema ? `${file.name} + antigo ${antigo.nome}` : file.name);
+      setUltimoArquivoNovo(file);
+      setAvisoTransicao(aviso);
       setAbaixoDoMinimo(descartadosAbaixo);
       setDiasDoRelatorio(dias);
       setItens(encontrados);
@@ -719,6 +760,9 @@ export default function ComprasPecas() {
   // Troca de cidade na cotação: o relatório importado era da cidade anterior e sai da tela.
   function limparRelatorio() {
     setArquivoNome("");
+    setRelatorioAntigo(null);
+    setUltimoArquivoNovo(null);
+    setAvisoTransicao("");
     setItens([]);
     setExcluidos([]);
     setEstoqueMinimo({});
@@ -833,10 +877,41 @@ export default function ComprasPecas() {
             </label>
           </div>
 
-          <label className="mt-6 flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.025] px-4 text-center hover:border-[#D4AF37]/45">
+          <div className={`mt-6 grid gap-4 ${transicaoSistema ? "lg:grid-cols-2" : ""}`}>
+          {transicaoSistema && (
+            <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-sky-400/25 bg-sky-400/[0.03] px-4 text-center hover:border-sky-400/45">
+              <FileSpreadsheet className="h-7 w-7 text-sky-300" />
+              <span className="mt-3 font-black text-sky-300">
+                {relatorioAntigo ? relatorioAntigo.nome : "Vendas do sistema antigo (Gravataí)"}
+              </span>
+              <span className="mt-1 text-xs text-gray-600">
+                Mesmo relatório, mesmos dias, tirado do sistema antigo. Só a Venda Período é usada (somada à do novo). Até 19/12.
+              </span>
+              {relatorioAntigo && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setRelatorioAntigo(null);
+                    if (ultimoArquivoNovo) void importarArquivo(ultimoArquivoNovo, null);
+                  }}
+                  className="mt-2 text-[11px] font-bold text-gray-400 underline hover:text-white"
+                >
+                  Remover
+                </button>
+              )}
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                className="hidden"
+                onChange={(event) => { void importarAntigo(event.target.files?.[0] || null); event.currentTarget.value = ""; }}
+              />
+            </label>
+          )}
+          <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.025] px-4 text-center hover:border-[#D4AF37]/45">
             <Upload className="h-7 w-7 text-[#F2D675]" />
             <span className="mt-3 font-black text-[#F2D675]">
-              Selecionar relatório .csv ou .xlsx
+              {transicaoSistema ? "Relatório do sistema novo (.csv ou .xlsx)" : "Selecionar relatório .csv ou .xlsx"}
             </span>
             <span className="mt-1 text-xs text-gray-600">
               Usaremos somente Código, Item, Venda Período e Estoque Atual
@@ -848,6 +923,13 @@ export default function ComprasPecas() {
               onChange={(event) => { void importarArquivo(event.target.files?.[0] || null); event.currentTarget.value = ""; }}
             />
           </label>
+          </div>
+
+          {avisoTransicao && (
+            <div className="mt-3 rounded-xl border border-sky-400/20 bg-sky-400/[0.04] p-3 text-xs font-bold text-sky-200">
+              {avisoTransicao}
+            </div>
+          )}
 
           {arquivoNome && (
             <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-bold text-emerald-300">
@@ -897,7 +979,7 @@ export default function ComprasPecas() {
           )}
         </section>
 
-        <ComprasPecasCotacao arquivoNome={arquivoNome} itens={itensParaCotacao} onTrocarCidade={limparRelatorio} bloqueioSalvar={bloqueioSalvar} />
+        <ComprasPecasCotacao arquivoNome={arquivoNome} itens={itensParaCotacao} onTrocarCidade={limparRelatorio} onLojaChange={setLojaCotacao} bloqueioSalvar={bloqueioSalvar} />
 
 
         {arquivoNome && (

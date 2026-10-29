@@ -55,7 +55,7 @@ async function toBase64(file: File) {
 // tipo "amortecedores": mesmas telas com as tabelas de amortecedores, sem o limite de valor (OK/Negar)
 // e com a aplicação (carros) embaixo do item.
 // bloqueioSalvar: motivo para não deixar salvar o planejamento ainda (ex.: falta o estoque dos itens de estoque mínimo).
-export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade, tipo = "pecas", bloqueioSalvar }: { itens: ItemAnalise[]; arquivoNome: string; onTrocarCidade?: () => void; tipo?: "pecas" | "amortecedores"; bloqueioSalvar?: string | null }) {
+export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade, onLojaChange, tipo = "pecas", bloqueioSalvar }: { itens: ItemAnalise[]; arquivoNome: string; onTrocarCidade?: () => void; onLojaChange?: (lojaId: string) => void; tipo?: "pecas" | "amortecedores"; bloqueioSalvar?: string | null }) {
   const api = tipo === "amortecedores" ? trpc.compras.amortecedores : trpc.compras.pecas;
   const utils = trpc.useUtils();
   const [aba, setAba] = useState<Aba>("cotacao");
@@ -69,6 +69,10 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
   const [quantidadeLocal, setQuantidadeLocal] = useState<Record<string, string>>({});
   const [lojaId, setLojaId] = useState("1");
   const [filtroLojaHistorico, setFiltroLojaHistorico] = useState("todas");
+  useEffect(() => {
+    onLojaChange?.(lojaId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lojaId]);
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
 
