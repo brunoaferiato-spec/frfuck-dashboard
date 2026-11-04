@@ -10,9 +10,25 @@ export const regrasPremiacoesEspeciais: RegraPremiacaoEspecialFuncionario[] = [
   // ====================================================
   // JOINVILLE - BRUNO ALMEIDA ALVES
   // ====================================================
+  // A partir de 10/2026: R$ 500 de chefe de pátio + R$ 500 se a loja
+  // (liquidez do supervisor) bater R$ 400 mil. Não ganha mais por mecânico/rampa.
   {
     lojaId: 1,
     funcionarioNome: "Bruno Almeida Alves",
+    funcaoBase: "vendedor",
+    vigenteDe: 202610,
+    premioFixo: 500,
+    premiacaoMetaLoja: {
+      valorPremio: 500,
+      metaLiquidezLoja: 400000,
+    },
+  },
+
+  // Regra até 09/2026, mantida para os meses anteriores à mudança.
+  {
+    lojaId: 1,
+    funcionarioNome: "Bruno Almeida Alves",
+    vigenteAte: 202609,
 
     // Bruno continua sendo vendedor normalmente.
     funcaoBase: "vendedor",

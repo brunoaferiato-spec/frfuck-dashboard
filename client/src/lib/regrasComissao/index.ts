@@ -696,12 +696,27 @@ export type FuncionarioResumoPremiacaoEspecial = {
   totalLiquidez: number;
 };
 
+function competenciaPremiacao(ano?: number, mes?: number) {
+  if (ano && mes) return Number(ano) * 100 + Number(mes);
+  if (competenciaFolha) return competenciaFolha.ano * 100 + competenciaFolha.mes;
+  const hoje = new Date();
+  return hoje.getFullYear() * 100 + hoje.getMonth() + 1;
+}
+
 export function getRegraPremiacaoEspecial(args: {
   lojaId: number | string;
   funcionarioNome: string;
+  ano?: number;
+  mes?: number;
 }): RegraPremiacaoEspecialFuncionario | null {
   const lojaId = Number(args.lojaId);
   const nome = normalizarNome(args.funcionarioNome);
+  const competencia = competenciaPremiacao(args.ano, args.mes);
+  const regrasVigentes = regrasPremiacoesEspeciais.filter(
+    (item) =>
+      (!item.vigenteDe || competencia >= item.vigenteDe) &&
+      (!item.vigenteAte || competencia <= item.vigenteAte)
+  );
 
   // PREMIO_CHEFE_PATIO_BRUNO_ALMEIDA_V1
   //
@@ -719,7 +734,7 @@ export function getRegraPremiacaoEspecial(args: {
     nome !== "BRUNO ALMEIDA ALVES"
   ) {
     const regraExataOutroBruno =
-      regrasPremiacoesEspeciais.find(
+      regrasVigentes.find(
         (item) =>
           item.lojaId === lojaId &&
           normalizarNome(
@@ -732,7 +747,7 @@ export function getRegraPremiacaoEspecial(args: {
     }
   }
 
-  const regra = regrasPremiacoesEspeciais.find((item) => {
+  const regra = regrasVigentes.find((item) => {
     const nomeRegra = normalizarNome(item.funcionarioNome);
 
     const primeiroNomeRegra = nomeRegra.split(/\s+/)[0] || "";
@@ -759,10 +774,14 @@ export function calcularPremiacaoEspecialFuncionario(args: {
   lojaId: number | string;
   funcionarioNome: string;
   funcionariosDaLoja: FuncionarioResumoPremiacaoEspecial[];
+  ano?: number;
+  mes?: number;
 }) {
   const regra = getRegraPremiacaoEspecial({
     lojaId: args.lojaId,
     funcionarioNome: args.funcionarioNome,
+    ano: args.ano,
+    mes: args.mes,
   });
 
   if (!regra) {
@@ -884,6 +903,25 @@ export function calcularPremiacaoEspecialFuncionario(args: {
             ? "RAMPA - MILTON"
             : "RAMPA",
         valor: Number(regra.premiacaoAlinhador.valorPremio || 0),
+      });
+    }
+  }
+
+  // ====================================================
+  // META DA LOJA (LIQUIDEZ DO SUPERVISOR)
+  // ====================================================
+  if (regra.premiacaoMetaLoja) {
+    const liquidezLoja = Math.max(
+      0,
+      ...args.funcionariosDaLoja
+        .filter((funcionario) => normalizarFuncao(funcionario.funcao) === "supervisor")
+        .map((funcionario) => Number(funcionario.totalLiquidez || 0))
+    );
+
+    if (liquidezLoja >= regra.premiacaoMetaLoja.metaLiquidezLoja) {
+      detalhes.push({
+        descricao: "META DA LOJA",
+        valor: Number(regra.premiacaoMetaLoja.valorPremio || 0),
       });
     }
   }

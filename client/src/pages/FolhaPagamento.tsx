@@ -1347,6 +1347,7 @@ function calcularBoletoAjustado(args: {
   lojaId: number;
   funcionarioNome: string;
   isPj?: boolean;
+  salario?: number;
   totalComissao: number;
   premiacao: number;
   vale: number;
@@ -1376,30 +1377,34 @@ function calcularBoletoAjustado(args: {
       )
     )
   ) {
+    // PJ sem comissão (ex.: administrativo da ACI): o salário entra no boleto.
+    // SALÁRIO + PREMIAÇÃO - VALE - ADIANTAMENTO - HOLERITE = BOLETO.
+    if (args.quadrante === "salario_fixo") {
+      return Number(
+        (
+          Number(args.salario || 0) +
+          premiacao -
+          vale -
+          adiant -
+          holerite
+        ).toFixed(2)
+      );
+    }
+
     const baseLiquidaPj =
       totalComissao +
       premiacao -
       vale -
       aluguel;
 
-    const excedenteAcimaDoDireto =
-      Math.max(
-        0,
-        baseLiquidaPj - 6500
-      );
-
-    const saldoDepoisDoPagoNormal =
-      Math.max(
-        0,
-        baseLiquidaPj -
-          adiant -
-          holerite
-      );
+    // Até R$ 6.500 é pago pelo holerite; o que passar vai no boleto.
+    // O adiantamento é pago à parte, então também sai do boleto.
+    const pagoPeloHolerite = Math.max(6500, holerite);
 
     return Number(
-      Math.min(
-        excedenteAcimaDoDireto,
-        saldoDepoisDoPagoNormal
+      Math.max(
+        0,
+        baseLiquidaPj - adiant - pagoPeloHolerite
       ).toFixed(2)
     );
   }
@@ -1515,6 +1520,7 @@ if (args.quadrante === "supervisor_pj") {
 
 type QuadranteKey =
   | "pj" // FOLHA_QUADRANTE_PJ_V1
+  | "pj_salario"
   | "gerente"
   | "comissao_semanal"
   | "consultor_vendas"
@@ -1842,6 +1848,8 @@ function getQuadranteTitulo(key: QuadranteKey) {
   switch (key) {
     case "pj":
       return "Funcionários PJ";
+    case "pj_salario":
+      return "PJ - Salário";
     case "gerente":
       return "Gerente";
     case "comissao_semanal":
@@ -1871,6 +1879,8 @@ function getQuadranteDescricao(key: QuadranteKey) {
   switch (key) {
     case "pj":
       return "Contrato PJ • mantém a regra de comissão da função original";
+    case "pj_salario":
+      return "PJ sem liquidez • salário + premiação - vale - adiantamento - holerite = boleto";
     case "gerente":
       return "Funções de gerência";
     case "comissao_semanal":
@@ -2207,7 +2217,8 @@ function TabelaQuadrante({
 
   if (linhas.length === 0) return null;
 
-  const isSalarioFixo = quadrante === "salario_fixo";
+  const isPjSalario = quadrante === "pj_salario";
+  const isSalarioFixo = quadrante === "salario_fixo" || isPjSalario;
   const temTransicaoNoQuadrante = linhas.some((linha) => Boolean(linha.trocaFuncaoMes));
   const isRecepcao = quadrante === "recepcao";
   const isSupervisor = quadrante === "supervisor_pj";
@@ -2791,9 +2802,9 @@ const isMensalUnico =
                     Vale
                   </button>
                 </th>
-                <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Aluguel</th>
-                {!isPj && <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">INSS</th>}
-                {isPjQuadrante ? (
+                {!isPjSalario && <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">Aluguel</th>}
+                {!isPj && !isPjSalario && <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">INSS</th>}
+                {isPjQuadrante || isPjSalario ? (
                   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
                     Adiantamento
                   </th>
@@ -2812,7 +2823,11 @@ const isMensalUnico =
                     </button>
                   </th>
                 )}
-                {isPjQuadrante ? (
+                {isPjSalario ? (
+                  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em]">
+                    Holerite
+                  </th>
+                ) : isPjQuadrante ? (
                   <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em] text-[#F2D675]">
                     Pagamento PJ
                   </th>
@@ -3386,11 +3401,13 @@ const isMensalUnico =
                     </button>
                   </td>
 
-                  <td className="p-2">
-                    {renderEditButton(linha, "aluguel", "Aluguel", "money")}
-                  </td>
+                  {!isPjSalario && (
+                    <td className="p-2">
+                      {renderEditButton(linha, "aluguel", "Aluguel", "money")}
+                    </td>
+                  )}
 
-                  {!isPj && (
+                  {!isPj && !isPjSalario && (
                     <td className="p-2">
                       {pjFuncionarioIds.has(
                         Number(linha.funcionarioId)
@@ -3422,7 +3439,7 @@ const isMensalUnico =
                           Number(
                             linha.funcionarioId
                           )
-                        )
+                        ) && !isPjSalario
                           ? "Pagamento PJ"
                           : "Holerite",
                         "money"
@@ -5239,6 +5256,8 @@ const premiacaoEspecial =
     lojaId,
     funcionarioNome: func.nome,
     funcionariosDaLoja: resumoFuncionariosLoja,
+    ano,
+    mes,
   });
 
 if (premiacaoEspecial.total > 0) {
@@ -5321,6 +5340,7 @@ const boletoAjustado = calcularBoletoAjustado({
   funcao: func.funcao,
   lojaId,
   funcionarioNome: func.nome,
+  salario: Number(base.sem1 || 0),
   totalComissao: calculadoAjustado.totalComissao,
   premiacao: calculadoAjustado.premiacao,
   vale: calculadoAjustado.vale,
@@ -6649,6 +6669,7 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
             funcao: updatedLine.funcao,
             lojaId,
             funcionarioNome: updatedLine.nome,
+            salario: Number(updatedLine.sem1 || 0),
             totalComissao: Number(updatedLine.totalComissao || 0),
             premiacao: Number(updatedLine.premiacao || 0),
             vale: Number(updatedLine.vale || 0),
@@ -7033,6 +7054,7 @@ const metaAtualizacao = findMetaForFuncionario({
           funcao: updatedLine.funcao,
           lojaId,
           funcionarioNome: updatedLine.nome,
+          salario: Number(updatedLine.sem1 || 0),
           totalComissao: Number(recalculado.totalComissao || 0),
           premiacao: Number(recalculado.premiacao || 0),
           vale: Number(recalculado.vale || updatedLine.vale || 0),
@@ -7937,6 +7959,7 @@ const metaAtualizacao = findMetaForFuncionario({
       funcao: linhaAtualizada.funcao,
       lojaId,
       funcionarioNome: linhaAtualizada.nome,
+      salario: Number(linhaAtualizada.sem1 || 0),
       totalComissao: Number(linhaAtualizada.totalComissao || 0),
       premiacao: Number(linhaAtualizada.premiacao || 0),
       vale: Number(linhaAtualizada.vale || 0),
@@ -10911,6 +10934,7 @@ const totalFolhaGeral =
   (folhaFiltros.holerite ? totalHolerite : 0);
   const ordemQuadrantes: QuadranteKey[] = [
   "pj", // FOLHA_QUADRANTE_PJ_V1 — sempre primeiro
+  "pj_salario",
   "gerente",
   "comissao_semanal",
   "comissao_mensal",
@@ -10937,6 +10961,10 @@ const totalFolhaGeral =
     linha.quadrante !==
       "supervisora_consultores_pj";
 
+  // PJ sem comissão (função de salário fixo) ganha um quadro próprio.
+  const ehPjSalario = (linha: LinhaComQuadrante) =>
+    ehPjNovoQuadrante(linha) && linha.quadrante === "salario_fixo";
+
   return ordemQuadrantes.map((key) => {
     let linhasQuadrante =
       key === "pj"
@@ -10944,8 +10972,10 @@ const totalFolhaGeral =
             (linha) =>
               ehPjNovoQuadrante(
                 linha
-              )
+              ) && !ehPjSalario(linha)
           )
+        : key === "pj_salario"
+        ? linhas.filter(ehPjSalario)
         : linhas.filter(
             (linha) =>
               linha.quadrante ===
@@ -10959,6 +10989,7 @@ const totalFolhaGeral =
     // organizados por função e nome.
     if (
       key === "pj" ||
+      key === "pj_salario" ||
       key === "salario_fixo"
     ) {
       linhasQuadrante =

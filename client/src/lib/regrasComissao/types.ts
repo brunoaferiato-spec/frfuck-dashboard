@@ -128,15 +128,27 @@ export type RegraPremiacaoAlinhador = {
   funcionarioAlinhador?: string;
 };
 
+// Prêmio quando a liquidez da loja (lançada no supervisor) bate a meta.
+export type RegraPremiacaoMetaLoja = {
+  valorPremio: number;
+  metaLiquidezLoja: number;
+};
+
 export type RegraPremiacaoEspecialFuncionario = {
   lojaId: number;
   funcionarioNome: string;
 
   funcaoBase: "vendedor" | "mecanico";
 
+  // Competências (AAAAMM) em que a regra vale; sem limite quando ausente.
+  vigenteDe?: number;
+  vigenteAte?: number;
+
   premioFixo: number;
 
   premiacaoMecanicos?: RegraPremiacaoMecanicos;
 
   premiacaoAlinhador?: RegraPremiacaoAlinhador;
+
+  premiacaoMetaLoja?: RegraPremiacaoMetaLoja;
 };

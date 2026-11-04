@@ -745,6 +745,8 @@ function calcularResumoLoja(args: {
       lojaId: args.lojaId,
       funcionarioNome: funcionario.nome,
       funcionariosDaLoja: resumoFuncionariosLoja,
+      ano: args.ano,
+      mes: args.mes,
     });
 
     if (premiacaoEspecial.total > 0) {
