@@ -13,6 +13,7 @@ import {
   getRegraVendedorMecanico,
   getRegraAlinhador,
   getRegraGerente,
+  definirCompetenciaFolha,
 } from "@/lib/regrasComissao";
 
 import { Button } from "@/components/ui/button";
@@ -3607,6 +3608,8 @@ export default function FolhaPagamento() {
   const [selectedLoja, setSelectedLoja] = useState("1");
   const [ano, setAno] = useState(2026);
   const [mes, setMes] = useState(new Date().getMonth() + 1);
+  // As regras que mudam em um mês (ex.: alinhador de Gravataí a partir de 10/2026) usam esta competência.
+  definirCompetenciaFolha(ano, mes);
   const [folhas, setFolhas] = useState<FolhaMensal[]>([]);
   const [folhaFiltros, setFolhaFiltros] = useState({
   inss: true,

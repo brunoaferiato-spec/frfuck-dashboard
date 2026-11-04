@@ -40,6 +40,7 @@ import {
 import {
   regrasGravatai,
   regraAlinhadorGravatai,
+  regraAlinhadorGravataiAte092026,
   regrasConsultorGravatai,
   regrasRecepcaoGravatai,
 } from "./gravatai";
@@ -212,6 +213,13 @@ export function calcularPercentualVendedorMecanico(args: {
 // ALINHADOR
 // ======================================================
 
+// Competência aberta na Folha: regras que mudaram em um mês olham para ela.
+let competenciaFolha: { ano: number; mes: number } | null = null;
+
+export function definirCompetenciaFolha(ano: number, mes: number) {
+  competenciaFolha = { ano: Number(ano), mes: Number(mes) };
+}
+
 export function getRegraAlinhador(args: {
   lojaId: number | string;
   funcionarioNome?: string;
@@ -262,6 +270,10 @@ export function getRegraAlinhador(args: {
   }
 
   if (lojaId === 7) {
+    // 6% vale a partir de 10/2026; meses anteriores mantêm as faixas antigas.
+    if (competenciaFolha && competenciaFolha.ano * 100 + competenciaFolha.mes < 202610) {
+      return regraAlinhadorGravataiAte092026;
+    }
     return regraAlinhadorGravatai;
   }
 

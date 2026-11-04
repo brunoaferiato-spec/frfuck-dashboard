@@ -34,7 +34,14 @@ export const regrasGravatai: RegrasVendedorMecanico = {
 // ALINHADOR
 // =========================
 
+// Sem fixo: somente comissão de 6% sobre a liquidez do mês (a partir de 10/2026).
 export const regraAlinhadorGravatai: RegraAlinhador = {
+  periodicidade: "mensal",
+  faixas: [{ minimo: 0, percentual: 6 }],
+};
+
+// Regra até 09/2026, mantida para os meses anteriores à mudança.
+export const regraAlinhadorGravataiAte092026: RegraAlinhador = {
   periodicidade: "mensal",
   faixas: [
     { minimo: 0, percentual: 2 },
