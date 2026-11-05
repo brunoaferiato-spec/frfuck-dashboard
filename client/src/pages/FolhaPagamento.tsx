@@ -1398,9 +1398,10 @@ function calcularBoletoAjustado(args: {
       vale -
       aluguel;
 
-    // Até R$ 6.500 é pago pelo holerite; o que passar vai no boleto.
+    // Desconta o pagamento PJ (holerite) lançado; o que sobrar vai no boleto.
+    // Sem valor lançado, considera os R$ 6.500 pagos pelo holerite.
     // O adiantamento é pago à parte, então também sai do boleto.
-    const pagoPeloHolerite = Math.max(6500, holerite);
+    const pagoPeloHolerite = holerite > 0 ? holerite : 6500;
 
     return Number(
       Math.max(
