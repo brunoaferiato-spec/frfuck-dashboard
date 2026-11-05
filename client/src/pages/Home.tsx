@@ -41,6 +41,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MobileTabBar, useItensModulos } from "@/components/MobileTabBar";
 import {
   Select,
   SelectContent,
@@ -948,23 +949,23 @@ function KpiCard(props: {
       : "from-[#D4AF37]/15";
 
   return (
-    <Card className="group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.38)] transition-all duration-300 hover:-translate-y-1 hover:border-[#D4AF37]/55 hover:shadow-[0_22px_70px_rgba(212,175,55,0.12)]">
+    <Card className="group relative gap-0 overflow-hidden rounded-2xl border border-[#D4AF37]/20 py-0 sm:gap-6 sm:py-6 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.38)] transition-all duration-300 hover:-translate-y-1 hover:border-[#D4AF37]/55 hover:shadow-[0_22px_70px_rgba(212,175,55,0.12)]">
       <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${glow} via-transparent to-transparent opacity-70`} />
       <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl transition-all duration-300 group-hover:bg-[#D4AF37]/20" />
-      <CardContent className="relative p-5">
-        <div className="mb-5 flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#b9b1a0]">{props.titulo}</p>
-            <div className="mt-2 h-px w-8 bg-gradient-to-r from-[#D4AF37] to-transparent" />
+      <CardContent className="relative p-4 sm:p-5">
+        <div className="mb-3 flex items-start justify-between gap-2 sm:mb-5 sm:gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase leading-4 tracking-[0.12em] text-[#b9b1a0] sm:text-[11px] sm:tracking-[0.16em]">{props.titulo}</p>
+            <div className="mt-2 hidden h-px w-8 bg-gradient-to-r from-[#D4AF37] to-transparent sm:block" />
           </div>
-          <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2.5 shadow-inner shadow-[#D4AF37]/5">
-            <Icon className={`h-5 w-5 ${cor}`} />
+          <div className="shrink-0 rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2 shadow-inner shadow-[#D4AF37]/5 sm:p-2.5">
+            <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${cor}`} />
           </div>
         </div>
-        <p className={`text-[1.65rem] font-black tracking-[-0.03em] ${cor}`}>
+        <p className={`text-[1.2rem] font-black tracking-[-0.03em] sm:text-[1.65rem] ${cor}`}>
           {props.valor}
         </p>
-        <p className="mt-2 min-h-[32px] text-xs leading-5 text-[#79756d]">{props.subtitulo}</p>
+        <p className="mt-2 hidden min-h-[32px] text-xs leading-5 text-[#79756d] sm:block">{props.subtitulo}</p>
       </CardContent>
     </Card>
   );
@@ -974,6 +975,7 @@ export default function Home() {
   const { user, loading: authLoading, logout, refresh } = useAuth();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
+  const itensModulos = useItensModulos();
 
   const agora = new Date();
   const [escopo, setEscopo] = useState("grupo");
@@ -1364,29 +1366,34 @@ export default function Home() {
 
         <main className="min-w-0 flex-1">
           <header className="sticky top-0 z-40 border-b border-[#D4AF37]/15 bg-[#050505]/90 backdrop-blur-2xl">
-            <div className="px-5 py-5 lg:px-8">
-              <div className="flex flex-col gap-5 2xl:flex-row 2xl:items-center 2xl:justify-between">
+            <div className="px-4 pb-3 pt-[calc(12px+env(safe-area-inset-top))] sm:px-5 sm:py-5 lg:px-8">
+              <div className="flex flex-col gap-3 sm:gap-5 2xl:flex-row 2xl:items-center 2xl:justify-between">
                 <div>
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#C9A94B]">
-                    <Gauge className="h-4 w-4" />
-                    Painel executivo
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#C9A94B] sm:text-xs">
+                      <Gauge className="h-4 w-4" />
+                      Painel executivo
+                    </div>
+                    <p className="max-w-[45vw] truncate text-[11px] font-semibold text-[#8f897d] xl:hidden">
+                      {user.name || user.email}
+                    </p>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
-                    <h1 className="text-3xl font-black tracking-[-0.035em] text-white lg:text-4xl">
+                  <div className="mt-1.5 flex flex-wrap items-end gap-x-4 gap-y-2 sm:mt-2">
+                    <h1 className="text-[1.6rem] font-black leading-tight tracking-[-0.035em] text-white sm:text-3xl lg:text-4xl">
                       Visão Financeira da Folha
                     </h1>
-                    <span className="mb-1 rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#D8C078]">
+                    <span className="mb-1 hidden rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#D8C078] sm:inline-block">
                       Executivo
                     </span>
                   </div>
-                  <p className="mt-2 max-w-2xl text-sm text-[#79756d]">
+                  <p className="mt-2 hidden max-w-2xl text-sm text-[#79756d] sm:block">
                     Custos, pagamentos e fechamento das unidades em uma única visão gerencial.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-[1.4fr_1.2fr_0.9fr] gap-2 sm:grid-cols-3">
                   <Select value={escopo} onValueChange={setEscopo}>
-                    <SelectTrigger className="min-w-[190px] border-[#D4AF37]/25 bg-[#0c0c0c] text-white shadow-sm shadow-black/30">
+                    <SelectTrigger className="h-11 min-w-0 rounded-xl border-[#D4AF37]/25 bg-[#0c0c0c] text-white shadow-sm shadow-black/30 sm:h-9 sm:min-w-[190px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="border-[#D4AF37]/20 bg-[#0c0c0c] text-white">
@@ -1400,7 +1407,7 @@ export default function Home() {
                   </Select>
 
                   <Select value={mes} onValueChange={setMes}>
-                    <SelectTrigger className="border-[#D4AF37]/25 bg-[#0c0c0c] text-white shadow-sm shadow-black/30">
+                    <SelectTrigger className="h-11 min-w-0 rounded-xl border-[#D4AF37]/25 bg-[#0c0c0c] text-white shadow-sm shadow-black/30 sm:h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="border-[#D4AF37]/20 bg-[#0c0c0c] text-white">
@@ -1413,7 +1420,7 @@ export default function Home() {
                   </Select>
 
                   <Select value={ano} onValueChange={setAno}>
-                    <SelectTrigger className="border-[#D4AF37]/25 bg-[#0c0c0c] text-white shadow-sm shadow-black/30">
+                    <SelectTrigger className="h-11 min-w-0 rounded-xl border-[#D4AF37]/25 bg-[#0c0c0c] text-white shadow-sm shadow-black/30 sm:h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="border-[#D4AF37]/20 bg-[#0c0c0c] text-white">
@@ -1429,28 +1436,7 @@ export default function Home() {
             </div>
           </header>
 
-          <div className="space-y-6 px-5 py-7 lg:px-8 2xl:space-y-7">
-            <div className="flex gap-2 overflow-x-auto pb-1 xl:hidden">
-              {menu
-                .filter(itemVisivel)
-                .map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.label}
-                      onClick={() => navigate(item.rota)}
-                      className={`flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ${
-                        item.ativo
-                          ? "border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[#F2D675]"
-                          : "border-white/10 bg-[#101827] text-gray-300"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {item.label}
-                    </button>
-                  );
-                })}
-            </div>
+          <div className="space-y-5 px-4 py-5 sm:space-y-6 sm:px-5 sm:py-7 lg:px-8 2xl:space-y-7">
 
             {erro && (
               <div className="rounded-2xl border border-rose-500/25 bg-rose-950/15 px-4 py-3 text-sm text-rose-300">
@@ -1479,7 +1465,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+                <section className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-3 2xl:grid-cols-6">
                   <KpiCard
                     titulo="Adiantamentos"
                     valor={compactMoney(totais.adiantamento)}
@@ -1527,7 +1513,7 @@ export default function Home() {
 
                 <section className="grid gap-4 2xl:grid-cols-[1.65fr_1fr]">
                   <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] shadow-[0_18px_55px_rgba(0,0,0,0.32)]">
-                    <CardContent className="p-5 lg:p-6">
+                    <CardContent className="p-4 sm:p-5 lg:p-6">
                       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                         <div>
                           <p className="text-lg font-bold text-white">
@@ -1544,7 +1530,7 @@ export default function Home() {
                         </p>
                       </div>
 
-                      <div className="h-[310px] w-full">
+                      <div className="h-[230px] w-full sm:h-[310px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="4 4" stroke="#26221b" vertical={false} />
@@ -1578,7 +1564,7 @@ export default function Home() {
                   </Card>
 
                   <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] shadow-[0_18px_55px_rgba(0,0,0,0.32)]">
-                    <CardContent className="p-5 lg:p-6">
+                    <CardContent className="p-4 sm:p-5 lg:p-6">
                       <div className="mb-5 flex items-start justify-between">
                         <div>
                           <p className="text-lg font-bold text-white">Status do fechamento</p>
@@ -1625,7 +1611,7 @@ export default function Home() {
 
                 <section className="grid gap-4 xl:grid-cols-[1fr_2fr]">
                   <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] shadow-[0_18px_55px_rgba(0,0,0,0.32)]">
-                    <CardContent className="p-5 lg:p-6">
+                    <CardContent className="p-4 sm:p-5 lg:p-6">
                       <p className="text-lg font-bold text-white">Atenção gerencial</p>
                       <div className="mt-5 space-y-3">
                         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
@@ -1673,7 +1659,37 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="overflow-x-auto">
+                      {/* Celular: um cartão por cidade no lugar da tabela larga. */}
+                      <div className="space-y-2.5 p-3 md:hidden">
+                        {(dashboard?.lojas || []).map((loja) => (
+                          <div key={loja.lojaId} className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="truncate font-bold text-white">{loja.lojaNome}</p>
+                              <span
+                                className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-wider ${
+                                  loja.fechado
+                                    ? "border border-emerald-400/15 bg-emerald-500/10 text-emerald-300"
+                                    : "border border-rose-400/15 bg-rose-500/10 text-rose-300"
+                                }`}
+                              >
+                                {loja.fechado ? "Fechado" : "Aberto"}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex items-baseline justify-between gap-3">
+                              <span className="text-xs text-gray-500">Desembolso</span>
+                              <span className="text-lg font-black text-[#F2D675]">{money(loja.desembolso)}</span>
+                            </div>
+                            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-white/[0.05] pt-3 text-xs">
+                              <div className="flex justify-between gap-2"><span className="text-gray-500">Adiant.</span><span className="font-semibold text-rose-300">{money(loja.adiantamento)}</span></div>
+                              <div className="flex justify-between gap-2"><span className="text-gray-500">Folha</span><span className="font-semibold text-slate-200">{money(loja.folhaSemAdiantamento)}</span></div>
+                              <div className="flex justify-between gap-2"><span className="text-gray-500">Boletos</span><span className="font-semibold text-emerald-300">{money(loja.boletos)}</span></div>
+                              <div className="flex justify-between gap-2"><span className="text-gray-500">Custo/liq.</span><span className="font-semibold text-gray-300">{loja.custoLiquidez.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="hidden overflow-x-auto md:block">
                         <table className="w-full min-w-[900px] text-sm">
                           <thead>
                             <tr className="border-b border-[#D4AF37]/10 bg-[#D4AF37]/[0.025] text-left text-[11px] uppercase tracking-wider text-gray-600">
@@ -1732,6 +1748,7 @@ export default function Home() {
               </>
             )}
           </div>
+          <MobileTabBar itens={itensModulos} ocultarAPartirDe="xl" />
         </main>
       </div>
     </div>

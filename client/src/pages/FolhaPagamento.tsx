@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, BadgeDollarSign, ReceiptText, Sparkles, TrendingUp, WalletCards } from "lucide-react";
+import { ArrowLeft, BadgeDollarSign, ChevronDown, ReceiptText, Sparkles, TrendingUp, WalletCards } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { readSheet } from "read-excel-file/browser";
 
@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { MobileTabBar, useItensModulos } from "@/components/MobileTabBar";
 import { Label } from "@/components/ui/label";
 import {
   erroDuracaoAlmoco,
@@ -2199,6 +2200,19 @@ function TabelaQuadrante({
     semana: SemanaComissaoVisual;
   } | null>(null);
   const semanaMistaAbertaRef = useRef(false);
+  // No celular a folha abre em cartões; "Tabela" mostra a grade completa.
+  const [modoTabelaCelular, setModoTabelaCelular] = useState(false);
+  // Cartões começam recolhidos (resumo); um toque abre para editar.
+  const [cartoesAbertos, setCartoesAbertos] = useState<Set<string>>(() => new Set());
+
+  function alternarCartao(id: string) {
+    setCartoesAbertos((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
 
   function abrirSemanaMistaDetalhe(
     linha: LinhaComQuadrante,
@@ -2530,22 +2544,278 @@ const isMensalUnico =
     );
   }
 
+  const temSemanas =
+    !isSalarioFixo && !isRecepcao && !isPj && !isMensalUnico && !isConsultorMeta2 && !isGerente;
+  const temLiquidezMensal =
+    !isSalarioFixo && !isRecepcao && !isPj && isMensalUnico && !isConsultorMeta2 && !isGerente;
+  // Quadros com colunas próprias (gerente, consultor, recepção, supervisor):
+  // o cartão mostra o resumo e a edição dessas colunas fica na tabela.
+  const detalheSoNaTabela = isGerente || isConsultorMeta2 || isRecepcao || isPj;
+
+  function campoCartao(rotulo: string, conteudo: ReactNode) {
+    return (
+      <div key={rotulo} className="min-w-0">
+        <p className="mb-1 truncate text-[10px] font-bold uppercase tracking-[0.1em] text-gray-500">{rotulo}</p>
+        {conteudo}
+      </div>
+    );
+  }
+
+  function renderCartaoCelular(linha: LinhaComQuadrante) {
+    const bloqueado = boletoBloqueadoLinha(linha);
+    const premiacaoTotal =
+      linha.premiacao +
+      ((linha as any).detalhesGrupo || []).reduce(
+        (acc: number, item: any) => acc + Number(item.valor || 0),
+        0
+      );
+    const ehPjLinha = pjFuncionarioIds.has(Number(linha.funcionarioId));
+    const semanas: SemanaComissaoVisual[] = sem5Ativa ? [1, 2, 3, 4, 5] : [1, 2, 3, 4];
+    const temObs = observacoesPublicasLinha(linha).length > 0;
+    const mostraUmPorcento =
+      exibeUmPorcento &&
+      ["gerente", "vendedor", "mecanico", "alinhador"].includes(String(linha.funcao || ""));
+    const aberto = cartoesAbertos.has(String(linha.id));
+    const descontos =
+      Number(linha.vale || 0) +
+      Number(linha.aluguel || 0) +
+      Number(linha.inss || 0) +
+      Number(linha.adiant || 0) +
+      Number(linha.holerite || 0);
+
+    return (
+      <div
+        key={linha.id}
+        className={`rounded-2xl border transition-colors ${
+          bloqueado
+            ? "border-red-500/35 bg-red-950/25"
+            : aberto
+            ? "border-[#D4AF37]/30 bg-[#0f0f0f]"
+            : "border-white/[0.07] bg-[#0d0d0d]"
+        }`}
+      >
+        <div className="flex items-stretch">
+          <button
+            type="button"
+            onClick={() => alternarCartao(String(linha.id))}
+            aria-expanded={aberto}
+            className="flex min-w-0 flex-1 items-start justify-between gap-3 p-3.5 text-left active:bg-white/[0.02]"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-[15px] font-bold leading-tight text-white">{linha.nome}</p>
+              <p className="mt-0.5 truncate text-xs text-gray-500">
+                {isSupervisoraAci ? "Supervisora de Consultor de Vendas - PJ" : getDescricaoFuncaoNoMes(linha)}
+                {ehPjLinha ? " • PJ" : ""}
+                {temObs ? " • tem OBS" : ""}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-gray-500">Boleto</p>
+                <p className={`text-[17px] font-black leading-tight ${linha.boleto < 0 ? "text-red-500" : "text-green-400"}`}>
+                  R$ {money(linha.boleto)}
+                </p>
+              </div>
+              <ChevronDown className={`h-5 w-5 text-gray-500 transition-transform ${aberto ? "rotate-180 text-[#F2D675]" : ""}`} />
+            </div>
+          </button>
+        </div>
+
+        {!aberto && (
+          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-b-2xl border-t border-white/[0.05] bg-white/[0.04] text-center">
+            {[
+              { rotulo: isSalarioFixo ? "Salário" : "Comissão", valor: isSalarioFixo ? Number(linha.sem1 || 0) : linha.totalComissao, cor: "text-yellow-300" },
+              { rotulo: "Premiação", valor: premiacaoTotal, cor: premiacaoTotal > 0 ? "text-green-400" : "text-gray-300" },
+              { rotulo: "Descontos", valor: descontos, cor: descontos > 0 ? "text-red-400" : "text-gray-300" },
+            ].map((item) => (
+              <div key={item.rotulo} className="bg-[#0d0d0d] px-1.5 py-2">
+                <p className="text-[9.5px] font-bold uppercase tracking-[0.08em] text-gray-600">{item.rotulo}</p>
+                <p className={`mt-0.5 truncate text-[12.5px] font-bold ${item.cor}`}>R$ {money(item.valor)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {aberto && (
+        <div className="px-3.5 pb-3.5">
+        {linha.boleto < 0 && (
+          <button
+            type="button"
+            onClick={() => onOpenNegativoEditor(linha)}
+            className="mb-1 w-full rounded-xl border border-red-500/35 bg-red-500/[0.08] px-3 py-2 text-left text-xs font-semibold text-red-300"
+          >
+            Boleto negativo • toque para tratar
+          </button>
+        )}
+
+        {temMudancaFuncaoNoMes(linha) && (
+          <button
+            type="button"
+            onClick={() => linha.trocaFuncaoMes && onOpenTransicaoFuncao(linha)}
+            className="mt-2 w-full rounded-xl border border-orange-400/35 bg-orange-500/[0.08] px-3 py-2 text-left text-xs font-semibold text-orange-200"
+          >
+            Mudança de função no mês
+            {linha.trocaFuncaoMes
+              ? ` • ${formatarDataBR(linha.trocaFuncaoMes.dataMudanca)} • toque para ajustar`
+              : ""}
+          </button>
+        )}
+
+        {isSalarioFixo && (
+          <div className="mt-3">{campoCartao("Salário", renderEditButton(linha, "sem1", "Salário", "money"))}</div>
+        )}
+
+        {temSemanas && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {semanas.map((semana) =>
+              campoCartao(
+                `SEM${semana}`,
+                <div className="space-y-1">
+                  {renderEditButton(
+                    linha,
+                    campoLiquidezSemanaVisual(semana) as keyof FolhaMensal,
+                    isConsultor ? `Quantidade SEM${semana}` : `Liquidez SEM${semana}`,
+                    isConsultor ? "number" : "money"
+                  )}
+                  <div className="text-right text-xs">{renderRegraButton(linha, semana)}</div>
+                </div>
+              )
+            )}
+          </div>
+        )}
+
+        {temLiquidezMensal && (
+          <div className="mt-3 grid grid-cols-[1fr_auto] items-end gap-2">
+            {campoCartao("Liquidez do mês", renderEditButton(linha, "sem1", "Liquidez do mês", "money"))}
+            <div className="pb-2.5 text-xs">{renderRegraButton(linha, 1)}</div>
+          </div>
+        )}
+
+        {!isSalarioFixo && (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] px-3 py-2 text-xs">
+            {(temSemanas || temLiquidezMensal) && (
+              <span className="text-gray-400">
+                {isConsultor ? "Carros" : "Liquidez"}{" "}
+                <b className="text-white">
+                  {isConsultor ? linha.totalLiquidez.toLocaleString("pt-BR") : `R$ ${money(linha.totalLiquidez)}`}
+                </b>
+              </span>
+            )}
+            <span className="ml-auto text-gray-400">
+              Comissão <b className="text-yellow-300">R$ {money(linha.totalComissao)}</b>
+            </span>
+          </div>
+        )}
+
+        {detalheSoNaTabela && (
+          <p className="mt-2 text-[11px] text-gray-600">
+            Os detalhes deste quadro ficam em "Tabela", no topo do quadro.
+          </p>
+        )}
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {!isConsultorAci &&
+            campoCartao(
+              "Premiação",
+              <button
+                type="button"
+                onClick={() => onOpenPremioEditor(linha)}
+                className={`flex min-h-[42px] w-full items-center justify-end rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold ${
+                  premiacaoTotal > 0 ? "text-green-400" : "text-white"
+                }`}
+              >
+                R$ {money(premiacaoTotal)}
+              </button>
+            )}
+          {campoCartao(
+            "Vale",
+            <button
+              type="button"
+              onClick={() => onOpenValeEditor(linha)}
+              className={`flex min-h-[42px] w-full items-center justify-end rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold ${
+                linha.vale > 0 ? "text-red-400" : "text-white"
+              }`}
+            >
+              R$ {money(linha.vale)}
+            </button>
+          )}
+          {!isPjSalario && campoCartao("Aluguel", renderEditButton(linha, "aluguel", "Aluguel", "money"))}
+          {!isPj && !isPjSalario && !ehPjLinha && campoCartao("INSS", renderEditButton(linha, "inss", "INSS", "money"))}
+          {campoCartao("Adiantamento", renderEditButton(linha, "adiant", "Adiantamento", "money"))}
+          {!isPj &&
+            campoCartao(
+              ehPjLinha && !isPjSalario ? "Pagamento PJ" : "Holerite",
+              renderEditButton(linha, "holerite", ehPjLinha && !isPjSalario ? "Pagamento PJ" : "Holerite", "money")
+            )}
+          {mostraUmPorcento &&
+            campoCartao(
+              "1% (informativo)",
+              <button
+                type="button"
+                onClick={() => onOpenUmPorcentoEditor(linha)}
+                className="flex min-h-[42px] w-full items-center justify-end rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.045] px-3 py-2 font-bold text-[#F2D675]"
+              >
+                R$ {money(Number(umPorcentoByFuncionario[Number(linha.funcionarioId)] || 0) * 0.01)}
+              </button>
+            )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onOpenObsEditor(linha)}
+          className={`mt-3 flex min-h-[40px] w-full items-center justify-center rounded-xl text-xs font-bold ${
+            temObs
+              ? "bg-red-600 text-white"
+              : "border border-white/[0.07] bg-white/[0.02] text-gray-400"
+          }`}
+        >
+          {temObs ? `Observações (${observacoesPublicasLinha(linha).length})` : "Adicionar observação"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onOpenFuncionarioDetalhe(linha)}
+          className="mt-2 flex min-h-[40px] w-full items-center justify-center rounded-xl text-xs font-bold text-[#D4AF37]"
+        >
+          Ver cadastro do funcionário
+        </button>
+        </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <Card className="group overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] shadow-[0_18px_60px_rgba(0,0,0,0.32)]">
-      <CardHeader className="border-b border-[#D4AF37]/10 bg-gradient-to-r from-[#D4AF37]/[0.055] via-transparent to-transparent px-6 py-5">
+    <Card className="group gap-0 overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] py-0 shadow-[0_18px_60px_rgba(0,0,0,0.32)] md:gap-6 md:py-6">
+      <CardHeader className="border-b border-[#D4AF37]/10 bg-gradient-to-r from-[#D4AF37]/[0.055] via-transparent to-transparent px-4 py-4 md:px-6 md:py-5">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-lg font-bold tracking-tight text-[#F2D675]">{titulo}</CardTitle>
-            <CardDescription className="mt-1 text-gray-500">
+          <div className="min-w-0">
+            <CardTitle className="text-base font-bold tracking-tight text-[#F2D675] md:text-lg">
+              {titulo}
+              <span className="ml-2 text-xs font-semibold text-gray-500 md:hidden">{linhas.length}</span>
+            </CardTitle>
+            <CardDescription className="mt-1 text-xs text-gray-500 md:text-sm">
               {descricao}
             </CardDescription>
           </div>
-          <div className="mt-1 h-2 w-2 rounded-full bg-[#D4AF37] shadow-[0_0_18px_rgba(212,175,55,0.55)]" />
+          <button
+            type="button"
+            onClick={() => setModoTabelaCelular((atual) => !atual)}
+            className="shrink-0 rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-3 py-1.5 text-[11px] font-bold text-[#F2D675] md:hidden"
+          >
+            {modoTabelaCelular ? "Cartões" : "Tabela"}
+          </button>
+          <div className="mt-1 hidden h-2 w-2 rounded-full bg-[#D4AF37] shadow-[0_0_18px_rgba(212,175,55,0.55)] md:block" />
         </div>
       </CardHeader>
 
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        {!modoTabelaCelular && (
+          <div className="space-y-2.5 p-2.5 md:hidden">
+            {linhas.map((linha) => renderCartaoCelular(linha))}
+          </div>
+        )}
+        <div className={`overflow-x-auto ${modoTabelaCelular ? "" : "hidden md:block"}`}>
           <table className={`w-full ${sem5Ativa ? "min-w-[2150px]" : "min-w-[1900px]"} text-sm`}>
             <thead>
               <tr className="border-b border-[#D4AF37]/15 bg-[#D4AF37]/[0.025] text-[#D4AF37]">
@@ -3617,6 +3887,7 @@ const isMensalUnico =
 
 export default function FolhaPagamento() {
   const [, setLocation] = useLocation();
+  const itensModulos = useItensModulos();
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
@@ -11074,14 +11345,14 @@ if (
   );
 }
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#050505] p-4 text-white md:p-6">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#050505] px-3 pb-4 pt-[calc(12px+env(safe-area-inset-top))] text-white md:p-6">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(212,175,55,0.11),transparent_27%),radial-gradient(circle_at_92%_8%,rgba(212,175,55,0.06),transparent_24%)]" />
-      <div className="relative mx-auto max-w-[1900px] space-y-6">
-        <section className="relative overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#090909] to-[#050505] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.42)] md:p-7">
+      <div className="relative mx-auto flex max-w-[1900px] flex-col gap-4 md:block md:space-y-6">
+        <section className="relative order-[-2] overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#090909] to-[#050505] p-4 md:order-none shadow-[0_24px_80px_rgba(0,0,0,0.42)] md:p-7">
           <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[#D4AF37]/[0.08] blur-3xl" />
-          <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+          <div className="relative flex flex-col gap-4 md:gap-6 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <div className="mb-3 flex items-center gap-3">
+              <div className="mb-2 flex items-center gap-3 md:mb-3">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -11094,18 +11365,18 @@ if (
                   <Sparkles className="h-3 w-3" /> Gestão financeira
                 </span>
               </div>
-              <h1 className="text-3xl font-black tracking-tight text-white md:text-4xl">
+              <h1 className="text-2xl font-black tracking-tight text-white md:text-4xl">
                 Folha de <span className="text-[#D4AF37]">Pagamento</span>
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-gray-500">
+              <p className="mt-2 hidden max-w-2xl text-sm text-gray-500 md:block">
                 Conferência de liquidez, comissões, descontos, boletos e fechamento por competência.
               </p>
             </div>
 
-            <div className="flex flex-col items-start gap-2 xl:items-end">
-              <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+            <div className="flex flex-col items-stretch gap-2 md:items-start xl:items-end">
+              <div className="grid grid-cols-2 items-center gap-2 md:flex md:flex-wrap xl:justify-end [&>*]:min-h-11 [&>*]:justify-center md:[&>*]:min-h-0">
                 <div
-                  className={`rounded-xl border px-3 py-2 text-xs font-bold tracking-wide ${
+                  className={`flex items-center rounded-xl border px-3 py-2 text-xs font-bold tracking-wide ${
                     mesFechado
                       ? "border-red-500/30 bg-red-950/25 text-red-300"
                       : "border-emerald-500/25 bg-emerald-950/20 text-emerald-300"
@@ -11141,7 +11412,7 @@ if (
 
                 <Button
                   variant="outline"
-                  className="rounded-xl border-[#D4AF37]/30 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F7E5A7]"
+                  className="col-span-2 rounded-xl border-[#D4AF37]/30 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F7E5A7] md:col-span-1"
                   onClick={() => setRepasseFranklynOpen(true)}
                 >
                   <WalletCards className="mr-2 h-4 w-4" />
@@ -11154,7 +11425,7 @@ if (
                 </Button>
 
                 <Button
-                  className="rounded-xl bg-gradient-to-r from-[#C79C2C] via-[#D4AF37] to-[#E2C45F] font-bold text-black shadow-[0_10px_30px_rgba(212,175,55,0.16)] transition hover:brightness-110"
+                  className="col-span-2 rounded-xl bg-gradient-to-r from-[#C79C2C] via-[#D4AF37] to-[#E2C45F] font-bold text-black shadow-[0_10px_30px_rgba(212,175,55,0.16)] transition hover:brightness-110 md:col-span-1"
                   onClick={exportarBoletos}
                 >
                   <ReceiptText className="mr-2 h-4 w-4" />
@@ -11178,11 +11449,11 @@ if (
           </div>
         </section>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
-          <Card className="group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
+        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-2 md:gap-4 2xl:grid-cols-4">
+          <Card className="py-0 md:py-6 col-span-2 md:col-span-1 group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
             <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl" />
-            <CardContent className="relative p-5">
-              <div className="mb-6 flex items-start justify-between">
+            <CardContent className="relative p-4 md:p-5">
+              <div className="mb-3 flex items-start justify-between md:mb-6">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-600">Total Liquidez</p>
                   <div className="mt-2 h-px w-8 bg-gradient-to-r from-[#D4AF37] to-transparent" />
@@ -11191,15 +11462,15 @@ if (
                   <TrendingUp className="h-4 w-4 text-[#D4AF37]" />
                 </div>
               </div>
-              <p className="text-2xl font-black tracking-tight text-white md:text-3xl">R$ {money(totalLiquidezGeral)}</p>
-              <p className="mt-2 text-xs text-gray-600">Liquidez consolidada da competência</p>
+              <p className="text-lg font-black tracking-tight md:text-2xl text-white md:text-3xl">R$ {money(totalLiquidezGeral)}</p>
+              <p className="mt-2 hidden text-xs text-gray-600 md:block">Liquidez consolidada da competência</p>
             </CardContent>
           </Card>
 
-          <Card className="group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
+          <Card className="py-0 md:py-6 group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
             <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl" />
-            <CardContent className="relative p-5">
-              <div className="mb-6 flex items-start justify-between">
+            <CardContent className="relative p-4 md:p-5">
+              <div className="mb-3 flex items-start justify-between md:mb-6">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-600">Comissão + Premiação</p>
                   <div className="mt-2 h-px w-8 bg-gradient-to-r from-[#D4AF37] to-transparent" />
@@ -11208,15 +11479,15 @@ if (
                   <BadgeDollarSign className="h-4 w-4 text-[#D4AF37]" />
                 </div>
               </div>
-              <p className="text-2xl font-black tracking-tight text-[#F2D675] md:text-3xl">R$ {money(totalComissaoGeral)}</p>
-              <p className="mt-2 text-xs text-gray-600">Custo variável calculado na folha</p>
+              <p className="text-lg font-black tracking-tight md:text-2xl text-[#F2D675] md:text-3xl">R$ {money(totalComissaoGeral)}</p>
+              <p className="mt-2 hidden text-xs text-gray-600 md:block">Custo variável calculado na folha</p>
             </CardContent>
           </Card>
 
-          <Card className="group relative overflow-hidden rounded-2xl border border-emerald-500/15 bg-gradient-to-br from-[#101311] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/30">
+          <Card className="py-0 md:py-6 group relative overflow-hidden rounded-2xl border border-emerald-500/15 bg-gradient-to-br from-[#101311] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/30">
             <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-emerald-500/[0.07] blur-3xl" />
-            <CardContent className="relative p-5">
-              <div className="mb-6 flex items-start justify-between">
+            <CardContent className="relative p-4 md:p-5">
+              <div className="mb-3 flex items-start justify-between md:mb-6">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-600">Total Boleto</p>
                   <div className="mt-2 h-px w-8 bg-gradient-to-r from-emerald-400/70 to-transparent" />
@@ -11225,16 +11496,16 @@ if (
                   <ReceiptText className="h-4 w-4 text-emerald-400" />
                 </div>
               </div>
-              <p className={`text-2xl font-black tracking-tight md:text-3xl ${totalBoletoGeral < 0 ? "text-red-400" : "text-emerald-400"}`}>
+              <p className={`text-lg font-black tracking-tight md:text-2xl md:text-3xl ${totalBoletoGeral < 0 ? "text-red-400" : "text-emerald-400"}`}>
                 R$ {money(totalBoletoGeral)}
               </p>
-              <p className="mt-2 text-xs text-gray-600">Total previsto para exportação</p>
+              <p className="mt-2 hidden text-xs text-gray-600 md:block">Total previsto para exportação</p>
             </CardContent>
           </Card>
 
-          <Card className="group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
+          <Card className="py-0 md:py-6 col-span-2 md:col-span-1 group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
             <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl" />
-            <CardContent className="relative p-5">
+            <CardContent className="relative p-4 md:p-5">
               <div className="mb-4 flex items-start justify-between">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-600">Total Folha</p>
@@ -11244,7 +11515,7 @@ if (
                   <WalletCards className="h-4 w-4 text-[#D4AF37]" />
                 </div>
               </div>
-              <p className="text-2xl font-black tracking-tight text-emerald-400 md:text-3xl">R$ {money(totalFolhaGeral)}</p>
+              <p className="text-lg font-black tracking-tight md:text-2xl text-emerald-400 md:text-3xl">R$ {money(totalFolhaGeral)}</p>
               <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-semibold uppercase tracking-wide">
                 <button type="button" onClick={() => setFolhaFiltros((prev) => ({ ...prev, inss: !prev.inss }))} className={`rounded-lg border px-2 py-1.5 transition ${folhaFiltros.inss ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#F2D675]" : "border-white/[0.05] bg-white/[0.02] text-gray-700"}`}>INSS</button>
                 <button type="button" onClick={() => setFolhaFiltros((prev) => ({ ...prev, adiant: !prev.adiant }))} className={`rounded-lg border px-2 py-1.5 transition ${folhaFiltros.adiant ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#F2D675]" : "border-white/[0.05] bg-white/[0.02] text-gray-700"}`}>Adiant.</button>
@@ -11254,18 +11525,18 @@ if (
           </Card>
         </div>
 
-<Card className="overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#070707] shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
-  <CardContent className="px-5 py-4">
-    <div className="grid grid-cols-12 items-center gap-4">
-      <div className="col-span-12 md:col-span-1">
+<Card className="order-[-1] py-0 md:order-none md:py-6 sticky top-[env(safe-area-inset-top)] z-30 overflow-hidden rounded-2xl backdrop-blur-xl md:static border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#070707] shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
+  <CardContent className="px-3 py-3 md:px-5 md:py-4">
+    <div className="grid grid-cols-[1.25fr_0.8fr_1.1fr] items-center gap-2 md:grid-cols-12 md:gap-4">
+      <div className="hidden md:col-span-1 md:block">
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#D4AF37]">Filtros</p>
       </div>
 
-      <div className="col-span-12 md:col-span-2">
+      <div className="min-w-0 md:col-span-2">
         <div className="flex items-center gap-3">
-          <Label className="text-gray-300 whitespace-nowrap">Cidade</Label>
+          <Label className="hidden whitespace-nowrap text-gray-300 md:block">Cidade</Label>
           <Select value={selectedLoja} onValueChange={setSelectedLoja}>
-            <SelectTrigger className="h-10 rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30">
+            <SelectTrigger className="h-11 w-full rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30 md:h-10">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-[#D4AF37]/20 bg-[#0b0b0b] text-white">
@@ -11283,26 +11554,26 @@ if (
         </div>
       </div>
 
-      <div className="col-span-12 md:col-span-2">
+      <div className="min-w-0 md:col-span-2">
         <div className="flex items-center gap-3">
-          <Label className="text-gray-300 whitespace-nowrap">Ano</Label>
+          <Label className="hidden whitespace-nowrap text-gray-300 md:block">Ano</Label>
           <Input
             type="number"
             value={ano}
             onChange={(e) => setAno(parseInt(e.target.value, 10) || 2026)}
-            className="h-10 rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30"
+            className="h-11 w-full rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30 md:h-10"
           />
         </div>
       </div>
 
-      <div className="col-span-12 md:col-span-2">
+      <div className="min-w-0 md:col-span-2">
         <div className="flex items-center gap-3">
-          <Label className="text-gray-300 whitespace-nowrap">Mês</Label>
+          <Label className="hidden whitespace-nowrap text-gray-300 md:block">Mês</Label>
           <Select
             value={mes.toString()}
             onValueChange={(value) => setMes(parseInt(value, 10))}
           >
-            <SelectTrigger className="h-10 rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30">
+            <SelectTrigger className="h-11 w-full rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30 md:h-10">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-[#D4AF37]/20 bg-[#0b0b0b] text-white">
@@ -11417,6 +11688,8 @@ if (
           ))
         )}
       </div>
+
+      <MobileTabBar itens={itensModulos} />
 
       <Dialog
         open={transicaoFuncaoEditor.open}

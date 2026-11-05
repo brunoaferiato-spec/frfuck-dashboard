@@ -1,17 +1,18 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowLeft, BellRing, Boxes, Car, CircleDot, Hammer, LogOut, Menu, Package, ShieldCheck, ShoppingCart, Store, Wrench, X } from "lucide-react";
+import { ArrowLeft, BellRing, Boxes, Car, CircleDot, Hammer, LogOut, ShieldCheck, ShoppingCart, Store, Wrench } from "lucide-react";
+import { MobileTabBar, type ItemTab } from "@/components/MobileTabBar";
 import { trpc } from "@/lib/trpc";
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { useLocation } from "wouter";
 
 const itens = [
   { label: "Pneus", rota: "/compras/pneus", icon: CircleDot },
   { label: "Peças", rota: "/compras/pecas", icon: Wrench },
-  { label: "Amortecedores", rota: "/compras/amortecedores", icon: Car },
+  { label: "Amortecedores", curto: "Amortec.", rota: "/compras/amortecedores", icon: Car },
+  { label: "Garantias", rota: "/compras/garantias", icon: ShieldCheck },
   { label: "Insumos de estoque", rota: "/compras/insumos/estoque", icon: Boxes },
   { label: "Insumos de loja", rota: "/compras/insumos/loja", icon: Store },
   { label: "Manutenção", rota: "/compras/manutencao", icon: Hammer },
-  { label: "Garantias", rota: "/compras/garantias", icon: ShieldCheck },
 ];
 
 // Aviso das garantias de pneu em todas as telas de Compras, até cada garantia ser finalizada.
@@ -52,7 +53,6 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
   const somentePneus = String(user?.role || "") === "pneus_leitura";
   const itensMenu = somentePneus ? itens.filter((i) => i.rota === "/compras/pneus") : itens;
   const [location, navigate] = useLocation();
-  const [menuAberto, setMenuAberto] = useState(false);
 
   async function sair() {
     await logout();
@@ -60,9 +60,23 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
   }
 
   function navegar(rota: string) {
-    setMenuAberto(false);
     navigate(rota);
   }
+
+  const rotaAtiva = (rota: string) =>
+    location === rota || (rota === "/compras/insumos/estoque" && location === "/compras/insumos");
+
+  // Celular: os módulos de Compras ficam na barra inferior; o resto em "Mais".
+  const itensTab: ItemTab[] = [
+    ...itensMenu.map((item) => ({
+      label: (item as { curto?: string }).curto || item.label,
+      icon: item.icon,
+      ativo: rotaAtiva(item.rota),
+      onClick: () => navegar(item.rota),
+    })),
+    ...(!somenteCompras ? [{ label: "Dashboard principal", icon: ArrowLeft, onClick: () => navegar("/") }] : []),
+    { label: "Sair", icon: LogOut, destaque: "perigo" as const, onClick: () => void sair() },
+  ];
 
   const menu = (
     <>
@@ -83,7 +97,7 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {itensMenu.map((item) => {
           const Icon = item.icon;
-          const ativo = location === item.rota || (item.rota === "/compras/insumos/estoque" && location === "/compras/insumos");
+          const ativo = rotaAtiva(item.rota);
           return (
             <button
               type="button"
@@ -132,48 +146,23 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
         {menu}
       </aside>
 
-      {menuAberto && (
-        <div className="fixed inset-0 z-[90] md:hidden">
-          <button
-            type="button"
-            aria-label="Fechar menu"
-            className="absolute inset-0 h-full w-full bg-black/75"
-            onClick={() => setMenuAberto(false)}
-          />
-          <aside className="absolute inset-y-0 left-0 flex w-[84vw] max-w-[320px] flex-col border-r border-[#D4AF37]/20 bg-[#080808] shadow-2xl">
-            <button
-              type="button"
-              aria-label="Fechar menu"
-              onClick={() => setMenuAberto(false)}
-              className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-gray-300"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            {menu}
-          </aside>
-        </div>
-      )}
-
       <div className="min-h-0 min-w-0 flex-1 overflow-auto">
-        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-[#D4AF37]/15 bg-[#080808]/95 px-3 backdrop-blur md:hidden">
-          <button
-            type="button"
-            onClick={() => setMenuAberto(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.05] text-[#F2D675]"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div>
+        <header className="sticky top-0 z-40 flex min-h-14 items-center gap-3 border-b border-[#D4AF37]/15 bg-[#080808]/90 px-4 pb-2.5 pt-[calc(10px+env(safe-area-inset-top))] backdrop-blur-xl md:hidden">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06]">
+            <ShoppingCart className="h-[18px] w-[18px] text-[#F2D675]" />
+          </div>
+          <div className="min-w-0">
             <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#D4AF37]/60">
               Compras
             </p>
-            <p className="text-sm font-black text-white">
-              {itens.find((item) => item.rota === location)?.label || "Compras"}
+            <p className="truncate text-base font-black leading-tight text-white">
+              {itens.find((item) => rotaAtiva(item.rota))?.label || "Compras"}
             </p>
           </div>
         </header>
         {location !== "/compras/garantias" && !somentePneus && <AvisoGarantias onAbrir={() => navigate("/compras/garantias")} />}
         {children}
+        <MobileTabBar itens={itensTab} />
       </div>
     </div>
   );

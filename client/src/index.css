@@ -175,3 +175,16 @@
     }
   }
 }
+/* Celular: fundo escuro também no "puxar" da tela, sem flash azul ao tocar
+   e sem o navegador aumentar a fonte sozinho. */
+@layer base {
+  html,
+  body {
+    background-color: #050505;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
