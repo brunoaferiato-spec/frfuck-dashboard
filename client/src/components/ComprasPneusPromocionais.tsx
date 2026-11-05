@@ -30,6 +30,13 @@ function percentual(valor: unknown) {
   return `${n.toFixed(2).replace(".", ",")}%`;
 }
 
+function dataCompra(item: any) {
+  const bruto = String(item.dataUltimoPedido || "");
+  const m = bruto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return item.custoOrigem === "planilha_inicial" ? "Planilha" : "—";
+}
+
 function baixarBase64(nome: string, mime: string, base64: string) {
   const bytes = atob(base64);
   const array = new Uint8Array(bytes.length);
@@ -279,15 +286,16 @@ export default function ComprasPneusPromocionais() {
         <div className="hidden lg:block">
           <table className="w-full table-fixed text-[11px] xl:text-xs">
             <colgroup>
-              <col className="w-[10%]" />
               <col className="w-[9%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
-              <col className="w-[12%]" />
-              <col className="w-[10%]" />
-              <col className="w-[10%]" />
+              <col className="w-[9%]" />
+              <col className="w-[9%]" />
               <col className="w-[8%]" />
-              <col className="w-[10%]" />
+              <col className="w-[9%]" />
+              <col className="w-[11%]" />
+              <col className="w-[9%]" />
+              <col className="w-[9%]" />
+              <col className="w-[7%]" />
+              <col className="w-[9%]" />
               <col className="w-[11%]" />
             </colgroup>
 
@@ -296,6 +304,7 @@ export default function ComprasPneusPromocionais() {
                 <th className="px-2 py-3">Loja</th>
                 <th className="px-2 py-3">Medida</th>
                 <th className="px-2 py-3 text-right">Último custo</th>
+                <th className="px-2 py-3 text-center">Última compra</th>
                 <th className="px-2 py-3 text-right">Custo + 10%</th>
                 <th className="px-2 py-3 text-right">Anúncio</th>
                 <th className="px-2 py-3 text-right">Gap p/ 10%</th>
@@ -309,13 +318,13 @@ export default function ComprasPneusPromocionais() {
             <tbody>
               {query.isLoading ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={11} className="px-4 py-10 text-center text-gray-500">
                     Carregando promocionais...
                   </td>
                 </tr>
               ) : itens.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={11} className="px-4 py-10 text-center text-gray-500">
                     Nenhum promocional encontrado.
                   </td>
                 </tr>
@@ -352,6 +361,20 @@ export default function ComprasPneusPromocionais() {
                       </td>
                       <td className="px-2 py-3 text-right text-gray-300">
                         {temCusto ? moeda(item.ultimoCusto) : "—"}
+                      </td>
+                      <td
+                        className={`px-2 py-3 text-center ${
+                          item.dataUltimoPedido ? "text-gray-300" : "text-gray-600"
+                        }`}
+                        title={
+                          item.dataUltimoPedido
+                            ? "Data do último pedido fechado desta medida"
+                            : item.custoOrigem === "planilha_inicial"
+                            ? "Sem pedido no sistema: custo da planilha inicial"
+                            : undefined
+                        }
+                      >
+                        {dataCompra(item)}
                       </td>
                       <td className="px-2 py-3 text-right text-gray-300">
                         {temCusto ? moeda(item.custoMeta10) : "—"}
@@ -466,6 +489,12 @@ export default function ComprasPneusPromocionais() {
                         {item.lojaNome}
                         <ExternalLink className="h-3 w-3" />
                       </a>
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        Última compra:{" "}
+                        <span className="font-bold text-gray-300">
+                          {dataCompra(item)}
+                        </span>
+                      </p>
                     </div>
 
                     <div className="flex h-10 w-[125px] items-center rounded-lg border border-[#D4AF37]/15 bg-black/30 px-2">

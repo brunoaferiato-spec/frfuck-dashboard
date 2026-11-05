@@ -1629,12 +1629,18 @@ export const comprasPneusRouter = router({
         );
       }
 
-      const larguraBloco = 7;
-      const colunaSegundoBloco = 9; // coluna I; H fica como espaço.
+      const larguraBloco = 8;
+      const colunaSegundoBloco = 10; // coluna J; I fica como espaço.
+
+      function dataExcel(valor: unknown) {
+        const m = String(valor || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+        return m ? new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))) : null;
+      }
 
       const cabecalhos = [
         "MEDIDA",
         "CUSTO",
+        "ÚLT. COMPRA",
         "10%",
         "COM OS 10%",
         "ANÚNCIO",
@@ -1700,6 +1706,7 @@ export const comprasPneusRouter = router({
           const valores = [
             item.medida,
             item.ultimoCusto,
+            dataExcel(item.dataUltimoPedido),
             item.ultimoCusto === null ? null : 0.1,
             item.custoMeta10,
             item.precoAnuncio,
@@ -1711,7 +1718,7 @@ export const comprasPneusRouter = router({
             const cell = worksheet.getCell(linha, colunaInicio + i);
             cell.value = valores[i] as any;
             cell.alignment = {
-              horizontal: i === 0 ? "center" : "right",
+              horizontal: i === 0 || i === 2 ? "center" : "right",
               vertical: "middle",
             };
             aplicarBorda(cell);
@@ -1724,31 +1731,32 @@ export const comprasPneusRouter = router({
             fgColor: { argb: "FF92D050" },
           };
 
-          const anuncio = worksheet.getCell(linha, colunaInicio + 4);
+          const anuncio = worksheet.getCell(linha, colunaInicio + 5);
           anuncio.fill = {
             type: "pattern",
             pattern: "solid",
             fgColor: { argb: "FF92D050" },
           };
 
-          const gap = worksheet.getCell(linha, colunaInicio + 5);
+          const gap = worksheet.getCell(linha, colunaInicio + 6);
           if (item.diferencaMeta10 !== null && Number(item.diferencaMeta10) < 0) {
             gap.font = { color: { argb: "FFFF0000" } };
           } else if (item.diferencaMeta10 !== null) {
             gap.font = { color: { argb: "FF008000" } };
           }
 
-          const margem = worksheet.getCell(linha, colunaInicio + 6);
+          const margem = worksheet.getCell(linha, colunaInicio + 7);
           if (item.diferencaCusto !== null && Number(item.diferencaCusto) < 0) {
             margem.font = { color: { argb: "FFFF0000" } };
           }
 
-          for (const offset of [1, 3, 4, 5, 6]) {
+          for (const offset of [1, 4, 5, 6, 7]) {
             worksheet.getCell(linha, colunaInicio + offset).numFmt =
               '"R$" #,##0.00;[Red]-"R$" #,##0.00';
           }
 
-          worksheet.getCell(linha, colunaInicio + 2).numFmt = "0%";
+          worksheet.getCell(linha, colunaInicio + 2).numFmt = "dd/mm/yyyy";
+          worksheet.getCell(linha, colunaInicio + 3).numFmt = "0%";
         }
 
         return dados.length;
@@ -1766,9 +1774,9 @@ export const comprasPneusRouter = router({
       }
 
       const larguras = [
-        12, 10, 6, 11, 10, 11, 10,
+        12, 10, 11, 6, 11, 10, 11, 10,
         2,
-        12, 10, 6, 11, 10, 11, 10,
+        12, 10, 11, 6, 11, 10, 11, 10,
       ];
 
       for (let i = 0; i < larguras.length; i += 1) {
