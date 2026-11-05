@@ -583,13 +583,22 @@ function criarRouterInsumos(tipo: TipoInsumo) {
     fecharPedidos: protectedProcedure.input(z.object({ planejamentoId: id })).mutation(async ({ ctx, input }) => {
       assertCompras(ctx); await ensure();
       const [old] = await db().query<any[]>(`SELECT id FROM compras_insumos_pedidos WHERE planejamentoId=? LIMIT 1`, [input.planejamentoId]);
-      if (old.length) return { ok: true, jaSalvo: true, pedidos: 0 };
-      const [items] = await db().query<any[]>(
+      if (old.length) return { ok: true, jaSalvo: true, pedidos: 0, semPreco: 0 };
+      const [todos] = await db().query<any[]>(
         `SELECT i.*,f.nome fornecedorNome FROM compras_insumos_itens i LEFT JOIN compras_insumos_fornecedores f ON f.id=i.fornecedorSelecionadoId WHERE i.planejamentoId=? AND i.quantidadeFinal>0 ORDER BY i.id`,
         [input.planejamentoId]
       );
+      // Item sem preço (zero ou não cotado em nenhum fornecedor) fica fora do pedido em vez de travar o fechamento.
+      const [cotados] = todos.length
+        ? await db().query<any[]>(`SELECT DISTINCT itemId FROM compras_insumos_cotacoes WHERE valor>0 AND itemId IN (${todos.map(() => "?").join(",")})`, todos.map((x) => Number(x.id)))
+        : [[] as any[]];
+      const comPreco = new Set(cotados.map((r: any) => Number(r.itemId)));
+      const temPreco = (x: any) => comPreco.has(Number(x.id)) || Number(x.precoSelecionado || 0) > 0;
+      const semPreco = todos.filter((x) => !temPreco(x)).length;
+      const items = todos.filter(temPreco);
+      if (!items.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Nenhum item com preço para pedir: não há pedido para fechar." });
       const missing = items.filter((x) => !x.fornecedorSelecionadoId || x.precoSelecionado == null || Number(x.precoSelecionado) <= 0);
-      if (missing.length) throw new TRPCError({ code: "BAD_REQUEST", message: `${missing.length} item(ns) ainda sem fornecedor/preço selecionado.` });
+      if (missing.length) throw new TRPCError({ code: "BAD_REQUEST", message: `${missing.length} item(ns) com preço, mas sem fornecedor escolhido. Clique em Escolher ou em Selecionar menores preços.` });
       const groups = new Map<number, any[]>();
       for (const x of items) { const fid = Number(x.fornecedorSelecionadoId); groups.set(fid, [...(groups.get(fid) || []), x]); }
       const c = await db().getConnection();
@@ -613,7 +622,7 @@ function criarRouterInsumos(tipo: TipoInsumo) {
         }
         await c.query(`UPDATE compras_insumos_planejamentos SET status='pedido_salvo' WHERE id=?`, [input.planejamentoId]);
         await c.commit();
-        return { ok: true, jaSalvo: false, pedidos: groups.size };
+        return { ok: true, jaSalvo: false, pedidos: groups.size, semPreco };
       } catch (e) { await c.rollback(); throw e; } finally { c.release(); }
     }),
 

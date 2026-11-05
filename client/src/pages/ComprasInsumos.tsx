@@ -190,7 +190,7 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
   const menores = api.selecionarMenores.useMutation({ onSuccess: async (d) => { ok(`${d.selecionados} item(ns) com menor preço selecionado.`); await detalheQ.refetch(); }, onError: falha });
   const arquivoCotacao = api.arquivoCotacaoFornecedor.useMutation({ onSuccess: (d) => baixar(d.nome, d.mime, d.base64), onError: falha });
   const importarCotacao = api.importarCotacaoFornecedor.useMutation({ onSuccess: async (d) => { setFornecedorModal(null); ok(`${d.importados} preço(s) importado(s).`); await detalheQ.refetch(); await planosQ.refetch(); }, onError: falha });
-  const fechar = api.fecharPedidos.useMutation({ onSuccess: async (d) => { ok(d.jaSalvo ? "Pedidos já estavam salvos." : `${d.pedidos} pedido(s) salvo(s).`); await pedidosQ.refetch(); await planosQ.refetch(); setAba("pedidos"); }, onError: falha });
+  const fechar = api.fecharPedidos.useMutation({ onSuccess: async (d) => { ok(d.jaSalvo ? "Pedidos já estavam salvos." : `${d.pedidos} pedido(s) salvo(s).${d.semPreco ? ` ${d.semPreco} item(ns) sem preço ficaram fora do pedido.` : ""}`); await pedidosQ.refetch(); await planosQ.refetch(); setAba("pedidos"); }, onError: falha });
   const arquivoPedido = api.arquivoPedido.useMutation({ onSuccess: (d) => baixar(d.nome, d.mime, d.base64), onError: falha });
   const excluirPedidos = api.excluirPedidosPlanejamento.useMutation({
     onSuccess: async (d) => { ok(`${d.excluidos || 0} pedido(s) excluído(s). A cotação foi reaberta.`); setExclusao(null); setSenhaExclusao(""); await pedidosQ.refetch(); await detalheQ.refetch(); await planosQ.refetch(); setAba("cotacao"); },
