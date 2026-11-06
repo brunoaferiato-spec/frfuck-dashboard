@@ -220,6 +220,10 @@ export function definirCompetenciaFolha(ano: number, mes: number) {
   competenciaFolha = { ano: Number(ano), mes: Number(mes) };
 }
 
+export function getCompetenciaFolha() {
+  return competenciaFolha;
+}
+
 export function getRegraAlinhador(args: {
   lojaId: number | string;
   funcionarioNome?: string;

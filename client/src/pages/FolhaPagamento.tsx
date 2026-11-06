@@ -14,6 +14,7 @@ import {
   getRegraAlinhador,
   getRegraGerente,
   definirCompetenciaFolha,
+  getCompetenciaFolha,
 } from "@/lib/regrasComissao";
 
 import { Button } from "@/components/ui/button";
@@ -1342,6 +1343,30 @@ function aplicarMetaMecanicoGravataiSetembro2026(args: {
   };
 }
 
+// Mês em que o funcionário cobriu a venda e a comissão é livre:
+// o boleto não desconta INSS, adiantamento nem holerite.
+const COMISSAO_LIVRE_NO_MES: { lojaId: number; nome: string; competencia: number }[] = [
+  // Joinville - Leandro (administrativo) cobriu vendedor em 10/2026; em 11/2026 volta ao administrativo.
+  { lojaId: 1, nome: "LEANDRO DA SILVA JERONIMO", competencia: 202610 },
+];
+
+function temComissaoLivreNoMes(lojaId: number, funcionarioNome: string) {
+  const comp = getCompetenciaFolha();
+  if (!comp) return false;
+  const competencia = comp.ano * 100 + comp.mes;
+  const nome = String(funcionarioNome || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toUpperCase();
+  return COMISSAO_LIVRE_NO_MES.some(
+    (regra) =>
+      regra.lojaId === Number(lojaId) &&
+      regra.competencia === competencia &&
+      regra.nome === nome
+  );
+}
+
 function calcularBoletoAjustado(args: {
   quadrante: QuadranteKey;
   funcao: string;
@@ -1366,6 +1391,10 @@ function calcularBoletoAjustado(args: {
   const inss = Number(args.inss || 0);
   const adiant = Number(args.adiant || 0);
   const holerite = Number(args.holerite || 0);
+
+  if (temComissaoLivreNoMes(args.lojaId, args.funcionarioNome)) {
+    return Number((totalComissao + premiacao - vale - aluguel).toFixed(2));
+  }
 
   // FOLHA_PJ_1PCT_V1 — regra geral para funcionário marcado como PJ.
   // O 1% informativo NÃO participa deste cálculo.
