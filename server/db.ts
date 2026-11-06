@@ -598,20 +598,67 @@ export async function reativarFuncionarioById(
   id: number,
   dataReativacao: Date
 ) {
-  const db = await getDb();
+  // CORRECAO_REATIVACAO_FUNCIONARIO_V1
 
-  if (!db) {
-    throw new Error("Banco não conectado");
+  await getDb();
+
+  if (!_pool) {
+    throw new Error(
+      "Banco não conectado"
+    );
   }
 
-  await db
-    .update(funcionarios)
-    .set({
-      status: "ativo",
-      dataReativacao,
-    } as any)
-    .where(eq(funcionarios.id, id));
-    return { success: true };
+  // Garante compatibilidade com bancos antigos do domínio.
+  const [colunas] =
+    await _pool.query<any[]>(
+      "SHOW COLUMNS FROM funcionarios LIKE 'data_reativacao'"
+    );
+
+  if (
+    !Array.isArray(colunas) ||
+    colunas.length === 0
+  ) {
+    await _pool.query(
+      "ALTER TABLE funcionarios ADD COLUMN data_reativacao TIMESTAMP NULL"
+    );
+  }
+
+  let dataEfetiva =
+    dataReativacao;
+
+  // z.coerce.date() transforma null em 01/01/1970.
+  // Nunca devemos gravar essa data como reativação.
+  const dataInvalida =
+    !(dataEfetiva instanceof Date) ||
+    Number.isNaN(
+      dataEfetiva.getTime()
+    ) ||
+    dataEfetiva.getUTCFullYear() === 1970;
+
+  if (dataInvalida) {
+    dataEfetiva =
+      new Date();
+  }
+
+  const dataMySQL =
+    formatarDataMySQL(
+      dataEfetiva
+    );
+
+  await _pool.execute(
+    `UPDATE funcionarios
+        SET status = 'ativo',
+            data_reativacao = ?
+      WHERE id = ?`,
+    [
+      dataMySQL,
+      Number(id),
+    ]
+  );
+
+  return {
+    success: true,
+  };
 }
 
 export async function deleteFuncionarioById(id: number) {
