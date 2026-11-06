@@ -1093,6 +1093,44 @@ export default function ComprasPneus() {
           </div>
         )}
 
+        {aba === "cotacao" && planejamentoId && (
+          <div className={verAnaliseSalva ? "" : "mt-5"}>
+            {verAnaliseSalva ? (
+              <ComprasPneusAnaliseSalva
+                planejamentoId={planejamentoId}
+                lojaNome={
+                  lojas.find(
+                    (l: any) =>
+                      Number(l.id) === Number(detalheQuery.data?.planejamento?.lojaId || 0)
+                  )?.nome || ""
+                }
+                carregando={detalheQuery.isLoading}
+                planejamento={detalheQuery.data?.planejamento}
+                itens={(detalheQuery.data?.itens || []) as any[]}
+                onFechar={() => setVerAnaliseSalva(false)}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setVerAnaliseSalva(true)}
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] px-5 py-4 text-left hover:bg-[#D4AF37]/[0.08]"
+              >
+                <span>
+                  <span className="block font-black text-[#F2D675]">
+                    Ver planejamento #{planejamentoId}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-gray-500">
+                    Vendas, estoque, projeção, jogos e necessidade de cada medida
+                  </span>
+                </span>
+                <span className="rounded-lg bg-[#D4AF37] px-3 py-1.5 text-xs font-black text-black">
+                  Abrir
+                </span>
+              </button>
+            )}
+          </div>
+        )}
+
         {aba === "cotacao" && (
           <fieldset disabled={somenteLeitura} className="m-0 min-w-0 border-0 p-0">
           <div className="mt-5 space-y-5">
