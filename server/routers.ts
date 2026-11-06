@@ -1423,7 +1423,8 @@ export const appRouter = router({
     addVales: protectedProcedure
   .input(
     z.object({
-      funcionarioId: z.number(),
+      // Vale sem funcionário fica invisível na folha: recusa em vez de gravar órfão.
+      funcionarioId: z.number().int().positive({ message: "Funcionário não identificado para o vale." }),
       lojaId: z.number(),
 
       items: z.array(

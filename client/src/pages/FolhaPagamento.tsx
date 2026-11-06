@@ -10597,6 +10597,14 @@ async function lançarNegativoNoPróximoMês() {
 
   const valor = Math.abs(linha.boleto);
   if (valor <= 0) return;
+  if (addValesMutation.isPending) return;
+
+  // O negativo vai para o funcionário da linha clicada (não para o do editor de vale).
+  const funcionarioIdNegativo = Number(linha.funcionarioId || 0);
+  if (!funcionarioIdNegativo) {
+    alert("Não foi possível identificar o funcionário desta linha. Atualize a página e tente de novo.");
+    return;
+  }
 
   const currentDate = new Date(ano, mes - 1, 1);
   const nextDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
@@ -10618,7 +10626,7 @@ async function lançarNegativoNoPróximoMês() {
   });
 
   await addValesMutation.mutateAsync({
-  funcionarioId: Number(valeEditor.funcionarioId),
+  funcionarioId: funcionarioIdNegativo,
   lojaId,
 
   items: parcelasCriadas.map(
