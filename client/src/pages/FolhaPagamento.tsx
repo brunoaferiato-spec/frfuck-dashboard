@@ -1495,12 +1495,16 @@ if (
   const salarioFixoPj =
     Number(args.lojaId) === 7 ? CONSULTOR_GRAVATAI_SALARIO_FIXO_PJ : 0;
 
+  // Gravataí: o adiantamento também sai do boleto.
+  const adiantConsultor = Number(args.lojaId) === 7 ? adiant : 0;
+
   return (
     salarioFixoPj +
     totalComissao +
     premiacao -
     vale -
-    aluguel
+    aluguel -
+    adiantConsultor
   );
 }
 
