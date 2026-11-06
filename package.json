@@ -109,5 +109,8 @@
     "vite": "^7.1.7",
     "vite-plugin-manus-runtime": "^0.0.57",
     "vitest": "^2.1.4"
+  },
+  "overrides": {
+    "rehype-harden": "1.1.5"
   }
 }
