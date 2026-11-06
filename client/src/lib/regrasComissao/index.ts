@@ -195,6 +195,20 @@ export function getRegraVendedorMecanico(args: {
     };
   }
 
+  // Gravataí - mecânico a partir de 10/2026: 10% base, 12% a 8 mil, 15% a 10 mil, 17% a 15 mil (semanal).
+  // Até 09/2026 segue a faixa de 17% a partir de 20 mil.
+  if (lojaId === 7 && funcao === "mecanico" && competenciaPremiacao() >= 202610) {
+    return {
+      ...regrasLoja.mecanico,
+      faixas: [
+        { minimo: 0, percentual: 10 },
+        { minimo: 8000, percentual: 12 },
+        { minimo: 10000, percentual: 15 },
+        { minimo: 15000, percentual: 17 },
+      ],
+    };
+  }
+
   if (funcao === "vendedor") {
     return regrasLoja.vendedor;
   }
