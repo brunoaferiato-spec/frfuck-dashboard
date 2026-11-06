@@ -181,6 +181,20 @@ export function getRegraVendedorMecanico(args: {
     return null;
   }
 
+  // São José - vendedor a partir de 10/2026: 5% base, 6% a 40 mil, 7% a 50 mil, 8% a 60 mil (semanal).
+  // Até 09/2026 segue a regra antiga (33/40/47 mil).
+  if (lojaId === 3 && funcao === "vendedor" && competenciaPremiacao() >= 202610) {
+    return {
+      ...regrasLoja.vendedor,
+      faixas: [
+        { minimo: 0, percentual: 5 },
+        { minimo: 40000, percentual: 6 },
+        { minimo: 50000, percentual: 7 },
+        { minimo: 60000, percentual: 8 },
+      ],
+    };
+  }
+
   if (funcao === "vendedor") {
     return regrasLoja.vendedor;
   }
