@@ -19,6 +19,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import ComprasPneusHistorico from "@/components/ComprasPneusHistorico";
 import ComprasPneusPromocionais from "@/components/ComprasPneusPromocionais";
+import ComprasPneusAnaliseSalva from "@/components/ComprasPneusAnaliseSalva";
 
 type ItemAnalise = {
   medida: string;
@@ -133,6 +134,8 @@ export default function ComprasPneus() {
   const [dataPlanejamentoInicio, setDataPlanejamentoInicio] = useState("");
   const [dataPlanejamentoFim, setDataPlanejamentoFim] = useState("");
   const [fornecedorModal, setFornecedorModal] = useState<any | null>(null);
+  // Análise salva de um planejamento antigo (vendas, estoque, projeção...), só para consulta.
+  const [verAnaliseSalva, setVerAnaliseSalva] = useState(false);
 
   const lojasQuery = trpc.lojas.list.useQuery(undefined, { retry: false });
 
@@ -996,7 +999,27 @@ export default function ComprasPneus() {
                         </p>
                       </button>
 
-                      <div className={`mt-4 ${somenteLeitura ? "hidden" : "flex"} flex-wrap gap-2 border-t border-white/[0.05] pt-3`}>
+                      <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.05] pt-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPlanejamentoId(Number(item.id));
+                            setVerAnaliseSalva(true);
+                            window.setTimeout(() => {
+                              document
+                                .getElementById("analise-salva-pneus")
+                                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            }, 150);
+                          }}
+                          className={`h-9 rounded-lg border px-3 text-[11px] font-black ${
+                            verAnaliseSalva && planejamentoId === Number(item.id)
+                              ? "border-[#D4AF37]/50 bg-[#D4AF37]/[0.12] text-[#F2D675]"
+                              : "border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675]"
+                          }`}
+                        >
+                          Ver análise
+                        </button>
+                      {!somenteLeitura && (<>
                         {item.status === "pedido_salvo" && (
                           <button
                             type="button"
@@ -1036,10 +1059,27 @@ export default function ComprasPneus() {
                         >
                           Excluir planejamento
                         </button>
+                      </>)}
                       </div>
                     </div>
                   ))}
                 </div>
+              )}
+
+              {verAnaliseSalva && planejamentoId && (
+                <ComprasPneusAnaliseSalva
+                  planejamentoId={planejamentoId}
+                  lojaNome={
+                    lojas.find(
+                      (l: any) =>
+                        Number(l.id) === Number(detalheQuery.data?.planejamento?.lojaId || 0)
+                    )?.nome || ""
+                  }
+                  carregando={detalheQuery.isLoading}
+                  planejamento={detalheQuery.data?.planejamento}
+                  itens={(detalheQuery.data?.itens || []) as any[]}
+                  onFechar={() => setVerAnaliseSalva(false)}
+                />
               )}
               {!somenteLeitura && <ComprasLixeira
                 itens={(lixeiraQuery.data || []) as any}
