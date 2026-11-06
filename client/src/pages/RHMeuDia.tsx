@@ -3,10 +3,6 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import RHEpiAlertas from "@/components/RHEpiAlertas";
-import * as pdfjs from "pdfjs-dist";
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 import {
   AlertTriangle,
   Banknote,
@@ -473,6 +469,11 @@ async function lerPdfPontoDiario(file: File) {
   const buffer = await file.arrayBuffer();
   const hash = await hashArquivo(buffer);
   const bytes = new Uint8Array(buffer);
+  // pdf.js carregado só aqui: importado no topo, ele entrava no arquivo principal
+  // e travava o sistema inteiro (tela preta) em Safari antigo (sem Iterator).
+  const pdfjs = await import("pdfjs-dist");
+  const workerModule = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
   const documento = await pdfjs.getDocument({ data: bytes }).promise;
 
   const registros: RegistroPontoPdf[] = [];
