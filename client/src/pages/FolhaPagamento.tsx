@@ -264,6 +264,47 @@ const IMPORT_ADIANT_PENDENTE_STORAGE_KEY = "folha-importacao-adiant-pendente-v1"
 const IMPORT_HOLERITE_PENDENTE_STORAGE_KEY = "folha-importacao-holerite-pendente-v1";
 const CADASTRO_RETORNO_FOLHA_STORAGE_KEY = "folha-cadastro-retorno-v1";
 const CADASTRO_CONCLUIDO_FOLHA_STORAGE_KEY = "folha-cadastro-concluido-v1";
+// Ao ir da Folha para o cadastro de funcionários, guarda loja/mês/posição para voltar no mesmo lugar.
+const FOLHA_RETORNO_STORAGE_KEY = "folha-retorno-v1";
+const FOLHA_RETORNO_VALIDADE_MS = 2 * 60 * 60 * 1000;
+let lojaFolhaAberta = "1";
+
+type RetornoFolha = { lojaId: string; ano: number; mes: number; scrollY: number; em: number };
+
+function lerRetornoFolha(): RetornoFolha | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(FOLHA_RETORNO_STORAGE_KEY);
+    if (!raw) return null;
+    const dados = JSON.parse(raw) as RetornoFolha;
+    if (!dados?.em || Date.now() - Number(dados.em) > FOLHA_RETORNO_VALIDADE_MS) return null;
+    return dados;
+  } catch {
+    return null;
+  }
+}
+
+function irParaFuncionariosDaFolha(setLocation: (rota: string) => void) {
+  if (typeof window !== "undefined") {
+    const comp = getCompetenciaFolha();
+    const hoje = new Date();
+    try {
+      window.sessionStorage.setItem(
+        FOLHA_RETORNO_STORAGE_KEY,
+        JSON.stringify({
+          lojaId: lojaFolhaAberta,
+          ano: comp?.ano ?? hoje.getFullYear(),
+          mes: comp?.mes ?? hoje.getMonth() + 1,
+          scrollY: window.scrollY || 0,
+          em: Date.now(),
+        })
+      );
+    } catch {
+      // sem sessionStorage, só navega
+    }
+  }
+  setLocation(ROTA_GESTAO_FUNCIONARIOS);
+}
 
 type SemanaImportacao = 1 | 2 | 3 | 4 | 5;
 type FuncaoImportacao = "vendedor" | "mecanico";
@@ -3927,9 +3968,34 @@ export default function FolhaPagamento() {
     retry: false,
   });
 
-  const [selectedLoja, setSelectedLoja] = useState("1");
-  const [ano, setAno] = useState(2026);
-  const [mes, setMes] = useState(new Date().getMonth() + 1);
+  // Voltando do cadastro de funcionários: reabre a mesma loja, mês e posição da tela.
+  const [retornoFolha] = useState(() => lerRetornoFolha());
+  const [selectedLoja, setSelectedLoja] = useState(() => retornoFolha?.lojaId || "1");
+  const [ano, setAno] = useState(() => Number(retornoFolha?.ano || 2026));
+  const [mes, setMes] = useState(() => Number(retornoFolha?.mes || new Date().getMonth() + 1));
+  lojaFolhaAberta = selectedLoja;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.removeItem(FOLHA_RETORNO_STORAGE_KEY);
+    } catch {
+      // ignora
+    }
+    const alvo = Number(retornoFolha?.scrollY || 0);
+    if (!alvo) return;
+    // Espera a tabela carregar para conseguir rolar até onde estava.
+    let tentativas = 0;
+    const timer = window.setInterval(() => {
+      tentativas += 1;
+      const alturaMax = document.documentElement.scrollHeight - window.innerHeight;
+      if (alturaMax >= alvo - 20 || tentativas > 40) {
+        window.scrollTo(0, Math.min(alvo, Math.max(0, alturaMax)));
+        window.clearInterval(timer);
+      }
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, []);
   // As regras que mudam em um mês (ex.: alinhador de Gravataí a partir de 10/2026) usam esta competência.
   definirCompetenciaFolha(ano, mes);
   const [folhas, setFolhas] = useState<FolhaMensal[]>([]);
@@ -6685,7 +6751,7 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
       })
     );
 
-    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+    irParaFuncionariosDaFolha(setLocation);
   }
 
   function irParaCadastrarFuncionario(item: ItemRelatorioImportacao) {
@@ -6716,7 +6782,7 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
       );
     }
 
-    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+    irParaFuncionariosDaFolha(setLocation);
   }
 
   function irParaCadastroExistente(funcionario: any) {
@@ -6732,7 +6798,7 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
       );
     }
 
-    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+    irParaFuncionariosDaFolha(setLocation);
   }
 
   async function confirmarImportacaoSemana() {
@@ -7250,7 +7316,7 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
       );
     }
 
-    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+    irParaFuncionariosDaFolha(setLocation);
   }
 
   function irParaCadastroExistenteAdiantamento(funcionario: LinhaComQuadrante) {
@@ -7266,7 +7332,7 @@ A remoção só será permitida se a quinta semana estiver sem lançamentos.`
       );
     }
 
-    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+    irParaFuncionariosDaFolha(setLocation);
   }
 
   async function confirmarImportacaoAdiantamento() {
@@ -7650,7 +7716,7 @@ const metaAtualizacao = findMetaForFuncionario({
       );
     }
 
-    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+    irParaFuncionariosDaFolha(setLocation);
   }
 
   function irParaCadastroExistenteHolerite(funcionario: LinhaComQuadrante) {
@@ -7666,7 +7732,7 @@ const metaAtualizacao = findMetaForFuncionario({
       );
     }
 
-    setLocation(ROTA_GESTAO_FUNCIONARIOS);
+    irParaFuncionariosDaFolha(setLocation);
   }
 
   async function confirmarImportacaoHolerite() {
@@ -13538,7 +13604,7 @@ if (
                               String(funcionario.lojaId ?? funcionario.loja_id ?? lojaId)
                             );
                           }
-                          setLocation(ROTA_GESTAO_FUNCIONARIOS);
+                          irParaFuncionariosDaFolha(setLocation);
                         }}
                       >
                         Trocar função com histórico

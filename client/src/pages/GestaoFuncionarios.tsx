@@ -262,7 +262,18 @@ export default function GestaoFuncionarios() {
   const veioDaFolha = () => {
     if (typeof window === "undefined") return false;
 
+    // Aberto a partir da Folha (ex.: troca de função): ao terminar, volta para a Folha.
+    let retornoFolha = false;
+    try {
+      const raw = window.sessionStorage.getItem("folha-retorno-v1");
+      const dados = raw ? JSON.parse(raw) : null;
+      retornoFolha = Boolean(dados?.em && Date.now() - Number(dados.em) <= 2 * 60 * 60 * 1000);
+    } catch {
+      retornoFolha = false;
+    }
+
     return Boolean(
+      retornoFolha ||
       window.sessionStorage.getItem(IMPORT_PENDENTE_STORAGE_KEY) ||
         window.sessionStorage.getItem(IMPORT_ADIANT_PENDENTE_STORAGE_KEY) ||
         window.sessionStorage.getItem(IMPORT_HOLERITE_PENDENTE_STORAGE_KEY)
