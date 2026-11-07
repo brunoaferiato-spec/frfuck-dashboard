@@ -1248,6 +1248,12 @@ export default function ComprasPneus() {
                       <thead className="bg-white/[0.025] text-left text-[10px] uppercase tracking-[0.08em] text-gray-600">
                         <tr>
                           <th className="sticky left-0 z-10 bg-[#0d0d0d] px-3 py-2">Medida</th>
+                          <th
+                            className="px-3 py-2 text-right"
+                            title="Estoque atual da medida, do relatório de estoque usado no planejamento"
+                          >
+                            Estoque
+                          </th>
                           <th className="px-3 py-2 text-right">Qtd interna</th>
                           <th className="px-3 py-2 text-right">Melhor UF</th>
                           {fornecedores.map((fornecedor: any, indiceFornecedor: number) => {
@@ -1300,6 +1306,24 @@ export default function ComprasPneus() {
                             <tr key={item.id} className="border-t border-white/[0.05]">
                               <td className="sticky left-0 z-10 bg-[#090909] px-3 py-1.5 font-black text-white">
                                 {item.medida}
+                              </td>
+                              <td
+                                className={`px-3 py-1.5 text-right font-black ${
+                                  Number(item.estoque || 0) <= 0
+                                    ? "text-red-400"
+                                    : Number(item.estoque || 0) < 4
+                                    ? "text-orange-300"
+                                    : "text-gray-300"
+                                }`}
+                                title={
+                                  Number(item.estoque || 0) <= 0
+                                    ? "Sem estoque: priorize fornecedor com entrega mais rápida"
+                                    : Number(item.estoque || 0) < 4
+                                    ? "Estoque baixo (menos de um jogo)"
+                                    : undefined
+                                }
+                              >
+                                {Number(item.estoque || 0)}
                               </td>
                               <td className="px-3 py-1.5 text-right">
                                 <input
@@ -1477,6 +1501,7 @@ export default function ComprasPneus() {
                                 <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">Total do pedido</p>
                                 <p className="mt-1 text-sm font-black text-[#F2D675]">{moeda(totalGeral)}</p>
                               </td>
+                              <td className="px-3 py-3" />
                               <td className="px-3 py-3 text-right align-top">
                                 <p className="text-[10px] font-black uppercase text-gray-600">Pneus</p>
                                 <p className="mt-1 text-sm font-black text-white">{pneusEscolhidos}</p>
