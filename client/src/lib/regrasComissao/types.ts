@@ -47,6 +47,8 @@ export type RegraConsultorMeta2 = {
   carrosPorBloco: number;
   valorPorBloco: number;
   bonusAcumulativos: BonusConsultorMeta2[];
+  // Bônus por faixa (não acumulativo): paga só a maior faixa atingida.
+  bonusFaixas?: BonusConsultorMeta2[];
 };
 
 export type RegrasConsultor = {

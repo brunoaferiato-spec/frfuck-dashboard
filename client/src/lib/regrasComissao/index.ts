@@ -42,6 +42,7 @@ import {
   regraAlinhadorGravatai,
   regraAlinhadorGravataiAte092026,
   regrasConsultorGravatai,
+  regrasConsultorGravataiAte092026,
   regrasRecepcaoGravatai,
 } from "./gravatai";
 
@@ -338,6 +339,11 @@ export function getRegrasConsultor(args: {
 }): RegrasConsultor | null {
   const lojaId = Number(args.lojaId);
 
+  // Gravataí: premiação não acumulativa a partir de 10/2026; meses anteriores mantêm a antiga.
+  if (lojaId === 7 && competenciaPremiacao() < 202610) {
+    return regrasConsultorGravataiAte092026;
+  }
+
   return REGRAS_CONSULTOR_POR_LOJA[lojaId] || null;
 }
 
@@ -438,6 +444,18 @@ export function calcularConsultorMeta2Mensal(args: {
       descricao: `META ${bonus.carros} CARROS`,
       valor: bonus.valor,
     }));
+
+  // Faixas não acumulativas: entra só a maior faixa atingida.
+  const faixaAtingida = (regras.meta2.bonusFaixas || [])
+    .filter((bonus) => carros >= bonus.carros)
+    .sort((a, b) => b.carros - a.carros)[0];
+
+  if (faixaAtingida) {
+    detalhesPremiacao.push({
+      descricao: `META ${faixaAtingida.carros} CARROS`,
+      valor: faixaAtingida.valor,
+    });
+  }
 
   const premiacao = detalhesPremiacao.reduce(
     (total, item) => total + Number(item.valor || 0),

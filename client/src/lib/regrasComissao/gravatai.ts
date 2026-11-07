@@ -56,7 +56,41 @@ export const regraAlinhadorGravataiAte092026: RegraAlinhador = {
 // CONSULTOR DE VENDAS
 // =========================
 
+const meta1ConsultorGravatai: RegrasConsultor["meta1"] = {
+  periodicidade: "semanal",
+
+  faixas: [
+    { minimoCarros: 0, valorPorCarro: 8 },
+    { minimoCarros: 50, valorPorCarro: 9 },
+    { minimoCarros: 55, valorPorCarro: 10 },
+  ],
+
+  carrosParaBonus: 65,
+  valorBonus: 200,
+};
+
+// A partir de 10/2026: premiação do mês NÃO acumulativa, paga só a maior faixa atingida.
+// 200 carros = R$ 300 | 250 carros = R$ 500 | 300 carros ou mais = R$ 1.000
 export const regrasConsultorGravatai: RegrasConsultor = {
+  meta1: meta1ConsultorGravatai,
+
+  meta2: {
+    periodicidade: "mensal",
+
+    carrosPorBloco: 12,
+    valorPorBloco: 50,
+
+    bonusAcumulativos: [],
+    bonusFaixas: [
+      { carros: 200, valor: 300 },
+      { carros: 250, valor: 500 },
+      { carros: 300, valor: 1000 },
+    ],
+  },
+};
+
+// Regra até 09/2026 (bônus acumulativos), mantida para os meses anteriores à mudança.
+export const regrasConsultorGravataiAte092026: RegrasConsultor = {
   meta1: {
     periodicidade: "semanal",
 
