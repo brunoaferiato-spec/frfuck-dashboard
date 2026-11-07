@@ -82,7 +82,8 @@ const CONSULTOR_GRAVATAI_SALARIO_FIXO_PJ = 2000;
 // - 200 carros: + R$ 300,00
 // - 250 carros: R$ 10,00 por carro + R$ 500,00 adicional
 // - 300 carros: R$ 12,00 por carro + R$ 1.000,00 adicional
-// As premiações são acumulativas.
+// As premiações são acumulativas, exceto Gravataí a partir de 10/2026:
+// lá ela recebe só a maior faixa atingida (300, 500 ou 1.000).
 // ======================================================
 const LOJAS_CONSULTOR_SUL_MENSAL = new Set([6, 7]);
 
@@ -90,17 +91,29 @@ function ehConsultorSulMensal(lojaId: number | string) {
   return LOJAS_CONSULTOR_SUL_MENSAL.has(Number(lojaId));
 }
 
-function calcularConsultorSulMensal(totalCarrosBruto: number) {
+function consultorSulPremiacaoNaoAcumulativa(lojaId: number | string, ano: number, mes: number) {
+  return Number(lojaId) === 7 && Number(ano) * 100 + Number(mes) >= 202610;
+}
+
+function calcularConsultorSulMensal(
+  totalCarrosBruto: number,
+  opcoes: { naoAcumulativa?: boolean } = {}
+) {
   const totalCarros = Math.max(0, Number(totalCarrosBruto || 0));
 
   let valorPorCarro = 7;
   if (totalCarros >= 300) valorPorCarro = 12;
   else if (totalCarros >= 250) valorPorCarro = 10;
 
-  const detalhesPremiacao: Array<{ descricao: string; valor: number }> = [];
+  let detalhesPremiacao: Array<{ descricao: string; valor: number }> = [];
   if (totalCarros >= 200) detalhesPremiacao.push({ descricao: "META 200 CARROS", valor: 300 });
   if (totalCarros >= 250) detalhesPremiacao.push({ descricao: "META 250 CARROS", valor: 500 });
   if (totalCarros >= 300) detalhesPremiacao.push({ descricao: "META 300 CARROS", valor: 1000 });
+
+  // Não acumulativa: fica só a maior faixa atingida.
+  if (opcoes.naoAcumulativa && detalhesPremiacao.length > 1) {
+    detalhesPremiacao = [detalhesPremiacao[detalhesPremiacao.length - 1]];
+  }
 
   const premiacao = detalhesPremiacao.reduce(
     (total, item) => total + Number(item.valor || 0),
@@ -5459,7 +5472,9 @@ if (
 // Regra exclusiva mensal dos Consultores de São Leopoldo (6) e Gravataí (7).
 // SEM1 representa o Total de Carros do mês.
 if (func.funcao === "consultor_vendas" && ehConsultorSulMensal(lojaId)) {
-  const calculoConsultorSul = calcularConsultorSulMensal(Number(base.sem1 || 0));
+  const calculoConsultorSul = calcularConsultorSulMensal(Number(base.sem1 || 0), {
+    naoAcumulativa: consultorSulPremiacaoNaoAcumulativa(lojaId, ano, mes),
+  });
   const premiacaoManualConsultorSul = (base.premiacoesManuais || []).reduce(
     (total: number, item: any) => total + Number(item?.valor || 0),
     0
@@ -10947,7 +10962,10 @@ if (funcao === "gerente") {
       isConsultor && ehConsultorSulMensal(linha.loja_id);
 
     if (isConsultorSulMensal) {
-      const calculo = calcularConsultorSulMensal(Number(linha.sem1 || 0));
+      const naoAcumulativaSul = consultorSulPremiacaoNaoAcumulativa(linha.loja_id, ano, mes);
+      const calculo = calcularConsultorSulMensal(Number(linha.sem1 || 0), {
+        naoAcumulativa: naoAcumulativaSul,
+      });
       const metasConsultorSul = [
         {
           minimo: 0,
@@ -10963,7 +10981,7 @@ if (funcao === "gerente") {
           faixa: "200 a 249 carros",
           valorPorCarro: 7,
           premioAdicional: 300,
-          premioAcumulado: 300,
+          premioAcumulado: naoAcumulativaSul ? 0 : 300,
         },
         {
           minimo: 250,
@@ -10971,7 +10989,7 @@ if (funcao === "gerente") {
           faixa: "250 a 299 carros",
           valorPorCarro: 10,
           premioAdicional: 500,
-          premioAcumulado: 800,
+          premioAcumulado: naoAcumulativaSul ? 0 : 800,
         },
         {
           minimo: 300,
@@ -10979,7 +10997,7 @@ if (funcao === "gerente") {
           faixa: "300 carros ou mais",
           valorPorCarro: 12,
           premioAdicional: 1000,
-          premioAcumulado: 1800,
+          premioAcumulado: naoAcumulativaSul ? 0 : 1800,
         },
       ];
 
@@ -10995,7 +11013,9 @@ if (funcao === "gerente") {
         comissao: calculo.comissao,
         regraTexto: getRegraConsultorSulTexto(calculo.totalCarros),
         metaTitulo: "Meta - Consultor de Vendas Mensal",
-        metaDescricao: "Premiações acumulativas.",
+        metaDescricao: naoAcumulativaSul
+          ? "Premiação não acumulativa: vale só a maior faixa atingida."
+          : "Premiações acumulativas.",
         baseLabel: "Total de carros",
         extra: "",
         metasConsultorSul,
@@ -11291,7 +11311,7 @@ return {
 
   extra: "",
 };
-  }, [regraSemanaEditor, resumoSupervisorQuery.data]);
+  }, [regraSemanaEditor, resumoSupervisorQuery.data, ano, mes]);
 
   const supervisorAtual = linhas.find((l) => l.funcao === "supervisor");
 
