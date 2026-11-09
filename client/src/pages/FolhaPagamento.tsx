@@ -1450,6 +1450,22 @@ function calcularBoletoAjustado(args: {
     return Number((totalComissao + premiacao - vale - aluguel).toFixed(2));
   }
 
+  // SUPERVISOR (ex.: Alisson Simas), em todas as cidades, mesmo marcado como PJ:
+  // TOTAL (salário + comissão) + PREMIAÇÃO - VALE - ALUGUEL - ADIANTAMENTO = BOLETO.
+  // Vem antes da regra PJ, que descontava R$ 6.500 de holerite e zerava o boleto.
+  if (args.quadrante === "supervisor_pj") {
+    return Number(
+      (
+        getSalarioFixoSupervisor() +
+        totalComissao +
+        premiacao -
+        vale -
+        aluguel -
+        adiant
+      ).toFixed(2)
+    );
+  }
+
   // FOLHA_PJ_1PCT_V1 — regra geral para funcionário marcado como PJ.
   // O 1% informativo NÃO participa deste cálculo.
   if (
@@ -1565,17 +1581,6 @@ if (
 if (args.quadrante === "supervisora_consultores_pj") {
   return (
     ACI_SUPERVISORA_SALARIO_FIXO +
-    totalComissao +
-    premiacao -
-    vale -
-    aluguel -
-    adiant
-  );
-}
-
-if (args.quadrante === "supervisor_pj") {
-  return (
-    getSalarioFixoSupervisor() +
     totalComissao +
     premiacao -
     vale -
