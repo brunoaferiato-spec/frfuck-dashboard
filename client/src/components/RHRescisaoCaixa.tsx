@@ -855,7 +855,11 @@ export default function RHRescisaoCaixa({
         }
       >
         <CardContent className="p-0">
-          <div className="flex flex-col gap-3 border-b border-white/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div
+            className={`flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 ${
+              aberto || processosAbertos.length > 0 ? "border-b border-white/[0.06]" : ""
+            }`}
+          >
             <div className="flex items-start gap-3">
               <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] p-2.5">
                 <FilePenLine className="h-5 w-5 text-[#F2D675]" />
@@ -1010,6 +1014,7 @@ export default function RHRescisaoCaixa({
             </div>
           )}
 
+          {processosAbertos.length > 0 && (
           <div className="p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
               <div>
@@ -1020,14 +1025,7 @@ export default function RHRescisaoCaixa({
               </div>
             </div>
 
-            {processosQuery.isLoading ? (
-              <p className="text-sm text-gray-500">Carregando processos...</p>
-            ) : processosAbertos.length === 0 ? (
-              <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.035] p-4 text-sm text-emerald-200">
-                <CheckCircle2 className="mr-2 inline h-4 w-4" />
-                Nenhuma rescisão aguardando ação da Caixa nesta loja.
-              </div>
-            ) : (
+            {(
               <div className="space-y-3">
                 {processosAbertos.map((item) => {
                   const cartaoOk = Boolean(item.cartaoPontoNome);
@@ -1286,6 +1284,7 @@ export default function RHRescisaoCaixa({
             )}
 
           </div>
+          )}
         </CardContent>
       </Card>
     </section>
