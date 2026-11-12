@@ -1484,6 +1484,7 @@ export default function RHMeuDia() {
             )}
           </div>
 
+          {resumoPainelMobile.ferias > 0 && (
           <div id="painel-mobile-ferias" className="scroll-mt-20">
             <button
               type="button"
@@ -1574,6 +1575,7 @@ export default function RHMeuDia() {
               </div>
             )}
           </div>
+          )}
 
           <div id="painel-mobile-rescisoes" className="scroll-mt-20">
             <button

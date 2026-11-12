@@ -245,6 +245,9 @@ export default function RHFeriasCaixaPendencias() {
   }
 
   if (!caixaLider) return null;
+  // Só aparece para a Caixa quando o líder de RH liberou algum aviso/pagamento
+  // de férias para ela anexar (sem pendência o card fica escondido).
+  if (tarefas.length === 0 && !pendenciasQuery.error && !mensagem && !erro) return null;
 
   return (
     <section className="mb-5 sm:mb-6">
