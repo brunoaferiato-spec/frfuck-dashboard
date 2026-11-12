@@ -644,14 +644,6 @@ export default function RHRescisaoCaixa({
     [processosQuery.data]
   );
 
-  const concluidosRecentes = useMemo(
-    () =>
-      ((processosQuery.data || []) as Array<any>)
-        .filter((item) => item.faseOperacional === "operacional_concluido")
-        .slice(0, 3),
-    [processosQuery.data]
-  );
-
   function inputBase() {
     return modoTeste && adminOuGestor ? { lojaIdTeste: lojaId } : {};
   }
@@ -1293,28 +1285,6 @@ export default function RHRescisaoCaixa({
               </div>
             )}
 
-            {concluidosRecentes.length > 0 && (
-              <div className="mt-4 border-t border-white/[0.06] pt-4">
-                <p className="mb-2 text-xs font-black uppercase tracking-[0.1em] text-gray-600">
-                  Concluídos recentemente
-                </p>
-                <div className="grid gap-2 lg:grid-cols-3">
-                  {concluidosRecentes.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-xl border border-emerald-400/10 bg-emerald-400/[0.025] p-3"
-                    >
-                      <p className="truncate text-sm font-black text-white">
-                        {item.funcionarioNome}
-                      </p>
-                      <p className="mt-1 text-xs font-bold text-emerald-300">
-                        Pagamento efetuado • processo finalizado
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
