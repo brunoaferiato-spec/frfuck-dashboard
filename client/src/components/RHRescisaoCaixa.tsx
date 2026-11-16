@@ -220,7 +220,7 @@ function UniformesRescisaoSaldo({
         (concluido
           ? "border-emerald-400/20 bg-emerald-400/[0.035]"
           : contasOk
-          ? "border-[#D4AF37]/20 bg-[#D4AF37]/[0.035]"
+          ? "border-fr-d4af37/20 bg-fr-d4af37/[0.035]"
           : "border-white/[0.07] bg-white/[0.02]")
       }
     >
@@ -232,7 +232,7 @@ function UniformesRescisaoSaldo({
               (concluido
                 ? "text-emerald-300"
                 : contasOk
-                ? "text-[#F2D675]"
+                ? "text-fri-f2d675"
                 : "text-gray-600")
             }
           >
@@ -302,8 +302,8 @@ function UniformesRescisaoSaldo({
       ) : contasOk ? (
         <div className="mt-4 space-y-3">
           {total > 0 && (
-            <label className="block cursor-pointer rounded-xl border border-dashed border-[#D4AF37]/30 bg-black/20 p-3 transition hover:bg-[#D4AF37]/[0.04]">
-              <span className="text-xs font-black text-[#F2D675]">
+            <label className="block cursor-pointer rounded-xl border border-dashed border-fr-d4af37/30 bg-black/20 p-3 transition hover:bg-fr-d4af37/[0.04]">
+              <span className="text-xs font-black text-fri-f2d675">
                 {foto ? foto.name : "Anexar foto dos uniformes devolvidos"}
               </span>
               <span className="mt-1 block text-[11px] text-gray-600">
@@ -326,7 +326,7 @@ function UniformesRescisaoSaldo({
             onChange={(event) => setObservacaoUniforme(event.target.value)}
             placeholder="Observação (opcional)"
             maxLength={2000}
-            className="min-h-[74px] w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50"
+            className="min-h-[74px] w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/50"
           />
 
           {erroUniforme && (
@@ -345,7 +345,7 @@ function UniformesRescisaoSaldo({
             type="button"
             onClick={() => void confirmarDevolucaoUniforme()}
             disabled={registrarMutation.isPending}
-            className="bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+            className="bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
           >
             {registrarMutation.isPending
               ? "Confirmando..."
@@ -458,7 +458,7 @@ function RescisaoAssinadaEtapa({
         (concluida
           ? "border-emerald-400/20 bg-emerald-400/[0.035]"
           : uniformeOk
-          ? "border-[#D4AF37]/20 bg-[#D4AF37]/[0.035]"
+          ? "border-fr-d4af37/20 bg-fr-d4af37/[0.035]"
           : "border-white/[0.07] bg-white/[0.02]")
       }
     >
@@ -470,7 +470,7 @@ function RescisaoAssinadaEtapa({
               (concluida
                 ? "text-emerald-300"
                 : uniformeOk
-                ? "text-[#F2D675]"
+                ? "text-fri-f2d675"
                 : "text-gray-600")
             }
           >
@@ -511,8 +511,8 @@ function RescisaoAssinadaEtapa({
         </div>
       ) : uniformeOk ? (
         <div className="mt-4 space-y-3">
-          <label className="block cursor-pointer rounded-xl border border-dashed border-[#D4AF37]/30 bg-black/20 p-3 transition hover:bg-[#D4AF37]/[0.04]">
-            <span className="text-xs font-black text-[#F2D675]">
+          <label className="block cursor-pointer rounded-xl border border-dashed border-fr-d4af37/30 bg-black/20 p-3 transition hover:bg-fr-d4af37/[0.04]">
+            <span className="text-xs font-black text-fri-f2d675">
               {arquivoAssinado
                 ? arquivoAssinado.name
                 : "Anexar rescisão assinada"}
@@ -541,7 +541,7 @@ function RescisaoAssinadaEtapa({
             type="button"
             onClick={() => void enviarRescisaoAssinada()}
             disabled={anexarMutation.isPending}
-            className="bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+            className="bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
           >
             {anexarMutation.isPending
               ? "Anexando..."
@@ -850,8 +850,8 @@ export default function RHRescisaoCaixa({
       <Card
         className={
           processosAbertos.length > 0
-            ? "overflow-hidden border-amber-400/20 bg-gradient-to-br from-amber-950/10 via-[#0b0b0b] to-[#090909]"
-            : "overflow-hidden border-[#D4AF37]/20 bg-[#0b0b0b]"
+            ? "overflow-hidden border-amber-400/20 bg-gradient-to-br from-amber-950/10 via-fr-0b0b0b to-fr-090909"
+            : "overflow-hidden border-fr-d4af37/20 bg-fr-0b0b0b"
         }
       >
         <CardContent className="p-0">
@@ -861,8 +861,8 @@ export default function RHRescisaoCaixa({
             }`}
           >
             <div className="flex items-start gap-3">
-              <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] p-2.5">
-                <FilePenLine className="h-5 w-5 text-[#F2D675]" />
+              <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.06] p-2.5">
+                <FilePenLine className="h-5 w-5 text-fri-f2d675" />
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -891,7 +891,7 @@ export default function RHRescisaoCaixa({
                 setErro("");
                 setMensagem("");
               }}
-              className="bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+              className="bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
             >
               {aberto ? "Fechar" : "+ Registrar pedido"}
             </Button>
@@ -912,8 +912,8 @@ export default function RHRescisaoCaixa({
 
           {aberto && (
             <div className="border-b border-white/[0.06] p-4 sm:p-5">
-              <div className="mb-4 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.03] p-3 text-xs leading-5 text-gray-400">
-                <strong className="text-[#F2D675]">Pedido do funcionário:</strong>{" "}
+              <div className="mb-4 rounded-xl border border-fr-d4af37/15 bg-fr-d4af37/[0.03] p-3 text-xs leading-5 text-gray-400">
+                <strong className="text-fri-f2d675">Pedido do funcionário:</strong>{" "}
                 a Caixa abre o processo anexando a carta de demissão escrita de próprio punho.
               </div>
 
@@ -926,7 +926,7 @@ export default function RHRescisaoCaixa({
                     <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                       <SelectValue placeholder="Selecione o funcionário" />
                     </SelectTrigger>
-                    <SelectContent className="border-white/10 bg-[#111111] text-white">
+                    <SelectContent className="border-white/10 bg-fr-111111 text-white">
                       {funcionarios.map((funcionario) => (
                         <SelectItem key={funcionario.id} value={String(funcionario.id)}>
                           {funcionario.nome}
@@ -944,7 +944,7 @@ export default function RHRescisaoCaixa({
                     type="date"
                     value={dataSolicitacao}
                     onChange={(event) => setDataSolicitacao(event.target.value)}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/45"
+                    className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-fr-d4af37/45"
                   />
                 </div>
 
@@ -956,7 +956,7 @@ export default function RHRescisaoCaixa({
                     type="date"
                     value={ultimoDia}
                     onChange={(event) => setUltimoDia(event.target.value)}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/45"
+                    className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-fr-d4af37/45"
                   />
                   <p className="mt-1 text-[11px] text-gray-600">
                     Opcional, se ele já informar uma data.
@@ -967,8 +967,8 @@ export default function RHRescisaoCaixa({
                   <label className="mb-1.5 block text-xs font-bold text-gray-400">
                     Carta de demissão
                   </label>
-                  <label className="flex min-h-11 cursor-pointer items-center rounded-xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.03] px-3 text-sm text-gray-300 hover:bg-[#D4AF37]/[0.06]">
-                    <FileUp className="mr-2 h-4 w-4 text-[#F2D675]" />
+                  <label className="flex min-h-11 cursor-pointer items-center rounded-xl border border-dashed border-fr-d4af37/25 bg-fr-d4af37/[0.03] px-3 text-sm text-gray-300 hover:bg-fr-d4af37/[0.06]">
+                    <FileUp className="mr-2 h-4 w-4 text-fri-f2d675" />
                     <span className="truncate">
                       {arquivo?.name || "Selecionar carta assinada"}
                     </span>
@@ -993,7 +993,7 @@ export default function RHRescisaoCaixa({
                     value={observacao}
                     onChange={(event) => setObservacao(event.target.value)}
                     placeholder="Opcional"
-                    className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/45"
+                    className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/45"
                   />
                 </div>
               </div>
@@ -1002,7 +1002,7 @@ export default function RHRescisaoCaixa({
                 type="button"
                 onClick={() => void enviarPedido()}
                 disabled={criarMutation.isPending || acaoPendente === "novo-pedido"}
-                className="mt-4 w-full bg-[#D4AF37] font-black text-black hover:bg-[#E6C760] sm:w-auto"
+                className="mt-4 w-full bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760 sm:w-auto"
               >
                 {criarMutation.isPending || acaoPendente === "novo-pedido" ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1043,7 +1043,7 @@ export default function RHRescisaoCaixa({
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <UserRound className="h-4 w-4 shrink-0 text-[#F2D675]" />
+                            <UserRound className="h-4 w-4 shrink-0 text-fri-f2d675" />
                             <p className="truncate text-base font-black text-white">
                               {item.funcionarioNome}
                             </p>
@@ -1073,7 +1073,7 @@ export default function RHRescisaoCaixa({
                         </span>
                       </div>
 
-                      <div className="mt-4 grid gap-2 rounded-xl border border-white/[0.06] bg-[#090909] p-3 sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="mt-4 grid gap-2 rounded-xl border border-white/[0.06] bg-fr-090909 p-3 sm:grid-cols-2 lg:grid-cols-4">
                         {item.origem === "pedido_demissao" && (
                           <ItemChecklist
                             ok={Boolean(item.cartaNome)}
@@ -1113,7 +1113,7 @@ export default function RHRescisaoCaixa({
 
                       {(!cartaoOk || !fichaOk) && (
                         <div className="mt-4">
-                          <p className="mb-2 text-xs font-black uppercase tracking-[0.1em] text-[#b9a46a]">
+                          <p className="mb-2 text-xs font-black uppercase tracking-[0.1em] text-fri-b9a46a">
                             Próximo passo • preparar envio à contabilidade
                           </p>
 
@@ -1122,7 +1122,7 @@ export default function RHRescisaoCaixa({
                               className={`flex min-h-11 cursor-pointer items-center rounded-xl border px-3 text-sm font-bold transition ${
                                 cartaoOk
                                   ? "border-emerald-400/15 bg-emerald-400/[0.04] text-emerald-200"
-                                  : "border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/[0.08]"
+                                  : "border-fr-d4af37/20 bg-fr-d4af37/[0.04] text-fri-f2d675 hover:bg-fr-d4af37/[0.08]"
                               }`}
                             >
                               {cartaoOk ? (
@@ -1148,7 +1148,7 @@ export default function RHRescisaoCaixa({
                               className={`flex min-h-11 cursor-pointer items-center rounded-xl border px-3 text-sm font-bold transition ${
                                 fichaOk
                                   ? "border-emerald-400/15 bg-emerald-400/[0.04] text-emerald-200"
-                                  : "border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/[0.08]"
+                                  : "border-fr-d4af37/20 bg-fr-d4af37/[0.04] text-fri-f2d675 hover:bg-fr-d4af37/[0.08]"
                               }`}
                             >
                               {fichaOk ? (
@@ -1186,7 +1186,7 @@ export default function RHRescisaoCaixa({
                             type="button"
                             onClick={() => marcarPortal(item)}
                             disabled={acaoPendente === `${item.id}-portal`}
-                            className="mt-3 bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+                            className="mt-3 bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
                           >
                             <Send className="mr-2 h-4 w-4" />
                             Marcar como enviado ao portal
@@ -1242,7 +1242,7 @@ export default function RHRescisaoCaixa({
                               onChange={(event) => {
                                 if (event.target.checked) marcarConferida(item);
                               }}
-                              className="h-4 w-4 accent-[#D4AF37]"
+                              className="h-4 w-4 accent-fr-d4af37"
                             />
                             <span className={`text-xs font-bold ${conferidaOk ? "text-emerald-200" : "text-white"}`}>
                               Conferi a rescisão e está tudo OK
@@ -1269,7 +1269,7 @@ export default function RHRescisaoCaixa({
                               onChange={(event) => {
                                 if (event.target.checked) marcarContasPagar(item);
                               }}
-                              className="h-4 w-4 accent-[#D4AF37]"
+                              className="h-4 w-4 accent-fr-d4af37"
                             />
                             <span className={`text-xs font-bold ${contasOk ? "text-emerald-200" : "text-white"}`}>
                               Lancei no Contas a Pagar

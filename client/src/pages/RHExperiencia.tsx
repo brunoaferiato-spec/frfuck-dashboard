@@ -538,8 +538,8 @@ export default function RHExperiencia() {
 
   if (caixaLider || !podeGerenciar) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 text-white">
-        <Card className="w-full max-w-lg border-rose-400/20 bg-[#0b0b0b]">
+      <div className="flex min-h-screen items-center justify-center bg-fr-050505 px-4 text-white">
+        <Card className="w-full max-w-lg border-rose-400/20 bg-fr-0b0b0b">
           <CardContent className="p-7 text-center">
             <AlertTriangle className="mx-auto h-8 w-8 text-rose-300" />
             <h1 className="mt-4 text-xl font-black">Acesso restrito</h1>
@@ -549,7 +549,7 @@ export default function RHExperiencia() {
             <Button
               type="button"
               onClick={() => navigate(caixaLider ? "/rh/meu-dia" : "/rh/gestao")}
-              className="mt-5 bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+              className="mt-5 bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
             >
               Voltar
             </Button>
@@ -560,63 +560,63 @@ export default function RHExperiencia() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <header className="border-b border-[#D4AF37]/15 bg-[#080808]">
+    <div className="min-h-screen bg-fr-050505 text-white">
+      <header className="border-b border-fr-d4af37/15 bg-fr-080808">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-5 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               type="button"
               variant="ghost"
               onClick={() => navigate("/rh/gestao")}
-              className="h-10 w-10 shrink-0 rounded-xl border border-[#D4AF37]/20 p-0 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+              className="h-10 w-10 shrink-0 rounded-xl border border-fr-d4af37/20 p-0 text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
 
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8f8a80]">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-fri-8f8a80">
                 Gestão de pessoas
               </p>
-              <h1 className="text-2xl font-black text-[#F2D675]">Experiência</h1>
+              <h1 className="text-2xl font-black text-fri-f2d675">Experiência</h1>
             </div>
           </div>
 
-          <div className="hidden items-center gap-2 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-3 py-2 text-xs text-[#b9a46a] sm:flex">
-            <ShieldCheck className="h-4 w-4 text-[#F2D675]" />
+          <div className="hidden items-center gap-2 rounded-xl border border-fr-d4af37/15 bg-fr-d4af37/[0.04] px-3 py-2 text-xs text-fri-b9a46a sm:flex">
+            <ShieldCheck className="h-4 w-4 text-fri-f2d675" />
             45 dias + 45 dias
           </div>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-5 sm:py-7 lg:px-8">
-        <Card className="mb-4 overflow-hidden border-[#D4AF37]/15 bg-[#0b0b0b]">
+        <Card className="mb-4 overflow-hidden border-fr-d4af37/15 bg-fr-0b0b0b">
           <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2 xl:grid-cols-6">
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.13em] text-gray-600">1º período</p>
               <p className="mt-2 text-2xl font-black text-white">{resumo.primeiro}</p>
               <p className="mt-1 text-[11px] text-gray-600">até 45 dias</p>
             </div>
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.13em] text-gray-600">2º período</p>
-              <p className="mt-2 text-2xl font-black text-[#F2D675]">{resumo.segundo}</p>
+              <p className="mt-2 text-2xl font-black text-fri-f2d675">{resumo.segundo}</p>
               <p className="mt-1 text-[11px] text-gray-600">até 90 dias</p>
             </div>
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.13em] text-gray-600">Em atenção</p>
               <p className={`mt-2 text-2xl font-black ${resumo.atencao ? "text-amber-300" : "text-emerald-300"}`}>{resumo.atencao}</p>
               <p className="mt-1 text-[11px] text-gray-600">decisão próxima</p>
             </div>
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.13em] text-gray-600">Decisão hoje</p>
               <p className={`mt-2 text-2xl font-black ${resumo.hoje ? "text-rose-300" : "text-emerald-300"}`}>{resumo.hoje}</p>
               <p className="mt-1 text-[11px] text-gray-600">vence hoje</p>
             </div>
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.13em] text-gray-600">Atrasados</p>
               <p className={`mt-2 text-2xl font-black ${resumo.atrasados ? "text-rose-300" : "text-emerald-300"}`}>{resumo.atrasados}</p>
               <p className="mt-1 text-[11px] text-gray-600">validar imediatamente</p>
             </div>
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.13em] text-gray-600">Concluídos</p>
               <p className="mt-2 text-2xl font-black text-emerald-300">{resumo.concluidos}</p>
               <p className="mt-1 text-[11px] text-gray-600">decisão registrada</p>
@@ -624,7 +624,7 @@ export default function RHExperiencia() {
           </div>
         </Card>
 
-        <Card className="mb-4 border-white/[0.08] bg-[#0b0b0b]">
+        <Card className="mb-4 border-white/[0.08] bg-fr-0b0b0b">
           <CardContent className="p-4 sm:p-5">
             <div className="flex flex-wrap items-end gap-3">
               <div className="min-w-[190px] flex-1">
@@ -633,7 +633,7 @@ export default function RHExperiencia() {
                   <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="border-white/10 bg-[#111111] text-white">
+                  <SelectContent className="border-white/10 bg-fr-111111 text-white">
                     <SelectItem value="todas">Todas as lojas</SelectItem>
                     {lojas.map((loja) => (
                       <SelectItem key={loja.id} value={String(loja.id)}>
@@ -650,7 +650,7 @@ export default function RHExperiencia() {
                   <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="border-white/10 bg-[#111111] text-white">
+                  <SelectContent className="border-white/10 bg-fr-111111 text-white">
                     <SelectItem value="todos">Todos</SelectItem>
                     <SelectItem value="primeiro">1º período</SelectItem>
                     <SelectItem value="segundo">2º período</SelectItem>
@@ -666,7 +666,7 @@ export default function RHExperiencia() {
                   value={busca}
                   onChange={(event) => setBusca(event.target.value)}
                   placeholder="Buscar funcionário, função ou loja"
-                  className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-10 pr-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/45"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-10 pr-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/45"
                 />
               </div>
             </div>
@@ -693,11 +693,11 @@ export default function RHExperiencia() {
               {filtrados.length} colaborador{filtrados.length === 1 ? "" : "es"} no filtro atual.
             </p>
           </div>
-          <Clock3 className="h-5 w-5 text-[#F2D675]" />
+          <Clock3 className="h-5 w-5 text-fri-f2d675" />
         </div>
 
         {listaQuery.isLoading ? (
-          <Card className="border-white/[0.08] bg-[#0b0b0b]">
+          <Card className="border-white/[0.08] bg-fr-0b0b0b">
             <CardContent className="p-6 text-sm text-gray-500">Calculando experiências...</CardContent>
           </Card>
         ) : listaQuery.error ? (
@@ -707,7 +707,7 @@ export default function RHExperiencia() {
             </CardContent>
           </Card>
         ) : filtrados.length === 0 ? (
-          <Card className="border-white/[0.08] bg-[#0b0b0b]">
+          <Card className="border-white/[0.08] bg-fr-0b0b0b">
             <CardContent className="p-8 text-center">
               <UserCheck className="mx-auto h-8 w-8 text-gray-700" />
               <p className="mt-3 font-bold text-gray-300">Nenhum contrato de experiência encontrado</p>
@@ -723,7 +723,7 @@ export default function RHExperiencia() {
               return (
                 <Card
                   key={`${item.funcionarioId}-${item.dataAdmissao}`}
-                  className={`border bg-[#0b0b0b] ${
+                  className={`border bg-fr-0b0b0b ${
                     emAtraso ? "border-rose-400/25" : "border-white/[0.08]"
                   }`}
                 >
@@ -732,7 +732,7 @@ export default function RHExperiencia() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <UserRound className="h-4 w-4 text-[#F2D675]" />
+                            <UserRound className="h-4 w-4 text-fri-f2d675" />
                             <p className="font-black text-white">{item.funcionarioNome}</p>
                             <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-0.5 text-[10px] font-bold text-gray-400">
                               {item.lojaNome}
@@ -755,11 +755,11 @@ export default function RHExperiencia() {
                         </div>
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-gray-700">45º dia</p>
-                          <p className="mt-1 text-xs font-bold text-[#F2D675]">{formatarData(item.fimPrimeiroPeriodo)}</p>
+                          <p className="mt-1 text-xs font-bold text-fri-f2d675">{formatarData(item.fimPrimeiroPeriodo)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-gray-700">90º dia</p>
-                          <p className="mt-1 text-xs font-bold text-[#F2D675]">{formatarData(item.fimSegundoPeriodo)}</p>
+                          <p className="mt-1 text-xs font-bold text-fri-f2d675">{formatarData(item.fimSegundoPeriodo)}</p>
                         </div>
                       </div>
 
@@ -806,7 +806,7 @@ export default function RHExperiencia() {
                           <div className={`rounded-xl border p-3 ${
                             fase === "primeiro"
                               ? "border-sky-400/15 bg-sky-400/[0.025]"
-                              : "border-[#D4AF37]/15 bg-[#D4AF37]/[0.025]"
+                              : "border-fr-d4af37/15 bg-fr-d4af37/[0.025]"
                           }`}>
                             <p className="text-xs font-black text-white">
                               {fase === "primeiro"
@@ -832,7 +832,7 @@ export default function RHExperiencia() {
                             }
                             rows={2}
                             placeholder="Observação da decisão (opcional)"
-                            className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/45"
+                            className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/45"
                           />
 
                           {fase === "primeiro" ? (
@@ -866,7 +866,7 @@ export default function RHExperiencia() {
                                     decisaoMutation.isPending ||
                                     efetivarHistoricoMutation.isPending
                                   }
-                                  className="h-12 bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+                                  className="h-12 bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
                                 >
                                   <Clock3 className="mr-2 h-4 w-4" />
                                   Prorrogar +45 dias

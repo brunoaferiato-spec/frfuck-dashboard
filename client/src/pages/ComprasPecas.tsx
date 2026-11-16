@@ -842,10 +842,10 @@ export default function ComprasPecas() {
   }
 
   return (
-    <main className="min-h-full bg-[#050505] p-4 text-white sm:p-6 lg:p-8">
+    <main className="min-h-full bg-fr-050505 p-4 text-white sm:p-6 lg:p-8">
       <div className="mx-auto max-w-[1600px]">
-        <section className="rounded-3xl border border-[#D4AF37]/20 bg-[#090909] p-5 sm:p-7">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#D4AF37]/60">
+        <section className="rounded-3xl border border-fr-d4af37/20 bg-fr-090909 p-5 sm:p-7">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-fri-d4af37/60">
             COMPRAS • PEÇAS
           </p>
           <h1 className="mt-2 text-3xl font-black">Planejamento de peças</h1>
@@ -861,7 +861,7 @@ export default function ComprasPecas() {
                 value={diasAnalise}
                 inputMode="numeric"
                 onChange={(e) => setDiasAnalise(e.target.value.replace(/[^0-9]/g, ""))}
-                className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-[#D4AF37]/50"
+                className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-fr-d4af37/50"
               />
               <span className="mt-1 block text-[10px] text-gray-600">Normalmente 120 dias.</span>
             </label>
@@ -871,7 +871,7 @@ export default function ComprasPecas() {
                 value={diasProjecao}
                 inputMode="numeric"
                 onChange={(e) => setDiasProjecao(e.target.value.replace(/[^0-9]/g, ""))}
-                className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-[#D4AF37]/50"
+                className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-fr-d4af37/50"
               />
               <span className="mt-1 block text-[10px] text-gray-600">Normalmente 30 dias. Ajuste antes de importar o relatório.</span>
             </label>
@@ -908,9 +908,9 @@ export default function ComprasPecas() {
               />
             </label>
           )}
-          <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.025] px-4 text-center hover:border-[#D4AF37]/45">
-            <Upload className="h-7 w-7 text-[#F2D675]" />
-            <span className="mt-3 font-black text-[#F2D675]">
+          <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-fr-d4af37/25 bg-fr-d4af37/[0.025] px-4 text-center hover:border-fr-d4af37/45">
+            <Upload className="h-7 w-7 text-fri-f2d675" />
+            <span className="mt-3 font-black text-fri-f2d675">
               {transicaoSistema ? "Relatório do sistema novo (.csv ou .xlsx)" : "Selecionar relatório .csv ou .xlsx"}
             </span>
             <span className="mt-1 text-xs text-gray-600">
@@ -952,7 +952,7 @@ export default function ComprasPecas() {
 
           {arquivoNome && (
             <div className={`mt-5 rounded-2xl border p-4 ${faltaEstoqueMinimo.length ? "border-amber-400/30 bg-amber-400/[0.04]" : "border-emerald-400/20 bg-emerald-400/[0.03]"}`}>
-              <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">Estoque mínimo • obrigatório</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.08em] text-fri-d4af37/80">Estoque mínimo • obrigatório</p>
               <p className="mt-1 text-xs text-gray-500">Esses códigos não saem no relatório. Informe o estoque atual de cada um; a compra completa até o mínimo.</p>
               <div className="mt-3 flex flex-wrap gap-3">
                 {ESTOQUE_MINIMO.map(({ codigo, item, minimo }) => {
@@ -960,13 +960,13 @@ export default function ComprasPecas() {
                   const compra = valor === "" ? null : Math.max(0, minimo - Number(valor));
                   return (
                     <label key={codigo} className="block w-full sm:w-64">
-                      <span className="mb-1 block text-xs font-black text-[#F2D675]">{codigo} <span className="font-bold text-gray-400">{item}</span> <span className="font-bold text-gray-600">• mínimo {minimo}</span></span>
+                      <span className="mb-1 block text-xs font-black text-fri-f2d675">{codigo} <span className="font-bold text-gray-400">{item}</span> <span className="font-bold text-gray-600">• mínimo {minimo}</span></span>
                       <input
                         value={valor}
                         inputMode="numeric"
                         placeholder="Estoque atual"
                         onChange={(e) => setEstoqueMinimo((a) => ({ ...a, [codigo]: e.target.value.replace(/[^0-9]/g, "") }))}
-                        className={`h-11 w-full rounded-xl border bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-[#D4AF37]/50 ${valor === "" ? "border-amber-400/40" : "border-white/10"}`}
+                        className={`h-11 w-full rounded-xl border bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-fr-d4af37/50 ${valor === "" ? "border-amber-400/40" : "border-white/10"}`}
                       />
                       <span className={`mt-1 block text-[11px] font-bold ${compra === null ? "text-amber-300" : compra > 0 ? "text-emerald-300" : "text-gray-500"}`}>
                         {compra === null ? "Falta informar" : compra > 0 ? `Comprar ${compra}` : "Estoque completo • não compra"}
@@ -994,7 +994,7 @@ export default function ComprasPecas() {
               ].map(([label, valor]) => (
                 <div
                   key={String(label)}
-                  className="rounded-2xl border border-white/[0.07] bg-[#090909] p-4"
+                  className="rounded-2xl border border-white/[0.07] bg-fr-090909 p-4"
                 >
                   <p className="text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">
                     {label}
@@ -1004,7 +1004,7 @@ export default function ComprasPecas() {
               ))}
             </section>
 
-            <section className="mt-5 overflow-hidden rounded-3xl border border-white/[0.08] bg-[#090909]">
+            <section className="mt-5 overflow-hidden rounded-3xl border border-white/[0.08] bg-fr-090909">
               <div className="flex flex-col gap-3 border-b border-white/[0.06] p-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                   <h2 className="font-black">Análise da compra</h2>
@@ -1078,7 +1078,7 @@ export default function ComprasPecas() {
                         key={item.id}
                         className="border-t border-white/[0.05]"
                       >
-                        <td className="px-3 py-3 font-black text-[#F2D675]">
+                        <td className="px-3 py-3 font-black text-fri-f2d675">
                           {item.codigo}
                         </td>
                         <td className="px-3 py-3 font-bold text-white">
@@ -1128,7 +1128,7 @@ export default function ComprasPecas() {
                         <td
                           className={`px-3 py-3 text-right font-bold ${
                             item.necessidadeBruta > 0
-                              ? "text-[#F2D675]"
+                              ? "text-fri-f2d675"
                               : "text-gray-700"
                           }`}
                         >
@@ -1158,7 +1158,7 @@ export default function ComprasPecas() {
                                 )
                               );
                             }}
-                            className="h-10 w-20 rounded-xl border border-[#D4AF37]/25 bg-black/30 px-2 text-center font-black text-[#F2D675] outline-none"
+                            className="h-10 w-20 rounded-xl border border-fr-d4af37/25 bg-black/30 px-2 text-center font-black text-fri-f2d675 outline-none"
                             title="Quantidade de compra editável"
                           />
                         </td>
@@ -1200,7 +1200,7 @@ export default function ComprasPecas() {
             </section>
 
             {excluidos.length > 0 && (
-              <section className="mt-5 rounded-3xl border border-white/[0.08] bg-[#090909] p-5">
+              <section className="mt-5 rounded-3xl border border-white/[0.08] bg-fr-090909 p-5">
                 <div className="flex items-center gap-2">
                   <FileSpreadsheet className="h-5 w-5 text-gray-500" />
                   <h2 className="font-black">Excluídos desta análise</h2>

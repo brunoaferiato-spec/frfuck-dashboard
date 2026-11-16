@@ -481,25 +481,25 @@ await salvarMutation.mutateAsync({
   const fechamentoSalvo = fechamentoDiaQuery.data as any;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <header className="border-b border-[#D4AF37]/15 bg-[#080808]">
+    <div className="min-h-screen bg-fr-050505 text-white">
+      <header className="border-b border-fr-d4af37/15 bg-fr-080808">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-5 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               type="button"
               variant="ghost"
               onClick={() => navigate(liderRh ? "/rh/gestao" : "/rh/meu-dia")}
-              className="h-10 w-10 shrink-0 rounded-xl border border-[#D4AF37]/20 p-0 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+              className="h-10 w-10 shrink-0 rounded-xl border border-fr-d4af37/20 p-0 text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
               title="Voltar"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
 
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8f8a80] sm:text-xs">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fri-8f8a80 sm:text-xs">
                 RH • Controle diário
               </p>
-              <h1 className="truncate text-xl font-black text-[#F2D675] sm:text-2xl">
+              <h1 className="truncate text-xl font-black text-fri-f2d675 sm:text-2xl">
                 Fechamento de Caixa
               </h1>
             </div>
@@ -520,11 +520,11 @@ await salvarMutation.mutateAsync({
         {modoOperacional && (
           <>
             <section className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-              <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#080808]">
+              <Card className="border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-080808">
                 <CardContent className="p-5 sm:p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8f8a80]">
+                      <p className="text-xs font-black uppercase tracking-[0.18em] text-fri-8f8a80">
                         Fechamento físico
                       </p>
                       <h2 className="mt-2 text-2xl font-black text-white">
@@ -535,8 +535,8 @@ await salvarMutation.mutateAsync({
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 p-3">
-                      <Banknote className="h-6 w-6 text-[#F2D675]" />
+                    <div className="rounded-2xl border border-fr-d4af37/25 bg-fr-d4af37/10 p-3">
+                      <Banknote className="h-6 w-6 text-fri-f2d675" />
                     </div>
                   </div>
 
@@ -553,10 +553,10 @@ await salvarMutation.mutateAsync({
                             limparImportacao();
                           }}
                         >
-                          <SelectTrigger className="h-11 border-[#D4AF37]/25 bg-[#111111] text-white">
+                          <SelectTrigger className="h-11 border-fr-d4af37/25 bg-fr-111111 text-white">
                             <SelectValue placeholder="Selecione a loja" />
                           </SelectTrigger>
-                          <SelectContent className="border-[#D4AF37]/20 bg-[#111111] text-white">
+                          <SelectContent className="border-fr-d4af37/20 bg-fr-111111 text-white">
                             {lojas.map((loja) => (
                               <SelectItem key={loja.id} value={String(loja.id)}>
                                 {loja.nome}
@@ -577,30 +577,30 @@ await salvarMutation.mutateAsync({
                             setDataTeste(event.target.value || hoje);
                             limparImportacao();
                           }}
-                          className="h-11 w-full rounded-xl border border-[#D4AF37]/25 bg-[#111111] px-3 text-sm text-white outline-none focus:border-[#D4AF37]/55"
+                          className="h-11 w-full rounded-xl border border-fr-d4af37/25 bg-fr-111111 px-3 text-sm text-white outline-none focus:border-fr-d4af37/55"
                         />
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.05] px-4 py-3 text-sm">
+                    <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.05] px-4 py-3 text-sm">
                       <span className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-[#F2D675]" />
+                        <MapPin className="h-4 w-4 text-fri-f2d675" />
                         {lojaAtual?.nome || "Loja vinculada"}
                       </span>
-                      <strong className="text-[#F2D675]">{formatarData(hoje)}</strong>
+                      <strong className="text-fri-f2d675">{formatarData(hoje)}</strong>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              <Card className="border-[#D4AF37]/20 bg-[#0b0b0b]">
+              <Card className="border-fr-d4af37/20 bg-fr-0b0b0b">
                 <CardContent className="p-5 sm:p-6">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] p-2.5">
+                    <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.06] p-2.5">
                       {fechamentoSalvo ? (
                         <CheckCircle2 className="h-5 w-5 text-emerald-300" />
                       ) : (
-                        <Scale className="h-5 w-5 text-[#F2D675]" />
+                        <Scale className="h-5 w-5 text-fri-f2d675" />
                       )}
                     </div>
                     <div>
@@ -657,29 +657,29 @@ await salvarMutation.mutateAsync({
             </section>
 
             <section className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.35fr]">
-              <Card className="border-[#D4AF37]/20 bg-[#0b0b0b]">
+              <Card className="border-fr-d4af37/20 bg-fr-0b0b0b">
                 <CardContent className="p-5 sm:p-6">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8f8a80]">
+                      <p className="text-xs font-black uppercase tracking-[0.16em] text-fri-8f8a80">
                         Passo 1
                       </p>
                       <p className="mt-1 text-lg font-black text-white">Importar relatório</p>
                     </div>
-                    <FileSpreadsheet className="h-6 w-6 text-[#F2D675]" />
+                    <FileSpreadsheet className="h-6 w-6 text-fri-f2d675" />
                   </div>
 
                   <label
                     className={`mt-5 flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-6 text-center transition ${
                       lojaIdOperacional
-                        ? "border-[#D4AF37]/30 bg-[#D4AF37]/[0.035] hover:bg-[#D4AF37]/[0.06]"
+                        ? "border-fr-d4af37/30 bg-fr-d4af37/[0.035] hover:bg-fr-d4af37/[0.06]"
                         : "cursor-not-allowed border-white/10 bg-white/[0.02] opacity-50"
                     }`}
                   >
                     {processandoArquivo || analisarMutation.isPending ? (
-                      <RefreshCw className="h-7 w-7 animate-spin text-[#F2D675]" />
+                      <RefreshCw className="h-7 w-7 animate-spin text-fri-f2d675" />
                     ) : (
-                      <FileUp className="h-7 w-7 text-[#F2D675]" />
+                      <FileUp className="h-7 w-7 text-fri-f2d675" />
                     )}
                     <p className="mt-3 text-sm font-black text-white">
                       {processandoArquivo || analisarMutation.isPending
@@ -731,9 +731,9 @@ await salvarMutation.mutateAsync({
                           <p className="text-gray-500">Débitos</p>
                           <p className="mt-1 font-black text-rose-300">{formatarMoeda(analise.totalDebitos)}</p>
                         </div>
-                        <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.05] p-3">
-                          <p className="text-[#b9a46a]">Saldo final</p>
-                          <p className="mt-1 text-lg font-black text-[#F2D675]">{formatarMoeda(analise.saldoFinal)}</p>
+                        <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.05] p-3">
+                          <p className="text-fri-b9a46a">Saldo final</p>
+                          <p className="mt-1 text-lg font-black text-fri-f2d675">{formatarMoeda(analise.saldoFinal)}</p>
                         </div>
                       </div>
                     </div>
@@ -741,16 +741,16 @@ await salvarMutation.mutateAsync({
                 </CardContent>
               </Card>
 
-              <Card className="border-[#D4AF37]/20 bg-[#0b0b0b]">
+              <Card className="border-fr-d4af37/20 bg-fr-0b0b0b">
                 <CardContent className="p-5 sm:p-6">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8f8a80]">
+                      <p className="text-xs font-black uppercase tracking-[0.16em] text-fri-8f8a80">
                         Passo 2
                       </p>
                       <p className="mt-1 text-lg font-black text-white">Contagem física</p>
                     </div>
-                    <Calculator className="h-6 w-6 text-[#F2D675]" />
+                    <Calculator className="h-6 w-6 text-fri-f2d675" />
                   </div>
 
                   {!analise ? (
@@ -792,10 +792,10 @@ await salvarMutation.mutateAsync({
                                       [item.key]: valor,
                                     }));
                                   }}
-                                  className="h-10 w-20 rounded-lg border border-[#D4AF37]/20 bg-black/40 px-2 text-right text-sm font-bold text-white outline-none focus:border-[#D4AF37]/50"
+                                  className="h-10 w-20 rounded-lg border border-fr-d4af37/20 bg-black/40 px-2 text-right text-sm font-bold text-white outline-none focus:border-fr-d4af37/50"
                                 />
                               </div>
-                              <p className="mt-2 text-right text-xs font-bold text-[#F2D675]">
+                              <p className="mt-2 text-right text-xs font-bold text-fri-f2d675">
                                 {formatarMoeda(subtotal)}
                               </p>
                             </div>
@@ -879,7 +879,7 @@ await salvarMutation.mutateAsync({
                                 <SelectTrigger className="h-11 border-rose-400/20 bg-black/30 text-white">
                                   <SelectValue placeholder="Selecione o motivo" />
                                 </SelectTrigger>
-                                <SelectContent className="border-[#D4AF37]/20 bg-[#111111] text-white">
+                                <SelectContent className="border-fr-d4af37/20 bg-fr-111111 text-white">
                                   {JUSTIFICATIVAS_FORA_MARGEM.map((item) => (
                                     <SelectItem key={item.value} value={item.value}>
                                       {item.label}
@@ -940,7 +940,7 @@ await salvarMutation.mutateAsync({
                         maxLength={2000}
                         rows={3}
                         placeholder="Ex.: depósito não realizado porque..."
-                        className="mt-1.5 w-full resize-y rounded-xl border border-amber-400/25 bg-[#111111] px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400/60"
+                        className="mt-1.5 w-full resize-y rounded-xl border border-amber-400/25 bg-fr-111111 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400/60"
                       />
                     </div>
                   </div>
@@ -951,7 +951,7 @@ await salvarMutation.mutateAsync({
                         type="button"
                         onClick={salvarFechamento}
                         disabled={salvarMutation.isPending}
-                        className="mt-5 h-12 w-full bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+                        className="mt-5 h-12 w-full bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
                       >
                         {salvarMutation.isPending
                           ? "Salvando fechamento..."
@@ -971,7 +971,7 @@ await salvarMutation.mutateAsync({
           <section className={`${modoOperacional ? "mt-8" : ""}`}>
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8f8a80]">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-fri-8f8a80">
                   Gestão RH
                 </p>
                 <h2 className="mt-1 text-xl font-black text-white">Histórico de fechamentos</h2>
@@ -979,10 +979,10 @@ await salvarMutation.mutateAsync({
                   Todas as lojas, diferenças justificadas e relatório original.
                 </p>
               </div>
-              <History className="h-6 w-6 text-[#F2D675]" />
+              <History className="h-6 w-6 text-fri-f2d675" />
             </div>
 
-            <Card className="border-[#D4AF37]/20 bg-[#0b0b0b]">
+            <Card className="border-fr-d4af37/20 bg-fr-0b0b0b">
               <CardContent className="p-4 sm:p-5">
                 <div className="grid gap-3 md:grid-cols-3">
                   <div>
@@ -993,7 +993,7 @@ await salvarMutation.mutateAsync({
                       type="date"
                       value={dataInicioHistorico}
                       onChange={(event) => setDataInicioHistorico(event.target.value || hoje)}
-                      className="h-11 w-full rounded-xl border border-[#D4AF37]/20 bg-[#111111] px-3 text-sm text-white outline-none"
+                      className="h-11 w-full rounded-xl border border-fr-d4af37/20 bg-fr-111111 px-3 text-sm text-white outline-none"
                     />
                   </div>
                   <div>
@@ -1004,7 +1004,7 @@ await salvarMutation.mutateAsync({
                       type="date"
                       value={dataFimHistorico}
                       onChange={(event) => setDataFimHistorico(event.target.value || hoje)}
-                      className="h-11 w-full rounded-xl border border-[#D4AF37]/20 bg-[#111111] px-3 text-sm text-white outline-none"
+                      className="h-11 w-full rounded-xl border border-fr-d4af37/20 bg-fr-111111 px-3 text-sm text-white outline-none"
                     />
                   </div>
                   <div>
@@ -1012,10 +1012,10 @@ await salvarMutation.mutateAsync({
                       Loja
                     </label>
                     <Select value={lojaHistorico} onValueChange={setLojaHistorico}>
-                      <SelectTrigger className="h-11 border-[#D4AF37]/20 bg-[#111111] text-white">
+                      <SelectTrigger className="h-11 border-fr-d4af37/20 bg-fr-111111 text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-[#D4AF37]/20 bg-[#111111] text-white">
+                      <SelectContent className="border-fr-d4af37/20 bg-fr-111111 text-white">
                         <SelectItem value="todas">Todas as lojas</SelectItem>
                         {lojas.map((loja) => (
                           <SelectItem key={loja.id} value={String(loja.id)}>
@@ -1048,14 +1048,14 @@ await salvarMutation.mutateAsync({
 
             <div className="mt-4 space-y-3">
               {historicoQuery.isLoading ? (
-                <Card className="border-white/[0.07] bg-[#0b0b0b]">
+                <Card className="border-white/[0.07] bg-fr-0b0b0b">
                   <CardContent className="flex items-center gap-3 p-5 text-sm text-gray-400">
                     <RefreshCw className="h-4 w-4 animate-spin" />
                     Carregando fechamentos...
                   </CardContent>
                 </Card>
               ) : historico.length === 0 ? (
-                <Card className="border-white/[0.07] bg-[#0b0b0b]">
+                <Card className="border-white/[0.07] bg-fr-0b0b0b">
                   <CardContent className="p-5 text-sm text-gray-500">
                     Nenhum fechamento encontrado neste período.
                   </CardContent>
@@ -1065,7 +1065,7 @@ await salvarMutation.mutateAsync({
                   const dif = Number(fechamento.diferenca || 0);
                   const correto = dif === 0;
                   return (
-                    <Card key={fechamento.id} className="border-white/[0.07] bg-[#0b0b0b]">
+                    <Card key={fechamento.id} className="border-white/[0.07] bg-fr-0b0b0b">
                       <CardContent className="p-4 sm:p-5">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
@@ -1090,7 +1090,7 @@ await salvarMutation.mutateAsync({
                             type="button"
                             variant="outline"
                             onClick={() => void abrirRelatorio(fechamento)}
-                            className="h-9 border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] text-xs font-bold text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                            className="h-9 border-fr-d4af37/20 bg-fr-d4af37/[0.04] text-xs font-bold text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
                           >
                             <FileSpreadsheet className="mr-2 h-4 w-4" />
                             Abrir relatório

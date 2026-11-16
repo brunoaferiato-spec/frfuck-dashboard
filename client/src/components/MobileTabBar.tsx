@@ -48,7 +48,7 @@ export function MobileTabBar({
       <div aria-hidden className={`h-[calc(72px+env(safe-area-inset-bottom))] ${ocultar}`} />
 
       <nav
-        className={`fixed inset-x-0 bottom-0 z-[80] border-t border-[#D4AF37]/15 bg-[#070707]/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl ${ocultar}`}
+        className={`fixed inset-x-0 bottom-0 z-[80] border-t border-fr-d4af37/15 bg-fr-070707/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl ${ocultar}`}
       >
         <div className="mx-auto flex max-w-xl items-stretch justify-around px-1">
           {principais.map((item) => (
@@ -71,10 +71,10 @@ export function MobileTabBar({
             className="absolute inset-0 h-full w-full bg-black/70 backdrop-blur-[2px]"
             onClick={() => setMaisAberto(false)}
           />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-[#D4AF37]/20 bg-[#0b0b0b] px-4 pb-[calc(88px+env(safe-area-inset-bottom))] pt-3 shadow-2xl">
+          <div className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-fr-d4af37/20 bg-fr-0b0b0b px-4 pb-[calc(88px+env(safe-area-inset-bottom))] pt-3 shadow-2xl">
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/15" />
             <div className="mb-2 flex items-center justify-between px-1">
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#D4AF37]/70">Mais opções</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-fri-d4af37/70">Mais opções</p>
               <button
                 type="button"
                 aria-label="Fechar"
@@ -94,7 +94,7 @@ export function MobileTabBar({
                     onClick={() => tocar(item)}
                     className={`flex min-h-[52px] items-center gap-3 rounded-2xl px-4 text-left text-[15px] font-bold transition active:scale-[0.98] ${
                       item.ativo
-                        ? "bg-[#D4AF37] text-black"
+                        ? "bg-fr-d4af37 text-black"
                         : item.destaque === "perigo"
                         ? "bg-white/[0.03] text-rose-300"
                         : "bg-white/[0.03] text-gray-200"
@@ -120,12 +120,12 @@ function BotaoTab({ item, onClick }: { item: ItemTab; onClick: () => void }) {
       type="button"
       onClick={onClick}
       className={`flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-[10.5px] font-bold transition active:scale-95 ${
-        item.ativo ? "text-[#F2D675]" : "text-gray-500"
+        item.ativo ? "text-fri-f2d675" : "text-gray-500"
       }`}
     >
       <span
         className={`flex h-8 w-14 items-center justify-center rounded-full transition ${
-          item.ativo ? "bg-[#D4AF37]/15" : ""
+          item.ativo ? "bg-fr-d4af37/15" : ""
         }`}
       >
         <Icon className="h-[21px] w-[21px]" />

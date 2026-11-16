@@ -220,13 +220,13 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
   const btn = "h-10 rounded-xl px-4 text-xs font-black disabled:opacity-50";
 
   return (
-    <main className="min-h-full bg-[#050505] p-4 text-white sm:p-6 lg:p-8">
+    <main className="min-h-full bg-fr-050505 p-4 text-white sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#D4AF37]/60">COMPRAS</p>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-fri-d4af37/60">COMPRAS</p>
             <h1 className="mt-1 flex items-center gap-3 text-3xl font-black">
-              {tipo === "estoque" ? <Boxes className="h-7 w-7 text-[#F2D675]" /> : <Store className="h-7 w-7 text-[#F2D675]" />}
+              {tipo === "estoque" ? <Boxes className="h-7 w-7 text-fri-f2d675" /> : <Store className="h-7 w-7 text-fri-f2d675" />}
               {titulo}
             </h1>
             <p className="mt-2 text-sm text-gray-500">Estoque mínimo para 15 dias por cidade. O estoquista informa o estoque atual e o sistema calcula o pedido.</p>
@@ -234,7 +234,7 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
           <div>
             <label className="mb-1 block text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">Cidade</label>
             <div className="relative">
-              <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#D4AF37]" />
+              <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-fri-d4af37" />
               <select value={lojaId} onChange={(e) => {
                 const nova = e.target.value;
                 setLojaId(nova);
@@ -256,15 +256,15 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
         {(mensagem || erro) && <div className={`mt-5 rounded-xl border px-4 py-3 text-sm ${erro ? "border-rose-400/20 text-rose-200" : "border-emerald-400/20 text-emerald-200"}`}>{erro || mensagem}</div>}
 
         <div className="mt-5 flex flex-wrap gap-2">
-          {abas.map(([v, l]) => <button key={v} type="button" onClick={() => setAba(v)} className={`rounded-xl px-4 py-2 text-xs font-black ${aba === v ? "bg-[#D4AF37] text-black" : "border border-white/10 text-gray-400"}`}>{l}</button>)}
+          {abas.map(([v, l]) => <button key={v} type="button" onClick={() => setAba(v)} className={`rounded-xl px-4 py-2 text-xs font-black ${aba === v ? "bg-fr-d4af37 text-black" : "border border-white/10 text-gray-400"}`}>{l}</button>)}
         </div>
 
-        <section className="mt-5 rounded-3xl border border-[#D4AF37]/20 bg-[#090909] p-5">
+        <section className="mt-5 rounded-3xl border border-fr-d4af37/20 bg-fr-090909 p-5">
           {/* ---------------- CONTAGEM ---------------- */}
           {aba === "contagem" && (planejamentoId ? (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.06] p-5">
               <p className="text-sm text-gray-400">Planejamento #{planejamentoId} ({detalheQ.data?.planejamento?.lojaNome || loja.nome}) aberto. Continue nas abas Cotação e Pedidos.</p>
-              <button type="button" onClick={novaContagem} className={`${btn} border border-[#D4AF37]/30 text-[#F2D675]`}>Nova contagem</button>
+              <button type="button" onClick={novaContagem} className={`${btn} border border-fr-d4af37/30 text-fri-f2d675`}>Nova contagem</button>
             </div>
           ) : listaDaLoja.length === 0 ? (
             <div className="rounded-2xl border border-white/[0.06] p-8 text-center text-gray-500">
@@ -273,7 +273,7 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
           ) : (
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <button type="button" disabled={planilhaContagem.isPending} onClick={() => planilhaContagem.mutate({ lojaId: loja.id, lojaNome: loja.nome })} className={`${btn} bg-[#D4AF37] text-black`}><Download className="mr-2 inline h-4 w-4" />Baixar planilha para o estoquista</button>
+                <button type="button" disabled={planilhaContagem.isPending} onClick={() => planilhaContagem.mutate({ lojaId: loja.id, lojaNome: loja.nome })} className={`${btn} bg-fr-d4af37 text-black`}><Download className="mr-2 inline h-4 w-4" />Baixar planilha para o estoquista</button>
                 <label className={`${btn} flex cursor-pointer items-center border border-emerald-400/20 text-emerald-200`}>
                   <Upload className="mr-2 inline h-4 w-4" />{lerContagem.isPending ? "Lendo..." : "Anexar planilha preenchida"}
                   <input type="file" accept=".xlsx,.xls" className="hidden" onChange={(e) => { void anexarContagem(e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
@@ -296,14 +296,14 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                           const q = quantidade(l);
                           return (
                             <tr key={l.codigo} className="border-t border-white/[0.05]">
-                              <td className="px-3 py-2 font-black text-[#F2D675]">{l.codigo}</td>
+                              <td className="px-3 py-2 font-black text-fri-f2d675">{l.codigo}</td>
                               <td className="px-3 py-2 font-bold">{l.material}</td>
                               <td className="px-3 py-2 text-center">
                                 <input value={l.estoqueAtual} inputMode="decimal" placeholder="—" onChange={(e) => { const v = e.target.value.replace(/[^0-9.,]/g, ""); setLinhas((a) => a!.map((x, j) => (j === i ? { ...x, estoqueAtual: v } : x))); }} className="h-9 w-24 rounded-lg border border-white/10 bg-black/30 px-2 text-center font-bold text-white outline-none" />
                               </td>
                               <td className="px-3 py-2 text-center text-gray-400">{l.minimo}</td>
                               <td className="px-3 py-2 text-center">
-                                <input value={l.solicitar !== null ? l.solicitar : String(sugerido(l))} inputMode="numeric" onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, ""); setLinhas((a) => a!.map((x, j) => (j === i ? { ...x, solicitar: v } : x))); }} className={`h-9 w-20 rounded-lg border px-2 text-center font-black outline-none ${q > 0 ? "border-[#D4AF37]/30 bg-[#D4AF37]/[0.06] text-[#F2D675]" : "border-white/10 bg-black/30 text-gray-500"}`} title="Sugestão: mínimo - estoque atual. Pode ajustar." />
+                                <input value={l.solicitar !== null ? l.solicitar : String(sugerido(l))} inputMode="numeric" onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, ""); setLinhas((a) => a!.map((x, j) => (j === i ? { ...x, solicitar: v } : x))); }} className={`h-9 w-20 rounded-lg border px-2 text-center font-black outline-none ${q > 0 ? "border-fr-d4af37/30 bg-fr-d4af37/[0.06] text-fri-f2d675" : "border-white/10 bg-black/30 text-gray-500"}`} title="Sugestão: mínimo - estoque atual. Pode ajustar." />
                               </td>
                             </tr>
                           );
@@ -314,7 +314,7 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                   <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
                     <span className="text-xs text-gray-500">{totalPedir} produto(s) para pedir</span>
                     <button type="button" onClick={() => { setLinhas(null); setArquivoNome(null); setAvisoContagem(""); }} className={`${btn} border border-white/10 text-gray-400`}>Descartar</button>
-                    <button type="button" disabled={criarPlano.isPending || totalPedir === 0} onClick={salvarPlanejamento} className={`${btn} bg-[#D4AF37] text-black`}><Save className="mr-2 inline h-4 w-4" />Salvar planejamento</button>
+                    <button type="button" disabled={criarPlano.isPending || totalPedir === 0} onClick={salvarPlanejamento} className={`${btn} bg-fr-d4af37 text-black`}><Save className="mr-2 inline h-4 w-4" />Salvar planejamento</button>
                   </div>
                 </>
               )}
@@ -329,10 +329,10 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
           ) : (
             <>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-black text-[#F2D675]">Planejamento #{planejamentoId} • {detalheQ.data?.planejamento?.lojaNome}</p>
+                <p className="text-sm font-black text-fri-f2d675">Planejamento #{planejamentoId} • {detalheQ.data?.planejamento?.lojaNome}</p>
                 <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => menores.mutate({ planejamentoId })} className={`${btn} border border-emerald-400/20 text-emerald-200`}><Check className="mr-2 inline h-4 w-4" />Selecionar menores preços</button>
-                  <button type="button" onClick={() => fechar.mutate({ planejamentoId })} className={`${btn} bg-[#D4AF37] text-black`}><Save className="mr-2 inline h-4 w-4" />Fechar cotação e salvar pedidos</button>
+                  <button type="button" onClick={() => fechar.mutate({ planejamentoId })} className={`${btn} bg-fr-d4af37 text-black`}><Save className="mr-2 inline h-4 w-4" />Fechar cotação e salvar pedidos</button>
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -340,13 +340,13 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                   <thead className="bg-white/[0.025] text-[9px] uppercase text-gray-600">
                     <tr>
                       <th className="px-3 py-3 text-left">Código</th><th className="px-3 py-3 text-left">Material</th><th className="px-3 py-3 text-right">Qtd</th>
-                      {fornecedores.map((f: any) => <th key={f.id} className="px-3 py-3 text-center"><button type="button" onClick={() => setFornecedorModal(f)} className="font-black text-gray-300 hover:text-[#F2D675]">{f.nome}</button><span className="ml-2 rounded-full bg-white/[0.04] px-2 py-1">{countMap.get(Number(f.id)) || 0}/{detalheQ.data?.itens?.length || 0}</span></th>)}
+                      {fornecedores.map((f: any) => <th key={f.id} className="px-3 py-3 text-center"><button type="button" onClick={() => setFornecedorModal(f)} className="font-black text-gray-300 hover:text-fri-f2d675">{f.nome}</button><span className="ml-2 rounded-full bg-white/[0.04] px-2 py-1">{countMap.get(Number(f.id)) || 0}/{detalheQ.data?.itens?.length || 0}</span></th>)}
                     </tr>
                   </thead>
                   <tbody>
                     {(detalheQ.data?.itens || []).map((it: any) => (
                       <tr key={it.id} className="border-t border-white/[0.05]">
-                        <td className="px-3 py-3 font-black text-[#F2D675]">{it.codigo}</td>
+                        <td className="px-3 py-3 font-black text-fri-f2d675">{it.codigo}</td>
                         <td className="px-3 py-3 font-bold">{it.item}</td>
                         <td className="px-3 py-2 text-right">
                           <input
@@ -361,7 +361,7 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                               else setQuantidadeLocal((a) => { const n = { ...a }; delete n[k]; return n; });
                             }}
                             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                            className="h-10 w-20 rounded-xl border border-[#D4AF37]/25 bg-black/30 px-2 text-center font-black text-[#F2D675] outline-none disabled:opacity-50"
+                            className="h-10 w-20 rounded-xl border border-fr-d4af37/25 bg-black/30 px-2 text-center font-black text-fri-f2d675 outline-none disabled:opacity-50"
                           />
                         </td>
                         {fornecedores.map((f: any) => {
@@ -370,10 +370,10 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                           const val = local[key] !== undefined ? local[key] : saved ? Number(saved).toFixed(2).replace(".", ",") : "";
                           const sel = Number(it.fornecedorSelecionadoId) === Number(f.id);
                           return (
-                            <td key={f.id} className={`px-3 py-2 ${sel ? "bg-[#D4AF37]/[0.06]" : ""}`}>
+                            <td key={f.id} className={`px-3 py-2 ${sel ? "bg-fr-d4af37/[0.06]" : ""}`}>
                               <div className="flex min-w-[190px] gap-2">
                                 <input value={val} placeholder="0,00" onChange={(e) => setLocal((a) => ({ ...a, [key]: e.target.value }))} onBlur={() => { const n = Number(String(val).replace(/\./g, "").replace(",", ".").replace(/[^0-9.-]/g, "")); if (n > 0) salvarCotacao.mutate({ itemId: Number(it.id), fornecedorId: Number(f.id), valor: n }); }} className="h-10 min-w-0 flex-1 rounded-xl border border-emerald-400/20 bg-black/30 px-3 text-right text-emerald-200 outline-none" />
-                                {saved && <button type="button" onClick={() => selecionar.mutate({ itemId: Number(it.id), fornecedorId: Number(f.id) })} className={`h-10 rounded-xl px-3 text-[10px] font-black ${sel ? "bg-[#D4AF37] text-black" : "border border-white/10 text-gray-400"}`}>{sel ? "OK" : "Escolher"}</button>}
+                                {saved && <button type="button" onClick={() => selecionar.mutate({ itemId: Number(it.id), fornecedorId: Number(f.id) })} className={`h-10 rounded-xl px-3 text-[10px] font-black ${sel ? "bg-fr-d4af37 text-black" : "border border-white/10 text-gray-400"}`}>{sel ? "OK" : "Escolher"}</button>}
                               </div>
                             </td>
                           );
@@ -406,8 +406,8 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                     <p className="text-xs text-gray-600">Fornecedor</p>
                     <h3 className="mt-1 text-xl font-black">{p.fornecedorNome}</h3>
                     <p className="mt-3 text-sm text-gray-500">{p.totalItens} itens • {p.totalQuantidade} unidades</p>
-                    <p className="mt-2 text-2xl font-black text-[#F2D675]">{moeda(p.totalValor)}</p>
-                    <button type="button" onClick={() => arquivoPedido.mutate({ pedidoId: Number(p.id) })} className="mt-4 h-10 rounded-xl bg-[#D4AF37] px-4 text-xs font-black text-black"><Download className="mr-2 inline h-4 w-4" />Baixar pedido</button>
+                    <p className="mt-2 text-2xl font-black text-fri-f2d675">{moeda(p.totalValor)}</p>
+                    <button type="button" onClick={() => arquivoPedido.mutate({ pedidoId: Number(p.id) })} className="mt-4 h-10 rounded-xl bg-fr-d4af37 px-4 text-xs font-black text-black"><Download className="mr-2 inline h-4 w-4" />Baixar pedido</button>
                   </div>
                 ))}
               </div>
@@ -431,10 +431,10 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                       <button type="button" onClick={() => { setPlanejamentoId(Number(p.id)); if (p.lojaId) setLojaId(String(p.lojaId)); setAba(p.status === "pedido_salvo" ? "pedidos" : "cotacao"); }} className="block w-full text-left">
                         <div className="flex items-start justify-between gap-3">
                           <p className="font-black">Planejamento #{p.id}</p>
-                          <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] px-2 py-1 text-[9px] font-black text-[#F2D675]">{p.lojaNome || "Sem cidade"}</span>
+                          <span className="rounded-full border border-fr-d4af37/20 bg-fr-d4af37/[0.04] px-2 py-1 text-[9px] font-black text-fri-f2d675">{p.lojaNome || "Sem cidade"}</span>
                         </div>
                         <p className="mt-2 text-xs text-gray-500">{p.totalItens} itens • {p.totalQuantidade} unidades</p>
-                        <p className="mt-2 text-[11px] font-bold text-[#F2D675]">{p.status === "pedido_salvo" ? "Pedido salvo" : p.status === "cotacao" ? "Em cotação" : "Planejamento"}</p>
+                        <p className="mt-2 text-[11px] font-bold text-fri-f2d675">{p.status === "pedido_salvo" ? "Pedido salvo" : p.status === "cotacao" ? "Em cotação" : "Planejamento"}</p>
                         <p className="mt-2 text-[11px] text-gray-600">{new Date(p.createdAt).toLocaleString("pt-BR")}</p>
                       </button>
                       <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.05] pt-3">
@@ -461,14 +461,14 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
             <div>
               <div className="flex gap-2">
                 <input value={novoFornecedor} onChange={(e) => setNovoFornecedor(e.target.value)} placeholder="Nome do fornecedor" className="h-11 flex-1 rounded-xl border border-white/10 bg-black/40 px-3 text-sm" />
-                <button type="button" onClick={() => novoFornecedor.trim() && criarFornecedor.mutate({ nome: novoFornecedor.trim() })} className="h-11 rounded-xl bg-[#D4AF37] px-4 text-sm font-black text-black"><Settings2 className="mr-2 inline h-4 w-4" />Adicionar</button>
+                <button type="button" onClick={() => novoFornecedor.trim() && criarFornecedor.mutate({ nome: novoFornecedor.trim() })} className="h-11 rounded-xl bg-fr-d4af37 px-4 text-sm font-black text-black"><Settings2 className="mr-2 inline h-4 w-4" />Adicionar</button>
               </div>
               <p className="mt-2 text-xs text-gray-600">Fornecedores de {titulo.toLowerCase()} (separados dos de peças).</p>
               <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {(fornecedoresQ.data || []).map((f: any) => (
                   <div key={f.id} className="flex items-center justify-between rounded-xl border border-white/[0.07] px-4 py-3">
                     <span className={f.ativo ? "font-bold" : "text-gray-600"}>{f.nome}</span>
-                    <button type="button" onClick={() => toggleFornecedor.mutate({ id: Number(f.id), ativo: !f.ativo })} className="text-xs font-black text-[#F2D675]">{f.ativo ? "Desativar" : "Ativar"}</button>
+                    <button type="button" onClick={() => toggleFornecedor.mutate({ id: Number(f.id), ativo: !f.ativo })} className="text-xs font-black text-fri-f2d675">{f.ativo ? "Desativar" : "Ativar"}</button>
                   </div>
                 ))}
               </div>
@@ -479,9 +479,9 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
           {aba === "produtos" && (
             <div>
               {listaInicialQ.data?.vazio && listaInicialQ.data?.temLista && (
-                <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] p-4">
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-fr-d4af37/20 bg-fr-d4af37/[0.04] p-4">
                   <p className="text-sm text-gray-300">Carregar a lista de insumos e os mínimos de Blumenau, São José, Florianópolis e São Leopoldo, tirados das planilhas atuais.</p>
-                  <button type="button" disabled={carregarLista.isPending} onClick={() => carregarLista.mutate()} className={`${btn} bg-[#D4AF37] text-black`}>Carregar lista inicial</button>
+                  <button type="button" disabled={carregarLista.isPending} onClick={() => carregarLista.mutate()} className={`${btn} bg-fr-d4af37 text-black`}>Carregar lista inicial</button>
                 </div>
               )}
 
@@ -490,7 +490,7 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                 <input value={novoProduto.codigo} onChange={(e) => setNovoProduto((a) => ({ ...a, codigo: e.target.value }))} placeholder="Código" className="h-11 w-36 rounded-xl border border-white/10 bg-black/40 px-3 text-sm" />
                 <input value={novoProduto.material} onChange={(e) => setNovoProduto((a) => ({ ...a, material: e.target.value }))} placeholder="Material" className="h-11 min-w-[220px] flex-1 rounded-xl border border-white/10 bg-black/40 px-3 text-sm" />
                 <input value={novoProduto.minimo} inputMode="numeric" onChange={(e) => setNovoProduto((a) => ({ ...a, minimo: e.target.value.replace(/[^0-9]/g, "") }))} placeholder="Mínimo" className="h-11 w-28 rounded-xl border border-white/10 bg-black/40 px-3 text-center text-sm" />
-                <button type="button" disabled={salvarProduto.isPending} onClick={() => void adicionarProduto()} className="h-11 rounded-xl bg-[#D4AF37] px-4 text-sm font-black text-black disabled:opacity-50"><Plus className="mr-1 inline h-4 w-4" />Adicionar</button>
+                <button type="button" disabled={salvarProduto.isPending} onClick={() => void adicionarProduto()} className="h-11 rounded-xl bg-fr-d4af37 px-4 text-sm font-black text-black disabled:opacity-50"><Plus className="mr-1 inline h-4 w-4" />Adicionar</button>
               </div>
 
               <div className="mt-5 overflow-x-auto">
@@ -504,10 +504,10 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                       const valor = minimoLocal[k] !== undefined ? minimoLocal[k] : p.minimo == null ? "" : String(p.minimo);
                       return (
                         <tr key={p.id} className={`border-t border-white/[0.05] ${p.ativo ? "" : "opacity-40"}`}>
-                          <td className="px-3 py-2 font-black text-[#F2D675]">{p.codigo}</td>
+                          <td className="px-3 py-2 font-black text-fri-f2d675">{p.codigo}</td>
                           <td className="px-3 py-2 font-bold">{p.material}</td>
                           <td className="px-3 py-2 text-center">
-                            <input type="checkbox" disabled={!p.ativo || salvarMinimo.isPending} checked={p.naLista} onChange={(e) => salvarMinimo.mutate({ produtoId: p.id, lojaId: loja.id, minimo: e.target.checked ? Number(p.minimo || 0) : null })} className="h-4 w-4 accent-[#D4AF37]" />
+                            <input type="checkbox" disabled={!p.ativo || salvarMinimo.isPending} checked={p.naLista} onChange={(e) => salvarMinimo.mutate({ produtoId: p.id, lojaId: loja.id, minimo: e.target.checked ? Number(p.minimo || 0) : null })} className="h-4 w-4 accent-fr-d4af37" />
                           </td>
                           <td className="px-3 py-2 text-center">
                             <input
@@ -522,11 +522,11 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
                                 if (n !== Number(p.minimo || 0)) salvarMinimo.mutate({ produtoId: p.id, lojaId: loja.id, minimo: n });
                               }}
                               onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                              className="h-9 w-24 rounded-lg border border-[#D4AF37]/25 bg-black/30 px-2 text-center font-black text-[#F2D675] outline-none disabled:opacity-40"
+                              className="h-9 w-24 rounded-lg border border-fr-d4af37/25 bg-black/30 px-2 text-center font-black text-fri-f2d675 outline-none disabled:opacity-40"
                             />
                           </td>
                           <td className="px-3 py-2 text-right">
-                            <button type="button" onClick={() => produtoAtivo.mutate({ id: p.id, ativo: !p.ativo })} className="text-xs font-black text-gray-400 hover:text-[#F2D675]">{p.ativo ? "Desativar" : "Reativar"}</button>
+                            <button type="button" onClick={() => produtoAtivo.mutate({ id: p.id, ativo: !p.ativo })} className="text-xs font-black text-gray-400 hover:text-fri-f2d675">{p.ativo ? "Desativar" : "Reativar"}</button>
                           </td>
                         </tr>
                       );
@@ -543,18 +543,18 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
 
       {fornecedorModal && planejamentoId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
-          <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#0a0a0a] p-5">
+          <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-fr-0a0a0a p-5">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#D4AF37]/60">COTAÇÃO DO FORNECEDOR</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-fri-d4af37/60">COTAÇÃO DO FORNECEDOR</p>
                 <h2 className="mt-1 text-2xl font-black">{fornecedorModal.nome}</h2>
                 <p className="mt-2 text-xs text-gray-500">{countMap.get(Number(fornecedorModal.id)) || 0}/{detalheQ.data?.itens?.length || 0} preços recebidos</p>
               </div>
               <button type="button" onClick={() => setFornecedorModal(null)} className="rounded-xl border border-white/10 p-2 text-gray-500"><X className="h-4 w-4" /></button>
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <button type="button" onClick={() => arquivoCotacao.mutate({ planejamentoId, fornecedorId: Number(fornecedorModal.id) })} className="rounded-2xl border border-[#D4AF37]/20 p-5 text-left">
-                <Download className="h-5 w-5 text-[#F2D675]" /><p className="mt-3 font-black">Baixar arquivo de cotação</p><p className="mt-1 text-xs text-gray-600">Código e item travados. Só o preço fica editável.</p>
+              <button type="button" onClick={() => arquivoCotacao.mutate({ planejamentoId, fornecedorId: Number(fornecedorModal.id) })} className="rounded-2xl border border-fr-d4af37/20 p-5 text-left">
+                <Download className="h-5 w-5 text-fri-f2d675" /><p className="mt-3 font-black">Baixar arquivo de cotação</p><p className="mt-1 text-xs text-gray-600">Código e item travados. Só o preço fica editável.</p>
               </button>
               <label className="cursor-pointer rounded-2xl border border-emerald-400/20 p-5">
                 <Upload className="h-5 w-5 text-emerald-300" /><p className="mt-3 font-black">Anexar arquivo preenchido</p><p className="mt-1 text-xs text-gray-600">Os preços entram automaticamente.</p>
@@ -581,7 +581,7 @@ export default function ComprasInsumos({ tipo }: { tipo: Tipo }) {
         };
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
-            <div className="w-full max-w-md rounded-3xl border border-rose-500/20 bg-[#0a0a0a] p-5">
+            <div className="w-full max-w-md rounded-3xl border border-rose-500/20 bg-fr-0a0a0a p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-300/70">EXCLUSÃO PROTEGIDA</p>

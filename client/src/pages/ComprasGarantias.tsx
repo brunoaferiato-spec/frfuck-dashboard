@@ -238,7 +238,7 @@ function formDe(g: any): Form {
   };
 }
 
-const campo = "mt-1 h-10 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50 [color-scheme:dark]";
+const campo = "mt-1 h-10 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white outline-none focus:border-fr-d4af37/50 [color-scheme:dark]";
 const rotulo = "block text-[10px] font-black uppercase tracking-[0.06em] text-gray-500";
 
 // Etapa 1: anexa a venda (preenche cliente, pneu e veículo) e completa KM atual, posição e defeito para gerar o termo.
@@ -281,9 +281,9 @@ function FormGarantia({ form, setForm, onSalvar, onCancelar, salvando }: { form:
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {!form.id && (
-        <label className="flex min-h-[90px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/30 bg-[#D4AF37]/[0.03] px-4 text-center hover:border-[#D4AF37]/50 sm:col-span-2">
-          <FileText className="h-6 w-6 text-[#F2D675]" />
-          <span className="mt-2 text-sm font-black text-[#F2D675]">{lendo ? "Lendo a venda..." : form.arquivoVenda ? `Venda anexada: ${form.arquivoVenda.name}` : "Anexar a venda (PDF)"}</span>
+        <label className="flex min-h-[90px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-fr-d4af37/30 bg-fr-d4af37/[0.03] px-4 text-center hover:border-fr-d4af37/50 sm:col-span-2">
+          <FileText className="h-6 w-6 text-fri-f2d675" />
+          <span className="mt-2 text-sm font-black text-fri-f2d675">{lendo ? "Lendo a venda..." : form.arquivoVenda ? `Venda anexada: ${form.arquivoVenda.name}` : "Anexar a venda (PDF)"}</span>
           <span className="mt-1 text-[11px] text-gray-500">Preenche loja, cliente, telefone, CPF e pneu automaticamente</span>
           <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => { void anexarVenda(e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
         </label>
@@ -308,13 +308,13 @@ function FormGarantia({ form, setForm, onSalvar, onCancelar, salvando }: { form:
         <label className={`${rotulo} sm:col-span-2`}>Pneu *<input value={form.pneu} onChange={set("pneu")} placeholder="Ex.: PNEU 185/60/15 PEARLY BP MAX-PRL005 84H" className={campo} /></label>
       )}
 
-      <div className="rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.03] p-3 sm:col-span-2">
-        <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">Preencher na hora</p>
+      <div className="rounded-2xl border border-fr-d4af37/25 bg-fr-d4af37/[0.03] p-3 sm:col-span-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.08em] text-fri-d4af37/80">Preencher na hora</p>
         <div className="mt-2 grid gap-3 sm:grid-cols-4">
           <label className={rotulo}>KM atual *<input value={form.kmAtual} onChange={(e) => setForm({ ...form, kmAtual: e.target.value.replace(/[^0-9]/g, "") })} inputMode="numeric" className={campo} /></label>
           <label className={rotulo}>KM na troca *<input value={form.kmVenda == null ? "" : String(form.kmVenda)} onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, ""); setForm({ ...form, kmVenda: v === "" ? null : Number(v) }); }} inputMode="numeric" placeholder="Vem da venda" className={campo} /></label>
           <div className={`${rotulo} sm:col-span-2`}>KM rodado
-            <p className={`mt-1 flex h-10 items-center rounded-xl border px-3 text-sm font-black ${form.kmAtual && form.kmVenda != null && kmRodado(form.kmAtual, form.kmVenda) == null ? "border-rose-400/40 text-rose-200" : "border-white/[0.06] text-[#F2D675]"}`}>
+            <p className={`mt-1 flex h-10 items-center rounded-xl border px-3 text-sm font-black ${form.kmAtual && form.kmVenda != null && kmRodado(form.kmAtual, form.kmVenda) == null ? "border-rose-400/40 text-rose-200" : "border-white/[0.06] text-fri-f2d675"}`}>
               {form.kmAtual && form.kmVenda != null ? (kmRodado(form.kmAtual, form.kmVenda) == null ? "KM atual menor que o KM na troca" : kmTexto(kmRodado(form.kmAtual, form.kmVenda))) : "—"}
             </p>
           </div>
@@ -326,7 +326,7 @@ function FormGarantia({ form, setForm, onSalvar, onCancelar, salvando }: { form:
 
       <div className="flex justify-end gap-2 sm:col-span-2">
         <button type="button" onClick={onCancelar} className="h-10 rounded-xl border border-white/10 px-4 text-xs font-black text-gray-400">Cancelar</button>
-        <button type="button" disabled={salvando || lendo} onClick={onSalvar} className="h-10 rounded-xl bg-[#D4AF37] px-4 text-xs font-black text-black disabled:opacity-50"><Save className="mr-2 inline h-4 w-4" />{form.id ? "Salvar" : "Salvar e gerar termo"}</button>
+        <button type="button" disabled={salvando || lendo} onClick={onSalvar} className="h-10 rounded-xl bg-fr-d4af37 px-4 text-xs font-black text-black disabled:opacity-50"><Save className="mr-2 inline h-4 w-4" />{form.id ? "Salvar" : "Salvar e gerar termo"}</button>
       </div>
     </div>
   );
@@ -487,7 +487,7 @@ function FormularioFornecedor({ g, anexos, modelo, onGerado, onSalvarDados }: {
         </div>
       )}
       {erroLocal && <p className="text-xs font-bold text-rose-300">{erroLocal}</p>}
-      <button type="button" disabled={gerando} onClick={() => void gerar()} className="h-9 rounded-xl bg-[#D4AF37] px-3 text-xs font-black text-black disabled:opacity-50">
+      <button type="button" disabled={gerando} onClick={() => void gerar()} className="h-9 rounded-xl bg-fr-d4af37 px-3 text-xs font-black text-black disabled:opacity-50">
         <Download className="mr-2 inline h-4 w-4" />{gerando ? "Gerando..." : `Gerar formulário ${modelo.nome} (PDF)`}
       </button>
     </div>
@@ -592,12 +592,12 @@ function MensagemWhatsapp({ g, anexos, fornecedor, onSalvarDados, onArquivar }: 
       <label className={rotulo}>Mensagem
         <textarea value={mensagem} onChange={(e) => { setTexto(e.target.value); setEditado(true); }} rows={10} className={`${campo} h-auto py-2 font-mono text-xs leading-5`} />
       </label>
-      {editado && <button type="button" onClick={() => { setEditado(false); setTexto(""); }} className="text-[11px] font-black text-gray-500 hover:text-[#F2D675]"><RotateCcw className="mr-1 inline h-3 w-3" />Refazer a mensagem com os dados</button>}
+      {editado && <button type="button" onClick={() => { setEditado(false); setTexto(""); }} className="text-[11px] font-black text-gray-500 hover:text-fri-f2d675"><RotateCcw className="mr-1 inline h-3 w-3" />Refazer a mensagem com os dados</button>}
       {aviso && <p className="text-xs font-bold text-amber-200">{aviso}</p>}
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => void abrirWhatsapp()} className="h-9 rounded-xl bg-emerald-500 px-3 text-xs font-black text-black">Abrir no WhatsApp</button>
         <button type="button" onClick={() => void copiar()} className="h-9 rounded-xl border border-white/10 px-3 text-xs font-black text-gray-300">Copiar mensagem</button>
-        <button type="button" disabled={baixando || !midias.length} onClick={() => void baixarMidias()} className="h-9 rounded-xl border border-[#D4AF37]/25 px-3 text-xs font-black text-[#F2D675] disabled:opacity-40">
+        <button type="button" disabled={baixando || !midias.length} onClick={() => void baixarMidias()} className="h-9 rounded-xl border border-fr-d4af37/25 px-3 text-xs font-black text-fri-f2d675 disabled:opacity-40">
           <Download className="mr-2 inline h-4 w-4" />{baixando ? "Baixando..." : `Baixar fotos e vídeo (${midias.length})`}
         </button>
       </div>
@@ -641,16 +641,16 @@ function EtapasFinais({ g, anexos, dataAcao, setDataAcao, enviando, onAnexar, on
   const finalizada = g.status === "finalizada";
   const podeFinalizar = !finalizada && (respondida || g.vencida);
   const botaoAnexar = (categoria: Categoria, rotuloBotao: string) => (
-    <label className={`flex h-9 cursor-pointer items-center rounded-xl border border-[#D4AF37]/25 px-3 text-xs font-black text-[#F2D675] ${enviando ? "pointer-events-none opacity-50" : ""}`}>
+    <label className={`flex h-9 cursor-pointer items-center rounded-xl border border-fr-d4af37/25 px-3 text-xs font-black text-fri-f2d675 ${enviando ? "pointer-events-none opacity-50" : ""}`}>
       <Paperclip className="mr-2 h-4 w-4" />{enviando === categoria ? "Enviando..." : rotuloBotao}
       <input type="file" multiple className="hidden" accept="image/*,application/pdf,.doc,.docx,.txt" onChange={(e) => { onAnexar(categoria, e.target.files); e.currentTarget.value = ""; }} />
     </label>
   );
   const caixa = (ativo: boolean, feito: boolean) =>
-    `rounded-2xl border p-3 ${feito ? "border-emerald-400/25 bg-emerald-400/[0.03]" : ativo ? "border-[#D4AF37]/40 bg-[#D4AF37]/[0.04]" : "border-white/[0.06] opacity-50"}`;
+    `rounded-2xl border p-3 ${feito ? "border-emerald-400/25 bg-emerald-400/[0.03]" : ativo ? "border-fr-d4af37/40 bg-fr-d4af37/[0.04]" : "border-white/[0.06] opacity-50"}`;
   const titulo = (n: number, t: string, feito: boolean) => (
     <p className="flex items-center gap-2 text-xs font-black text-gray-100">
-      {feito ? <CheckCircle2 className="h-4 w-4 text-emerald-300" /> : <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#D4AF37]/20 text-[10px] text-[#F2D675]">{n}</span>}
+      {feito ? <CheckCircle2 className="h-4 w-4 text-emerald-300" /> : <span className="flex h-5 w-5 items-center justify-center rounded-full bg-fr-d4af37/20 text-[10px] text-fri-f2d675">{n}</span>}
       {t}
     </p>
   );
@@ -659,7 +659,7 @@ function EtapasFinais({ g, anexos, dataAcao, setDataAcao, enviando, onAnexar, on
   return (
     <div className="mt-4 space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">Depois do envio</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.08em] text-fri-d4af37/80">Depois do envio</p>
         <label className="flex items-center gap-2 text-[10px] font-black uppercase text-gray-500">Data<input type="date" value={dataAcao} onChange={(e) => setDataAcao(e.target.value)} className="h-8 rounded-lg border border-white/10 bg-black/40 px-2 text-xs text-white [color-scheme:dark]" /></label>
       </div>
 
@@ -711,7 +711,7 @@ function EtapasFinais({ g, anexos, dataAcao, setDataAcao, enviando, onAnexar, on
             <div className="mt-2 flex flex-wrap gap-2">
               {botaoAnexar("cliente", qtd("cliente") ? `Conversa (${qtd("cliente")})` : "Anexar print / conversa")}
               {(g.status === "negada" ? (["devolvido", "descartado"] as Resultado[]) : (["pneu_novo", "reembolso"] as Resultado[])).map((r) => (
-                <button key={r} type="button" disabled={!g.conversaCliente} onClick={() => onFinalizar(r)} className="h-9 rounded-xl bg-[#D4AF37] px-3 text-xs font-black text-black disabled:opacity-40">
+                <button key={r} type="button" disabled={!g.conversaCliente} onClick={() => onFinalizar(r)} className="h-9 rounded-xl bg-fr-d4af37 px-3 text-xs font-black text-black disabled:opacity-40">
                   Finalizar: {RESULTADO_NOME[r].toLowerCase()}
                 </button>
               ))}
@@ -742,16 +742,16 @@ function EtapasIniciais({ g, anexos, dataAcao, enviando, onAnexar, onSalvarForne
   const qtd = (c: Categoria) => anexos.filter((a) => a.categoria === c).length;
   const passo2Ok = !!g.fornecedor && !!g.notaFiscal;
   const botaoAnexar = (categoria: Categoria, texto: string, destaque = false) => (
-    <label className={`flex h-9 cursor-pointer items-center rounded-xl px-3 text-xs font-black ${destaque ? "bg-[#D4AF37] text-black" : "border border-[#D4AF37]/25 text-[#F2D675]"} ${enviando ? "pointer-events-none opacity-50" : ""}`}>
+    <label className={`flex h-9 cursor-pointer items-center rounded-xl px-3 text-xs font-black ${destaque ? "bg-fr-d4af37 text-black" : "border border-fr-d4af37/25 text-fri-f2d675"} ${enviando ? "pointer-events-none opacity-50" : ""}`}>
       <Paperclip className="mr-2 h-4 w-4" />{enviando === categoria ? "Enviando..." : texto}
       <input type="file" multiple className="hidden" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => { onAnexar(categoria, e.target.files); e.currentTarget.value = ""; }} />
     </label>
   );
   const caixa = (ativo: boolean, feito: boolean) =>
-    `rounded-2xl border p-3 ${feito ? "border-emerald-400/25 bg-emerald-400/[0.03]" : ativo ? "border-[#D4AF37]/40 bg-[#D4AF37]/[0.04]" : "border-white/[0.06] opacity-50"}`;
+    `rounded-2xl border p-3 ${feito ? "border-emerald-400/25 bg-emerald-400/[0.03]" : ativo ? "border-fr-d4af37/40 bg-fr-d4af37/[0.04]" : "border-white/[0.06] opacity-50"}`;
   const titulo = (n: number, texto: string, feito: boolean) => (
     <p className="flex items-center gap-2 text-xs font-black text-gray-100">
-      {feito ? <CheckCircle2 className="h-4 w-4 text-emerald-300" /> : <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#D4AF37]/20 text-[10px] text-[#F2D675]">{n}</span>}
+      {feito ? <CheckCircle2 className="h-4 w-4 text-emerald-300" /> : <span className="flex h-5 w-5 items-center justify-center rounded-full bg-fr-d4af37/20 text-[10px] text-fri-f2d675">{n}</span>}
       {texto}
     </p>
   );
@@ -762,7 +762,7 @@ function EtapasIniciais({ g, anexos, dataAcao, enviando, onAnexar, onSalvarForne
         {titulo(1, "Termo de garantia", g.termoAssinado)}
         <p className="mt-1 text-[11px] text-gray-500">{g.termoAssinado ? `Termo assinado anexado (${qtd("termo")}).` : "Baixe o termo, mande para o caixa imprimir e colher a assinatura do cliente; depois anexe o termo assinado."}</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          <button type="button" onClick={() => void baixarTermo(g)} className={`h-9 rounded-xl px-3 text-xs font-black ${g.termoAssinado ? "border border-white/10 text-gray-300" : "bg-[#D4AF37] text-black"}`}><Download className="mr-2 inline h-4 w-4" />Baixar termo (PDF)</button>
+          <button type="button" onClick={() => void baixarTermo(g)} className={`h-9 rounded-xl px-3 text-xs font-black ${g.termoAssinado ? "border border-white/10 text-gray-300" : "bg-fr-d4af37 text-black"}`}><Download className="mr-2 inline h-4 w-4" />Baixar termo (PDF)</button>
           {botaoAnexar("termo", g.termoAssinado ? "Anexar outro" : "Anexar termo assinado", false)}
         </div>
       </div>
@@ -776,7 +776,7 @@ function EtapasIniciais({ g, anexos, dataAcao, enviando, onAnexar, onSalvarForne
               <label className={rotulo}>Nº da nota fiscal *<input value={notaFiscal} onChange={(e) => setNotaFiscal(e.target.value)} className={campo} /></label>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" disabled={salvandoFornecedor} onClick={() => onSalvarFornecedor(fornecedor, notaFiscal)} className="h-9 rounded-xl bg-[#D4AF37] px-3 text-xs font-black text-black disabled:opacity-50"><Save className="mr-2 inline h-4 w-4" />Salvar</button>
+              <button type="button" disabled={salvandoFornecedor} onClick={() => onSalvarFornecedor(fornecedor, notaFiscal)} className="h-9 rounded-xl bg-fr-d4af37 px-3 text-xs font-black text-black disabled:opacity-50"><Save className="mr-2 inline h-4 w-4" />Salvar</button>
               {botaoAnexar("nota", qtd("nota") ? `Nota fiscal (${qtd("nota")})` : "Anexar nota fiscal")}
             </div>
           </>
@@ -913,19 +913,19 @@ export default function ComprasGarantias() {
   const finalizar = (resultado: Resultado) => g && definirStatus.mutate({ garantiaId: g.id, status: "finalizada", data: dataAcao, resultado });
 
   return (
-    <main className="min-h-full bg-[#050505] p-4 text-white sm:p-6 lg:p-8">
+    <main className="min-h-full bg-fr-050505 p-4 text-white sm:p-6 lg:p-8">
       <div className="mx-auto max-w-[1500px]">
-        <section className="rounded-3xl border border-[#D4AF37]/20 bg-[#090909] p-5 sm:p-7">
+        <section className="rounded-3xl border border-fr-d4af37/20 bg-fr-090909 p-5 sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#D4AF37]/60">COMPRAS • GARANTIAS</p>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-fri-d4af37/60">COMPRAS • GARANTIAS</p>
               <h1 className="mt-2 text-3xl font-black">Garantia de pneus</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-500">
                 Termo de envio para análise, fotos, venda e nota. Prazo de 30 dias para resolver com o cliente; passou disso, é pneu novo ou reembolso.
                 Enquanto o fornecedor não responde, o aviso pede cobrança toda semana.
               </p>
             </div>
-            <button type="button" onClick={() => { setNovo(formVazio(lojaFiltro ? String(lojaFiltro) : "")); setAbertaId(null); }} className="h-11 rounded-xl bg-[#D4AF37] px-4 text-sm font-black text-black">
+            <button type="button" onClick={() => { setNovo(formVazio(lojaFiltro ? String(lojaFiltro) : "")); setAbertaId(null); }} className="h-11 rounded-xl bg-fr-d4af37 px-4 text-sm font-black text-black">
               <Plus className="mr-2 inline h-4 w-4" />Nova garantia
             </button>
           </div>
@@ -955,7 +955,7 @@ export default function ComprasGarantias() {
               {EMPRESAS.map((e) => <option key={e.lojaId} value={e.lojaId}>{e.loja}</option>)}
             </select>
             {(["andamento", "finalizadas", "todas"] as const).map((s) => (
-              <button key={s} type="button" onClick={() => setSituacao(s)} className={`h-10 rounded-xl px-4 text-xs font-black ${situacao === s ? "bg-[#D4AF37] text-black" : "border border-white/10 text-gray-400"}`}>
+              <button key={s} type="button" onClick={() => setSituacao(s)} className={`h-10 rounded-xl px-4 text-xs font-black ${situacao === s ? "bg-fr-d4af37 text-black" : "border border-white/10 text-gray-400"}`}>
                 {s === "andamento" ? "Em andamento" : s === "finalizadas" ? "Finalizadas" : "Todas"}
               </button>
             ))}
@@ -967,23 +967,23 @@ export default function ComprasGarantias() {
         </section>
 
         {novo && (
-          <section className="mt-5 rounded-3xl border border-[#D4AF37]/25 bg-[#090909] p-5 sm:p-7">
+          <section className="mt-5 rounded-3xl border border-fr-d4af37/25 bg-fr-090909 p-5 sm:p-7">
             <h2 className="mb-4 text-lg font-black">Nova garantia</h2>
             <FormGarantia form={novo} setForm={setNovo} onSalvar={() => salvarForm(novo)} onCancelar={() => setNovo(null)} salvando={salvar.isPending} />
           </section>
         )}
 
         <div className={`mt-5 grid gap-5 ${abertaId ? "xl:grid-cols-[minmax(0,1fr)_560px]" : ""}`}>
-          <section className="min-w-0 rounded-3xl border border-white/[0.06] bg-[#090909] p-3 sm:p-4">
+          <section className="min-w-0 rounded-3xl border border-white/[0.06] bg-fr-090909 p-3 sm:p-4">
             {listaQ.isLoading ? <p className="p-6 text-center text-sm text-gray-500">Carregando...</p> : !lista.length ? (
               <p className="p-8 text-center text-sm text-gray-500">Nenhuma garantia {situacao === "andamento" ? "em andamento" : situacao === "finalizadas" ? "finalizada" : ""}.</p>
             ) : (
               <div className="space-y-2">
                 {lista.map((x) => (
                   <button key={x.id} type="button" onClick={() => { setAbertaId(x.id); setEditando(null); setNovo(null); setDataAcao(hojeIso()); }}
-                    className={`block w-full rounded-2xl border p-3 text-left transition hover:border-[#D4AF37]/40 ${abertaId === x.id ? "border-[#D4AF37]/50 bg-[#D4AF37]/[0.04]" : x.vencida ? "border-rose-400/30 bg-rose-500/[0.04]" : "border-white/[0.06] bg-black/20"}`}>
+                    className={`block w-full rounded-2xl border p-3 text-left transition hover:border-fr-d4af37/40 ${abertaId === x.id ? "border-fr-d4af37/50 bg-fr-d4af37/[0.04]" : x.vencida ? "border-rose-400/30 bg-rose-500/[0.04]" : "border-white/[0.06] bg-black/20"}`}>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-black text-[#F2D675]">#{x.id}</span>
+                      <span className="text-xs font-black text-fri-f2d675">#{x.id}</span>
                       <span className="font-black">{x.clienteNome}</span>
                       <span className="text-xs text-gray-500">{x.loja}</span>
                       <span className="ml-auto"><SituacaoChip g={x} /></span>
@@ -1005,12 +1005,12 @@ export default function ComprasGarantias() {
           </section>
 
           {abertaId && (
-            <aside className="min-w-0 rounded-3xl border border-[#D4AF37]/25 bg-[#090909] p-4 sm:p-5 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:overflow-y-auto">
+            <aside className="min-w-0 rounded-3xl border border-fr-d4af37/25 bg-fr-090909 p-4 sm:p-5 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)] xl:overflow-y-auto">
               {!g ? <p className="p-6 text-center text-sm text-gray-500">{detalheQ.isError ? detalheQ.error.message : "Carregando..."}</p> : (
                 <>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-xs font-black text-[#F2D675]">Garantia #{g.id} • {g.loja}</p>
+                      <p className="text-xs font-black text-fri-f2d675">Garantia #{g.id} • {g.loja}</p>
                       <h2 className="text-xl font-black">{g.clienteNome}</h2>
                       <p className="text-sm text-gray-400">{g.pneu}</p>
                     </div>
@@ -1098,14 +1098,14 @@ export default function ComprasGarantias() {
                       const ehFoto = cat.categoria.startsWith("foto");
                       return (
                         <div key={cat.categoria}>
-                        {cat.grupo && <p className="mb-2 mt-4 text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">{cat.grupo}</p>}
+                        {cat.grupo && <p className="mb-2 mt-4 text-[10px] font-black uppercase tracking-[0.08em] text-fri-d4af37/80">{cat.grupo}</p>}
                         <div className="rounded-2xl border border-white/[0.06] p-3">
                           <div className="flex items-center justify-between gap-2">
                             <div>
                               <p className="text-xs font-black text-gray-200">{cat.nome} <span className="text-gray-600">({doTipo.length})</span></p>
                               <p className="text-[10px] text-gray-600">{cat.dica}</p>
                             </div>
-                            <label className={`flex h-9 cursor-pointer items-center rounded-xl border border-[#D4AF37]/25 px-3 text-xs font-black text-[#F2D675] ${enviando ? "pointer-events-none opacity-50" : ""}`}>
+                            <label className={`flex h-9 cursor-pointer items-center rounded-xl border border-fr-d4af37/25 px-3 text-xs font-black text-fri-f2d675 ${enviando ? "pointer-events-none opacity-50" : ""}`}>
                               {ehFoto || cat.categoria === "video" ? <Camera className="mr-2 h-4 w-4" /> : <Paperclip className="mr-2 h-4 w-4" />}
                               {enviando === cat.categoria ? "Enviando..." : "Anexar"}
                               <input type="file" multiple className="hidden" accept={ehFoto ? "image/*" : cat.categoria === "video" ? "video/*" : "image/*,application/pdf,.doc,.docx,.xls,.xlsx"}
@@ -1116,7 +1116,7 @@ export default function ComprasGarantias() {
                             <div className="mt-2 space-y-1">
                               {doTipo.map((a) => (
                                 <div key={a.id} className="flex items-center gap-2 text-xs">
-                                  <button type="button" onClick={() => baixarAnexo.mutate({ anexoId: a.id })} className="min-w-0 flex-1 truncate text-left text-gray-300 hover:text-[#F2D675]"><Download className="mr-1 inline h-3.5 w-3.5" />{a.nome}</button>
+                                  <button type="button" onClick={() => baixarAnexo.mutate({ anexoId: a.id })} className="min-w-0 flex-1 truncate text-left text-gray-300 hover:text-fri-f2d675"><Download className="mr-1 inline h-3.5 w-3.5" />{a.nome}</button>
                                   <span className="shrink-0 text-[10px] text-gray-600">{Math.max(1, Math.round(a.tamanho / 1024))} KB</span>
                                   <button type="button" onClick={() => pedirSenha((senha) => excluirAnexo.mutate({ anexoId: a.id, senha }), `Excluir o anexo "${a.nome}"?`)} className="shrink-0 text-gray-600 hover:text-rose-300"><Trash2 className="h-3.5 w-3.5" /></button>
                                 </div>
@@ -1145,7 +1145,7 @@ export default function ComprasGarantias() {
             <form
               onClick={(e) => e.stopPropagation()}
               onSubmit={(e) => { e.preventDefault(); if (!senhaExclusao) return; confirmacao.acao(senhaExclusao); setConfirmacao(null); setSenhaExclusao(""); }}
-              className="w-full max-w-sm rounded-2xl border border-rose-400/30 bg-[#0b0b0b] p-5"
+              className="w-full max-w-sm rounded-2xl border border-rose-400/30 bg-fr-0b0b0b p-5"
             >
               <p className="flex items-center gap-2 text-sm font-black text-rose-200"><Trash2 className="h-4 w-4" />Confirmar exclusão</p>
               <p className="mt-2 text-xs text-gray-400">{confirmacao.texto} Não dá para desfazer.</p>

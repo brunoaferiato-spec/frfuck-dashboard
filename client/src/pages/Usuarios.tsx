@@ -48,7 +48,7 @@ type LojaItem = {
 
 // O que cada perfil enxerga no sistema (mesmas regras das rotas e do servidor).
 const PERFIS: Array<{ valor: PerfilAcesso; nome: string; descricao: string; cor: string }> = [
-  { valor: "admin", nome: "Admin", descricao: "Acesso total, incluindo usuários e permissões.", cor: "border-[#D4AF37]/40 bg-[#D4AF37]/[0.10] text-[#F2D675]" },
+  { valor: "admin", nome: "Admin", descricao: "Acesso total, incluindo usuários e permissões.", cor: "border-fr-d4af37/40 bg-fr-d4af37/[0.10] text-fri-f2d675" },
   { valor: "gestor", nome: "Gestor", descricao: "Acesso total, incluindo usuários e permissões.", cor: "border-amber-300/30 bg-amber-300/[0.08] text-amber-200" },
   { valor: "rh_lider", nome: "Líder RH", descricao: "Visão gerencial do RH de todas as lojas.", cor: "border-sky-400/30 bg-sky-400/[0.08] text-sky-200" },
   { valor: "rh_caixa", nome: "Caixa Líder", descricao: "Somente o Meu Dia da própria loja.", cor: "border-violet-400/30 bg-violet-400/[0.08] text-violet-200" },
@@ -98,7 +98,7 @@ function ultimoAcesso(valor: Date | string | null | undefined) {
 }
 
 const campo =
-  "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#D4AF37]/50";
+  "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-fr-d4af37/50";
 const rotulo = "mb-1.5 block text-[10px] font-black uppercase tracking-[0.1em] text-gray-500";
 
 export default function Usuarios() {
@@ -256,14 +256,14 @@ export default function Usuarios() {
   const perfilSelecionado = PERFIS.find((p) => p.valor === perfil);
 
   return (
-    <main className="min-h-screen bg-[#050505] px-4 py-6 text-white sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-fr-050505 px-4 py-6 text-white sm:px-6 lg:px-8">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(212,175,55,0.08),transparent_40%)]" />
 
       <div className="relative mx-auto max-w-7xl">
         <button
           type="button"
           onClick={() => setLocation("/")}
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] px-4 text-xs font-black text-[#F2D675] transition hover:bg-[#D4AF37]/10"
+          className="inline-flex h-10 items-center gap-2 rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/[0.04] px-4 text-xs font-black text-fri-f2d675 transition hover:bg-fr-d4af37/10"
         >
           <ArrowLeft className="h-4 w-4" />
           Dashboard
@@ -271,7 +271,7 @@ export default function Usuarios() {
 
         <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-[#D4AF37]/70">
+            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-fri-d4af37/70">
               <ShieldCheck className="h-4 w-4" />
               Administração
             </p>
@@ -279,7 +279,7 @@ export default function Usuarios() {
             <p className="mt-2 text-sm text-gray-500">Cadastre logins e defina exatamente qual área cada pessoa pode acessar.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <div className="rounded-2xl border border-white/[0.08] bg-[#0b0b0b] px-4 py-3">
+            <div className="rounded-2xl border border-white/[0.08] bg-fr-0b0b0b px-4 py-3">
               <p className="text-[10px] font-black uppercase tracking-[0.1em] text-gray-600">Usuários</p>
               <p className="mt-1 text-2xl font-black text-white">{users.length}</p>
             </div>
@@ -303,10 +303,10 @@ export default function Usuarios() {
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[400px_1fr]">
           {/* ---------- Formulário ---------- */}
-          <section className="h-fit rounded-3xl border border-[#D4AF37]/20 bg-[#0a0a0a] p-5 sm:p-6 lg:sticky lg:top-6">
+          <section className="h-fit rounded-3xl border border-fr-d4af37/20 bg-fr-0a0a0a p-5 sm:p-6 lg:sticky lg:top-6">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06]">
-                {editingUserId ? <Pencil className="h-5 w-5 text-[#F2D675]" /> : <UserPlus className="h-5 w-5 text-[#F2D675]" />}
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-fr-d4af37/25 bg-fr-d4af37/[0.06]">
+                {editingUserId ? <Pencil className="h-5 w-5 text-fri-f2d675" /> : <UserPlus className="h-5 w-5 text-fri-f2d675" />}
               </div>
               <div>
                 <h2 className="text-lg font-black">{editingUserId ? "Editar usuário" : "Novo usuário"}</h2>
@@ -400,7 +400,7 @@ export default function Usuarios() {
               )}
 
               <div className="flex gap-2 pt-1">
-                <button type="submit" disabled={salvando} className="h-11 flex-1 rounded-xl bg-[#D4AF37] text-sm font-black text-black transition hover:bg-[#e2bf4a] disabled:cursor-not-allowed disabled:opacity-60">
+                <button type="submit" disabled={salvando} className="h-11 flex-1 rounded-xl bg-fr-d4af37 text-sm font-black text-black transition hover:bg-fr-e2bf4a disabled:cursor-not-allowed disabled:opacity-60">
                   {salvando ? "Salvando..." : editingUserId ? "Salvar alterações" : "Criar usuário"}
                 </button>
                 {editingUserId && (
@@ -413,20 +413,20 @@ export default function Usuarios() {
           </section>
 
           {/* ---------- Lista ---------- */}
-          <section className="rounded-3xl border border-white/[0.08] bg-[#090909] p-5 sm:p-6">
+          <section className="rounded-3xl border border-white/[0.08] bg-fr-090909 p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="flex items-center gap-2 text-lg font-black">
-                <Users className="h-5 w-5 text-[#D4AF37]" />
+                <Users className="h-5 w-5 text-fri-d4af37" />
                 Usuários cadastrados
               </h2>
               <div className="relative w-full sm:w-64">
                 <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-gray-600" />
-                <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou email" className="h-10 w-full rounded-xl border border-white/10 bg-black/40 pl-9 pr-3 text-sm text-white outline-none placeholder:text-gray-600 focus:border-[#D4AF37]/50" />
+                <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou email" className="h-10 w-full rounded-xl border border-white/10 bg-black/40 pl-9 pr-3 text-sm text-white outline-none placeholder:text-gray-600 focus:border-fr-d4af37/50" />
               </div>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" onClick={() => setFiltroPerfil("todos")} className={`rounded-full border px-3 py-1 text-[11px] font-black ${filtroPerfil === "todos" ? "border-[#D4AF37]/40 bg-[#D4AF37]/[0.10] text-[#F2D675]" : "border-white/10 text-gray-500"}`}>
+              <button type="button" onClick={() => setFiltroPerfil("todos")} className={`rounded-full border px-3 py-1 text-[11px] font-black ${filtroPerfil === "todos" ? "border-fr-d4af37/40 bg-fr-d4af37/[0.10] text-fri-f2d675" : "border-white/10 text-gray-500"}`}>
                 Todos ({users.length})
               </button>
               {PERFIS.filter((p) => contagemPerfil[p.valor]).map((p) => (
@@ -457,9 +457,9 @@ export default function Usuarios() {
                 return (
                   <div
                     key={user.id}
-                    className={`flex flex-wrap items-center gap-4 rounded-2xl border px-4 py-3 transition ${emEdicao ? "border-[#D4AF37]/45 bg-[#D4AF37]/[0.05]" : "border-white/[0.07] bg-[#0c0c0c] hover:border-white/15"} ${user.isActive ? "" : "opacity-60"}`}
+                    className={`flex flex-wrap items-center gap-4 rounded-2xl border px-4 py-3 transition ${emEdicao ? "border-fr-d4af37/45 bg-fr-d4af37/[0.05]" : "border-white/[0.07] bg-fr-0c0c0c hover:border-white/15"} ${user.isActive ? "" : "opacity-60"}`}
                   >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/[0.08] text-sm font-black text-[#F2D675]">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-fr-d4af37/25 bg-fr-d4af37/[0.08] text-sm font-black text-fri-f2d675">
                       {iniciais(user.name, user.email)}
                     </div>
 
@@ -483,7 +483,7 @@ export default function Usuarios() {
                     </div>
 
                     <div className="flex gap-1.5">
-                      <button type="button" onClick={() => handleEdit(user)} title="Editar" className="flex h-9 items-center gap-1.5 rounded-xl border border-[#D4AF37]/25 px-3 text-xs font-black text-[#F2D675] transition hover:bg-[#D4AF37]/10">
+                      <button type="button" onClick={() => handleEdit(user)} title="Editar" className="flex h-9 items-center gap-1.5 rounded-xl border border-fr-d4af37/25 px-3 text-xs font-black text-fri-f2d675 transition hover:bg-fr-d4af37/10">
                         <Pencil className="h-3.5 w-3.5" />
                         Editar
                       </button>
@@ -501,7 +501,7 @@ export default function Usuarios() {
 
       {excluindo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
-          <div className="w-full max-w-md rounded-3xl border border-rose-500/20 bg-[#0a0a0a] p-5">
+          <div className="w-full max-w-md rounded-3xl border border-rose-500/20 bg-fr-0a0a0a p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-300/70">Excluir usuário</p>

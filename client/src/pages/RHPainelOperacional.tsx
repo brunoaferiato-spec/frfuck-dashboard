@@ -401,11 +401,11 @@ export default function RHPainelOperacional() {
   if (!podeVer) return null;
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden bg-[#050505] text-white">
+    <div className="flex h-full min-h-0 overflow-hidden bg-fr-050505 text-white">
       
 
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-[66px] shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#080808]/95 px-4">
+        <header className="flex h-[66px] shrink-0 items-center justify-between border-b border-white/[0.06] bg-fr-080808/95 px-4">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
               <h2 className="truncate text-lg font-black text-white">Visão Geral das Lojas</h2>
@@ -428,7 +428,7 @@ export default function RHPainelOperacional() {
           <button
             type="button"
             onClick={atualizar}
-            className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] px-3 text-[11px] font-bold text-[#F2D675] transition hover:bg-[#D4AF37]/10"
+            className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-fr-d4af37/20 bg-fr-d4af37/[0.04] px-3 text-[11px] font-bold text-fri-f2d675 transition hover:bg-fr-d4af37/10"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${carregando ? "animate-spin" : ""}`} />
             Atualizar
@@ -440,13 +440,13 @@ export default function RHPainelOperacional() {
             const borda = loja.critico
               ? "border-rose-400/30"
               : loja.atencao
-              ? "border-[#D4AF37]/35"
+              ? "border-fr-d4af37/35"
               : "border-emerald-400/20";
 
             return (
               <article
                 key={loja.id}
-                className={`flex min-h-0 flex-col overflow-hidden rounded-xl border bg-[#0b0b0b] ${borda}`}
+                className={`flex min-h-0 flex-col overflow-hidden rounded-xl border bg-fr-0b0b0b ${borda}`}
               >
                 <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/[0.06] px-3">
                   <div className="flex min-w-0 items-center gap-2">
@@ -455,7 +455,7 @@ export default function RHPainelOperacional() {
                         loja.critico
                           ? "bg-rose-400"
                           : loja.atencao
-                          ? "bg-[#D4AF37]"
+                          ? "bg-fr-d4af37"
                           : "bg-emerald-400"
                       }`}
                     />
@@ -469,7 +469,7 @@ export default function RHPainelOperacional() {
                       loja.critico
                         ? "text-rose-300"
                         : loja.atencao
-                        ? "text-[#F2D675]"
+                        ? "text-fri-f2d675"
                         : "text-emerald-300"
                     }`}
                   >
@@ -626,7 +626,7 @@ export default function RHPainelOperacional() {
                             className={`flex h-7 items-center justify-between gap-1 rounded-lg border px-2 text-[9px] font-bold transition ${
                               item.critica
                                 ? "border-rose-400/15 bg-rose-400/[0.04] text-rose-200 hover:bg-rose-400/[0.08]"
-                                : "border-[#D4AF37]/15 bg-[#D4AF37]/[0.03] text-[#e8d394] hover:bg-[#D4AF37]/[0.07]"
+                                : "border-fr-d4af37/15 bg-fr-d4af37/[0.03] text-fri-e8d394 hover:bg-fr-d4af37/[0.07]"
                             }`}
                           >
                             <span className="truncate">{item.label}</span>
@@ -652,9 +652,9 @@ export default function RHPainelOperacional() {
       </main>
 
       <Dialog open={!!detalhePonto} onOpenChange={(aberto) => !aberto && setDetalhePonto(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto border-[#D4AF37]/20 bg-[#0b0b0b] text-white sm:max-w-2xl">
+        <DialogContent className="max-h-[85vh] overflow-y-auto border-fr-d4af37/20 bg-fr-0b0b0b text-white sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-[#F2D675]">
+            <DialogTitle className="text-fri-f2d675">
               {detalhePonto?.lojaNome} • {detalhePonto?.titulo}
             </DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -697,7 +697,7 @@ export default function RHPainelOperacional() {
           <button
             type="button"
             onClick={() => navigate("/rh/gestao/detalhes")}
-            className="mt-2 flex h-9 w-full items-center justify-center gap-1 rounded-lg border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] text-xs font-bold text-[#F2D675] hover:bg-[#D4AF37]/[0.12]"
+            className="mt-2 flex h-9 w-full items-center justify-center gap-1 rounded-lg border border-fr-d4af37/25 bg-fr-d4af37/[0.06] text-xs font-bold text-fri-f2d675 hover:bg-fr-d4af37/[0.12]"
           >
             Abrir na Gestão do RH para tratar
             <ChevronRight className="h-3.5 w-3.5" />

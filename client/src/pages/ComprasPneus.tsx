@@ -548,11 +548,11 @@ export default function ComprasPneus() {
   const abas = abasTodas.filter(([valor]) => !somenteLeitura || ["planejamento", "cotacao", "pedidos", "historico"].includes(valor));
 
   return (
-    <main className="min-h-full bg-[#050505] p-4 text-white sm:p-6 lg:p-8">
+    <main className="min-h-full bg-fr-050505 p-4 text-white sm:p-6 lg:p-8">
       <div className="mx-auto max-w-[1600px]">
         <div className="flex flex-col gap-4 border-b border-white/[0.07] pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]/65">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-fri-d4af37/65">
               COMPRAS • PNEUS
             </p>
             <h1 className="mt-2 text-3xl font-black">Planejamento e Cotação</h1>
@@ -581,7 +581,7 @@ export default function ComprasPneus() {
               onClick={() => setAba(valor)}
               className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-black transition ${
                 aba === valor
-                  ? "bg-[#D4AF37] text-black"
+                  ? "bg-fr-d4af37 text-black"
                   : "border border-white/[0.08] bg-white/[0.025] text-gray-400 hover:text-white"
               }`}
             >
@@ -605,9 +605,9 @@ export default function ComprasPneus() {
         {aba === "planejamento" && (
           <div className="mt-5 space-y-5">
             {!somenteLeitura && (
-            <section className="rounded-3xl border border-[#D4AF37]/20 bg-[#0a0a0a] p-5 sm:p-6">
+            <section className="rounded-3xl border border-fr-d4af37/20 bg-fr-0a0a0a p-5 sm:p-6">
               <div className="flex items-center gap-3">
-                <Settings className="h-5 w-5 text-[#F2D675]" />
+                <Settings className="h-5 w-5 text-fri-f2d675" />
                 <div>
                   <h2 className="font-black">Parâmetros da compra</h2>
                   <p className="mt-1 text-xs text-gray-500">
@@ -709,15 +709,15 @@ export default function ComprasPneus() {
                   </label>
                 )}
 
-                <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.03] p-5 text-center hover:bg-[#D4AF37]/[0.06]">
-                  <FileSpreadsheet className="h-7 w-7 text-[#F2D675]" />
+                <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-fr-d4af37/25 bg-fr-d4af37/[0.03] p-5 text-center hover:bg-fr-d4af37/[0.06]">
+                  <FileSpreadsheet className="h-7 w-7 text-fri-f2d675" />
                   <p className="mt-3 font-black">
                     {transicaoSistema ? "Vendas + estoque (sistema novo)" : "Vendas + estoque"}
                   </p>
                   <p className="mt-1 text-xs text-gray-500">
                     Medida, melhor compra UF, vendas e estoque
                   </p>
-                  <p className="mt-3 max-w-full truncate text-xs font-bold text-[#F2D675]">
+                  <p className="mt-3 max-w-full truncate text-xs font-bold text-fri-f2d675">
                     {arquivoVendas?.name || "Selecionar relatório .xlsx"}
                   </p>
                   <input
@@ -731,13 +731,13 @@ export default function ComprasPneus() {
                   />
                 </label>
 
-                <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.03] p-5 text-center hover:bg-[#D4AF37]/[0.06]">
-                  <Package className="h-7 w-7 text-[#F2D675]" />
+                <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-fr-d4af37/25 bg-fr-d4af37/[0.03] p-5 text-center hover:bg-fr-d4af37/[0.06]">
+                  <Package className="h-7 w-7 text-fri-f2d675" />
                   <p className="mt-3 font-black">Estoque detalhado por marca</p>
                   <p className="mt-1 text-xs text-gray-500">
                     Usado para validar jogos completos de 4 pneus
                   </p>
-                  <p className="mt-3 max-w-full truncate text-xs font-bold text-[#F2D675]">
+                  <p className="mt-3 max-w-full truncate text-xs font-bold text-fri-f2d675">
                     {arquivoEstoque?.name || "Selecionar relatório .xlsx"}
                   </p>
                   <input
@@ -757,7 +757,7 @@ export default function ComprasPneus() {
                   type="button"
                   onClick={() => void analisar()}
                   disabled={analisarMutation.isPending}
-                  className="inline-flex h-11 items-center rounded-xl bg-[#D4AF37] px-5 text-sm font-black text-black hover:bg-[#E6C760] disabled:opacity-50"
+                  className="inline-flex h-11 items-center rounded-xl bg-fr-d4af37 px-5 text-sm font-black text-black hover:bg-fr-e6c760 disabled:opacity-50"
                 >
                   {analisarMutation.isPending ? (
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -782,7 +782,7 @@ export default function ComprasPneus() {
             )}
 
             {!somenteLeitura && itensAnalise.length > 0 && (
-              <section className="overflow-hidden rounded-3xl border border-white/[0.08] bg-[#090909]">
+              <section className="overflow-hidden rounded-3xl border border-white/[0.08] bg-fr-090909">
                 <div className="flex flex-col gap-3 border-b border-white/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="font-black">Sugestão de compra</h2>
@@ -794,7 +794,7 @@ export default function ComprasPneus() {
                     <span className="rounded-full border border-white/[0.08] px-3 py-1.5 text-xs font-black text-gray-300">
                       {medidasComprar} medidas
                     </span>
-                    <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.05] px-3 py-1.5 text-xs font-black text-[#F2D675]">
+                    <span className="rounded-full border border-fr-d4af37/20 bg-fr-d4af37/[0.05] px-3 py-1.5 text-xs font-black text-fri-f2d675">
                       {totalAnalise} pneus
                     </span>
                   </div>
@@ -871,7 +871,7 @@ export default function ComprasPneus() {
                               onChange={(event) =>
                                 atualizarQuantidadeAnalise(indice, event.target.value)
                               }
-                              className="h-9 w-20 rounded-lg border border-[#D4AF37]/20 bg-black/30 px-2 text-right font-black text-[#F2D675] outline-none"
+                              className="h-9 w-20 rounded-lg border border-fr-d4af37/20 bg-black/30 px-2 text-right font-black text-fri-f2d675 outline-none"
                             />
                           </td>
                         </tr>
@@ -882,7 +882,7 @@ export default function ComprasPneus() {
               </section>
             )}
 
-            <section className="rounded-3xl border border-white/[0.08] bg-[#090909] p-5">
+            <section className="rounded-3xl border border-white/[0.08] bg-fr-090909 p-5">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                 <div>
                   <h2 className="font-black">Planejamentos</h2>
@@ -943,8 +943,8 @@ export default function ComprasPneus() {
               </div>
 
               {(dataPlanejamentoInicio || dataPlanejamentoFim) && (
-                <div className="mt-3 flex items-center justify-between rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.03] px-3 py-2">
-                  <span className="text-xs text-[#F2D675]/80">
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-fr-d4af37/15 bg-fr-d4af37/[0.03] px-3 py-2">
+                  <span className="text-xs text-fri-f2d675/80">
                     Período selecionado
                   </span>
                   <button
@@ -953,7 +953,7 @@ export default function ComprasPneus() {
                       setDataPlanejamentoInicio("");
                       setDataPlanejamentoFim("");
                     }}
-                    className="text-xs font-black text-[#F2D675] hover:underline"
+                    className="text-xs font-black text-fri-f2d675 hover:underline"
                   >
                     Limpar datas
                   </button>
@@ -985,7 +985,7 @@ export default function ComprasPneus() {
                       >
                         <p className="font-black text-white">
                           Planejamento #{item.id}
-                          {item.lojaId ? <span className="ml-2 text-xs font-bold text-[#F2D675]">{lojas.find((l: any) => Number(l.id) === Number(item.lojaId))?.nome || ""}</span> : null}
+                          {item.lojaId ? <span className="ml-2 text-xs font-bold text-fri-f2d675">{lojas.find((l: any) => Number(l.id) === Number(item.lojaId))?.nome || ""}</span> : null}
                         </p>
                         <p className="mt-2 text-xs text-gray-500">
                           {item.totalMedidas} medidas • {item.totalPneus} pneus
@@ -1013,8 +1013,8 @@ export default function ComprasPneus() {
                           }}
                           className={`h-9 rounded-lg border px-3 text-[11px] font-black ${
                             verAnaliseSalva && planejamentoId === Number(item.id)
-                              ? "border-[#D4AF37]/50 bg-[#D4AF37]/[0.12] text-[#F2D675]"
-                              : "border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675]"
+                              ? "border-fr-d4af37/50 bg-fr-d4af37/[0.12] text-fri-f2d675"
+                              : "border-fr-d4af37/25 bg-fr-d4af37/[0.04] text-fri-f2d675"
                           }`}
                         >
                           Ver análise
@@ -1113,17 +1113,17 @@ export default function ComprasPneus() {
               <button
                 type="button"
                 onClick={() => setVerAnaliseSalva(true)}
-                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] px-5 py-4 text-left hover:bg-[#D4AF37]/[0.08]"
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-fr-d4af37/25 bg-fr-d4af37/[0.04] px-5 py-4 text-left hover:bg-fr-d4af37/[0.08]"
               >
                 <span>
-                  <span className="block font-black text-[#F2D675]">
+                  <span className="block font-black text-fri-f2d675">
                     Ver planejamento #{planejamentoId}
                   </span>
                   <span className="mt-0.5 block text-xs text-gray-500">
                     Vendas, estoque, projeção, jogos e necessidade de cada medida
                   </span>
                 </span>
-                <span className="rounded-lg bg-[#D4AF37] px-3 py-1.5 text-xs font-black text-black">
+                <span className="rounded-lg bg-fr-d4af37 px-3 py-1.5 text-xs font-black text-black">
                   Abrir
                 </span>
               </button>
@@ -1140,7 +1140,7 @@ export default function ComprasPneus() {
               </div>
             ) : (
               <>
-                <section className="rounded-3xl border border-[#D4AF37]/20 bg-[#0a0a0a] p-5 sm:p-6">
+                <section className="rounded-3xl border border-fr-d4af37/20 bg-fr-0a0a0a p-5 sm:p-6">
                   <div>
                     <h2 className="text-xl font-black">Fornecedores</h2>
                     <p className="mt-2 text-sm text-gray-500">
@@ -1162,7 +1162,7 @@ export default function ComprasPneus() {
                           criarFornecedorMutation.mutate({ nome: novoFornecedor.trim(), lojas: novoFornecedorLojas });
                         }
                       }}
-                      className="inline-flex h-11 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.05] px-4 text-sm font-black text-[#F2D675]"
+                      className="inline-flex h-11 items-center justify-center rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.05] px-4 text-sm font-black text-fri-f2d675"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Cadastrar fornecedor
@@ -1182,7 +1182,7 @@ export default function ComprasPneus() {
                               atual.includes(loja.id) ? atual.filter((id) => id !== loja.id) : [...atual, loja.id].sort((a, b) => a - b)
                             )
                           }
-                          className={`rounded-full border px-3 py-1 font-bold ${marcada ? "border-[#D4AF37]/40 bg-[#D4AF37]/[0.12] text-[#F2D675]" : "border-white/10 text-gray-500"}`}
+                          className={`rounded-full border px-3 py-1 font-bold ${marcada ? "border-fr-d4af37/40 bg-fr-d4af37/[0.12] text-fri-f2d675" : "border-white/10 text-gray-500"}`}
                         >
                           {loja.nome}
                         </button>
@@ -1202,14 +1202,14 @@ export default function ComprasPneus() {
                   ) : (
                     <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.015] px-4 py-3 text-xs leading-5 text-gray-500">
                       {fornecedores.length} fornecedor(es) cadastrado(s).
-                      <span className="ml-1 font-black text-[#F2D675]">
+                      <span className="ml-1 font-black text-fri-f2d675">
                         Use o nome do fornecedor no cabeçalho do mapa de cotação abaixo.
                       </span>
                     </div>
                   )}
                 </section>
 
-                <section className="overflow-hidden rounded-3xl border border-white/[0.08] bg-[#090909]">
+                <section className="overflow-hidden rounded-3xl border border-white/[0.08] bg-fr-090909">
                   <div className="flex flex-col gap-3 border-b border-white/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h2 className="font-black">Mapa de cotação</h2>
@@ -1235,7 +1235,7 @@ export default function ComprasPneus() {
                           fecharPedidosMutation.mutate({ planejamentoId })
                         }
                         disabled={fecharPedidosMutation.isPending}
-                        className="inline-flex h-10 items-center rounded-xl bg-[#D4AF37] px-4 text-xs font-black text-black disabled:opacity-50"
+                        className="inline-flex h-10 items-center rounded-xl bg-fr-d4af37 px-4 text-xs font-black text-black disabled:opacity-50"
                       >
                         <Save className="mr-2 h-4 w-4" />
                         Fechar cotação e salvar pedidos
@@ -1247,7 +1247,7 @@ export default function ComprasPneus() {
                     <table className="w-max text-sm">
                       <thead className="bg-white/[0.025] text-left text-[10px] uppercase tracking-[0.08em] text-gray-600">
                         <tr>
-                          <th className="sticky left-0 z-10 bg-[#0d0d0d] px-3 py-2">Medida</th>
+                          <th className="sticky left-0 z-10 bg-fr-0d0d0d px-3 py-2">Medida</th>
                           <th
                             className="px-3 py-2 text-right"
                             title="Estoque atual da medida, do relatório de estoque usado no planejamento"
@@ -1269,11 +1269,11 @@ export default function ComprasPneus() {
                                 <button
                                   type="button"
                                   onClick={() => setFornecedorModal(fornecedor)}
-                                  className="w-full rounded-lg border border-transparent px-1.5 py-1 text-left transition hover:border-[#D4AF37]/25 hover:bg-[#D4AF37]/[0.06]"
+                                  className="w-full rounded-lg border border-transparent px-1.5 py-1 text-left transition hover:border-fr-d4af37/25 hover:bg-fr-d4af37/[0.06]"
                                   title={`Abrir opções de ${fornecedor.nome}`}
                                 >
                                   <div className="flex items-end justify-between gap-1">
-                                    <span className="text-[11px] font-black leading-tight text-gray-400 hover:text-[#F2D675]">
+                                    <span className="text-[11px] font-black leading-tight text-gray-400 hover:text-fri-f2d675">
                                       {fornecedor.nome}
                                     </span>
                                     <span className="shrink-0 rounded-full bg-white/[0.04] px-1.5 py-0.5 text-[8px] font-black text-gray-600">
@@ -1304,7 +1304,7 @@ export default function ComprasPneus() {
                             Number(cotacoes.get(`${item.id}:${item.fornecedorSelecionadoId}`) || 0) === Number(menor);
                           return (
                             <tr key={item.id} className="border-t border-white/[0.05]">
-                              <td className="sticky left-0 z-10 bg-[#090909] px-3 py-1.5 font-black text-white">
+                              <td className="sticky left-0 z-10 bg-fr-090909 px-3 py-1.5 font-black text-white">
                                 {item.medida}
                               </td>
                               <td
@@ -1337,7 +1337,7 @@ export default function ComprasPneus() {
                                       quantidadeFinal: Number(event.target.value || 0),
                                     })
                                   }
-                                  className="h-8 w-16 rounded-lg border border-white/10 bg-black/30 px-2 text-right font-black text-[#F2D675]"
+                                  className="h-8 w-16 rounded-lg border border-white/10 bg-black/30 px-2 text-right font-black text-fri-f2d675"
                                 />
                               </td>
                               <td className="px-3 py-1.5 text-right text-xs text-gray-400">
@@ -1375,7 +1375,7 @@ export default function ComprasPneus() {
                                     key={fornecedor.id}
                                     className={`px-1.5 py-1.5 align-top ${
                                       escolhidoMaisCaro
-                                        ? "bg-[#D4AF37]/[0.16] shadow-[inset_0_0_0_2px_rgba(212,175,55,0.65)]"
+                                        ? "bg-fr-d4af37/[0.16] shadow-[inset_0_0_0_2px_rgba(212,175,55,0.65)]"
                                         : escolhidoNoEmpate
                                         ? "bg-emerald-400/[0.08] shadow-[inset_0_0_0_2px_rgba(52,211,153,0.5)]"
                                         : empatadoNaoEscolhido
@@ -1399,7 +1399,7 @@ export default function ComprasPneus() {
                                         placeholder="0,00"
                                         className={`h-8 w-[76px] min-w-0 rounded-lg border px-1.5 text-right text-xs outline-none ${
                                           escolhidoMaisCaro
-                                            ? "border-[#D4AF37] bg-[#D4AF37]/[0.12] font-black text-[#F2D675]"
+                                            ? "border-fr-d4af37 bg-fr-d4af37/[0.12] font-black text-fri-f2d675"
                                             : empatadoNaoEscolhido
                                             ? "border-orange-400/40 bg-black/30 text-orange-300"
                                             : ehMenor
@@ -1418,10 +1418,10 @@ export default function ComprasPneus() {
                                         title={escolhido ? "Fornecedor escolhido para este pneu" : "Comprar este pneu com este fornecedor"}
                                         className={`h-8 rounded-lg px-2 text-[9px] font-black ${
                                           escolhidoMaisCaro
-                                            ? "bg-[#D4AF37] text-black"
+                                            ? "bg-fr-d4af37 text-black"
                                             : escolhidoNoEmpate
                                             ? "bg-emerald-400 text-black"
-                                            : "border border-white/10 text-gray-400 hover:border-[#D4AF37]/40 hover:text-[#F2D675]"
+                                            : "border border-white/10 text-gray-400 hover:border-fr-d4af37/40 hover:text-fri-f2d675"
                                         }`}
                                       >
                                         {escolhidoMaisCaro || escolhidoNoEmpate ? (
@@ -1496,10 +1496,10 @@ export default function ComprasPneus() {
                         const semEscolha = itensCotacao.filter((item: any) => !fornecedorDaMedida(item)).length;
                         return (
                           <tfoot>
-                            <tr className="border-t-2 border-[#D4AF37]/30 bg-[#D4AF37]/[0.04]">
-                              <td className="sticky left-0 z-10 bg-[#0f0d07] px-3 py-3 align-top">
-                                <p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">Total do pedido</p>
-                                <p className="mt-1 text-sm font-black text-[#F2D675]">{moeda(totalGeral)}</p>
+                            <tr className="border-t-2 border-fr-d4af37/30 bg-fr-d4af37/[0.04]">
+                              <td className="sticky left-0 z-10 bg-fr-0f0d07 px-3 py-3 align-top">
+                                <p className="text-[10px] font-black uppercase tracking-[0.08em] text-fri-d4af37/80">Total do pedido</p>
+                                <p className="mt-1 text-sm font-black text-fri-f2d675">{moeda(totalGeral)}</p>
                               </td>
                               <td className="px-3 py-3" />
                               <td className="px-3 py-3 text-right align-top">
@@ -1522,7 +1522,7 @@ export default function ComprasPneus() {
                                   >
                                     {t.medidas > 0 ? (
                                       <>
-                                        <p className="text-sm font-black text-[#F2D675]">{moeda(t.valor)}</p>
+                                        <p className="text-sm font-black text-fri-f2d675">{moeda(t.valor)}</p>
                                         <p className="mt-0.5 text-[10px] text-gray-500">
                                           {t.medidas} medida(s) • {t.pneus} pneus
                                         </p>
@@ -1554,8 +1554,8 @@ export default function ComprasPneus() {
                 Abra um planejamento primeiro.
               </div>
             ) : (pedidosQuery.data || []).length === 0 ? (
-              <div className="rounded-3xl border border-white/[0.08] bg-[#090909] p-6">
-                <ShoppingCart className="h-7 w-7 text-[#F2D675]" />
+              <div className="rounded-3xl border border-white/[0.08] bg-fr-090909 p-6">
+                <ShoppingCart className="h-7 w-7 text-fri-f2d675" />
                 <h2 className="mt-4 font-black">Nenhum pedido formado ainda</h2>
                 <p className="mt-2 text-sm text-gray-500">
                   Na Cotação, escolha um fornecedor para cada medida. Os pedidos serão separados automaticamente.
@@ -1566,11 +1566,11 @@ export default function ComprasPneus() {
                 {(pedidosQuery.data || []).map((grupo: any) => (
                   <section
                     key={grupo.fornecedorId}
-                    className="overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-[#090909]"
+                    className="overflow-hidden rounded-3xl border border-fr-d4af37/20 bg-fr-090909"
                   >
                     <div className="flex items-start justify-between gap-3 border-b border-white/[0.06] p-5">
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#D4AF37]/60">
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-fri-d4af37/60">
                           Pedido
                         </p>
                         <h2 className="mt-1 text-xl font-black text-white">
@@ -1588,7 +1588,7 @@ export default function ComprasPneus() {
                             fornecedorId: grupo.fornecedorId,
                           })
                         }
-                        className="flex h-10 items-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.05] px-3 text-xs font-black text-[#F2D675]"
+                        className="flex h-10 items-center rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.05] px-3 text-xs font-black text-fri-f2d675"
                       >
                         <Download className="mr-2 h-4 w-4" />
                         Baixar
@@ -1608,7 +1608,7 @@ export default function ComprasPneus() {
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="font-black text-[#F2D675]">{item.quantidade} un.</p>
+                            <p className="font-black text-fri-f2d675">{item.quantidade} un.</p>
                             <p className="mt-1 text-xs text-gray-500">
                               {moeda(item.total)}
                             </p>
@@ -1644,7 +1644,7 @@ export default function ComprasPneus() {
 
         {aba === "config" && (
           <div className="mt-5 grid gap-5 xl:grid-cols-2">
-            <section className="rounded-3xl border border-white/[0.08] bg-[#090909] p-5 sm:p-6">
+            <section className="rounded-3xl border border-white/[0.08] bg-fr-090909 p-5 sm:p-6">
               <h2 className="font-black">Regras por medida</h2>
               <p className="mt-2 text-sm leading-6 text-gray-500">
                 Defina promocionais (+12) e medidas que precisam manter jogos completos de 4 pneus.
@@ -1686,7 +1686,7 @@ export default function ComprasPneus() {
                       jogosMinimos: Number(novaRegraJogos),
                     });
                   }}
-                  className="h-11 rounded-xl bg-[#D4AF37] px-4 text-sm font-black text-black"
+                  className="h-11 rounded-xl bg-fr-d4af37 px-4 text-sm font-black text-black"
                 >
                   Salvar
                 </button>
@@ -1726,7 +1726,7 @@ export default function ComprasPneus() {
               </div>
             </section>
 
-            <section className="rounded-3xl border border-white/[0.08] bg-[#090909] p-5 sm:p-6">
+            <section className="rounded-3xl border border-white/[0.08] bg-fr-090909 p-5 sm:p-6">
               <h2 className="font-black">Marcas nacionais desconsideradas</h2>
               <p className="mt-2 text-sm leading-6 text-gray-500">
                 Lista automática do sistema. Estas marcas não contam para formar os 2 jogos mínimos.
@@ -1779,7 +1779,7 @@ export default function ComprasPneus() {
                               ativo: !fornecedor.ativo,
                             })
                           }
-                          className="text-xs font-black text-[#F2D675]"
+                          className="text-xs font-black text-fri-f2d675"
                         >
                           {fornecedor.ativo ? "Desativar" : "Ativar"}
                         </button>
@@ -1793,7 +1793,7 @@ export default function ComprasPneus() {
                               type="button"
                               disabled={definirLojasFornecedorMutation.isPending}
                               onClick={() => alternarLojaFornecedor(fornecedor, loja.id)}
-                              className={`rounded-full border px-2.5 py-0.5 font-bold disabled:opacity-50 ${marcada ? "border-[#D4AF37]/40 bg-[#D4AF37]/[0.12] text-[#F2D675]" : "border-white/10 text-gray-500"}`}
+                              className={`rounded-full border px-2.5 py-0.5 font-bold disabled:opacity-50 ${marcada ? "border-fr-d4af37/40 bg-fr-d4af37/[0.12] text-fri-f2d675" : "border-white/10 text-gray-500"}`}
                             >
                               {loja.nome}
                             </button>
@@ -1819,7 +1819,7 @@ export default function ComprasPneus() {
               className="absolute inset-0 h-full w-full bg-black/80 backdrop-blur-sm"
               onClick={() => setFornecedorModal(null)}
             />
-            <div className="relative z-10 w-full max-w-lg rounded-3xl border border-[#D4AF37]/20 bg-[#0a0a0a] p-5 shadow-2xl sm:p-6">
+            <div className="relative z-10 w-full max-w-lg rounded-3xl border border-fr-d4af37/20 bg-fr-0a0a0a p-5 shadow-2xl sm:p-6">
               <button
                 type="button"
                 aria-label="Fechar"
@@ -1829,7 +1829,7 @@ export default function ComprasPneus() {
                 <X className="h-4 w-4" />
               </button>
 
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#D4AF37]/60">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fri-d4af37/60">
                 Cotação do fornecedor
               </p>
               <h2 className="mt-2 pr-10 text-2xl font-black text-white">
@@ -1855,10 +1855,10 @@ export default function ComprasPneus() {
                     })
                   }
                   disabled={arquivoCotacaoFornecedorMutation.isPending}
-                  className="flex min-h-16 items-center rounded-2xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-4 text-left transition hover:bg-[#D4AF37]/[0.1] disabled:opacity-50"
+                  className="flex min-h-16 items-center rounded-2xl border border-fr-d4af37/25 bg-fr-d4af37/[0.06] px-4 text-left transition hover:bg-fr-d4af37/[0.1] disabled:opacity-50"
                 >
-                  <div className="mr-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#D4AF37]/10">
-                    <Download className="h-5 w-5 text-[#F2D675]" />
+                  <div className="mr-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fr-d4af37/10">
+                    <Download className="h-5 w-5 text-fri-f2d675" />
                   </div>
                   <div>
                     <p className="font-black text-white">Baixar arquivo de cotação</p>

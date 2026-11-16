@@ -174,7 +174,7 @@ function classeStatus(status: StatusFerias) {
   }
 
   if (status === "programada") {
-    return "border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] text-[#F2D675]";
+    return "border-fr-d4af37/25 bg-fr-d4af37/[0.06] text-fri-f2d675";
   }
 
   if (status === "em_ferias") {
@@ -531,8 +531,8 @@ export default function RHFerias() {
 
   if (caixaLider || !podeGerenciar) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 text-white">
-        <Card className="w-full max-w-lg border-rose-400/20 bg-[#0b0b0b]">
+      <div className="flex min-h-screen items-center justify-center bg-fr-050505 px-4 text-white">
+        <Card className="w-full max-w-lg border-rose-400/20 bg-fr-0b0b0b">
           <CardContent className="p-7 text-center">
             <AlertTriangle className="mx-auto h-8 w-8 text-rose-300" />
             <h1 className="mt-4 text-xl font-black">Acesso restrito</h1>
@@ -542,7 +542,7 @@ export default function RHFerias() {
             <Button
               type="button"
               onClick={() => navigate(caixaLider ? "/rh/meu-dia" : "/rh/gestao")}
-              className="mt-5 bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+              className="mt-5 bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
             >
               Voltar
             </Button>
@@ -553,31 +553,31 @@ export default function RHFerias() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <header className="border-b border-[#D4AF37]/15 bg-[#080808]">
+    <div className="min-h-screen bg-fr-050505 text-white">
+      <header className="border-b border-fr-d4af37/15 bg-fr-080808">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-5 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               type="button"
               variant="ghost"
               onClick={() => navigate("/rh/gestao")}
-              className="h-10 w-10 shrink-0 rounded-xl border border-[#D4AF37]/20 p-0 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+              className="h-10 w-10 shrink-0 rounded-xl border border-fr-d4af37/20 p-0 text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
 
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8f8a80] sm:text-xs">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fri-8f8a80 sm:text-xs">
                 Gestão de pessoas
               </p>
-              <h1 className="truncate text-xl font-black text-[#F2D675] sm:text-2xl">
+              <h1 className="truncate text-xl font-black text-fri-f2d675 sm:text-2xl">
                 Férias
               </h1>
             </div>
           </div>
 
-          <div className="hidden items-center gap-2 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-3 py-2 text-xs text-[#b9a46a] sm:flex">
-            <ShieldCheck className="h-4 w-4 text-[#F2D675]" />
+          <div className="hidden items-center gap-2 rounded-xl border border-fr-d4af37/15 bg-fr-d4af37/[0.04] px-3 py-2 text-xs text-fri-b9a46a sm:flex">
+            <ShieldCheck className="h-4 w-4 text-fri-f2d675" />
             Gestão da Líder de RH
           </div>
         </div>
@@ -587,24 +587,24 @@ export default function RHFerias() {
         <div className="mb-5 grid gap-2 sm:grid-cols-2">
           <button
             type="button"
-            className="min-h-11 rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-4 text-sm font-black text-[#F2D675]"
+            className="min-h-11 rounded-xl border border-fr-d4af37/35 bg-fr-d4af37/10 px-4 text-sm font-black text-fri-f2d675"
           >
             Programar férias / Histórico
           </button>
           <button
             type="button"
             onClick={() => navigate("/rh/ferias/planejamento")}
-            className="min-h-11 rounded-xl border border-white/[0.08] bg-[#0b0b0b] px-4 text-sm font-black text-gray-500 hover:text-gray-300"
+            className="min-h-11 rounded-xl border border-white/[0.08] bg-fr-0b0b0b px-4 text-sm font-black text-gray-500 hover:text-gray-300"
           >
             Planejamento
           </button>
         </div>
         <section className="grid gap-4 xl:grid-cols-[0.95fr_1.55fr]">
-          <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#080808]">
+          <Card className="border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-080808">
             <CardContent className="p-5 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8f8a80]">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-fri-8f8a80">
                     {editandoId ? "Editar processo" : "Novo processo"}
                   </p>
                   <h2 className="mt-2 text-2xl font-black text-white">
@@ -615,8 +615,8 @@ export default function RHFerias() {
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-3">
-                  <CalendarDays className="h-6 w-6 text-[#F2D675]" />
+                <div className="rounded-2xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-3">
+                  <CalendarDays className="h-6 w-6 text-fri-f2d675" />
                 </div>
               </div>
 
@@ -633,7 +633,7 @@ export default function RHFerias() {
                     <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                       <SelectValue placeholder="Selecione a loja" />
                     </SelectTrigger>
-                    <SelectContent className="border-white/10 bg-[#111111] text-white">
+                    <SelectContent className="border-white/10 bg-fr-111111 text-white">
                       {lojas.map((loja) => (
                         <SelectItem key={loja.id} value={String(loja.id)}>
                           {loja.nome}
@@ -662,7 +662,7 @@ export default function RHFerias() {
                       />
                     </SelectTrigger>
 
-                    <SelectContent className="max-h-72 border-white/10 bg-[#111111] text-white">
+                    <SelectContent className="max-h-72 border-white/10 bg-fr-111111 text-white">
                       {funcionarios.map((funcionario: any) => (
                         <SelectItem key={funcionario.id} value={String(funcionario.id)}>
                           {funcionario.nome}
@@ -673,7 +673,7 @@ export default function RHFerias() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-[#b9a46a]">
+                  <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-fri-b9a46a">
                     Período calculado automaticamente
                   </p>
 
@@ -690,7 +690,7 @@ export default function RHFerias() {
                       {periodoQuery.error.message}
                     </div>
                   ) : periodoAutomatico ? (
-                    <div className="space-y-3 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.03] p-4">
+                    <div className="space-y-3 rounded-xl border border-fr-d4af37/15 bg-fr-d4af37/[0.03] p-4">
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-gray-600">
@@ -720,7 +720,7 @@ export default function RHFerias() {
                               ? "text-rose-300"
                               : periodoAutomatico.diasAteLimiteRetorno <= 90
                               ? "text-amber-300"
-                              : "text-[#F2D675]"
+                              : "text-fri-f2d675"
                           }`}>
                             {formatarData(periodoAutomatico.dataLimiteRetorno)}
                           </p>
@@ -730,7 +730,7 @@ export default function RHFerias() {
                           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-gray-600">
                             Último início seguro
                           </p>
-                          <p className="mt-1 text-sm font-black text-[#F2D675]">
+                          <p className="mt-1 text-sm font-black text-fri-f2d675">
                             {ultimaDataSeguraInicio
                               ? `${formatarData(ultimaDataSeguraInicio)} para ${quantidadeDias || 0} dias`
                               : "Informe a quantidade de dias"}
@@ -746,7 +746,7 @@ export default function RHFerias() {
                 </div>
 
                 <div>
-                  <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-[#b9a46a]">
+                  <p className="mb-2 text-xs font-black uppercase tracking-[0.12em] text-fri-b9a46a">
                     Período das férias
                   </p>
 
@@ -757,7 +757,7 @@ export default function RHFerias() {
                         type="date"
                         value={dataInicio}
                         onChange={(event) => setDataInicio(event.target.value)}
-                        className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50"
+                        className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-fr-d4af37/50"
                       />
                     </div>
 
@@ -769,16 +769,16 @@ export default function RHFerias() {
                         max={30}
                         value={quantidadeDias}
                         onChange={(event) => setQuantidadeDias(event.target.value)}
-                        className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50"
+                        className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-fr-d4af37/50"
                       />
                     </div>
                   </div>
 
-                  <div className="mt-3 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.035] px-3 py-3">
+                  <div className="mt-3 rounded-xl border border-fr-d4af37/15 bg-fr-d4af37/[0.035] px-3 py-3">
                     <p className="text-[10px] font-black uppercase tracking-[0.12em] text-gray-600">
                       Retorno calculado
                     </p>
-                    <p className="mt-1 font-black text-[#F2D675]">
+                    <p className="mt-1 font-black text-fri-f2d675">
                       {dataRetorno ? formatarData(dataRetorno) : "Informe início e quantidade de dias"}
                     </p>
                   </div>
@@ -799,7 +799,7 @@ export default function RHFerias() {
                     onChange={(event) => setObservacao(event.target.value)}
                     rows={3}
                     placeholder="Opcional"
-                    className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50"
+                    className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/50"
                   />
                 </div>
 
@@ -821,7 +821,7 @@ export default function RHFerias() {
                     type="button"
                     onClick={salvarProcesso}
                     disabled={salvarMutation.isPending || atualizarMutation.isPending}
-                    className="h-12 flex-1 bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+                    className="h-12 flex-1 bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
                   >
                     {editandoId ? <Pencil className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
                     {editandoId
@@ -849,39 +849,39 @@ export default function RHFerias() {
           </Card>
 
           <div className="space-y-4">
-            <Card className="overflow-hidden border-[#D4AF37]/15 bg-[#0b0b0b]">
+            <Card className="overflow-hidden border-fr-d4af37/15 bg-fr-0b0b0b">
               <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2 xl:grid-cols-3">
-                <div className="bg-[#090909] p-4">
+                <div className="bg-fr-090909 p-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">Aguardando aviso</p>
                   <p className={`mt-2 text-2xl font-black ${resumo.aguardandoAviso ? "text-amber-300" : "text-emerald-300"}`}>{resumo.aguardandoAviso}</p>
                   <p className="mt-1 text-[11px] text-gray-600">pendência da Caixa</p>
                 </div>
 
-                <div className="bg-[#090909] p-4">
+                <div className="bg-fr-090909 p-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">Pagamento pendente</p>
                   <p className={`mt-2 text-2xl font-black ${resumo.aguardandoPagamento ? "text-orange-300" : "text-emerald-300"}`}>{resumo.aguardandoPagamento}</p>
                   <p className="mt-1 text-[11px] text-gray-600">liberado para Caixa</p>
                 </div>
 
-                <div className="bg-[#090909] p-4">
+                <div className="bg-fr-090909 p-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">Programadas</p>
-                  <p className="mt-2 text-2xl font-black text-[#F2D675]">{resumo.programadas}</p>
+                  <p className="mt-2 text-2xl font-black text-fri-f2d675">{resumo.programadas}</p>
                   <p className="mt-1 text-[11px] text-gray-600">fora do período atual</p>
                 </div>
 
-                <div className="bg-[#090909] p-4">
+                <div className="bg-fr-090909 p-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">Em férias</p>
                   <p className="mt-2 text-2xl font-black text-violet-200">{resumo.emFerias}</p>
                   <p className="mt-1 text-[11px] text-gray-600">colaboradores afastados</p>
                 </div>
 
-                <div className="bg-[#090909] p-4">
+                <div className="bg-fr-090909 p-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">Retornos em 7 dias</p>
                   <p className={`mt-2 text-2xl font-black ${resumo.retornos7Dias ? "text-sky-300" : "text-emerald-300"}`}>{resumo.retornos7Dias}</p>
                   <p className="mt-1 text-[11px] text-gray-600">atenção ao retorno</p>
                 </div>
 
-                <div className="bg-[#090909] p-4">
+                <div className="bg-fr-090909 p-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">Processos</p>
                   <p className="mt-2 text-2xl font-black text-white">{resumo.total}</p>
                   <p className="mt-1 text-[11px] text-gray-600">no filtro atual</p>
@@ -889,7 +889,7 @@ export default function RHFerias() {
               </div>
             </Card>
 
-            <Card className="border-white/[0.08] bg-[#0b0b0b]">
+            <Card className="border-white/[0.08] bg-fr-0b0b0b">
               <CardContent className="p-4 sm:p-5">
                 <div className="flex flex-wrap items-end gap-3">
                   <div className="min-w-[180px] flex-1">
@@ -898,7 +898,7 @@ export default function RHFerias() {
                       <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-white/10 bg-[#111111] text-white">
+                      <SelectContent className="border-white/10 bg-fr-111111 text-white">
                         <SelectItem value="todas">Todas as lojas</SelectItem>
                         {lojas.map((loja) => (
                           <SelectItem key={loja.id} value={String(loja.id)}>
@@ -915,7 +915,7 @@ export default function RHFerias() {
                       <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-white/10 bg-[#111111] text-white">
+                      <SelectContent className="border-white/10 bg-fr-111111 text-white">
                         <SelectItem value="todos">Todos os status</SelectItem>
                         <SelectItem value="aguardando_aviso">Aguardando aviso</SelectItem>
                         <SelectItem value="aguardando_liberacao_pagamento">Aviso recebido</SelectItem>
@@ -934,7 +934,7 @@ export default function RHFerias() {
                       value={busca}
                       onChange={(event) => setBusca(event.target.value)}
                       placeholder="Buscar funcionário ou loja"
-                      className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-10 pr-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/45"
+                      className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-10 pr-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/45"
                     />
                   </div>
                 </div>
@@ -948,11 +948,11 @@ export default function RHFerias() {
                   {processosFiltrados.length} processo{processosFiltrados.length === 1 ? "" : "s"} encontrado{processosFiltrados.length === 1 ? "" : "s"}.
                 </p>
               </div>
-              <CalendarClock className="h-6 w-6 text-[#F2D675]" />
+              <CalendarClock className="h-6 w-6 text-fri-f2d675" />
             </div>
 
             {processosQuery.isLoading ? (
-              <Card className="border-white/[0.08] bg-[#0b0b0b]">
+              <Card className="border-white/[0.08] bg-fr-0b0b0b">
                 <CardContent className="p-6 text-sm text-gray-500">Carregando férias...</CardContent>
               </Card>
             ) : processosQuery.error ? (
@@ -962,7 +962,7 @@ export default function RHFerias() {
                 </CardContent>
               </Card>
             ) : processosFiltrados.length === 0 ? (
-              <Card className="border-white/[0.08] bg-[#0b0b0b]">
+              <Card className="border-white/[0.08] bg-fr-0b0b0b">
                 <CardContent className="p-8 text-center">
                   <CalendarDays className="mx-auto h-8 w-8 text-gray-700" />
                   <p className="mt-3 font-bold text-gray-300">Nenhum processo de férias encontrado</p>
@@ -972,15 +972,15 @@ export default function RHFerias() {
             ) : (
               <div className="space-y-3">
                 {processosFiltrados.map((processo) => (
-                  <Card key={processo.id} className="border-white/[0.08] bg-[#0b0b0b] transition hover:border-[#D4AF37]/20">
+                  <Card key={processo.id} className="border-white/[0.08] bg-fr-0b0b0b transition hover:border-fr-d4af37/20">
                     <CardContent className="p-4 sm:p-5">
                       <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <UserRound className="h-4 w-4 text-[#F2D675]" />
+                              <UserRound className="h-4 w-4 text-fri-f2d675" />
                               <p className="font-black text-white">{processo.funcionarioNome}</p>
-                              <span className="rounded-full border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-2 py-0.5 text-[10px] font-black text-[#F2D675]">
+                              <span className="rounded-full border border-fr-d4af37/15 bg-fr-d4af37/[0.04] px-2 py-0.5 text-[10px] font-black text-fri-f2d675">
                                 {processo.lojaNome}
                               </span>
                               <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${classeStatus(processo.status)}`}>

@@ -28,7 +28,7 @@ export default function EstoquePainelSemanal() {
     <main className="mx-auto max-w-6xl p-3 pb-16 sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]/65">Estoque • supervisor</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-fri-d4af37/65">Estoque • supervisor</p>
           <h1 className="mt-1 text-2xl font-black">Contagem semanal das lojas</h1>
           {p && <p className="mt-1 text-sm text-gray-500">Semana {p.numero}: {p.grupos.join(", ")}</p>}
         </div>
@@ -46,7 +46,7 @@ export default function EstoquePainelSemanal() {
           const st = STATUS_SEMANA[l.status];
           return (
             <button key={l.lojaId} type="button" disabled={!l.iniciada} onClick={() => setLoja(l.lojaId)}
-              className={`rounded-2xl border bg-[#0a0a0a] p-4 text-left transition enabled:hover:bg-white/[0.02] ${st.cor} ${loja === l.lojaId ? "ring-2 ring-[#D4AF37]/50" : ""}`}>
+              className={`rounded-2xl border bg-fr-0a0a0a p-4 text-left transition enabled:hover:bg-white/[0.02] ${st.cor} ${loja === l.lojaId ? "ring-2 ring-fr-d4af37/50" : ""}`}>
               <div className="flex items-center justify-between">
                 <p className="text-lg font-black text-white">{l.loja}</p>
                 {l.pendentesTotal > 0 && <span className="rounded-full bg-rose-500/[0.15] px-2 py-0.5 text-[10px] font-black text-rose-200">{l.pendentesTotal} pendente(s) no total</span>}
@@ -61,7 +61,7 @@ export default function EstoquePainelSemanal() {
       {loja && <DetalheSemanal lojaId={loja} semanaInicio={semana} onFechar={() => setLoja(null)} />}
 
       {(pendenciasQ.data || []).length > 0 && (
-        <section className="mt-6 rounded-3xl border border-rose-400/20 bg-[#0a0a0a] p-4">
+        <section className="mt-6 rounded-3xl border border-rose-400/20 bg-fr-0a0a0a p-4">
           <p className="font-black">Alterações ainda sem tratar</p>
           <p className="text-xs text-gray-500">De qualquer semana, até alguém marcar como tratada.</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -93,7 +93,7 @@ export function DetalheSemanal({ lojaId, semanaInicio, onFechar }: { lojaId: num
   const entregue = s.status.startsWith("entregue");
 
   return (
-    <section className="mt-5 rounded-3xl border border-[#D4AF37]/25 bg-[#0a0a0a] p-4 sm:p-5">
+    <section className="mt-5 rounded-3xl border border-fr-d4af37/25 bg-fr-0a0a0a p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-lg font-black">{s.loja} • semana {s.numero} ({dataBr(s.semanaInicio)} a {dataBr(s.semanaFim)})</p>
@@ -118,7 +118,7 @@ export function DetalheSemanal({ lojaId, semanaInicio, onFechar }: { lojaId: num
             </div>
             {g.ajustes.map((a) => (
               <div key={a.id} className={`mt-2 rounded-xl border p-2.5 ${a.tratado ? "border-white/10" : "border-rose-400/25 bg-rose-500/[0.03]"}`}>
-                <p className="text-sm"><b className="text-[#F2D675]">{a.codigo}</b> <span className="text-gray-400">{a.item}</span></p>
+                <p className="text-sm"><b className="text-fri-f2d675">{a.codigo}</b> <span className="text-gray-400">{a.item}</span></p>
                 <p className="text-xs text-gray-400">Sistema <b className="text-white">{qtd(a.qtdSistema)}</b> • Contado <b className="text-white">{qtd(a.qtdContada)}</b>{a.qtdSistema != null && <b className={a.qtdContada - a.qtdSistema > 0 ? " text-sky-300" : " text-rose-300"}> ({a.qtdContada - a.qtdSistema > 0 ? "+" : ""}{qtd(a.qtdContada - a.qtdSistema)})</b>}</p>
                 {a.obs && <p className="text-xs text-gray-300">{a.obs}</p>}
                 {entregue && (

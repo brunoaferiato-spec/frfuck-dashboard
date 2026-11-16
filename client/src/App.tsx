@@ -5,6 +5,7 @@ import { Redirect, Route, Switch, useLocation } from "wouter";
 import type { ReactNode } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import BotaoTema from "./components/BotaoTema";
 import { useAuth } from "@/_core/hooks/useAuth";
 
 import Home from "./pages/Home";
@@ -42,7 +43,7 @@ import EstoquePremiacoes from "./pages/EstoquePremiacoes";
 
 function TelaCarregando() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black text-[#F2D675]">
+    <div className="flex min-h-screen items-center justify-center bg-black text-fri-f2d675">
       Carregando acesso...
     </div>
   );
@@ -60,14 +61,14 @@ function AcessoNegado({
   const [, navigate] = useLocation();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 text-white">
-      <div className="w-full max-w-lg rounded-2xl border border-[#D4AF37]/20 bg-[#0b0b0b] p-7 text-center">
-        <div className="text-xl font-black text-[#F2D675]">{titulo}</div>
+    <div className="flex min-h-screen items-center justify-center bg-fr-050505 px-4 text-white">
+      <div className="w-full max-w-lg rounded-2xl border border-fr-d4af37/20 bg-fr-0b0b0b p-7 text-center">
+        <div className="text-xl font-black text-fri-f2d675">{titulo}</div>
         <p className="mt-3 text-sm leading-6 text-gray-400">{descricao}</p>
         <button
           type="button"
           onClick={() => navigate(destino)}
-          className="mt-6 rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-5 py-3 text-sm font-bold text-[#F2D675] transition hover:bg-[#D4AF37]/15"
+          className="mt-6 rounded-xl border border-fr-d4af37/35 bg-fr-d4af37/10 px-5 py-3 text-sm font-bold text-fri-f2d675 transition hover:bg-fr-d4af37/15"
         >
           Voltar
         </button>
@@ -445,9 +446,10 @@ function Router() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="dark" switchable>
         <TooltipProvider>
           <Toaster />
+          <BotaoTema />
           <TravaPneusLeitura>
             <Router />
           </TravaPneusLeitura>

@@ -99,8 +99,8 @@ function visualPrioridade(prioridade: number) {
 
   return {
     hover: "",
-    caixaIcone: "border-[#D4AF37]/15 bg-[#D4AF37]/[0.04]",
-    icone: "text-[#F2D675]",
+    caixaIcone: "border-fr-d4af37/15 bg-fr-d4af37/[0.04]",
+    icone: "text-fri-f2d675",
     valor: "text-white",
     status: "text-emerald-400",
     pill: "",
@@ -428,11 +428,11 @@ export default function RHDashboardGeral() {
 
   return (
     <section className="mb-6">
-      <Card className="overflow-hidden border-[#D4AF37]/25 bg-gradient-to-br from-[#111111] via-[#090909] to-[#050505]">
+      <Card className="overflow-hidden border-fr-d4af37/25 bg-gradient-to-br from-fr-111111 via-fr-090909 to-fr-050505">
         <CardContent className="p-0">
           <div className="flex flex-col gap-4 border-b border-white/[0.06] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#D4AF37]/70">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-fri-d4af37/70">
                 Dashboard Geral RH
               </p>
               <h2 className="mt-2 text-2xl font-black text-white">
@@ -447,7 +447,7 @@ export default function RHDashboardGeral() {
               type="button"
               variant="outline"
               onClick={atualizarTudo}
-              className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+              className="border-fr-d4af37/25 bg-fr-d4af37/[0.04] text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
               Atualizar tudo
@@ -471,7 +471,7 @@ export default function RHDashboardGeral() {
                   type="button"
                   key={card.id}
                   onClick={() => abrir(card)}
-                  className={`min-h-[150px] bg-[#090909] p-4 text-left transition hover:bg-[#101010] ${visual.hover}`}
+                  className={`min-h-[150px] bg-fr-090909 p-4 text-left transition hover:bg-fr-101010 ${visual.hover}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div

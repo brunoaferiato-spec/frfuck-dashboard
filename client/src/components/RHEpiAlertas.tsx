@@ -188,7 +188,7 @@ export default function RHEpiAlertas() {
 
   return (
     <section className="mb-5">
-      <Card className="overflow-hidden border-rose-400/25 bg-gradient-to-br from-rose-950/30 via-[#11090b] to-[#090909]">
+      <Card className="overflow-hidden border-rose-400/25 bg-gradient-to-br from-rose-950/30 via-fr-11090b to-fr-090909">
         <CardContent className="p-0">
           <div className="flex flex-col gap-4 border-b border-rose-400/15 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div className="flex min-w-0 items-start gap-3">
@@ -258,7 +258,7 @@ export default function RHEpiAlertas() {
                     </div>
 
                     <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                      <span className="inline-flex items-center gap-1.5 text-[#F2D675]">
+                      <span className="inline-flex items-center gap-1.5 text-fri-f2d675">
                         <PackageCheck className="h-3.5 w-3.5" />
                         {ITENS_EPI[alerta.item] || alerta.item}
                       </span>

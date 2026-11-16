@@ -175,7 +175,7 @@ export default function RHFeriasAlertas() {
 
   return (
     <section className="mb-5">
-      <Card className="overflow-hidden border-amber-400/20 bg-gradient-to-br from-amber-950/20 via-[#100d08] to-[#090909]">
+      <Card className="overflow-hidden border-amber-400/20 bg-gradient-to-br from-amber-950/20 via-fr-100d08 to-fr-090909">
         <CardContent className="p-0">
           <div className="flex flex-col gap-3 border-b border-amber-400/15 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div className="flex items-start gap-3">
@@ -196,7 +196,7 @@ export default function RHFeriasAlertas() {
             <Button
               type="button"
               onClick={() => navigate("/rh/ferias/planejamento")}
-              className="shrink-0 bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+              className="shrink-0 bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
             >
               Planejamento
               <ArrowRight className="ml-2 h-4 w-4" />
@@ -205,7 +205,7 @@ export default function RHFeriasAlertas() {
 
           <div className="grid gap-px bg-white/[0.05] lg:grid-cols-2">
             {itens.map((item) => (
-              <div key={item.id} className="bg-[#0a0907] p-4">
+              <div key={item.id} className="bg-fr-0a0907 p-4">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
                   <div className="min-w-0">

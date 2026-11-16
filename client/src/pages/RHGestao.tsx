@@ -768,15 +768,15 @@ export default function RHGestao() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <div className="border-b border-[#D4AF37]/15 bg-[#080808]/95">
+    <div className="min-h-screen bg-fr-050505 text-white">
+      <div className="border-b border-fr-d4af37/15 bg-fr-080808/95">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-5 lg:px-8">
           <div className="flex items-center gap-4">
             {podeVoltarDashboardGeral && (
               <Button
                 variant="ghost"
                 onClick={() => navigate("/")}
-                className="h-10 w-10 rounded-xl border border-[#D4AF37]/20 p-0 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                className="h-10 w-10 rounded-xl border border-fr-d4af37/20 p-0 text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
                 title="Voltar ao Dashboard"
               >
                 <ArrowLeft className="h-5 w-5" />
@@ -784,17 +784,17 @@ export default function RHGestao() {
             )}
 
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#8f8a80]">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-fri-8f8a80">
                 Liderança de RH
               </p>
-              <h1 className="mt-1 text-2xl font-black text-[#F2D675]">
+              <h1 className="mt-1 text-2xl font-black text-fri-f2d675">
                 Gestão RH
               </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] px-4 py-2 text-sm sm:block">
+            <div className="hidden rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.06] px-4 py-2 text-sm sm:block">
               {user?.name || user?.email || "Líder RH"}
             </div>
 
@@ -814,7 +814,7 @@ export default function RHGestao() {
 
         <section className="mb-6">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#D4AF37]/70">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-fri-d4af37/70">
               Gestão de Ponto
             </p>
             <h2 className="mt-2 text-2xl font-black text-white">
@@ -839,7 +839,7 @@ export default function RHGestao() {
               type="button"
               variant="outline"
               onClick={() => pendenciasQuery.refetch()}
-              className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+              className="border-fr-d4af37/25 bg-fr-d4af37/[0.04] text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
             >
               Atualizar pendências
             </Button>
@@ -868,7 +868,7 @@ export default function RHGestao() {
 
           <div className="mt-4 space-y-3">
             {pendenciasQuery.isLoading && (
-              <div className="rounded-2xl border border-white/[0.08] bg-[#0b0b0b] p-5 text-sm text-gray-500">
+              <div className="rounded-2xl border border-white/[0.08] bg-fr-0b0b0b p-5 text-sm text-gray-500">
                 Carregando pendências...
               </div>
             )}
@@ -880,12 +880,12 @@ export default function RHGestao() {
             )}
 
             {pendencias.map((p: any) => (
-              <Card key={p.id} className="border-white/[0.08] bg-[#0b0b0b]">
+              <Card key={p.id} className="border-white/[0.08] bg-fr-0b0b0b">
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] px-2 py-1 text-[11px] font-black text-[#F2D675]">
+                        <span className="rounded-lg border border-fr-d4af37/20 bg-fr-d4af37/[0.07] px-2 py-1 text-[11px] font-black text-fri-f2d675">
                           {p.lojaNome}
                         </span>
                         <span className="text-xs text-gray-500">
@@ -908,7 +908,7 @@ export default function RHGestao() {
                       <Button
                         type="button"
                         onClick={() => navigate("/funcionarios")}
-                        className="bg-[#D4AF37] font-bold text-black hover:bg-[#E6C760]"
+                        className="bg-fr-d4af37 font-bold text-black hover:bg-fr-e6c760"
                       >
                         Abrir cadastro
                       </Button>
@@ -935,13 +935,13 @@ export default function RHGestao() {
               type="button"
               variant="outline"
               onClick={() => historicoQuery.refetch()}
-              className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+              className="border-fr-d4af37/25 bg-fr-d4af37/[0.04] text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
             >
               Atualizar
             </Button>
           </div>
 
-          <Card className="border-[#D4AF37]/15 bg-[#0b0b0b]">
+          <Card className="border-fr-d4af37/15 bg-fr-0b0b0b">
             <CardContent className="p-4 sm:p-5">
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <div>
@@ -952,7 +952,7 @@ export default function RHGestao() {
                     type="date"
                     value={dataInicio}
                     onChange={(event) => setDataInicio(event.target.value)}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50"
+                    className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-fr-d4af37/50"
                   />
                 </div>
 
@@ -964,7 +964,7 @@ export default function RHGestao() {
                     type="date"
                     value={dataFim}
                     onChange={(event) => setDataFim(event.target.value)}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50"
+                    className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-fr-d4af37/50"
                   />
                 </div>
 
@@ -976,7 +976,7 @@ export default function RHGestao() {
                     <SelectTrigger className="h-11 w-full border-white/10 bg-black/30 text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-white/10 bg-[#111111] text-white">
+                    <SelectContent className="border-white/10 bg-fr-111111 text-white">
                       <SelectItem value="todas">Todas as lojas</SelectItem>
                       {lojas.map((loja) => (
                         <SelectItem key={loja.id} value={String(loja.id)}>
@@ -1000,7 +1000,7 @@ export default function RHGestao() {
                         setBuscaFuncionario(event.target.value)
                       }
                       placeholder="Buscar pelo nome"
-                      className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-9 pr-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50"
+                      className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-9 pr-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/50"
                     />
                   </div>
                 </div>
@@ -1015,7 +1015,7 @@ export default function RHGestao() {
           </Card>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <Card className="border-white/[0.08] bg-[#0b0b0b]">
+            <Card className="border-white/[0.08] bg-fr-0b0b0b">
               <CardContent className="p-4">
                 <p className="text-xs uppercase tracking-wider text-gray-500">
                   Conferências
@@ -1026,7 +1026,7 @@ export default function RHGestao() {
               </CardContent>
             </Card>
 
-            <Card className="border-white/[0.08] bg-[#0b0b0b]">
+            <Card className="border-white/[0.08] bg-fr-0b0b0b">
               <CardContent className="p-4">
                 <p className="text-xs uppercase tracking-wider text-gray-500">
                   Atrasos registrados
@@ -1037,7 +1037,7 @@ export default function RHGestao() {
               </CardContent>
             </Card>
 
-            <Card className="border-white/[0.08] bg-[#0b0b0b]">
+            <Card className="border-white/[0.08] bg-fr-0b0b0b">
               <CardContent className="p-4">
                 <p className="text-xs uppercase tracking-wider text-gray-500">
                   Pendências abertas
@@ -1057,7 +1057,7 @@ export default function RHGestao() {
 
           <div className="mt-4 space-y-3">
             {historicoQuery.isLoading && (
-              <div className="rounded-2xl border border-white/[0.08] bg-[#0b0b0b] p-5 text-sm text-gray-500">
+              <div className="rounded-2xl border border-white/[0.08] bg-fr-0b0b0b p-5 text-sm text-gray-500">
                 Carregando histórico...
               </div>
             )}
@@ -1071,7 +1071,7 @@ export default function RHGestao() {
             {!historicoQuery.isLoading &&
               !historicoQuery.error &&
               historicoFiltrado.length === 0 && (
-                <div className="rounded-2xl border border-white/[0.08] bg-[#0b0b0b] p-5 text-sm text-gray-500">
+                <div className="rounded-2xl border border-white/[0.08] bg-fr-0b0b0b p-5 text-sm text-gray-500">
                   Nenhuma conferência encontrada para os filtros selecionados.
                 </div>
               )}
@@ -1079,13 +1079,13 @@ export default function RHGestao() {
             {historicoFiltrado.map((conferencia: any) => (
               <Card
                 key={conferencia.id}
-                className="border-white/[0.08] bg-[#0b0b0b]"
+                className="border-white/[0.08] bg-fr-0b0b0b"
               >
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] px-2.5 py-1 text-xs font-black text-[#F2D675]">
+                        <span className="rounded-lg border border-fr-d4af37/20 bg-fr-d4af37/[0.07] px-2.5 py-1 text-xs font-black text-fri-f2d675">
                           {formatarData(conferencia.dataReferencia)}
                         </span>
 
@@ -1110,7 +1110,7 @@ export default function RHGestao() {
                       </p>
 
                       {conferencia.relatorioNome && (
-                        <p className="mt-1 max-w-xl truncate text-[11px] text-[#F2D675]/60">
+                        <p className="mt-1 max-w-xl truncate text-[11px] text-fri-f2d675/60">
                           PDF: {conferencia.relatorioNome} • {Number(conferencia.relatorioTotalLinhas || 0)} linha(s) analisada(s)
                         </p>
                       )}
@@ -1138,11 +1138,11 @@ export default function RHGestao() {
                         (ocorrencia: any) => (
                           <div
                             key={ocorrencia.id}
-                            className="rounded-xl border border-white/[0.08] bg-[#111111] p-3"
+                            className="rounded-xl border border-white/[0.08] bg-fr-111111 p-3"
                           >
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="flex min-w-0 items-start gap-2.5">
-                                <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-[#F2D675]" />
+                                <UserRound className="mt-0.5 h-4 w-4 shrink-0 text-fri-f2d675" />
                                 <div className="min-w-0">
                                   <p className="font-bold text-white">
                                     {ocorrencia.funcionarioNome}
@@ -1158,14 +1158,14 @@ export default function RHGestao() {
                                   )}
 
                                    {ocorrencia.tratativaObservacao && (
-                                     <p className="mt-1 whitespace-pre-line text-xs text-[#F2D675]/70">
+                                     <p className="mt-1 whitespace-pre-line text-xs text-fri-f2d675/70">
                                        Tratativa: {ocorrencia.tratativaObservacao}
                                      </p>
                                    )}
 
                                   {ocorrencia.tratativaId && (
                                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                                      <span className="rounded-lg border border-[#D4AF37]/15 bg-[#D4AF37]/[0.05] px-2.5 py-1 text-[11px] font-bold text-[#F2D675]">
+                                      <span className="rounded-lg border border-fr-d4af37/15 bg-fr-d4af37/[0.05] px-2.5 py-1 text-[11px] font-bold text-fri-f2d675">
                                         Tratativa: {labelTratativaHistorico(ocorrencia.tratativaTipo)}
                                       </span>
                                       <span
@@ -1246,8 +1246,8 @@ export default function RHGestao() {
         </section>
 
         <section className="mt-6">
-          <div className="rounded-2xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] p-5">
-            <p className="text-sm font-bold text-[#F2D675]">
+          <div className="rounded-2xl border border-fr-d4af37/15 bg-fr-d4af37/[0.04] p-5">
+            <p className="text-sm font-bold text-fri-f2d675">
               Próxima validação
             </p>
             <p className="mt-2 text-sm leading-6 text-gray-400">

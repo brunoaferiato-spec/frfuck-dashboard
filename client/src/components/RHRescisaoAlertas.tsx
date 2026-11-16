@@ -65,17 +65,17 @@ export default function RHRescisaoAlertas() {
       <Card
         className={
           resumo.novos.length > 0
-            ? "overflow-hidden border-rose-400/20 bg-gradient-to-br from-rose-950/15 via-[#0b0b0b] to-[#090909]"
+            ? "overflow-hidden border-rose-400/20 bg-gradient-to-br from-rose-950/15 via-fr-0b0b0b to-fr-090909"
             : resumo.ativos.length > 0
-            ? "overflow-hidden border-amber-400/20 bg-gradient-to-br from-amber-950/10 via-[#0b0b0b] to-[#090909]"
-            : "overflow-hidden border-[#D4AF37]/20 bg-[#0b0b0b]"
+            ? "overflow-hidden border-amber-400/20 bg-gradient-to-br from-amber-950/10 via-fr-0b0b0b to-fr-090909"
+            : "overflow-hidden border-fr-d4af37/20 bg-fr-0b0b0b"
         }
       >
         <CardContent className="p-0">
           <div className="flex flex-col gap-4 border-b border-white/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div className="flex items-start gap-3">
-              <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] p-2.5">
-                <UserMinus className="h-5 w-5 text-[#F2D675]" />
+              <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.06] p-2.5">
+                <UserMinus className="h-5 w-5 text-fri-f2d675" />
               </div>
 
               <div>
@@ -98,7 +98,7 @@ export default function RHRescisaoAlertas() {
             <Button
               type="button"
               onClick={() => navigate("/rh/rescisoes")}
-              className="bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+              className="bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
             >
               Gerenciar rescisões
               <ArrowRight className="ml-2 h-4 w-4" />
@@ -108,7 +108,7 @@ export default function RHRescisaoAlertas() {
           {resumo.destaques.length > 0 ? (
             <div className="grid gap-px bg-white/[0.05] lg:grid-cols-2">
               {resumo.destaques.map((item) => (
-                <div key={item.id} className="bg-[#090909] p-4">
+                <div key={item.id} className="bg-fr-090909 p-4">
                   <div className="flex items-start gap-3">
                     <FileWarning
                       className={`mt-0.5 h-4 w-4 shrink-0 ${
@@ -134,7 +134,7 @@ export default function RHRescisaoAlertas() {
                         </p>
                       )}
 
-                      <p className="mt-1 text-xs font-bold text-[#F2D675]">
+                      <p className="mt-1 text-xs font-bold text-fri-f2d675">
                         Caixa: {labelFase(item.faseOperacional)}
                       </p>
                     </div>

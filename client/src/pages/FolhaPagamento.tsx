@@ -2423,8 +2423,8 @@ const isMensalUnico =
       : mudouFuncao && funcaoSemana === "mecanico"
         ? "border-orange-400/55 bg-orange-500/[0.10] shadow-[inset_0_0_22px_rgba(251,146,60,0.05)]"
         : mudouFuncao && funcaoSemana === "vendedor"
-        ? "border-[#D4AF37]/55 bg-[#D4AF37]/[0.09] shadow-[inset_0_0_22px_rgba(212,175,55,0.05)]"
-        : "border-white/[0.07] bg-[#101010]";
+        ? "border-fr-d4af37/55 bg-fr-d4af37/[0.09] shadow-[inset_0_0_22px_rgba(212,175,55,0.05)]"
+        : "border-white/[0.07] bg-fr-101010";
 
     return (
       <button
@@ -2441,7 +2441,7 @@ const isMensalUnico =
             ? `${labelFuncaoSemana(funcaoSemana)} nesta semana • houve mudança de função no mês`
             : undefined
         }
-        className={`w-full flex min-h-[42px] flex-col items-end justify-center whitespace-nowrap rounded-xl border px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all duration-200 hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] hover:shadow-[0_0_20px_rgba(212,175,55,0.06)] ${classeMudanca} ${
+        className={`w-full flex min-h-[42px] flex-col items-end justify-center whitespace-nowrap rounded-xl border px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all duration-200 hover:border-fr-d4af37/45 hover:bg-fr-d4af37/[0.045] hover:shadow-[0_0_20px_rgba(212,175,55,0.06)] ${classeMudanca} ${
   rawValue > 0
     ? ["sem1", "sem2", "sem3", "sem4", "sem5Extra", "premiacao"].includes(String(campo))
       ? "text-green-400"
@@ -2459,7 +2459,7 @@ const isMensalUnico =
         ) : mudouFuncao && funcaoSemana ? (
           <span
             className={`mt-0.5 text-[9px] font-extrabold uppercase tracking-[0.09em] ${
-              funcaoSemana === "mecanico" ? "text-orange-300" : "text-[#F2D675]"
+              funcaoSemana === "mecanico" ? "text-orange-300" : "text-fri-f2d675"
             }`}
           >
             {labelFuncaoSemana(funcaoSemana)}
@@ -2683,8 +2683,8 @@ const isMensalUnico =
           bloqueado
             ? "border-red-500/35 bg-red-950/25"
             : aberto
-            ? "border-[#D4AF37]/30 bg-[#0f0f0f]"
-            : "border-white/[0.07] bg-[#0d0d0d]"
+            ? "border-fr-d4af37/30 bg-fr-0f0f0f"
+            : "border-white/[0.07] bg-fr-0d0d0d"
         }`}
       >
         <div className="flex items-stretch">
@@ -2709,7 +2709,7 @@ const isMensalUnico =
                   R$ {money(linha.boleto)}
                 </p>
               </div>
-              <ChevronDown className={`h-5 w-5 text-gray-500 transition-transform ${aberto ? "rotate-180 text-[#F2D675]" : ""}`} />
+              <ChevronDown className={`h-5 w-5 text-gray-500 transition-transform ${aberto ? "rotate-180 text-fri-f2d675" : ""}`} />
             </div>
           </button>
         </div>
@@ -2721,7 +2721,7 @@ const isMensalUnico =
               { rotulo: "Premiação", valor: premiacaoTotal, cor: premiacaoTotal > 0 ? "text-green-400" : "text-gray-300" },
               { rotulo: "Descontos", valor: descontos, cor: descontos > 0 ? "text-red-400" : "text-gray-300" },
             ].map((item) => (
-              <div key={item.rotulo} className="bg-[#0d0d0d] px-1.5 py-2">
+              <div key={item.rotulo} className="bg-fr-0d0d0d px-1.5 py-2">
                 <p className="text-[9.5px] font-bold uppercase tracking-[0.08em] text-gray-600">{item.rotulo}</p>
                 <p className={`mt-0.5 truncate text-[12.5px] font-bold ${item.cor}`}>R$ {money(item.valor)}</p>
               </div>
@@ -2813,7 +2813,7 @@ const isMensalUnico =
               <button
                 type="button"
                 onClick={() => onOpenPremioEditor(linha)}
-                className={`flex min-h-[42px] w-full items-center justify-end rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold ${
+                className={`flex min-h-[42px] w-full items-center justify-end rounded-xl border border-white/[0.07] bg-fr-101010 px-3 py-2 font-bold ${
                   premiacaoTotal > 0 ? "text-green-400" : "text-white"
                 }`}
               >
@@ -2825,7 +2825,7 @@ const isMensalUnico =
             <button
               type="button"
               onClick={() => onOpenValeEditor(linha)}
-              className={`flex min-h-[42px] w-full items-center justify-end rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold ${
+              className={`flex min-h-[42px] w-full items-center justify-end rounded-xl border border-white/[0.07] bg-fr-101010 px-3 py-2 font-bold ${
                 linha.vale > 0 ? "text-red-400" : "text-white"
               }`}
             >
@@ -2846,7 +2846,7 @@ const isMensalUnico =
               <button
                 type="button"
                 onClick={() => onOpenUmPorcentoEditor(linha)}
-                className="flex min-h-[42px] w-full items-center justify-end rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.045] px-3 py-2 font-bold text-[#F2D675]"
+                className="flex min-h-[42px] w-full items-center justify-end rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.045] px-3 py-2 font-bold text-fri-f2d675"
               >
                 R$ {money(Number(umPorcentoByFuncionario[Number(linha.funcionarioId)] || 0) * 0.01)}
               </button>
@@ -2868,7 +2868,7 @@ const isMensalUnico =
         <button
           type="button"
           onClick={() => onOpenFuncionarioDetalhe(linha)}
-          className="mt-2 flex min-h-[40px] w-full items-center justify-center rounded-xl text-xs font-bold text-[#D4AF37]"
+          className="mt-2 flex min-h-[40px] w-full items-center justify-center rounded-xl text-xs font-bold text-fri-d4af37"
         >
           Ver cadastro do funcionário
         </button>
@@ -2879,11 +2879,11 @@ const isMensalUnico =
   }
 
   return (
-    <Card className="group gap-0 overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] py-0 shadow-[0_18px_60px_rgba(0,0,0,0.32)] md:gap-6 md:py-6">
-      <CardHeader className="border-b border-[#D4AF37]/10 bg-gradient-to-r from-[#D4AF37]/[0.055] via-transparent to-transparent px-4 py-4 md:px-6 md:py-5">
+    <Card className="group gap-0 overflow-hidden rounded-3xl border border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-060606 py-0 shadow-[0_18px_60px_rgba(0,0,0,0.32)] md:gap-6 md:py-6">
+      <CardHeader className="border-b border-fr-d4af37/10 bg-gradient-to-r from-fr-d4af37/[0.055] via-transparent to-transparent px-4 py-4 md:px-6 md:py-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <CardTitle className="text-base font-bold tracking-tight text-[#F2D675] md:text-lg">
+            <CardTitle className="text-base font-bold tracking-tight text-fri-f2d675 md:text-lg">
               {titulo}
               <span className="ml-2 text-xs font-semibold text-gray-500 md:hidden">{linhas.length}</span>
             </CardTitle>
@@ -2894,11 +2894,11 @@ const isMensalUnico =
           <button
             type="button"
             onClick={() => setModoTabelaCelular((atual) => !atual)}
-            className="shrink-0 rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-3 py-1.5 text-[11px] font-bold text-[#F2D675] md:hidden"
+            className="shrink-0 rounded-full border border-fr-d4af37/25 bg-fr-d4af37/[0.06] px-3 py-1.5 text-[11px] font-bold text-fri-f2d675 md:hidden"
           >
             {modoTabelaCelular ? "Cartões" : "Tabela"}
           </button>
-          <div className="mt-1 hidden h-2 w-2 rounded-full bg-[#D4AF37] shadow-[0_0_18px_rgba(212,175,55,0.55)] md:block" />
+          <div className="mt-1 hidden h-2 w-2 rounded-full bg-fr-d4af37 shadow-[0_0_18px_rgba(212,175,55,0.55)] md:block" />
         </div>
       </CardHeader>
 
@@ -2911,8 +2911,8 @@ const isMensalUnico =
         <div className={`overflow-x-auto ${modoTabelaCelular ? "" : "hidden md:block"}`}>
           <table className={`w-full ${sem5Ativa ? "min-w-[2150px]" : "min-w-[1900px]"} text-sm`}>
             <thead>
-              <tr className="border-b border-[#D4AF37]/15 bg-[#D4AF37]/[0.025] text-[#D4AF37]">
-                <th className="sticky left-0 z-20 bg-[#0b0b0b] p-3 text-left text-[11px] font-bold uppercase tracking-[0.08em]">Nome</th>
+              <tr className="border-b border-fr-d4af37/15 bg-fr-d4af37/[0.025] text-fri-d4af37">
+                <th className="sticky left-0 z-20 bg-fr-0b0b0b p-3 text-left text-[11px] font-bold uppercase tracking-[0.08em]">Nome</th>
                 <th className="p-3 text-left text-[11px] font-bold uppercase tracking-[0.06em]">Função</th>
                 {temTransicaoNoQuadrante && (
                   <th className="p-3 text-left text-[11px] font-bold uppercase tracking-[0.06em] text-orange-300">
@@ -2930,7 +2930,7 @@ const isMensalUnico =
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(1)}
-                          className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
+                          className="font-bold text-fri-d4af37 hover:text-fri-f2d675 hover:underline underline-offset-4"
                           title="Importar relatório da SEM1"
                         >
                           SEM1
@@ -2945,7 +2945,7 @@ const isMensalUnico =
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(2)}
-                          className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
+                          className="font-bold text-fri-d4af37 hover:text-fri-f2d675 hover:underline underline-offset-4"
                           title="Importar relatório da SEM2"
                         >
                           SEM2
@@ -2960,7 +2960,7 @@ const isMensalUnico =
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(3)}
-                          className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
+                          className="font-bold text-fri-d4af37 hover:text-fri-f2d675 hover:underline underline-offset-4"
                           title="Importar relatório da SEM3"
                         >
                           SEM3
@@ -2975,7 +2975,7 @@ const isMensalUnico =
                         <button
                           type="button"
                           onClick={() => onOpenImportacaoSemana(4)}
-                          className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
+                          className="font-bold text-fri-d4af37 hover:text-fri-f2d675 hover:underline underline-offset-4"
                           title="Importar relatório da SEM4"
                         >
                           SEM4
@@ -2992,7 +2992,7 @@ const isMensalUnico =
                             <button
                               type="button"
                               onClick={() => onOpenImportacaoSemana(5)}
-                              className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
+                              className="font-bold text-fri-d4af37 hover:text-fri-f2d675 hover:underline underline-offset-4"
                               title="Importar relatório da SEM5"
                             >
                               SEM5
@@ -3071,7 +3071,7 @@ const isMensalUnico =
           <button
             type="button"
             onClick={() => onOpenImportacaoSemana(1)}
-            className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
+            className="font-bold text-fri-d4af37 hover:text-fri-f2d675 hover:underline underline-offset-4"
             title="Importar relatório mensal de VENDA/MECÂNICA"
           >
             Liquidez Venda
@@ -3139,14 +3139,14 @@ const isMensalUnico =
                     <button
                       type="button"
                       onClick={onOpenImportacaoUmPorcento}
-                      className="group inline-flex min-w-[78px] flex-col items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.055] px-3 py-2 transition hover:border-[#D4AF37]/60 hover:bg-[#D4AF37]/[0.12]"
+                      className="group inline-flex min-w-[78px] flex-col items-center justify-center rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/[0.055] px-3 py-2 transition hover:border-fr-d4af37/60 hover:bg-fr-d4af37/[0.12]"
                       title="Importar relatório mensal para preencher o 1% de todos os funcionários"
                     >
-                      <span className="text-[12px] font-extrabold text-[#F2D675]">
+                      <span className="text-[12px] font-extrabold text-fri-f2d675">
                         1%
                       </span>
 
-                      <span className="mt-0.5 text-[8px] font-extrabold uppercase tracking-[0.12em] text-[#D4AF37]/65 group-hover:text-[#F2D675]">
+                      <span className="mt-0.5 text-[8px] font-extrabold uppercase tracking-[0.12em] text-fri-d4af37/65 group-hover:text-fri-f2d675">
                         Importar
                       </span>
                     </button>
@@ -3159,7 +3159,7 @@ const isMensalUnico =
                   <button
                     type="button"
                     onClick={onOpenConferenciaVales}
-                    className="font-bold text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
+                    className="font-bold text-fri-d4af37 hover:text-fri-f2d675 hover:underline underline-offset-4"
                     title="Conferir vales pelo WhatsApp"
                   >
                     Vale
@@ -3178,7 +3178,7 @@ const isMensalUnico =
                     <button
                       type="button"
                       onClick={onOpenImportacaoAdiantamento}
-                      className="inline-flex items-center gap-1 text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
+                      className="inline-flex items-center gap-1 text-fri-d4af37 hover:text-fri-f2d675 hover:underline underline-offset-4"
                       title="Importar PDF de adiantamento"
                     >
                       Adiant.
@@ -3191,7 +3191,7 @@ const isMensalUnico =
                     Holerite
                   </th>
                 ) : isPjQuadrante ? (
-                  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em] text-[#F2D675]">
+                  <th className="p-3 text-right text-[11px] font-bold uppercase tracking-[0.06em] text-fri-f2d675">
                     Pagamento PJ
                   </th>
                 ) : !isPj && (
@@ -3199,7 +3199,7 @@ const isMensalUnico =
                     <button
                       type="button"
                       onClick={onOpenImportacaoHolerite}
-                      className="inline-flex items-center gap-1 text-[#D4AF37] hover:text-[#F2D675] hover:underline underline-offset-4"
+                      className="inline-flex items-center gap-1 text-fri-d4af37 hover:text-fri-f2d675 hover:underline underline-offset-4"
                       title="Importar PDF da folha mensal"
                     >
                       Holerite
@@ -3219,20 +3219,20 @@ const isMensalUnico =
                   className={`border-b transition-colors duration-200 ${
                     boletoBloqueadoLinha(linha)
                       ? "border-red-500/25 bg-red-950/30 hover:bg-red-950/40"
-                      : "border-white/[0.045] hover:bg-[#D4AF37]/[0.028]"
+                      : "border-white/[0.045] hover:bg-fr-d4af37/[0.028]"
                   }`}
                 >
                   <td
                     className={`sticky left-0 z-10 min-w-[260px] p-3 font-semibold text-white ${
                       boletoBloqueadoLinha(linha)
-                        ? "bg-[#2a0909]"
-                        : "bg-[#0b0b0b]"
+                        ? "bg-fr-2a0909"
+                        : "bg-fr-0b0b0b"
                     }`}
                   >
                     <button
                       type="button"
                       onClick={() => onOpenFuncionarioDetalhe(linha)}
-                      className="text-left font-semibold text-white transition-colors hover:text-[#F2D675] hover:underline underline-offset-4"
+                      className="text-left font-semibold text-white transition-colors hover:text-fri-f2d675 hover:underline underline-offset-4"
                       title="Ver dados do funcionário"
                     >
                       {linha.nome}
@@ -3251,7 +3251,7 @@ const isMensalUnico =
                       "Supervisora de Consultor de Vendas - PJ"
                     ) : temMudancaFuncaoNoMes(linha) ? (
                       <div className="flex flex-col items-start gap-1">
-                        <span className="font-semibold text-[#F2D675]">
+                        <span className="font-semibold text-fri-f2d675">
                           {getDescricaoFuncaoNoMes(linha)}
                         </span>
                         <span className="rounded-full border border-orange-400/30 bg-orange-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-orange-300">
@@ -3279,7 +3279,7 @@ const isMensalUnico =
                             {labelFuncaoFuncionario(linha.trocaFuncaoMes.funcaoAnterior, linha.loja_id)} → {labelFuncaoFuncionario(linha.trocaFuncaoMes.funcaoNova, linha.loja_id)}
                           </span>
                           {linha.trocaFuncaoMes.funcaoAnterior === "recepcionista" && (
-                            <span className="mt-1 block text-[10px] text-[#F2D675]">
+                            <span className="mt-1 block text-[10px] text-fri-f2d675">
                               Recepção: R$ {money(Number(linha.comissaoFuncaoAnterior || 0))}
                             </span>
                           )}
@@ -3397,7 +3397,7 @@ const isMensalUnico =
         <button
           type="button"
           onClick={() => onOpenPremioEditor(linha)}
-          className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] ${
+          className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-fr-101010 px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all hover:border-fr-d4af37/45 hover:bg-fr-d4af37/[0.045] ${
             Number(linha.premiacao || 0) > 0 ? "text-green-400" : "text-white"
           }`}
         >
@@ -3487,7 +3487,7 @@ const isMensalUnico =
       "money"
     )
   }
-  className="w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold text-white shadow-inner shadow-black/30 transition-all hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045]"
+  className="w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-fr-101010 px-3 py-2 font-bold text-white shadow-inner shadow-black/30 transition-all hover:border-fr-d4af37/45 hover:bg-fr-d4af37/[0.045]"
 >
   R$ {money(Number((linha as any).liquidezLojaGerente || 0))}
 </button>
@@ -3626,7 +3626,7 @@ const isMensalUnico =
                             [3, 6, 7].includes(
                               Number(linha.loja_id)
                             ) && (
-                              <div className="mt-1 flex flex-col items-end gap-1 rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] px-2 py-1.5 text-[10px]">
+                              <div className="mt-1 flex flex-col items-end gap-1 rounded-lg border border-fr-d4af37/20 bg-fr-d4af37/[0.04] px-2 py-1.5 text-[10px]">
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -3637,7 +3637,7 @@ const isMensalUnico =
                                       "money"
                                     )
                                   }
-                                  className="whitespace-nowrap text-white hover:text-[#F2D675] hover:underline underline-offset-4"
+                                  className="whitespace-nowrap text-white hover:text-fri-f2d675 hover:underline underline-offset-4"
                                   title="Editar Liquidez Loja"
                                 >
                                   Loja: R$ {money(
@@ -3656,7 +3656,7 @@ const isMensalUnico =
                                       5
                                     )
                                   }
-                                  className="whitespace-nowrap text-[#F2D675] hover:underline underline-offset-4"
+                                  className="whitespace-nowrap text-fri-f2d675 hover:underline underline-offset-4"
                                   title="Ver regra da comissão da loja"
                                 >
                                   % Loja: {Number(
@@ -3705,7 +3705,7 @@ const isMensalUnico =
                               linha
                             )
                           }
-                          className="w-full min-h-[42px] whitespace-nowrap rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.045] px-3 py-2 text-right font-bold text-[#F2D675] transition hover:border-[#D4AF37]/50 hover:bg-[#D4AF37]/[0.08]"
+                          className="w-full min-h-[42px] whitespace-nowrap rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.045] px-3 py-2 text-right font-bold text-fri-f2d675 transition hover:border-fr-d4af37/50 hover:bg-fr-d4af37/[0.08]"
                           title="Informar a liquidez mensal usada somente para o cálculo informativo de 1%"
                         >
                           R$ {money(
@@ -3731,7 +3731,7 @@ const isMensalUnico =
                       <button
                         type="button"
                         onClick={() => onOpenPremioEditor(linha)}
-                        className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] ${
+                        className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-fr-101010 px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all hover:border-fr-d4af37/45 hover:bg-fr-d4af37/[0.045] ${
                          (
     linha.premiacao +
     (((linha as any).detalhesGrupo || []).reduce(
@@ -3756,7 +3756,7 @@ const isMensalUnico =
                     <button
                       type="button"
                       onClick={() => onOpenValeEditor(linha)}
-                      className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-[#101010] px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all hover:border-[#D4AF37]/45 hover:bg-[#D4AF37]/[0.045] ${
+                      className={`w-full flex items-center justify-end whitespace-nowrap rounded-xl border border-white/[0.07] bg-fr-101010 px-3 py-2 font-bold shadow-inner shadow-black/30 transition-all hover:border-fr-d4af37/45 hover:bg-fr-d4af37/[0.045] ${
                         linha.vale > 0 ? "text-red-400" : "text-white"
                       }`}
                     >
@@ -3776,7 +3776,7 @@ const isMensalUnico =
                         Number(linha.funcionarioId)
                       )
                         ? (
-                          <span className="block rounded-xl border border-white/[0.05] bg-[#0d0d0d] px-3 py-2 text-right text-gray-600">
+                          <span className="block rounded-xl border border-white/[0.05] bg-fr-0d0d0d px-3 py-2 text-right text-gray-600">
                             —
                           </span>
                         )
@@ -3833,7 +3833,7 @@ const isMensalUnico =
                       className={
                         observacoesPublicasLinha(linha).length > 0
                           ? "rounded-md bg-red-600 px-3 py-2 font-bold text-white hover:bg-red-500"
-                          : "rounded-md border border-[#D4AF37]/15 bg-[#111111] px-3 py-2 text-white hover:border-[#D4AF37]/45"
+                          : "rounded-md border border-fr-d4af37/15 bg-fr-111111 px-3 py-2 text-white hover:border-fr-d4af37/45"
                       }
                     >
                       {observacoesPublicasLinha(linha).length > 0 ? "OBS" : "—"}
@@ -3852,7 +3852,7 @@ const isMensalUnico =
           if (!open) fecharSemanaMistaDetalhe();
         }}
       >
-        <DialogContent className="border border-orange-400/30 bg-[#090909] text-white sm:max-w-lg">
+        <DialogContent className="border border-orange-400/30 bg-fr-090909 text-white sm:max-w-lg">
           {semanaMistaDetalhe && (() => {
             const { linha, semana } = semanaMistaDetalhe;
             const composicao = getComposicaoSemana(linha, semana);
@@ -3868,7 +3868,7 @@ const isMensalUnico =
             return (
               <>
                 <DialogHeader>
-                  <DialogTitle className="text-[#F2D675]">
+                  <DialogTitle className="text-fri-f2d675">
                     SEM{semana} — Detalhamento por função
                   </DialogTitle>
                   <DialogDescription className="text-gray-400">
@@ -3883,7 +3883,7 @@ const isMensalUnico =
                       className={`rounded-xl border p-4 ${
                         item.funcao === "mecanico"
                           ? "border-orange-400/35 bg-orange-500/[0.07]"
-                          : "border-[#D4AF37]/35 bg-[#D4AF37]/[0.06]"
+                          : "border-fr-d4af37/35 bg-fr-d4af37/[0.06]"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -3936,7 +3936,7 @@ const isMensalUnico =
                         </div>
                         <div className="text-right">
                           <p className="text-gray-500">Comissão</p>
-                          <p className="font-semibold text-[#F2D675]">
+                          <p className="font-semibold text-fri-f2d675">
                             R$ {money(item.comissao)}
                           </p>
                         </div>
@@ -3945,21 +3945,21 @@ const isMensalUnico =
                   ))}
                 </div>
 
-                <div className="rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.055] p-4">
+                <div className="rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/[0.055] p-4">
                   <div className="flex justify-between gap-4 text-sm">
                     <span className="text-gray-400">Liquidez total da semana</span>
                     <strong className="text-white">R$ {money(totalLiquidez)}</strong>
                   </div>
                   <div className="mt-2 flex justify-between gap-4">
                     <span className="font-semibold text-gray-300">Comissão total da semana</span>
-                    <strong className="text-[#F2D675]">R$ {money(totalComissao)}</strong>
+                    <strong className="text-fri-f2d675">R$ {money(totalComissao)}</strong>
                   </div>
                 </div>
 
                 <DialogFooter>
                   <Button
                     type="button"
-                    className="bg-[#D4AF37] text-black hover:bg-[#F2D675]"
+                    className="bg-fr-d4af37 text-black hover:bg-fr-f2d675"
                     onMouseDown={() => {
                       // onMouseDown acontece antes do blur do input.
                       semanaMistaAbertaRef.current = false;
@@ -11478,11 +11478,11 @@ if (
   );
 }
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#050505] px-3 pb-4 pt-[calc(12px+env(safe-area-inset-top))] text-white md:p-6">
+    <div className="relative min-h-screen overflow-x-hidden bg-fr-050505 px-3 pb-4 pt-[calc(12px+env(safe-area-inset-top))] text-white md:p-6">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(212,175,55,0.11),transparent_27%),radial-gradient(circle_at_92%_8%,rgba(212,175,55,0.06),transparent_24%)]" />
       <div className="relative mx-auto flex max-w-[1900px] flex-col gap-4 md:block md:space-y-6">
-        <section className="relative order-[-2] overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#090909] to-[#050505] p-4 md:order-none shadow-[0_24px_80px_rgba(0,0,0,0.42)] md:p-7">
-          <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[#D4AF37]/[0.08] blur-3xl" />
+        <section className="relative order-[-2] overflow-hidden rounded-3xl border border-fr-d4af37/20 bg-gradient-to-br from-fr-121212 via-fr-090909 to-fr-050505 p-4 md:order-none shadow-[0_24px_80px_rgba(0,0,0,0.42)] md:p-7">
+          <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-fr-d4af37/[0.08] blur-3xl" />
           <div className="relative flex flex-col gap-4 md:gap-6 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <div className="mb-2 flex items-center gap-3 md:mb-3">
@@ -11490,16 +11490,16 @@ if (
                   variant="ghost"
                   size="sm"
                   onClick={() => setLocation("/")}
-                  className="h-10 w-10 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.045] p-0 text-[#D4AF37] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                  className="h-10 w-10 rounded-xl border border-fr-d4af37/15 bg-fr-d4af37/[0.045] p-0 text-fri-d4af37 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <span className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.055] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#D8C078]">
+                <span className="inline-flex items-center gap-2 rounded-full border border-fr-d4af37/20 bg-fr-d4af37/[0.055] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-fri-d8c078">
                   <Sparkles className="h-3 w-3" /> Gestão financeira
                 </span>
               </div>
               <h1 className="text-2xl font-black tracking-tight text-white md:text-4xl">
-                Folha de <span className="text-[#D4AF37]">Pagamento</span>
+                Folha de <span className="text-fri-d4af37">Pagamento</span>
               </h1>
               <p className="mt-2 hidden max-w-2xl text-sm text-gray-500 md:block">
                 Conferência de liquidez, comissões, descontos, boletos e fechamento por competência.
@@ -11532,7 +11532,7 @@ if (
                 {podeGerenciarFechamento && mesFechado && (
                   <Button
                     variant="outline"
-                    className="rounded-xl border-[#D4AF37]/30 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F7E5A7]"
+                    className="rounded-xl border-fr-d4af37/30 bg-fr-d4af37/[0.04] text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f7e5a7"
                     onClick={() => {
                       setSenhaReabertura("");
                       setErroFechamento("");
@@ -11545,20 +11545,20 @@ if (
 
                 <Button
                   variant="outline"
-                  className="col-span-2 rounded-xl border-[#D4AF37]/30 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F7E5A7] md:col-span-1"
+                  className="col-span-2 rounded-xl border-fr-d4af37/30 bg-fr-d4af37/[0.04] text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f7e5a7 md:col-span-1"
                   onClick={() => setRepasseFranklynOpen(true)}
                 >
                   <WalletCards className="mr-2 h-4 w-4" />
                   Repasses Franklyn
                   {totalRepasseFranklynPendente > 0 && (
-                    <span className="ml-2 rounded-md bg-[#D4AF37]/15 px-2 py-0.5 text-xs font-black">
+                    <span className="ml-2 rounded-md bg-fr-d4af37/15 px-2 py-0.5 text-xs font-black">
                       R$ {money(totalRepasseFranklynPendente)}
                     </span>
                   )}
                 </Button>
 
                 <Button
-                  className="col-span-2 rounded-xl bg-gradient-to-r from-[#C79C2C] via-[#D4AF37] to-[#E2C45F] font-bold text-black shadow-[0_10px_30px_rgba(212,175,55,0.16)] transition hover:brightness-110 md:col-span-1"
+                  className="col-span-2 rounded-xl bg-gradient-to-r from-fr-c79c2c via-fr-d4af37 to-fr-e2c45f font-bold text-black shadow-[0_10px_30px_rgba(212,175,55,0.16)] transition hover:brightness-110 md:col-span-1"
                   onClick={exportarBoletos}
                 >
                   <ReceiptText className="mr-2 h-4 w-4" />
@@ -11583,16 +11583,16 @@ if (
         </section>
 
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-2 md:gap-4 2xl:grid-cols-4">
-          <Card className="py-0 md:py-6 col-span-2 md:col-span-1 group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
-            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl" />
+          <Card className="py-0 md:py-6 col-span-2 md:col-span-1 group relative overflow-hidden rounded-2xl border border-fr-d4af37/20 bg-gradient-to-br from-fr-121212 via-fr-0b0b0b to-fr-050505 shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-fr-d4af37/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-fr-d4af37/10 blur-3xl" />
             <CardContent className="relative p-4 md:p-5">
               <div className="mb-3 flex items-start justify-between md:mb-6">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-600">Total Liquidez</p>
-                  <div className="mt-2 h-px w-8 bg-gradient-to-r from-[#D4AF37] to-transparent" />
+                  <div className="mt-2 h-px w-8 bg-gradient-to-r from-fr-d4af37 to-transparent" />
                 </div>
-                <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2.5">
-                  <TrendingUp className="h-4 w-4 text-[#D4AF37]" />
+                <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-2.5">
+                  <TrendingUp className="h-4 w-4 text-fri-d4af37" />
                 </div>
               </div>
               <p className="text-lg font-black tracking-tight md:text-2xl text-white md:text-3xl">R$ {money(totalLiquidezGeral)}</p>
@@ -11600,24 +11600,24 @@ if (
             </CardContent>
           </Card>
 
-          <Card className="py-0 md:py-6 group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
-            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl" />
+          <Card className="py-0 md:py-6 group relative overflow-hidden rounded-2xl border border-fr-d4af37/20 bg-gradient-to-br from-fr-121212 via-fr-0b0b0b to-fr-050505 shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-fr-d4af37/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-fr-d4af37/10 blur-3xl" />
             <CardContent className="relative p-4 md:p-5">
               <div className="mb-3 flex items-start justify-between md:mb-6">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-600">Comissão + Premiação</p>
-                  <div className="mt-2 h-px w-8 bg-gradient-to-r from-[#D4AF37] to-transparent" />
+                  <div className="mt-2 h-px w-8 bg-gradient-to-r from-fr-d4af37 to-transparent" />
                 </div>
-                <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2.5">
-                  <BadgeDollarSign className="h-4 w-4 text-[#D4AF37]" />
+                <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-2.5">
+                  <BadgeDollarSign className="h-4 w-4 text-fri-d4af37" />
                 </div>
               </div>
-              <p className="text-lg font-black tracking-tight md:text-2xl text-[#F2D675] md:text-3xl">R$ {money(totalComissaoGeral)}</p>
+              <p className="text-lg font-black tracking-tight md:text-2xl text-fri-f2d675 md:text-3xl">R$ {money(totalComissaoGeral)}</p>
               <p className="mt-2 hidden text-xs text-gray-600 md:block">Custo variável calculado na folha</p>
             </CardContent>
           </Card>
 
-          <Card className="py-0 md:py-6 group relative overflow-hidden rounded-2xl border border-emerald-500/15 bg-gradient-to-br from-[#101311] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/30">
+          <Card className="py-0 md:py-6 group relative overflow-hidden rounded-2xl border border-emerald-500/15 bg-gradient-to-br from-fr-101311 via-fr-0b0b0b to-fr-050505 shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-500/30">
             <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-emerald-500/[0.07] blur-3xl" />
             <CardContent className="relative p-4 md:p-5">
               <div className="mb-3 flex items-start justify-between md:mb-6">
@@ -11636,43 +11636,43 @@ if (
             </CardContent>
           </Card>
 
-          <Card className="py-0 md:py-6 col-span-2 md:col-span-1 group relative overflow-hidden rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4AF37]/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
-            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl" />
+          <Card className="py-0 md:py-6 col-span-2 md:col-span-1 group relative overflow-hidden rounded-2xl border border-fr-d4af37/20 bg-gradient-to-br from-fr-121212 via-fr-0b0b0b to-fr-050505 shadow-[0_18px_55px_rgba(0,0,0,0.36)] transition-all duration-300 hover:-translate-y-0.5 hover:border-fr-d4af37/45 hover:shadow-[0_22px_65px_rgba(212,175,55,0.10)]">
+            <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-fr-d4af37/10 blur-3xl" />
             <CardContent className="relative p-4 md:p-5">
               <div className="mb-4 flex items-start justify-between">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-600">Total Folha</p>
-                  <div className="mt-2 h-px w-8 bg-gradient-to-r from-[#D4AF37] to-transparent" />
+                  <div className="mt-2 h-px w-8 bg-gradient-to-r from-fr-d4af37 to-transparent" />
                 </div>
-                <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2.5">
-                  <WalletCards className="h-4 w-4 text-[#D4AF37]" />
+                <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-2.5">
+                  <WalletCards className="h-4 w-4 text-fri-d4af37" />
                 </div>
               </div>
               <p className="text-lg font-black tracking-tight md:text-2xl text-emerald-400 md:text-3xl">R$ {money(totalFolhaGeral)}</p>
               <div className="mt-4 grid grid-cols-3 gap-2 text-[10px] font-semibold uppercase tracking-wide">
-                <button type="button" onClick={() => setFolhaFiltros((prev) => ({ ...prev, inss: !prev.inss }))} className={`rounded-lg border px-2 py-1.5 transition ${folhaFiltros.inss ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#F2D675]" : "border-white/[0.05] bg-white/[0.02] text-gray-700"}`}>INSS</button>
-                <button type="button" onClick={() => setFolhaFiltros((prev) => ({ ...prev, adiant: !prev.adiant }))} className={`rounded-lg border px-2 py-1.5 transition ${folhaFiltros.adiant ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#F2D675]" : "border-white/[0.05] bg-white/[0.02] text-gray-700"}`}>Adiant.</button>
-                <button type="button" onClick={() => setFolhaFiltros((prev) => ({ ...prev, holerite: !prev.holerite }))} className={`rounded-lg border px-2 py-1.5 transition ${folhaFiltros.holerite ? "border-[#D4AF37]/25 bg-[#D4AF37]/10 text-[#F2D675]" : "border-white/[0.05] bg-white/[0.02] text-gray-700"}`}>Holerite</button>
+                <button type="button" onClick={() => setFolhaFiltros((prev) => ({ ...prev, inss: !prev.inss }))} className={`rounded-lg border px-2 py-1.5 transition ${folhaFiltros.inss ? "border-fr-d4af37/25 bg-fr-d4af37/10 text-fri-f2d675" : "border-white/[0.05] bg-white/[0.02] text-gray-700"}`}>INSS</button>
+                <button type="button" onClick={() => setFolhaFiltros((prev) => ({ ...prev, adiant: !prev.adiant }))} className={`rounded-lg border px-2 py-1.5 transition ${folhaFiltros.adiant ? "border-fr-d4af37/25 bg-fr-d4af37/10 text-fri-f2d675" : "border-white/[0.05] bg-white/[0.02] text-gray-700"}`}>Adiant.</button>
+                <button type="button" onClick={() => setFolhaFiltros((prev) => ({ ...prev, holerite: !prev.holerite }))} className={`rounded-lg border px-2 py-1.5 transition ${folhaFiltros.holerite ? "border-fr-d4af37/25 bg-fr-d4af37/10 text-fri-f2d675" : "border-white/[0.05] bg-white/[0.02] text-gray-700"}`}>Holerite</button>
               </div>
             </CardContent>
           </Card>
         </div>
 
-<Card className="order-[-1] py-0 md:order-none md:py-6 sticky top-[env(safe-area-inset-top)] z-30 overflow-hidden rounded-2xl backdrop-blur-xl md:static border border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#070707] shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
+<Card className="order-[-1] py-0 md:order-none md:py-6 sticky top-[env(safe-area-inset-top)] z-30 overflow-hidden rounded-2xl backdrop-blur-xl md:static border border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-070707 shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
   <CardContent className="px-3 py-3 md:px-5 md:py-4">
     <div className="grid grid-cols-[1.25fr_0.8fr_1.1fr] items-center gap-2 md:grid-cols-12 md:gap-4">
       <div className="hidden md:col-span-1 md:block">
-        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#D4AF37]">Filtros</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-fri-d4af37">Filtros</p>
       </div>
 
       <div className="min-w-0 md:col-span-2">
         <div className="flex items-center gap-3">
           <Label className="hidden whitespace-nowrap text-gray-300 md:block">Cidade</Label>
           <Select value={selectedLoja} onValueChange={setSelectedLoja}>
-            <SelectTrigger className="h-11 w-full rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30 md:h-10">
+            <SelectTrigger className="h-11 w-full rounded-xl border-fr-d4af37/20 bg-fr-0d0d0d text-white shadow-inner shadow-black/30 md:h-10">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="border-[#D4AF37]/20 bg-[#0b0b0b] text-white">
+            <SelectContent className="border-fr-d4af37/20 bg-fr-0b0b0b text-white">
               {LOJAS.map((loja) => (
                 <SelectItem
                   key={loja.id}
@@ -11694,7 +11694,7 @@ if (
             type="number"
             value={ano}
             onChange={(e) => setAno(parseInt(e.target.value, 10) || 2026)}
-            className="h-11 w-full rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30 md:h-10"
+            className="h-11 w-full rounded-xl border-fr-d4af37/20 bg-fr-0d0d0d text-white shadow-inner shadow-black/30 md:h-10"
           />
         </div>
       </div>
@@ -11706,10 +11706,10 @@ if (
             value={mes.toString()}
             onValueChange={(value) => setMes(parseInt(value, 10))}
           >
-            <SelectTrigger className="h-11 w-full rounded-xl border-[#D4AF37]/20 bg-[#0d0d0d] text-white shadow-inner shadow-black/30 md:h-10">
+            <SelectTrigger className="h-11 w-full rounded-xl border-fr-d4af37/20 bg-fr-0d0d0d text-white shadow-inner shadow-black/30 md:h-10">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="border-[#D4AF37]/20 bg-[#0b0b0b] text-white">
+            <SelectContent className="border-fr-d4af37/20 bg-fr-0b0b0b text-white">
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                 <SelectItem
                   key={m}
@@ -11746,10 +11746,10 @@ if (
         )}
 
         {usaMetaSemanal(lojaId, ano, mes) && (
-          <div className="rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-r from-[#111111] via-[#0b0b0b] to-[#080808] px-5 py-4 shadow-[0_16px_45px_rgba(0,0,0,0.22)]">
+          <div className="rounded-2xl border border-fr-d4af37/20 bg-gradient-to-r from-fr-111111 via-fr-0b0b0b to-fr-080808 px-5 py-4 shadow-[0_16px_45px_rgba(0,0,0,0.22)]">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-bold text-[#F2D675]">Semanas da competência</p>
+                <p className="font-bold text-fri-f2d675">Semanas da competência</p>
                 <p className="mt-1 text-sm text-gray-500">
                   SEM1 a SEM4 ficam disponíveis normalmente. Abra a SEM5 somente nos meses que tiverem uma quinta semana de produção.
                 </p>
@@ -11774,7 +11774,7 @@ if (
                   type="button"
                   onClick={ativarSem5Competencia}
                   disabled={mesFechado || ativarSem5Mutation.isPending}
-                  className="bg-[#D4AF37] text-black hover:bg-[#F2D675] disabled:opacity-50"
+                  className="bg-fr-d4af37 text-black hover:bg-fr-f2d675 disabled:opacity-50"
                 >
                   {ativarSem5Mutation.isPending ? "Adicionando..." : "+ Adicionar SEM5"}
                 </Button>
@@ -11784,7 +11784,7 @@ if (
         )}
 
         {linhas.length === 0 ? (
-          <Card className="rounded-2xl border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] to-[#080808] text-white shadow-[0_16px_45px_rgba(0,0,0,0.25)]">
+          <Card className="rounded-2xl border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 to-fr-080808 text-white shadow-[0_16px_45px_rgba(0,0,0,0.25)]">
             <CardContent className="py-10 text-center text-gray-400">
               Nenhum funcionário ativo cadastrado para esta cidade.
             </CardContent>
@@ -11844,7 +11844,7 @@ if (
           }
         }}
       >
-        <DialogContent className="border border-orange-400/30 bg-[#090909] text-white sm:max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+        <DialogContent className="border border-orange-400/30 bg-fr-090909 text-white sm:max-w-2xl max-h-[90vh] overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
           {transicaoFuncaoEditor.linha?.trocaFuncaoMes && (() => {
             const linha = transicaoFuncaoEditor.linha as LinhaComQuadrante;
             const troca = linha.trocaFuncaoMes as TrocaFuncaoMes;
@@ -11898,7 +11898,7 @@ if (
             return (
               <>
                 <DialogHeader>
-                  <DialogTitle className="text-[#F2D675]">Transição de função</DialogTitle>
+                  <DialogTitle className="text-fri-f2d675">Transição de função</DialogTitle>
                   <DialogDescription className="text-gray-400">
                     {linha.nome} • {labelFuncaoFuncionario(troca.funcaoAnterior, lojaId)} → {labelFuncaoFuncionario(troca.funcaoNova, lojaId)} • {formatarDataBR(troca.dataMudanca)}
                   </DialogDescription>
@@ -11914,7 +11914,7 @@ if (
                     </div>
                     <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3">
                       <p className="text-[10px] uppercase tracking-wider text-gray-500">Nova função</p>
-                      <p className="mt-1 font-semibold text-[#F2D675]">
+                      <p className="mt-1 font-semibold text-fri-f2d675">
                         {labelFuncaoFuncionario(troca.funcaoNova, lojaId)}
                       </p>
                     </div>
@@ -11930,7 +11930,7 @@ if (
                             <Button
                               type="button"
                               variant="ghost"
-                              className="mt-2 h-8 px-2 text-xs text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                              className="mt-2 h-8 px-2 text-xs text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
                               disabled={
                                 upsertTransicaoFuncaoMutation.isPending ||
                                 corrigirDataTrocaMutation.isPending
@@ -11959,12 +11959,12 @@ if (
                               }))
                             }
                             disabled={corrigirDataTrocaMutation.isPending}
-                            className="h-9 border-[#D4AF37]/30 bg-black text-sm"
+                            className="h-9 border-fr-d4af37/30 bg-black text-sm"
                           />
                           <div className="flex gap-2">
                             <Button
                               type="button"
-                              className="h-8 flex-1 bg-[#D4AF37] px-2 text-xs font-semibold text-black hover:bg-[#F2D675]"
+                              className="h-8 flex-1 bg-fr-d4af37 px-2 text-xs font-semibold text-black hover:bg-fr-f2d675"
                               disabled={corrigirDataTrocaMutation.isPending}
                               onClick={salvarCorrecaoDataTrocaEditor}
                             >
@@ -12050,8 +12050,8 @@ if (
                   )}
 
                   {funcaoAnteriorUsaFolhaFixa(troca.funcaoAnterior, lojaId, ano, mes) && (
-                    <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] p-4">
-                      <p className="font-semibold text-[#F2D675]">Proporção da folha na mudança</p>
+                    <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.04] p-4">
+                      <p className="font-semibold text-fri-f2d675">Proporção da folha na mudança</p>
                       <p className="mt-1 text-xs text-gray-400">
                         O Holerite oficial não é recalculado. A proporção define apenas quanto de INSS + Adiantamento + Holerite será compensado na comissão da nova função.
                       </p>
@@ -12068,7 +12068,7 @@ if (
                           </div>
                           <div className="rounded-lg bg-black/35 p-3">
                             <p className="text-[10px] uppercase text-gray-500">% nova função</p>
-                            <p className="mt-1 font-semibold text-[#F2D675]">{(proporcao.proporcaoNovaFuncao * 100).toFixed(2)}%</p>
+                            <p className="mt-1 font-semibold text-fri-f2d675">{(proporcao.proporcaoNovaFuncao * 100).toFixed(2)}%</p>
                           </div>
                           <div className="rounded-lg bg-black/35 p-3">
                             <p className="text-[10px] uppercase text-gray-500">Folha total</p>
@@ -12077,14 +12077,14 @@ if (
                         </div>
                       )}
 
-                      <div className="mt-4 space-y-2 border-t border-[#D4AF37]/15 pt-3 text-sm">
+                      <div className="mt-4 space-y-2 border-t border-fr-d4af37/15 pt-3 text-sm">
                         <div className="flex justify-between gap-4">
                           <span className="text-gray-400">Parcela vinculada à função anterior</span>
                           <strong className="text-white">R$ {money(parcelaFuncaoAnterior)}</strong>
                         </div>
                         <div className="flex justify-between gap-4">
                           <span className="text-gray-300">Desconto aplicado na comissão da nova função</span>
-                          <strong className="text-[#F2D675]">R$ {money(descontoNovaFuncao)}</strong>
+                          <strong className="text-fri-f2d675">R$ {money(descontoNovaFuncao)}</strong>
                         </div>
                       </div>
                     </div>
@@ -12103,7 +12103,7 @@ if (
                     )}
                     <div className="mt-3 flex justify-between gap-4 border-t border-white/10 pt-3">
                       <span className="font-semibold text-gray-300">Total comissão do mês</span>
-                      <strong className="text-[#F2D675]">R$ {money(totalComissaoPreview)}</strong>
+                      <strong className="text-fri-f2d675">R$ {money(totalComissaoPreview)}</strong>
                     </div>
                   </div>
                 </div>
@@ -12133,7 +12133,7 @@ if (
                   {!mesFechado && (
                     <Button
                       type="button"
-                      className="bg-[#D4AF37] text-black hover:bg-[#F2D675]"
+                      className="bg-fr-d4af37 text-black hover:bg-fr-f2d675"
                       disabled={
                         upsertTransicaoFuncaoMutation.isPending ||
                         corrigirDataTrocaMutation.isPending ||
@@ -12159,9 +12159,9 @@ if (
           }
         }}
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-5xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#F2D675]">
+            <DialogTitle className="text-xl font-bold text-fri-f2d675">
               {lojaId === 4 && usaMetaMensal(lojaId, ano, mes)
                 ? "Importar relatório — Liquidez Venda"
                 : `Importar relatório — SEM${importacaoSemana.semana}`}
@@ -12176,12 +12176,12 @@ if (
 
           {importacaoSemana.etapa === "arquivo" && (
             <div className="space-y-4">
-              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-5">
+              <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-5">
                 <Label className="text-gray-300 block mb-3">Arquivo Excel (.xlsx)</Label>
                 <Input
                   type="file"
                   accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
+                  className="bg-fr-111111 border-fr-d4af37/20 text-white"
                   onChange={(e) => processarArquivoImportacao(e.target.files?.[0] || null)}
                 />
                 <p className="text-xs text-gray-500 mt-3">
@@ -12300,21 +12300,21 @@ if (
             return (
               <div className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Arquivo</p>
                     <p className="font-semibold break-all">{importacaoSemana.arquivoNome}</p>
                   </div>
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Período</p>
                     <p className="font-semibold">{importacaoSemana.periodo || "Não identificado"}</p>
                   </div>
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Loja do relatório</p>
                     <p className={cidadeDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
                       {importacaoSemana.cidadeRelatorio || "Não identificada"}
                     </p>
                   </div>
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Prontos</p>
                     <p className="font-semibold text-green-400">{quantidadeProntos}</p>
                   </div>
@@ -12346,7 +12346,7 @@ if (
                         return (
                           <div
                             key={`conflito-${conflito.funcionarioId}`}
-                            className="rounded-md border border-orange-400/20 bg-[#090909] p-3"
+                            className="rounded-md border border-orange-400/20 bg-fr-090909 p-3"
                           >
                             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                               <div>
@@ -12354,7 +12354,7 @@ if (
                                   {conflito.funcionario?.nome || conflito.venda.nomeRelatorio}
                                 </p>
                                 <div className="mt-2 space-y-1 text-sm">
-                                  <p className="text-[#F2D675]">VENDA • R$ {money(conflito.venda.valor)}</p>
+                                  <p className="text-fri-f2d675">VENDA • R$ {money(conflito.venda.valor)}</p>
                                   <p className="text-orange-300">MECÂNICA • R$ {money(conflito.mecanica.valor)}</p>
                                 </div>
                               </div>
@@ -12371,9 +12371,9 @@ if (
                   </div>
                 )}
 
-                <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
+                <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4">
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <p className="font-semibold text-[#D4AF37]">Funcionários encontrados</p>
+                    <p className="font-semibold text-fri-d4af37">Funcionários encontrados</p>
                     <span className="text-xs text-gray-400">LIQ. S/ PNEUS</span>
                   </div>
                   <div className="space-y-2">
@@ -12381,7 +12381,7 @@ if (
                       <p className="text-sm text-gray-400">Nenhum funcionário pronto ainda.</p>
                     ) : (
                       prontos.map((item) => (
-                        <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border-b border-[#D4AF37]/10 pb-2">
+                        <div key={item.id} className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border-b border-fr-d4af37/10 pb-2">
                           <div>
                             <p className="font-semibold text-white">{item.funcionarioNome}</p>
                             {normalizarTextoImportacao(item.nomeRelatorio) !== normalizarTextoImportacao(item.funcionarioNome) && (
@@ -12404,7 +12404,7 @@ if (
                 </div>
 
                 {divergencias.length > 0 && (
-                  <div className="rounded-md border border-yellow-500/30 bg-[#0b0b0b] p-4">
+                  <div className="rounded-md border border-yellow-500/30 bg-fr-0b0b0b p-4">
                     <p className="font-semibold text-yellow-300 mb-3">Divergências do relatório</p>
                     <div className="space-y-3">
                       {divergencias.map((item) => (
@@ -12447,7 +12447,7 @@ if (
                                 ) : (
                                   <Button
                                     type="button"
-                                    className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                                    className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                                     onClick={() => vincularItemImportacao(item.id, Number(item.candidatoId))}
                                   >
                                     {Number(item.scoreCandidato) === 1 ? "Usar cadastro existente" : "Sim, vincular"}
@@ -12462,7 +12462,7 @@ if (
                                     if (!funcionarioId) return;
                                     vincularItemImportacao(item.id, funcionarioId);
                                   }}
-                                  className="h-10 min-w-[260px] rounded-md border border-[#D4AF37]/30 bg-[#111111] px-3 text-sm text-white outline-none focus:border-[#D4AF37]/60 focus:ring-2 focus:ring-[#D4AF37]/10"
+                                  className="h-10 min-w-[260px] rounded-md border border-fr-d4af37/30 bg-fr-111111 px-3 text-sm text-white outline-none focus:border-fr-d4af37/60 focus:ring-2 focus:ring-fr-d4af37/10"
                                 >
                                   <option value="">Selecionar funcionário cadastrado</option>
                                   {funcionariosSelecionaveisParaItem(item).map((funcionario: any) => (
@@ -12478,7 +12478,7 @@ if (
                                 <Button
                                   type="button"
                                   variant="outline"
-                                  className="border-[#D4AF37]/20 text-[#D4AF37]"
+                                  className="border-fr-d4af37/20 text-fri-d4af37"
                                   onClick={() => irParaCadastrarFuncionario(item)}
                                 >
                                   Cadastrar funcionário
@@ -12500,7 +12500,7 @@ if (
                 )}
 
                 {funcionariosAusentesNoRelatorio.length > 0 && (
-                  <div className="rounded-md border border-orange-500/30 bg-[#0b0b0b] p-4">
+                  <div className="rounded-md border border-orange-500/30 bg-fr-0b0b0b p-4">
                     <p className="font-semibold text-orange-300 mb-2">Cadastrados que não aparecem no relatório</p>
                     <p className="text-xs text-gray-400 mb-3">
                       Eles continuarão com R$ 0,00 {lojaId === 4 && usaMetaMensal(lojaId, ano, mes) ? "na liquidez mensal" : "nesta semana"} se você prosseguir. Se alguém não deveria mais estar ativo, abra o cadastro para revisar/inativar.
@@ -12552,7 +12552,7 @@ if (
                   </Button>
                   <Button
                     type="button"
-                    className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                    className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                     disabled={
                       cidadeDiferente ||
                       quantidadeProntos === 0 ||
@@ -12597,7 +12597,7 @@ if (
                 </Button>
                 <Button
                   type="button"
-                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                  className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                   onClick={fecharImportacaoSemana}
                 >
                   Concluir
@@ -12616,9 +12616,9 @@ if (
           }
         }}
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-5xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#F2D675]">
+            <DialogTitle className="text-xl font-bold text-fri-f2d675">
               Importar adiantamentos — PDF
             </DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -12628,12 +12628,12 @@ if (
 
           {importacaoAdiantamento.etapa === "arquivo" && (
             <div className="space-y-4">
-              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-5">
+              <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-5">
                 <Label className="text-gray-300 block mb-3">Arquivo de adiantamento (.pdf)</Label>
                 <Input
                   type="file"
                   accept=".pdf,application/pdf"
-                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
+                  className="bg-fr-111111 border-fr-d4af37/20 text-white"
                   onChange={(e) => processarPdfAdiantamento(e.target.files?.[0] || null)}
                 />
                 <div className="mt-3 space-y-1 text-xs text-gray-500">
@@ -12714,23 +12714,23 @@ if (
             return (
               <div className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Arquivo</p>
                     <p className="font-semibold break-all">{importacaoAdiantamento.arquivoNome}</p>
                   </div>
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Competência</p>
                     <p className={competenciaDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
                       {importacaoAdiantamento.competencia || "Não identificada"}
                     </p>
                   </div>
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Loja do PDF</p>
                     <p className={cidadeDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
                       {importacaoAdiantamento.cidadeRelatorio || "Não identificada"}
                     </p>
                   </div>
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Prontos</p>
                     <p className="font-semibold text-green-400">{prontos.length}</p>
                   </div>
@@ -12754,9 +12754,9 @@ if (
                   </div>
                 )}
 
-                <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
+                <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4">
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <p className="font-semibold text-[#D4AF37]">Valores encontrados</p>
+                    <p className="font-semibold text-fri-d4af37">Valores encontrados</p>
                     <span className="text-xs text-gray-400">Valor Líquido recebido</span>
                   </div>
                   <div className="space-y-2">
@@ -12766,7 +12766,7 @@ if (
                       prontos.map((item) => (
                         <div
                           key={item.id}
-                          className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border-b border-[#D4AF37]/10 pb-2"
+                          className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3 items-center border-b border-fr-d4af37/10 pb-2"
                         >
                           <div>
                             <p className="font-semibold text-white">{item.funcionarioNome}</p>
@@ -12784,7 +12784,7 @@ if (
                 </div>
 
                 {divergencias.length > 0 && (
-                  <div className="rounded-md border border-yellow-500/30 bg-[#0b0b0b] p-4">
+                  <div className="rounded-md border border-yellow-500/30 bg-fr-0b0b0b p-4">
                     <p className="font-semibold text-yellow-300 mb-3">Divergências de nomes</p>
                     <div className="space-y-4">
                       {divergencias.map((item) => (
@@ -12806,7 +12806,7 @@ if (
                               {item.candidatoId && (
                                 <Button
                                   type="button"
-                                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                                  className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                                   onClick={() => vincularItemAdiantamento(item.id, Number(item.candidatoId))}
                                 >
                                   Vincular a {item.candidatoNome}
@@ -12818,10 +12818,10 @@ if (
                                   vincularItemAdiantamento(item.id, Number(value))
                                 }
                               >
-                                <SelectTrigger className="w-[220px] bg-[#111111] border-[#D4AF37]/20 text-white">
+                                <SelectTrigger className="w-[220px] bg-fr-111111 border-fr-d4af37/20 text-white">
                                   <SelectValue placeholder="Escolher funcionário" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-[#0b0b0b] border-[#D4AF37]/20 max-h-72">
+                                <SelectContent className="bg-fr-0b0b0b border-fr-d4af37/20 max-h-72">
                                   {linhas.map((linha) => (
                                     <SelectItem
                                       key={linha.funcionarioId}
@@ -12837,7 +12837,7 @@ if (
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="border-[#D4AF37]/20 text-[#D4AF37]"
+                                className="border-fr-d4af37/20 text-fri-d4af37"
                                 onClick={() => irParaCadastrarFuncionarioAdiantamento(item)}
                               >
                                 Cadastrar funcionário
@@ -12859,7 +12859,7 @@ if (
                 )}
 
                 {funcionariosAusentesNoPdfAdiantamento.length > 0 && (
-                  <div className="rounded-md border border-orange-500/30 bg-[#0b0b0b] p-4">
+                  <div className="rounded-md border border-orange-500/30 bg-fr-0b0b0b p-4">
                     <p className="font-semibold text-orange-300 mb-2">
                       Cadastrados que não aparecem no PDF de adiantamento
                     </p>
@@ -12924,7 +12924,7 @@ if (
                   </Button>
                   <Button
                     type="button"
-                    className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                    className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                     disabled={
                       cidadeDiferente ||
                       competenciaDiferente ||
@@ -12963,7 +12963,7 @@ if (
                 </Button>
                 <Button
                   type="button"
-                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                  className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                   onClick={fecharImportacaoAdiantamento}
                 >
                   Concluir
@@ -12982,9 +12982,9 @@ if (
           }
         }}
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-5xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#F2D675]">
+            <DialogTitle className="text-xl font-bold text-fri-f2d675">
               Importar Folha Mensal — PDF
             </DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -12994,12 +12994,12 @@ if (
 
           {importacaoHolerite.etapa === "arquivo" && (
             <div className="space-y-4">
-              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-5">
+              <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-5">
                 <Label className="text-gray-300 block mb-3">Folha Mensal (.pdf)</Label>
                 <Input
                   type="file"
                   accept=".pdf,application/pdf"
-                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
+                  className="bg-fr-111111 border-fr-d4af37/20 text-white"
                   onChange={(e) => processarPdfHolerite(e.target.files?.[0] || null)}
                 />
                 <div className="mt-3 space-y-1 text-xs text-gray-500">
@@ -13095,27 +13095,27 @@ if (
             return (
               <div className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Arquivo</p>
                     <p className="font-semibold break-all">{importacaoHolerite.arquivoNome}</p>
                   </div>
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Competência</p>
                     <p className={competenciaDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
                       {importacaoHolerite.competencia || "Não identificada"}
                     </p>
                   </div>
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Loja do PDF</p>
                     <p className={cidadeDiferente ? "font-semibold text-red-400" : "font-semibold text-green-400"}>
                       {importacaoHolerite.cidadeRelatorio || "Não identificada"}
                     </p>
                   </div>
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Funcionários prontos</p>
                     <p className="font-semibold text-green-400">{prontos.length}</p>
                   </div>
-                  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-3">
+                  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-3">
                     <p className="text-xs text-gray-400">Empréstimos CLT a lançar</p>
                     <p className="font-semibold text-yellow-300">{totalEmprestimos}</p>
                     {totalEmprestimosIgnorados > 0 && (
@@ -13144,9 +13144,9 @@ if (
                   </div>
                 )}
 
-                <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
+                <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4">
                   <div className="flex items-center justify-between gap-3 mb-3">
-                    <p className="font-semibold text-[#D4AF37]">Valores encontrados</p>
+                    <p className="font-semibold text-fri-d4af37">Valores encontrados</p>
                     <span className="text-xs text-gray-400">
                       INSS + Valor Líquido + Empréstimos CLT
                     </span>
@@ -13297,7 +13297,7 @@ if (
                                 <Button
                                   type="button"
                                   size="sm"
-                                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                                  className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                                   onClick={() =>
                                     vincularItemHolerite(item.id, Number(item.candidatoId))
                                   }
@@ -13311,10 +13311,10 @@ if (
                                   vincularItemHolerite(item.id, Number(value))
                                 }
                               >
-                                <SelectTrigger className="w-[220px] border-[#D4AF37]/20 bg-[#111111] text-white">
+                                <SelectTrigger className="w-[220px] border-fr-d4af37/20 bg-fr-111111 text-white">
                                   <SelectValue placeholder="Escolher funcionário" />
                                 </SelectTrigger>
-                                <SelectContent className="border-[#D4AF37]/20 bg-[#0b0b0b]">
+                                <SelectContent className="border-fr-d4af37/20 bg-fr-0b0b0b">
                                   {linhas
                                     .filter(
           (linha) =>
@@ -13428,7 +13428,7 @@ if (
                   </Button>
                   <Button
                     type="button"
-                    className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                    className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                     disabled={
                       cidadeDiferente ||
                       competenciaDiferente ||
@@ -13469,7 +13469,7 @@ if (
                 </Button>
                 <Button
                   type="button"
-                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                  className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                   onClick={fecharImportacaoHolerite}
                 >
                   Concluir
@@ -13493,9 +13493,9 @@ if (
           }
         }}
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#F2D675]">
+            <DialogTitle className="text-xl font-bold text-fri-f2d675">
               {editandoFuncionarioDetalhe
                 ? "Editar funcionário"
                 : "Dados do funcionário"}
@@ -13528,17 +13528,17 @@ if (
               );
 
             const Campo = ({ label, valor }: { label: string; valor: any }) => (
-              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
+              <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4">
                 <p className="text-xs text-gray-400 mb-1">{label}</p>
                 <p className="text-white font-semibold break-words">{valor}</p>
               </div>
             );
 
             const classeCampo = (invalido: boolean) =>
-              `bg-[#0b0b0b] text-white ${
+              `bg-fr-0b0b0b text-white ${
                 tentouSalvarFuncionarioDetalhe && invalido
                   ? "border-red-500 focus-visible:ring-red-500/30"
-                  : "border-[#D4AF37]/20"
+                  : "border-fr-d4af37/20"
               }`;
 
             if (editandoFuncionarioDetalhe) {
@@ -13616,7 +13616,7 @@ if (
                       <Label className="text-gray-300">
                         Função <span className="text-red-400">*</span>
                       </Label>
-                      <div className="h-10 w-full rounded-md border border-[#D4AF37]/20 bg-[#0b0b0b] px-3 py-2 text-sm text-white">
+                      <div className="h-10 w-full rounded-md border border-fr-d4af37/20 bg-fr-0b0b0b px-3 py-2 text-sm text-white">
                         {labelFuncaoFuncionario(
                           funcionario.funcao,
                           Number(funcionario.lojaId ?? funcionario.loja_id ?? lojaId)
@@ -13696,9 +13696,9 @@ if (
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] p-4">
+                  <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.04] p-4">
                     <div className="mb-4">
-                      <p className="text-sm font-bold text-[#F2D675]">
+                      <p className="text-sm font-bold text-fri-f2d675">
                         Jornada de trabalho
                       </p>
                       <p className="mt-1 text-xs leading-5 text-gray-400">
@@ -13708,7 +13708,7 @@ if (
                     </div>
 
                     {/* FOLHA_PJ_EDITOR_V3 */}
-                    <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.07] p-3">
+                    <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/[0.07] p-3">
                       <input
                         type="checkbox"
                         checked={funcionarioEdicaoForm.isPj}
@@ -13718,11 +13718,11 @@ if (
                             isPj: e.target.checked,
                           }))
                         }
-                        className="mt-0.5 h-4 w-4 accent-[#D4AF37]"
+                        className="mt-0.5 h-4 w-4 accent-fr-d4af37"
                       />
 
                       <span>
-                        <span className="block text-sm font-semibold text-[#F2D675]">
+                        <span className="block text-sm font-semibold text-fri-f2d675">
                           Funcionário PJ
                         </span>
 
@@ -13732,7 +13732,7 @@ if (
                       </span>
                     </label>
 
-                    <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/18 bg-[#D4AF37]/[0.05] p-3">
+                    <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-fr-d4af37/18 bg-fr-d4af37/[0.05] p-3">
                       <input
                         type="checkbox"
                         checked={funcionarioEdicaoForm.cargoConfianca}
@@ -13742,10 +13742,10 @@ if (
                             cargoConfianca: e.target.checked,
                           }))
                         }
-                        className="mt-0.5 h-4 w-4 accent-[#D4AF37]"
+                        className="mt-0.5 h-4 w-4 accent-fr-d4af37"
                       />
                       <span>
-                        <span className="block text-sm font-semibold text-[#F2D675]">
+                        <span className="block text-sm font-semibold text-fri-f2d675">
                           Cargo de confiança
                         </span>
                         <span className="mt-0.5 block text-xs leading-5 text-gray-400">
@@ -13765,7 +13765,7 @@ if (
                         <Label className="text-gray-300">Entrada fixa</Label>
                         <Input
                           type="time"
-                          className="mt-1 border-[#D4AF37]/20 bg-[#0b0b0b] text-white"
+                          className="mt-1 border-fr-d4af37/20 bg-fr-0b0b0b text-white"
                           value={funcionarioEdicaoForm.horarioEntrada1}
                           onChange={(e) =>
                             setFuncionarioEdicaoForm((prev) => ({
@@ -13802,7 +13802,7 @@ if (
                         <Label className="text-gray-300">Saída fixa</Label>
                         <Input
                           type="time"
-                          className="mt-1 border-[#D4AF37]/20 bg-[#0b0b0b] text-white"
+                          className="mt-1 border-fr-d4af37/20 bg-fr-0b0b0b text-white"
                           value={funcionarioEdicaoForm.horarioSaida2}
                           onChange={(e) =>
                             setFuncionarioEdicaoForm((prev) => ({
@@ -13832,7 +13832,7 @@ if (
 
             return (
               <div className="space-y-4">
-                <div className="rounded-md border border-[#D4AF37]/20 bg-[#0b0b0b] p-4">
+                <div className="rounded-md border border-fr-d4af37/20 bg-fr-0b0b0b p-4">
                   <p className="text-lg font-bold text-white">
                     {funcionario.nome}
                   </p>
@@ -13844,12 +13844,12 @@ if (
                       linhaFolhaDetalhe
                     )
                       ? "border-red-500/35 bg-red-950/25"
-                      : "border-[#D4AF37]/20 bg-[#D4AF37]/[0.04]"
+                      : "border-fr-d4af37/20 bg-fr-d4af37/[0.04]"
                   }`}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-sm font-bold text-[#F2D675]">
+                      <p className="text-sm font-bold text-fri-f2d675">
                         Status do pagamento
                       </p>
 
@@ -13878,7 +13878,7 @@ if (
                           linhaFolhaDetalhe
                         )
                           ? "border-red-500/40 bg-red-950/50 text-red-300"
-                          : "border-[#D4AF37]/25 bg-[#111111] text-[#F2D675] hover:border-[#D4AF37]/55"
+                          : "border-fr-d4af37/25 bg-fr-111111 text-fri-f2d675 hover:border-fr-d4af37/55"
                       }`}
                     >
                       <option value="pendente">
@@ -13957,8 +13957,8 @@ if (
                   />
                 </div>
 
-                <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] p-4">
-                  <p className="text-sm font-bold text-[#F2D675]">
+                <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.04] p-4">
+                  <p className="text-sm font-bold text-fri-f2d675">
                     Jornada de trabalho
                   </p>
 
@@ -14019,7 +14019,7 @@ if (
                   Cancelar
                 </Button>
                 <Button
-                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                  className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                   onClick={salvarEdicaoFuncionarioDetalhe}
                   disabled={updateFuncionarioDetalheMutation.isPending}
                 >
@@ -14031,7 +14031,7 @@ if (
             ) : (
               <>
                 <Button
-                  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                  className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                   onClick={abrirEdicaoFuncionarioDetalhe}
                 >
                   Editar
@@ -14049,9 +14049,9 @@ if (
       </Dialog>
 
       <Dialog open={reabrirMesOpen} onOpenChange={setReabrirMesOpen}>
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-md">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-[#D4AF37]">Reabrir competência</DialogTitle>
+            <DialogTitle className="text-fri-d4af37">Reabrir competência</DialogTitle>
             <DialogDescription className="text-gray-400">
               Informe a senha do seu usuário. Somente administrador ou gestor pode reabrir um mês fechado.
             </DialogDescription>
@@ -14072,7 +14072,7 @@ if (
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void confirmarReaberturaMes();
                 }}
-                className="mt-2 bg-[#111111] border-[#D4AF37]/20 text-white"
+                className="mt-2 bg-fr-111111 border-fr-d4af37/20 text-white"
                 placeholder="Digite sua senha"
               />
             </div>
@@ -14097,7 +14097,7 @@ if (
               Cancelar
             </Button>
             <Button
-              className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+              className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
               disabled={reabrirMesMutation.isPending || !senhaReabertura.trim()}
               onClick={confirmarReaberturaMes}
             >
@@ -14119,7 +14119,7 @@ if (
             Para modificar qualquer valor de {String(mes).padStart(2, "0")}/{ano}, um administrador ou gestor precisa usar <strong>Reabrir mês</strong> e confirmar a própria senha.
           </div>
           <DialogFooter>
-            <Button className="bg-[#D4AF37] text-black" onClick={() => setBloqueioAvisoOpen(false)}>
+            <Button className="bg-fr-d4af37 text-black" onClick={() => setBloqueioAvisoOpen(false)}>
               Entendi
             </Button>
           </DialogFooter>
@@ -14138,9 +14138,9 @@ if (
           )
         }
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#D4AF37]">
+            <DialogTitle className="text-fri-d4af37">
               1% informativo
             </DialogTitle>
 
@@ -14176,12 +14176,12 @@ if (
               />
             </div>
 
-            <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.055] p-4">
+            <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.055] p-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
                 Resultado de 1%
               </p>
 
-              <p className="mt-1 text-2xl font-bold text-[#F2D675]">
+              <p className="mt-1 text-2xl font-bold text-fri-f2d675">
                 R$ {money(
                   Math.max(
                     0,
@@ -14240,7 +14240,7 @@ if (
             />
 
             {umPorcentoImportacao.carregando && (
-              <p className="mt-3 text-xs font-medium text-[#F2D675]">
+              <p className="mt-3 text-xs font-medium text-fri-f2d675">
                 Lendo o relatório e atualizando os funcionários...
               </p>
             )}
@@ -14274,7 +14274,7 @@ if (
             </Button>
 
             <Button
-              className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+              className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
               onClick={
                 saveUmPorcentoEditor
               }
@@ -14294,9 +14294,9 @@ if (
         open={cellEditor.open}
         onOpenChange={(open) => setCellEditor((prev) => ({ ...prev, open }))}
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
   <DialogHeader>
-    <DialogTitle className="text-[#D4AF37]">
+    <DialogTitle className="text-fri-d4af37">
       {cellEditor.label}
     </DialogTitle>
 
@@ -14374,7 +14374,7 @@ if (
 </Button>
 
 <Button
-  className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+  className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
   onClick={saveCellEditor}
 >
   Salvar
@@ -14387,9 +14387,9 @@ if (
         open={premioEditor.open}
         onOpenChange={(open) => setPremioEditor((prev) => ({ ...prev, open }))}
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#D4AF37]">Premiação</DialogTitle>
+            <DialogTitle className="text-fri-d4af37">Premiação</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -14398,8 +14398,8 @@ if (
   linhaPremioAtual?.funcao === "consultor_vendas" ||
   linhaPremioAtual?.funcao === "supervisor"
 ) && (
-              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
-                <p className="mb-3 text-sm font-semibold text-[#D4AF37]">
+              <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4">
+                <p className="mb-3 text-sm font-semibold text-fri-d4af37">
                   Discriminação automática
                 </p>
 
@@ -14440,8 +14440,8 @@ if (
     premioFlorianopolis;
 
   return (
-  <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-2 text-sm">
-    <p className="font-semibold text-[#D4AF37]">
+  <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4 space-y-2 text-sm">
+    <p className="font-semibold text-fri-d4af37">
       Resumo automático do supervisor
     </p>
 
@@ -14473,7 +14473,7 @@ if (
       </span>
     </div>
 
-    <div className="flex items-center justify-between border-t border-[#D4AF37]/15 pt-2">
+    <div className="flex items-center justify-between border-t border-fr-d4af37/15 pt-2">
       <span className="text-gray-300 font-semibold">Total</span>
       <span className="text-yellow-300 font-bold">
         R$ {money(total)}
@@ -14483,8 +14483,8 @@ if (
 );
 })()}
 
-            <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
-              <p className="mb-3 text-sm font-semibold text-[#D4AF37]">
+            <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4">
+              <p className="mb-3 text-sm font-semibold text-fri-d4af37">
                 Discriminação manual
               </p>
 
@@ -14496,7 +14496,7 @@ if (
                   {linhaPremioAtual.premiacoesManuais.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between gap-4 rounded-md border border-[#D4AF37]/10 p-2"
+                      className="flex items-center justify-between gap-4 rounded-md border border-fr-d4af37/10 p-2"
                     >
                       <div className="text-sm text-gray-300">
   <div>{item.descricao}</div>
@@ -14531,8 +14531,8 @@ if (
               )}
             </div>
 
-            <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-3">
-              <p className="text-sm font-semibold text-[#D4AF37]">
+            <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4 space-y-3">
+              <p className="text-sm font-semibold text-fri-d4af37">
                 Adicionar premiação manual
               </p>
 
@@ -14546,7 +14546,7 @@ if (
                       descricao: e.target.value,
                     }))
                   }
-                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
+                  className="bg-fr-111111 border-fr-d4af37/20 text-white"
                   placeholder="Ex.: bônus campanha"
                 />
               </div>
@@ -14562,12 +14562,12 @@ if (
                       valor: e.target.value,
                     }))
                   }
-                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
+                  className="bg-fr-111111 border-fr-d4af37/20 text-white"
                 />
               </div>
 
               <Button
-                className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                 onClick={addPremiacaoManual}
               >
                 Adicionar
@@ -14594,15 +14594,15 @@ if (
       </Dialog>
 
       <Dialog open={conferenciaVale.open} onOpenChange={(open)=>setConferenciaVale((prev)=>({...prev,open}))}>
-        <DialogContent className="w-[96vw] max-w-[96vw] sm:max-w-[96vw] border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-h-[94vh] overflow-y-auto">
+        <DialogContent className="w-[96vw] max-w-[96vw] sm:max-w-[96vw] border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-h-[94vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#F2D675]">Conferência de Vales — {LOJAS.find((l)=>l.id===lojaId)?.nome || `Loja ${lojaId}`} — {String(mes).padStart(2,"0")}/{ano}</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-fri-f2d675">Conferência de Vales — {LOJAS.find((l)=>l.id===lojaId)?.nome || `Loja ${lojaId}`} — {String(mes).padStart(2,"0")}/{ano}</DialogTitle>
             <DialogDescription className="text-gray-400">Importe o .zip ou _chat.txt do grupo financeiro da cidade. Confira os encontrados, lance o que estiver faltando e trate as divergências antes de finalizar.</DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-xl border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-3">
+          <div className="rounded-xl border border-fr-d4af37/15 bg-fr-0d0d0d p-4 space-y-3">
             <Label className="text-gray-300">Conversa exportada do WhatsApp</Label>
-            <Input type="file" accept=".zip,.txt,application/zip,text/plain" className="bg-[#111111] border-[#D4AF37]/20 text-white file:text-[#F2D675]" onChange={(e)=>{const file=e.target.files?.[0]||null; void importarArquivoConferenciaVale(file); e.currentTarget.value="";}} />
+            <Input type="file" accept=".zip,.txt,application/zip,text/plain" className="bg-fr-111111 border-fr-d4af37/20 text-white file:text-fri-f2d675" onChange={(e)=>{const file=e.target.files?.[0]||null; void importarArquivoConferenciaVale(file); e.currentTarget.value="";}} />
             <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
               <span>Aceita .zip direto do WhatsApp ou _chat.txt.</span>
               {conferenciaVale.arquivoNome && <span>Arquivo: <b className="text-gray-300">{conferenciaVale.arquivoNome}</b></span>}
@@ -14610,7 +14610,7 @@ if (
             </div>
           </div>
 
-          {conferenciaVale.carregando && <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-6 text-center text-gray-400">Lendo a conversa e conferindo os vales...</div>}
+          {conferenciaVale.carregando && <div className="rounded-xl border border-white/10 bg-fr-0d0d0d p-6 text-center text-gray-400">Lendo a conversa e conferindo os vales...</div>}
           {conferenciaVale.aviso && <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-sm text-amber-200">{conferenciaVale.aviso}</div>}
           {conferenciaVale.erro && <div className="rounded-xl border border-red-500/25 bg-red-500/[0.06] p-4 text-sm text-red-300">{conferenciaVale.erro}</div>}
 
@@ -14637,7 +14637,7 @@ if (
               </div>
 
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-                <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Vales no mês</p><p className="mt-1 text-2xl font-black text-white">{conferenciaVale.itens.length}</p></div>
+                <div className="rounded-xl border border-white/10 bg-fr-0d0d0d p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Vales no mês</p><p className="mt-1 text-2xl font-black text-white">{conferenciaVale.itens.length}</p></div>
                 <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Encontrados</p><p className="mt-1 text-2xl font-black text-emerald-400">{encontrados}</p></div>
                 <div className="rounded-xl border border-red-500/15 bg-red-500/[0.04] p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Não lançados</p><p className="mt-1 text-2xl font-black text-red-400">{naoLancados}</p></div>
                 <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.04] p-4"><p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Divergentes</p><p className="mt-1 text-2xl font-black text-amber-300">{divergentes}</p></div>
@@ -14648,9 +14648,9 @@ if (
 
               {conferenciaVale.totalForaCompetencia>0 && <p className="text-xs text-gray-500">{conferenciaVale.totalForaCompetencia} ocorrência(s) de VALE são de outras competências e foram ignoradas nesta conferência.</p>}
 
-              <div className="overflow-x-auto rounded-xl border border-[#D4AF37]/15">
+              <div className="overflow-x-auto rounded-xl border border-fr-d4af37/15">
                 <table className="w-full min-w-[1450px] text-sm">
-                  <thead className="sticky top-0 z-10 bg-[#0d0d0d] text-left text-[10px] font-bold uppercase tracking-[0.08em] text-[#D4AF37]"><tr><th className="p-3">Data</th><th className="p-3">Funcionário WhatsApp</th><th className="p-3">Funcionário sistema</th><th className="p-3 text-right">Valor WhatsApp</th><th className="p-3">Motivo</th><th className="p-3">Valor no sistema</th><th className="p-3 text-center">Situação</th><th className="p-3 text-right">Ação</th></tr></thead>
+                  <thead className="sticky top-0 z-10 bg-fr-0d0d0d text-left text-[10px] font-bold uppercase tracking-[0.08em] text-fri-d4af37"><tr><th className="p-3">Data</th><th className="p-3">Funcionário WhatsApp</th><th className="p-3">Funcionário sistema</th><th className="p-3 text-right">Valor WhatsApp</th><th className="p-3">Motivo</th><th className="p-3">Valor no sistema</th><th className="p-3 text-center">Situação</th><th className="p-3 text-right">Ação</th></tr></thead>
                   <tbody>{conferenciaVale.itens.map((item)=>{
                     const validado=item.validacao==="validado";
                     const aceitoDivergente=item.validacao==="aceito_divergente";
@@ -14686,7 +14686,7 @@ if (
                       <td className="p-3 whitespace-nowrap text-gray-300">{formatarDataBR(item.dataVale)}</td>
                       <td className="p-3"><div className="font-semibold text-white">{item.funcionarioWhatsapp||"Não identificado"}</div>{item.funcaoWhatsapp&&<div className="mt-1 text-[10px] text-gray-500">{item.funcaoWhatsapp}</div>}</td>
                       <td className="p-3 text-gray-300">{item.funcionarioSistema||"—"}</td>
-                      <td className="p-3 text-right whitespace-nowrap"><div className="font-black text-[#F2D675]">R$ {money(Number(item.valorConferencia||0))}</div>{item.parcelas>1&&<div className="mt-1 text-[10px] text-gray-500">Total R$ {money(Number(item.valorTotal||0))} • {item.parcelas}x</div>}</td>
+                      <td className="p-3 text-right whitespace-nowrap"><div className="font-black text-fri-f2d675">R$ {money(Number(item.valorConferencia||0))}</div>{item.parcelas>1&&<div className="mt-1 text-[10px] text-gray-500">Total R$ {money(Number(item.valorTotal||0))} • {item.parcelas}x</div>}</td>
                       <td className="p-3 max-w-[420px] text-gray-300"><div className="line-clamp-4">{item.motivo||"Sem motivo informado"}</div><div className="mt-1 text-[10px] text-gray-600">{item.remetente} • {item.hora}</div></td>
                       <td className="p-3 text-gray-300">{item.valoresSistema.length?item.valoresSistema.slice(0,6).map((v,idx)=><div key={`${item.id}-${idx}`} className="whitespace-nowrap">R$ {money(v)}</div>):"—"}</td>
                       <td className="p-3 text-center"><span className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-bold ${badgeClass}`}>{badge}</span></td>
@@ -14698,19 +14698,19 @@ if (
                             <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-500" onClick={()=>validarItemConferenciaVale(item.id,"validado")}>Validar</Button>
                           ) : item.status==="nao_lancado" ? (
                             <>
-                              <Button size="sm" className="bg-[#D4AF37] text-black hover:bg-[#E6C760]" onClick={()=>abrirValePelaConferencia(item)}>Lançar vale</Button>
+                              <Button size="sm" className="bg-fr-d4af37 text-black hover:bg-fr-e6c760" onClick={()=>abrirValePelaConferencia(item)}>Lançar vale</Button>
                               <Button size="sm" variant="outline" className="border-gray-500/30 bg-transparent text-gray-300" onClick={()=>validarItemConferenciaVale(item.id,"ignorado")}>Ignorar</Button>
                             </>
                           ) : item.status==="divergente" ? (
                             <>
-                              <Button size="sm" className="bg-[#D4AF37] text-black hover:bg-[#E6C760]" onClick={()=>abrirValePelaConferencia(item)}>Ajustar</Button>
+                              <Button size="sm" className="bg-fr-d4af37 text-black hover:bg-fr-e6c760" onClick={()=>abrirValePelaConferencia(item)}>Ajustar</Button>
                               <Button size="sm" variant="outline" className="border-amber-500/30 bg-amber-500/[0.05] text-amber-200 hover:bg-amber-500/10" onClick={()=>validarItemConferenciaVale(item.id,"aceito_divergente")}>OK assim</Button>
                             </>
                           ) : (
                             <>
                               <Button
                                 size="sm"
-                                className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                                className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                                 onClick={() => abrirIdentificacaoValeConferencia(item)}
                               >
                                 Identificar
@@ -14743,9 +14743,9 @@ if (
           setIdentificacaoValeConferencia((prev) => ({ ...prev, open }))
         }
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#F2D675]">
+            <DialogTitle className="text-xl font-bold text-fri-f2d675">
               Identificar funcionário do vale
             </DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -14785,14 +14785,14 @@ if (
             return (
               <div className="space-y-4">
                 {item && (
-                  <div className="grid gap-3 rounded-xl border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 sm:grid-cols-3">
+                  <div className="grid gap-3 rounded-xl border border-fr-d4af37/15 bg-fr-0d0d0d p-4 sm:grid-cols-3">
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">WhatsApp</p>
                       <p className="mt-1 font-semibold text-white">{item.funcionarioWhatsapp || "Não identificado"}</p>
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Valor</p>
-                      <p className="mt-1 font-black text-[#F2D675]">R$ {money(item.valorConferencia)}</p>
+                      <p className="mt-1 font-black text-fri-f2d675">R$ {money(item.valorConferencia)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.12em] text-gray-500">Data</p>
@@ -14821,15 +14821,15 @@ if (
                       }));
                     }}
                   >
-                    <SelectTrigger className="w-full bg-[#111111] border-[#D4AF37]/20 text-white">
+                    <SelectTrigger className="w-full bg-fr-111111 border-fr-d4af37/20 text-white">
                       <SelectValue placeholder="Clique para selecionar o funcionário" />
                     </SelectTrigger>
-                    <SelectContent className="max-h-[280px] border-[#D4AF37]/25 bg-[#0d0d0d] text-white">
+                    <SelectContent className="max-h-[280px] border-fr-d4af37/25 bg-fr-0d0d0d text-white">
                       {candidatos.map((linha) => (
                         <SelectItem
                           key={linha.funcionarioId}
                           value={String(linha.funcionarioId)}
-                          className="cursor-pointer focus:bg-[#D4AF37]/10 focus:text-white"
+                          className="cursor-pointer focus:bg-fr-d4af37/10 focus:text-white"
                         >
                           <span className="font-semibold">{linha.nome}</span>
                           <span className="ml-2 text-xs text-gray-500">
@@ -14873,7 +14873,7 @@ if (
                   <Button
                     variant="outline"
                     disabled={!linhaSelecionada}
-                    className="border-[#D4AF37]/30 bg-transparent text-[#F2D675]"
+                    className="border-fr-d4af37/30 bg-transparent text-fri-f2d675"
                     onClick={() => aplicarIdentificacaoValeConferencia(false)}
                   >
                     Identificar
@@ -14881,7 +14881,7 @@ if (
                   {previa?.status === "nao_lancado" && (
                     <Button
                       disabled={!linhaSelecionada}
-                      className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                      className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                       onClick={() => aplicarIdentificacaoValeConferencia(true)}
                     >
                       Identificar e lançar vale
@@ -14895,9 +14895,9 @@ if (
       </Dialog>
 
       <Dialog open={repasseFranklynOpen} onOpenChange={setRepasseFranklynOpen}>
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#F2D675]">
+            <DialogTitle className="text-xl font-bold text-fri-f2d675">
               Repasses ao Franklyn — {String(mes).padStart(2, "0")}/{ano}
             </DialogTitle>
             <DialogDescription className="text-gray-400">
@@ -14906,13 +14906,13 @@ if (
           </DialogHeader>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
+            <div className="rounded-xl border border-fr-d4af37/15 bg-fr-0d0d0d p-4">
               <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Pendentes</p>
-              <p className="mt-1 text-2xl font-black text-[#F2D675]">
+              <p className="mt-1 text-2xl font-black text-fri-f2d675">
                 R$ {money(totalRepasseFranklynPendente)}
               </p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-4">
+            <div className="rounded-xl border border-white/10 bg-fr-0d0d0d p-4">
               <p className="text-xs uppercase tracking-[0.12em] text-gray-500">Quantidade</p>
               <p className="mt-1 text-2xl font-black text-white">
                 {repassesFranklyn.length}
@@ -14927,17 +14927,17 @@ if (
           </div>
 
           {repassesFranklynQuery.isLoading ? (
-            <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-6 text-center text-gray-400">
+            <div className="rounded-xl border border-white/10 bg-fr-0d0d0d p-6 text-center text-gray-400">
               Carregando repasses...
             </div>
           ) : repassesFranklyn.length === 0 ? (
-            <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-6 text-center text-gray-400">
+            <div className="rounded-xl border border-white/10 bg-fr-0d0d0d p-6 text-center text-gray-400">
               Nenhum vale marcado para repasse ao Franklyn nesta competência.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-[#D4AF37]/15">
+            <div className="overflow-x-auto rounded-xl border border-fr-d4af37/15">
               <table className="w-full min-w-[980px] text-sm">
-                <thead className="bg-[#0d0d0d] text-left text-[11px] font-bold uppercase tracking-[0.08em] text-[#D4AF37]">
+                <thead className="bg-fr-0d0d0d text-left text-[11px] font-bold uppercase tracking-[0.08em] text-fri-d4af37">
                   <tr>
                     <th className="p-3">Funcionário</th>
                     <th className="p-3">Loja</th>
@@ -14961,7 +14961,7 @@ if (
                         <td className="p-3 text-center text-gray-300">
                           {item.parcelaAtual}/{item.totalParcelas}
                         </td>
-                        <td className="p-3 text-right font-black text-[#F2D675]">
+                        <td className="p-3 text-right font-black text-fri-f2d675">
                           R$ {money(Number(item.valor || 0))}
                         </td>
                         <td className="p-3 text-center">
@@ -14988,7 +14988,7 @@ if (
                             className={
                               pago
                                 ? "border-white/15 bg-transparent text-gray-300 hover:bg-white/5"
-                                : "bg-[#D4AF37] font-bold text-black hover:bg-[#E6C760]"
+                                : "bg-fr-d4af37 font-bold text-black hover:bg-fr-e6c760"
                             }
                             onClick={() => alterarStatusRepasseFranklyn(Number(item.id), !pago)}
                           >
@@ -15021,9 +15021,9 @@ if (
           }
         }}
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-[#D4AF37]">Vale</DialogTitle>
+            <DialogTitle className="text-fri-d4af37">Vale</DialogTitle>
   {(linhaValeAtual?.vales?.[0] as any)?.ultimaAlteracaoPor || "Sistema"}{" "}
   •{" "}
   {(linhaValeAtual?.vales?.[0] as any)?.ultimaAlteracaoEm
@@ -15034,8 +15034,8 @@ if (
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 max-h-[300px] overflow-y-auto">
-              <p className="mb-3 text-sm font-semibold text-[#D4AF37]">
+            <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4 max-h-[300px] overflow-y-auto">
+              <p className="mb-3 text-sm font-semibold text-fri-d4af37">
                 Vales do mês atual
               </p>
 
@@ -15046,7 +15046,7 @@ if (
                   {linhaValeAtual.vales.map((vale) => (
                     <div
                       key={vale.id}
-                      className="flex items-center justify-between gap-4 rounded-md border border-[#D4AF37]/10 p-2"
+                      className="flex items-center justify-between gap-4 rounded-md border border-fr-d4af37/10 p-2"
                     >
                       <div className="text-sm text-gray-300">
   <div>{vale.descricao}</div>
@@ -15103,8 +15103,8 @@ if (
               )}
             </div>
 
-            <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-3">
-              <p className="text-sm font-semibold text-[#D4AF37]">Adicionar vale</p>
+            <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4 space-y-3">
+              <p className="text-sm font-semibold text-fri-d4af37">Adicionar vale</p>
 
               <div className="space-y-2">
                 <Label className="text-gray-300">Data do vale</Label>
@@ -15117,7 +15117,7 @@ if (
                       dataVale: e.target.value,
                     }))
                   }
-                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
+                  className="bg-fr-111111 border-fr-d4af37/20 text-white"
                 />
               </div>
 
@@ -15131,7 +15131,7 @@ if (
                       descricao: e.target.value,
                     }))
                   }
-                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
+                  className="bg-fr-111111 border-fr-d4af37/20 text-white"
                   placeholder="Ex.: vale mercado"
                 />
               </div>
@@ -15147,7 +15147,7 @@ if (
                       valor: e.target.value,
                     }))
                   }
-                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
+                  className="bg-fr-111111 border-fr-d4af37/20 text-white"
                 />
               </div>
 
@@ -15164,11 +15164,11 @@ if (
                       parcelas: e.target.value,
                     }))
                   }
-                  className="bg-[#111111] border-[#D4AF37]/20 text-white"
+                  className="bg-fr-111111 border-fr-d4af37/20 text-white"
                 />
               </div>
 
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/15 bg-black/20 p-3 transition hover:border-[#D4AF37]/30">
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-fr-d4af37/15 bg-black/20 p-3 transition hover:border-fr-d4af37/30">
                 <input
                   type="checkbox"
                   checked={valeEditor.repasseFranklyn}
@@ -15178,10 +15178,10 @@ if (
                       repasseFranklyn: e.target.checked,
                     }))
                   }
-                  className="mt-1 h-4 w-4 accent-[#D4AF37]"
+                  className="mt-1 h-4 w-4 accent-fr-d4af37"
                 />
                 <div>
-                  <div className="font-bold text-[#F2D675]">Repasse ao Franklyn</div>
+                  <div className="font-bold text-fri-f2d675">Repasse ao Franklyn</div>
                   <div className="mt-0.5 text-xs leading-relaxed text-gray-400">
                     Se marcado, o repasse acompanha as parcelas do funcionário. Ex.: R$ 1.200 em 3x gera R$ 400 de repasse em cada mês.
                   </div>
@@ -15189,7 +15189,7 @@ if (
               </label>
 
               <Button
-                className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                 onClick={addVale}
               >
                 Adicionar
@@ -15212,9 +15212,9 @@ if (
         open={obsEditor.open}
         onOpenChange={(open) => setObsEditor((prev) => ({ ...prev, open }))}
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#D4AF37]">Observações</DialogTitle>
+            <DialogTitle className="text-fri-d4af37">Observações</DialogTitle>
             <DialogDescription className="text-gray-400">
               Adicione observações e exclua a que desejar.
             </DialogDescription>
@@ -15227,19 +15227,19 @@ if (
                 onChange={(e) =>
                   setObsEditor((prev) => ({ ...prev, novaObs: e.target.value }))
                 }
-                className="bg-[#111111] border-[#D4AF37]/20 text-white"
+                className="bg-fr-111111 border-fr-d4af37/20 text-white"
                 placeholder="Digite a observação"
               />
               <Button
-                className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                 onClick={addObservacao}
               >
                 Adicionar
               </Button>
             </div>
 
-            <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4">
-              <p className="mb-3 text-sm font-semibold text-[#D4AF37]">
+            <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4">
+              <p className="mb-3 text-sm font-semibold text-fri-d4af37">
                 Observações cadastradas
               </p>
 
@@ -15252,7 +15252,7 @@ if (
                   {observacoesPublicasLinha(linhaObsAtual).map((obs, index) => (
                     <div
                       key={`${obs}-${index}`}
-                      className="flex items-center justify-between gap-4 rounded-md border border-[#D4AF37]/10 p-2"
+                      className="flex items-center justify-between gap-4 rounded-md border border-fr-d4af37/10 p-2"
                     >
                       <span className="text-sm text-gray-300">{obs}</span>
                       <Button
@@ -15292,15 +15292,15 @@ if (
           setNegativoEditor((prev) => ({ ...prev, open }))
         }
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#D4AF37]">Boleto negativo</DialogTitle>
+            <DialogTitle className="text-fri-d4af37">Boleto negativo</DialogTitle>
             <DialogDescription className="text-gray-400">
               Deseja lançar esse valor como vale no próximo mês?
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-2 text-sm">
+          <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4 space-y-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-gray-300">Funcionário</span>
               <span className="text-white">
@@ -15324,7 +15324,7 @@ if (
               Cancelar
             </Button>
             <Button
-              className="bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+              className="bg-fr-d4af37 text-black hover:bg-fr-e6c760"
               onClick={lançarNegativoNoPróximoMês}
             >
               Adicionar no próximo mês
@@ -15339,9 +15339,9 @@ if (
           setRegraSemanaEditor((prev) => ({ ...prev, open }))
         }
       >
-        <DialogContent className="border-[#D4AF37]/20 bg-[#080808]/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="border-fr-d4af37/20 bg-fr-080808/95 text-white shadow-[0_30px_100px_rgba(0,0,0,0.60)] backdrop-blur-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-  <DialogTitle className="text-[#D4AF37]">
+  <DialogTitle className="text-fri-d4af37">
     Detalhe da regra
   </DialogTitle>
 
@@ -15378,7 +15378,7 @@ if (
 
           {detalheSemanaAtual && (
             <div className="space-y-4">
-              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-2 text-sm">
+              <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-300">Funcionário</span>
                   <span className="text-white">
@@ -15394,8 +15394,8 @@ if (
                 </div>
               </div>
 
-              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-2 text-sm">
-                <p className="font-semibold text-[#D4AF37]">
+              <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4 space-y-2 text-sm">
+                <p className="font-semibold text-fri-d4af37">
                   {detalheSemanaAtual.metaTitulo}
                 </p>
 
@@ -15525,7 +15525,7 @@ if (
                 ) : detalheSemanaAtual.isSupervisor ? (
                   <div className="space-y-5">
                     <div>
-                      <p className="mb-3 font-semibold text-[#D4AF37]">
+                      <p className="mb-3 font-semibold text-fri-d4af37">
                         Meta da loja
                       </p>
 
@@ -15571,7 +15571,7 @@ if (
                         )}
                       </div>
 
-                      <div className="mt-3 border-t border-[#D4AF37]/15 pt-3 flex items-center justify-between">
+                      <div className="mt-3 border-t border-fr-d4af37/15 pt-3 flex items-center justify-between">
                         <span className="text-gray-300">
                           Liquidez atual da loja
                         </span>
@@ -15600,8 +15600,8 @@ if (
                       </div>
                     </div>
 
-                    <div className="border-t border-[#D4AF37]/15 pt-4">
-                      <p className="mb-3 font-semibold text-[#D4AF37]">
+                    <div className="border-t border-fr-d4af37/15 pt-4">
+                      <p className="mb-3 font-semibold text-fri-d4af37">
                         Meta do grupo
                       </p>
 
@@ -15671,7 +15671,7 @@ if (
                         </span>
                       </div>
 
-                      <div className="mt-3 border-t border-[#D4AF37]/15 pt-3 flex items-center justify-between">
+                      <div className="mt-3 border-t border-fr-d4af37/15 pt-3 flex items-center justify-between">
                         <span className="text-gray-300">
                           Liquidez atual do grupo
                         </span>
@@ -15710,7 +15710,7 @@ if (
               </div>
 
               {!detalheSemanaAtual.isSupervisor && (
-              <div className="rounded-md border border-[#D4AF37]/15 bg-[#0d0d0d] p-4 space-y-3 text-sm">
+              <div className="rounded-md border border-fr-d4af37/15 bg-fr-0d0d0d p-4 space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-300">
                     {detalheSemanaAtual.baseLabel}
@@ -15946,7 +15946,7 @@ if (
                   </div>
                 )}
 
-                <div className="flex items-center justify-between border-t border-[#D4AF37]/15 pt-3">
+                <div className="flex items-center justify-between border-t border-fr-d4af37/15 pt-3">
                   <span className="text-white font-semibold">
                     {detalheSemanaAtual.isSupervisor
                       ? "Premiação da loja"

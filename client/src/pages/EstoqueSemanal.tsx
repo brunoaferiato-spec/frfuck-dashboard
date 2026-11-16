@@ -78,7 +78,7 @@ export default function EstoqueSemanal() {
   return (
     <main className="mx-auto max-w-3xl p-3 pb-24 sm:p-6">
       <div className="mb-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]/65">Estoque • contagem semanal</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-fri-d4af37/65">Estoque • contagem semanal</p>
         <h1 className="mt-1 text-2xl font-black">{perfilQ.data?.loja || "Contagem semanal"}</h1>
         <p className="mt-1 text-sm text-gray-500">Sem dia certo: conte os grupos da semana e entregue até sábado.</p>
       </div>
@@ -104,7 +104,7 @@ export default function EstoqueSemanal() {
             const ativa = s.semanaInicio === semanaInicio;
             return (
               <button key={s.semanaInicio} type="button" onClick={() => setEscolhida(s.semanaInicio)}
-                className={`shrink-0 rounded-2xl border px-3 py-2 text-left ${st.cor} ${ativa ? "bg-white/[0.06] ring-2 ring-[#D4AF37]/50" : "bg-[#0a0a0a]"}`}>
+                className={`shrink-0 rounded-2xl border px-3 py-2 text-left ${st.cor} ${ativa ? "bg-white/[0.06] ring-2 ring-fr-d4af37/50" : "bg-fr-0a0a0a"}`}>
                 <p className="text-xs font-black text-white">Semana {s.numero} • {dataBr(s.semanaInicio).slice(0, 5)} a {dataBr(s.semanaFim).slice(0, 5)}</p>
                 <p className="text-[11px] font-bold">{st.texto}</p>
               </button>
@@ -132,12 +132,12 @@ function SemanaDetalhe({ lojaId, semanaInicio }: { lojaId: number; semanaInicio:
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-3">
+      <div className="rounded-2xl border border-white/[0.06] bg-fr-0a0a0a p-3">
         <div className="flex items-center justify-between text-xs font-bold text-gray-400">
           <span>Semana {s.numero} • {dataBr(s.semanaInicio)} a {dataBr(s.semanaFim)}</span>
           <span>{completos} de {s.grupos.length} grupos prontos</span>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full bg-[#D4AF37] transition-all" style={{ width: `${(completos / s.grupos.length) * 100}%` }} /></div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full bg-fr-d4af37 transition-all" style={{ width: `${(completos / s.grupos.length) * 100}%` }} /></div>
         {s.status === "atrasada" && <p className="mt-2 text-xs font-bold text-rose-300">Semana atrasada: entregue o quanto antes.</p>}
       </div>
 
@@ -242,7 +242,7 @@ function GrupoCard({ g, lojaId, semanaInicio, editavel, setErro, onAtualizar }: 
   }
 
   return (
-    <section className={`rounded-3xl border bg-[#0a0a0a] p-4 ${completo ? "border-emerald-400/25" : "border-[#D4AF37]/20"}`}>
+    <section className={`rounded-3xl border bg-fr-0a0a0a p-4 ${completo ? "border-emerald-400/25" : "border-fr-d4af37/20"}`}>
       <div className="flex items-center justify-between gap-2">
         <p className="text-lg font-black">{g.nome}</p>
         {completo ? <span className="flex items-center gap-1 text-xs font-black text-emerald-300"><CheckCircle2 className="h-4 w-4" />Pronto</span> : <span className="flex items-center gap-1 text-xs font-bold text-gray-500"><Clock className="h-4 w-4" />Falta</span>}
@@ -250,9 +250,9 @@ function GrupoCard({ g, lojaId, semanaInicio, editavel, setErro, onAtualizar }: 
 
       {/* 1. Relatório */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {g.totalItens > 0 && <p className="flex-1 text-sm text-gray-300"><FileText className="mr-1 inline h-4 w-4 text-[#F2D675]" />{g.totalItens} itens • {qtd(g.totalQtd)} peças no sistema <span className="text-xs text-gray-600">({g.arquivoNome})</span></p>}
+        {g.totalItens > 0 && <p className="flex-1 text-sm text-gray-300"><FileText className="mr-1 inline h-4 w-4 text-fri-f2d675" />{g.totalItens} itens • {qtd(g.totalQtd)} peças no sistema <span className="text-xs text-gray-600">({g.arquivoNome})</span></p>}
         {editavel && (
-          <label className={`flex h-11 cursor-pointer items-center gap-2 rounded-xl px-3 text-sm font-black ${g.totalItens ? "border border-white/10 text-gray-400" : "bg-[#D4AF37] text-black"}`}>
+          <label className={`flex h-11 cursor-pointer items-center gap-2 rounded-xl px-3 text-sm font-black ${g.totalItens ? "border border-white/10 text-gray-400" : "bg-fr-d4af37 text-black"}`}>
             <FileText className="h-4 w-4" />{lendo ? "Lendo…" : g.totalItens ? "Trocar relatório" : "Anexar relatório (PDF)"}
             <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => { void escolherPdf(e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
           </label>
@@ -284,7 +284,7 @@ function GrupoCard({ g, lojaId, semanaInicio, editavel, setErro, onAtualizar }: 
           {g.ajustes.map((a) => (
             <div key={a.id} className="flex items-start gap-2 rounded-xl border border-white/[0.06] p-2.5">
               <div className="min-w-0 flex-1 text-sm">
-                <p><b className="text-[#F2D675]">{a.codigo}</b> <span className="text-gray-400">{a.item}</span></p>
+                <p><b className="text-fri-f2d675">{a.codigo}</b> <span className="text-gray-400">{a.item}</span></p>
                 <p className="text-xs text-gray-400">Sistema <b className="text-white">{qtd(a.qtdSistema)}</b> • Contado <b className="text-white">{qtd(a.qtdContada)}</b>{a.qtdSistema != null && <b className={a.qtdContada - a.qtdSistema > 0 ? " text-sky-300" : " text-rose-300"}> ({a.qtdContada - a.qtdSistema > 0 ? "+" : ""}{qtd(a.qtdContada - a.qtdSistema)})</b>}</p>
                 {a.obs && <p className="text-xs text-gray-300">{a.obs}</p>}
               </div>
@@ -308,7 +308,7 @@ function GrupoCard({ g, lojaId, semanaInicio, editavel, setErro, onAtualizar }: 
           <input value={novo.obs} onChange={(e) => setNovo({ ...novo, obs: e.target.value })} placeholder="O que precisa ser feito (ex.: ajustar para 3, peça trocada de código)"
             className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white outline-none" />
           <button type="button" disabled={!novoValido || salvarAjuste.isPending} onClick={() => void adicionarAjuste()}
-            className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/40 text-sm font-black text-[#F2D675] disabled:opacity-40">
+            className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-fr-d4af37/40 text-sm font-black text-fri-f2d675 disabled:opacity-40">
             <Plus className="h-4 w-4" />Adicionar alteração
           </button>
         </div>

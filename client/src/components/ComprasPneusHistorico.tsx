@@ -74,11 +74,11 @@ export default function ComprasPneusHistorico({
   );
 
   return (
-    <section className="rounded-3xl border border-white/[0.08] bg-[#090909]">
+    <section className="rounded-3xl border border-white/[0.08] bg-fr-090909">
       <div className="border-b border-white/[0.06] p-5 sm:p-6">
         <div className="flex items-start gap-3">
-          <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.05] p-2.5">
-            <PackageSearch className="h-5 w-5 text-[#F2D675]" />
+          <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.05] p-2.5">
+            <PackageSearch className="h-5 w-5 text-fri-f2d675" />
           </div>
           <div>
             <h2 className="text-xl font-black text-white">Histórico de compras</h2>
@@ -225,7 +225,7 @@ export default function ComprasPneusHistorico({
                 <p className="text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">
                   Pedidos salvos
                 </p>
-                <p className="mt-2 text-lg font-black text-[#F2D675]">
+                <p className="mt-2 text-lg font-black text-fri-f2d675">
                   {item.pedidosSalvos}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
@@ -245,7 +245,7 @@ export default function ComprasPneusHistorico({
                 <button
                   type="button"
                   onClick={() => onAbrir(Number(item.id), "pedidos")}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.05] px-3 text-xs font-black text-[#F2D675]"
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.05] px-3 text-xs font-black text-fri-f2d675"
                 >
                   Pedidos
                 </button>

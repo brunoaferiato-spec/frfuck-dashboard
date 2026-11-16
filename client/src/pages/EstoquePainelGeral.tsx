@@ -83,7 +83,7 @@ export default function EstoquePainelGeral() {
     <main className="mx-auto max-w-7xl px-3 py-5 sm:px-6 sm:py-7">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]/65">Estoque • supervisor</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-fri-d4af37/65">Estoque • supervisor</p>
           <h1 className="mt-1 text-2xl font-black sm:text-3xl">Painel das lojas</h1>
           <p className="mt-1 text-sm text-gray-500">Tudo das 6 lojas numa tela. Clique onde tiver algo para abrir.</p>
         </div>
@@ -92,7 +92,7 @@ export default function EstoquePainelGeral() {
             <input type="date" value={dia} onChange={(e) => { if (e.target.value) setDia(e.target.value); setAberto(null); }}
               className="mt-1 block h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white [color-scheme:dark]" />
           </label>
-          <button type="button" onClick={atualizar} aria-label="Atualizar" className="flex h-11 items-center gap-2 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] px-3 text-sm font-bold text-[#F2D675] hover:bg-[#D4AF37]/10">
+          <button type="button" onClick={atualizar} aria-label="Atualizar" className="flex h-11 items-center gap-2 rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/[0.04] px-3 text-sm font-bold text-fri-f2d675 hover:bg-fr-d4af37/10">
             <RefreshCw className="h-4 w-4" /><span className="hidden sm:inline">Atualizar</span>
           </button>
         </div>
@@ -142,7 +142,7 @@ export default function EstoquePainelGeral() {
                 : { tom: (s.pendentes ? "erro" : "ok") as Tom, texto: `${s.status === "entregue_atraso" ? "Entregue com atraso" : "Entregue"}${s.ajustes ? ` • ${s.ajustes} alteração(ões)${s.pendentes ? `, ${s.pendentes} para tratar` : ""}` : " • sem alterações"}` };
 
           return (
-            <section key={r.lojaId} className={`overflow-hidden rounded-3xl border bg-[#0a0a0a] ${pendLoja ? "border-rose-400/25" : "border-white/[0.08]"}`}>
+            <section key={r.lojaId} className={`overflow-hidden rounded-3xl border bg-fr-0a0a0a ${pendLoja ? "border-rose-400/25" : "border-white/[0.08]"}`}>
               <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
                 <p className="text-lg font-black">{r.loja}</p>
                 {pendLoja > 0
@@ -172,8 +172,8 @@ export default function EstoquePainelGeral() {
           <div className="grid gap-2 md:grid-cols-2">
             {pendencias.map((p) => (
               <button key={p.chave} type="button" onClick={() => setAberto(p.abrir)}
-                className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 text-left transition hover:border-[#D4AF37]/30 hover:bg-white/[0.02]">
-                <span className="rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] px-2 py-1 text-[11px] font-black text-[#F2D675]">{p.loja}</span>
+                className="flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-fr-0a0a0a px-4 py-3 text-left transition hover:border-fr-d4af37/30 hover:bg-white/[0.02]">
+                <span className="rounded-lg border border-fr-d4af37/20 bg-fr-d4af37/[0.07] px-2 py-1 text-[11px] font-black text-fri-f2d675">{p.loja}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-bold">{p.tipo}</span>
                   <span className="block text-xs text-gray-500">{p.quando}</span>
@@ -189,7 +189,7 @@ export default function EstoquePainelGeral() {
       {/* Detalhe por cima da tela */}
       {aberto && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 backdrop-blur-sm sm:items-center sm:p-6" onClick={() => setAberto(null)}>
-          <div className="max-h-[92dvh] w-full max-w-4xl overflow-y-auto rounded-t-3xl bg-[#050505] p-2 pb-[env(safe-area-inset-bottom)] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+          <div className="max-h-[92dvh] w-full max-w-4xl overflow-y-auto rounded-t-3xl bg-fr-050505 p-2 pb-[env(safe-area-inset-bottom)] sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
             {aberto.tipo === "resumo" && <DetalheResumoVendas conferenciaId={aberto.id} onFechar={() => setAberto(null)} />}
             {aberto.tipo === "compras" && <DetalheComprasOS comprasOsId={aberto.id} onFechar={() => setAberto(null)} />}
             {aberto.tipo === "semanal" && <DetalheSemanal lojaId={aberto.lojaId} semanaInicio={aberto.semanaInicio} onFechar={() => setAberto(null)} />}
@@ -202,8 +202,8 @@ export default function EstoquePainelGeral() {
 
 function Indicador({ icon: Icon, titulo, valor, legenda, tratar, alerta }: { icon: typeof Clock; titulo: string; valor: string; legenda: string; tratar: number; alerta?: boolean }) {
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a0a] p-4">
-      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-500"><Icon className="h-4 w-4 text-[#F2D675]" />{titulo}</div>
+    <div className="rounded-2xl border border-white/[0.08] bg-fr-0a0a0a p-4">
+      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-500"><Icon className="h-4 w-4 text-fri-f2d675" />{titulo}</div>
       <div className="mt-2 flex items-end justify-between gap-2">
         <div>
           <p className={`text-3xl font-black ${alerta ? "text-rose-300" : "text-white"}`}>{valor}</p>

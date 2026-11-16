@@ -385,10 +385,10 @@ export default function GestaoFuncionarios() {
   const formValido = !Object.values(camposInvalidos).some(Boolean);
 
   const classeCampo = (invalido: boolean) =>
-    `h-11 w-full rounded-xl border bg-[#0b0b0b] px-3 text-sm text-white outline-none transition-all duration-200 placeholder:text-white/25 ${
+    `h-11 w-full rounded-xl border bg-fr-0b0b0b px-3 text-sm text-white outline-none transition-all duration-200 placeholder:text-white/25 ${
       tentouSalvar && invalido
         ? "border-red-500/70 ring-1 ring-red-500/15 focus:border-red-400"
-        : "border-white/[0.08] hover:border-[#D4AF37]/25 focus:border-[#D4AF37]/55 focus:ring-2 focus:ring-[#D4AF37]/10"
+        : "border-white/[0.08] hover:border-fr-d4af37/25 focus:border-fr-d4af37/55 focus:ring-2 focus:ring-fr-d4af37/10"
     }`;
 
   const handleOpenCreate = () => {
@@ -710,10 +710,10 @@ export default function GestaoFuncionarios() {
   const totalInativos = funcionariosBase.filter((func) => func.status !== "ativo").length;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen bg-fr-050505 text-white">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -left-48 -top-48 h-[520px] w-[520px] rounded-full bg-[#D4AF37]/[0.035] blur-3xl" />
-        <div className="absolute -right-52 top-1/3 h-[460px] w-[460px] rounded-full bg-[#D4AF37]/[0.025] blur-3xl" />
+        <div className="absolute -left-48 -top-48 h-[520px] w-[520px] rounded-full bg-fr-d4af37/[0.035] blur-3xl" />
+        <div className="absolute -right-52 top-1/3 h-[460px] w-[460px] rounded-full bg-fr-d4af37/[0.025] blur-3xl" />
       </div>
 
       <main className="relative mx-auto max-w-[1680px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
@@ -722,19 +722,19 @@ export default function GestaoFuncionarios() {
             <Button
               onClick={() => navigate("/")}
               variant="outline"
-              className="mt-1 h-11 rounded-xl border-white/[0.08] bg-[#0d0d0d] px-4 text-white/75 shadow-lg shadow-black/20 hover:border-[#D4AF37]/35 hover:bg-[#D4AF37]/[0.055] hover:text-[#F2D675]"
+              className="mt-1 h-11 rounded-xl border-white/[0.08] bg-fr-0d0d0d px-4 text-white/75 shadow-lg shadow-black/20 hover:border-fr-d4af37/35 hover:bg-fr-d4af37/[0.055] hover:text-fri-f2d675"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar
             </Button>
 
             <div>
-              <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-[#D4AF37]">
-                <span className="h-px w-8 bg-[#D4AF37]/70" />
+              <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-fri-d4af37">
+                <span className="h-px w-8 bg-fr-d4af37/70" />
                 Pessoas • RH
               </div>
               <h1 className="text-3xl font-semibold tracking-[-0.03em] text-white sm:text-4xl">
-                Gestão de <span className="text-[#F2D675]">Funcionários</span>
+                Gestão de <span className="text-fri-f2d675">Funcionários</span>
               </h1>
               <p className="mt-2 max-w-2xl text-sm text-white/40">
                 Cadastro, vínculo, movimentações e histórico funcional em um único lugar.
@@ -744,7 +744,7 @@ export default function GestaoFuncionarios() {
 
           <Button
             onClick={handleOpenCreate}
-            className="h-12 rounded-xl bg-[#D4AF37] px-5 font-bold text-black shadow-[0_10px_34px_rgba(212,175,55,0.16)] hover:bg-[#E7C553]"
+            className="h-12 rounded-xl bg-fr-d4af37 px-5 font-bold text-black shadow-[0_10px_34px_rgba(212,175,55,0.16)] hover:bg-fr-e7c553"
           >
             <Plus className="mr-2 h-5 w-5" />
             Novo funcionário
@@ -752,19 +752,19 @@ export default function GestaoFuncionarios() {
         </header>
 
         <section className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-br from-[#14120b] to-[#090909] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)]">
+          <div className="rounded-2xl border border-fr-d4af37/20 bg-gradient-to-br from-fr-14120b to-fr-090909 p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)]">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Loja selecionada</p>
-                <p className="mt-2 text-lg font-semibold text-[#F2D675]">{lojaNome}</p>
+                <p className="mt-2 text-lg font-semibold text-fri-f2d675">{lojaNome}</p>
               </div>
-              <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 p-2.5 text-[#D4AF37]">
+              <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/10 p-2.5 text-fri-d4af37">
                 <Building2 className="h-5 w-5" />
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0d0d0d] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
+          <div className="rounded-2xl border border-white/[0.07] bg-fr-0d0d0d p-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Cadastrados</p>
@@ -776,7 +776,7 @@ export default function GestaoFuncionarios() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-emerald-400/10 bg-[#0d0d0d] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
+          <div className="rounded-2xl border border-emerald-400/10 bg-fr-0d0d0d p-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Ativos</p>
@@ -788,7 +788,7 @@ export default function GestaoFuncionarios() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-red-400/10 bg-[#0d0d0d] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
+          <div className="rounded-2xl border border-red-400/10 bg-fr-0d0d0d p-4 shadow-[0_16px_40px_rgba(0,0,0,0.22)]">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Inativos</p>
@@ -801,7 +801,7 @@ export default function GestaoFuncionarios() {
           </div>
         </section>
 
-        <Card className="mb-5 overflow-hidden rounded-3xl border border-[#D4AF37]/15 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#080808] text-white shadow-[0_22px_70px_rgba(0,0,0,0.30)]">
+        <Card className="mb-5 overflow-hidden rounded-3xl border border-fr-d4af37/15 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-080808 text-white shadow-[0_22px_70px_rgba(0,0,0,0.30)]">
           <CardContent className="p-4 sm:p-5">
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(250px,0.75fr)_minmax(320px,1.25fr)_auto] lg:items-end">
               <div>
@@ -812,7 +812,7 @@ export default function GestaoFuncionarios() {
                     setSelectedLoja(e.target.value);
                     setBuscaFuncionario("");
                   }}
-                  className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#0a0a0a] px-4 text-sm font-medium text-white outline-none transition-all hover:border-[#D4AF37]/25 focus:border-[#D4AF37]/55 focus:ring-2 focus:ring-[#D4AF37]/10"
+                  className="h-12 w-full rounded-xl border border-white/[0.08] bg-fr-0a0a0a px-4 text-sm font-medium text-white outline-none transition-all hover:border-fr-d4af37/25 focus:border-fr-d4af37/55 focus:ring-2 focus:ring-fr-d4af37/10"
                 >
                   {LOJAS.map((loja) => (
                     <option key={loja.id} value={loja.id}>
@@ -831,19 +831,19 @@ export default function GestaoFuncionarios() {
                     placeholder="Digite nome, sobrenome..."
                     value={buscaFuncionario}
                     onChange={(e) => setBuscaFuncionario(e.target.value)}
-                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-[#0a0a0a] py-2 pl-11 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/20 hover:border-[#D4AF37]/25 focus:border-[#D4AF37]/55 focus:ring-2 focus:ring-[#D4AF37]/10"
+                    className="h-12 w-full rounded-xl border border-white/[0.08] bg-fr-0a0a0a py-2 pl-11 pr-4 text-sm text-white outline-none transition-all placeholder:text-white/20 hover:border-fr-d4af37/25 focus:border-fr-d4af37/55 focus:ring-2 focus:ring-fr-d4af37/10"
                   />
                 </div>
               </div>
 
-              <div className="flex h-12 items-center rounded-xl border border-[#D4AF37]/12 bg-[#D4AF37]/[0.035] px-4 text-xs text-white/45">
-                Exibindo <strong className="mx-1 text-[#F2D675]">{funcionarios.length}</strong> de {totalFuncionarios}
+              <div className="flex h-12 items-center rounded-xl border border-fr-d4af37/12 bg-fr-d4af37/[0.035] px-4 text-xs text-white/45">
+                Exibindo <strong className="mx-1 text-fri-f2d675">{funcionarios.length}</strong> de {totalFuncionarios}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden rounded-3xl border border-white/[0.07] bg-[#090909] text-white shadow-[0_26px_90px_rgba(0,0,0,0.32)]">
+        <Card className="overflow-hidden rounded-3xl border border-white/[0.07] bg-fr-090909 text-white shadow-[0_26px_90px_rgba(0,0,0,0.32)]">
           <CardHeader className="border-b border-white/[0.055] px-5 py-5 sm:px-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -854,7 +854,7 @@ export default function GestaoFuncionarios() {
                   Dados cadastrais e ações de vínculo dos funcionários desta unidade.
                 </CardDescription>
               </div>
-              <span className="w-fit rounded-full border border-[#D4AF37]/18 bg-[#D4AF37]/[0.055] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.13em] text-[#F2D675]">
+              <span className="w-fit rounded-full border border-fr-d4af37/18 bg-fr-d4af37/[0.055] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.13em] text-fri-f2d675">
                 {funcionarios.length} funcionário(s)
               </span>
             </div>
@@ -864,7 +864,7 @@ export default function GestaoFuncionarios() {
             {funcionariosQuery.isLoading ? (
               <div className="flex items-center justify-center py-20">
                 <div className="flex items-center gap-3 text-sm text-white/40">
-                  <Loader2 className="h-5 w-5 animate-spin text-[#D4AF37]" />
+                  <Loader2 className="h-5 w-5 animate-spin text-fri-d4af37" />
                   Carregando equipe...
                 </div>
               </div>
@@ -876,15 +876,15 @@ export default function GestaoFuncionarios() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1320px] border-collapse">
                   <thead>
-                    <tr className="border-b border-[#D4AF37]/12 bg-[#0c0c0c]">
-                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Funcionário</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">PIX</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Função</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Nascimento</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Admissão</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Jornada</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Status</th>
-                      <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.14em] text-[#B99632]">Ações</th>
+                    <tr className="border-b border-fr-d4af37/12 bg-fr-0c0c0c">
+                      <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-fri-b99632">Funcionário</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-fri-b99632">PIX</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-fri-b99632">Função</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-fri-b99632">Nascimento</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-fri-b99632">Admissão</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-fri-b99632">Jornada</th>
+                      <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-[0.14em] text-fri-b99632">Status</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.14em] text-fri-b99632">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -900,7 +900,7 @@ export default function GestaoFuncionarios() {
                       funcionarios.map((func) => (
                         <tr
                           key={func.id}
-                          className="group border-b border-white/[0.045] transition-colors hover:bg-[#D4AF37]/[0.028]"
+                          className="group border-b border-white/[0.045] transition-colors hover:bg-fr-d4af37/[0.028]"
                         >
                           <td className="px-5 py-4">
                             <button
@@ -909,7 +909,7 @@ export default function GestaoFuncionarios() {
                               className="text-left"
                               title="Abrir cadastro do funcionário"
                             >
-                              <p className="font-semibold tracking-[0.01em] text-white transition-colors group-hover:text-[#F2D675]">{func.nome}</p>
+                              <p className="font-semibold tracking-[0.01em] text-white transition-colors group-hover:text-fri-f2d675">{func.nome}</p>
                               <p className="mt-1 text-[11px] text-white/28">CPF {func.cpf || "não informado"}</p>
                             </button>
                           </td>
@@ -917,12 +917,12 @@ export default function GestaoFuncionarios() {
                           <td className="px-4 py-4">
                             <p className="text-sm font-medium text-white/75">{labelFuncao(func.funcao, lojaId)}</p>
                             {Boolean(Number(func.isPj || 0)) && (
-                              <span className="mt-1 inline-flex rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/[0.08] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.10em] text-[#F2D675]">
+                              <span className="mt-1 inline-flex rounded-full border border-fr-d4af37/25 bg-fr-d4af37/[0.08] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.10em] text-fri-f2d675">
                                 PJ
                               </span>
                             )}
                             {func.funcao === "consultor_vendas" && (
-                              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#D4AF37]">
+                              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-fri-d4af37">
                                 {lojaId === 5
                                   ? "Meta 2"
                                   : func.tipoMeta === "meta1"
@@ -942,7 +942,7 @@ export default function GestaoFuncionarios() {
                           </td>
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-2 text-xs text-white/55">
-                              <Clock3 className="h-3.5 w-3.5 shrink-0 text-[#D4AF37]/55" />
+                              <Clock3 className="h-3.5 w-3.5 shrink-0 text-fri-d4af37/55" />
                               <span
                                 className={
                                   Boolean(Number(func.cargoConfianca || 0))
@@ -973,7 +973,7 @@ export default function GestaoFuncionarios() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleEditFuncionario(func)}
-                                className="h-9 rounded-lg border-[#D4AF37]/18 bg-[#D4AF37]/[0.035] px-3 text-[#F2D675] hover:border-[#D4AF37]/40 hover:bg-[#D4AF37]/[0.08] hover:text-[#FFE89A]"
+                                className="h-9 rounded-lg border-fr-d4af37/18 bg-fr-d4af37/[0.035] px-3 text-fri-f2d675 hover:border-fr-d4af37/40 hover:bg-fr-d4af37/[0.08] hover:text-fri-ffe89a"
                               >
                                 <Pencil className="mr-1.5 h-3.5 w-3.5" />
                                 Editar
@@ -1041,12 +1041,12 @@ export default function GestaoFuncionarios() {
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 backdrop-blur-md sm:p-5">
-          <div className="relative max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-[#D4AF37]/20 bg-[#080808] shadow-[0_30px_120px_rgba(0,0,0,0.72)]">
-            <div className="sticky top-0 z-10 border-b border-white/[0.06] bg-[#080808]/95 px-5 py-5 backdrop-blur-xl sm:px-7">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/80 to-transparent" />
+          <div className="relative max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-fr-d4af37/20 bg-fr-080808 shadow-[0_30px_120px_rgba(0,0,0,0.72)]">
+            <div className="sticky top-0 z-10 border-b border-white/[0.06] bg-fr-080808/95 px-5 py-5 backdrop-blur-xl sm:px-7">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fr-d4af37/80 to-transparent" />
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#D4AF37]">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-fri-d4af37">
                     {editingId ? "Cadastro funcional" : "Nova admissão"}
                   </p>
                   <h3 className="text-2xl font-semibold tracking-[-0.025em] text-white">
@@ -1059,7 +1059,7 @@ export default function GestaoFuncionarios() {
                 <button
                   type="button"
                   onClick={fecharFormulario}
-                  className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-2 text-white/40 transition hover:border-[#D4AF37]/25 hover:text-white"
+                  className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-2 text-white/40 transition hover:border-fr-d4af37/25 hover:text-white"
                   aria-label="Fechar"
                 >
                   <X className="h-4 w-4" />
@@ -1068,7 +1068,7 @@ export default function GestaoFuncionarios() {
             </div>
 
             <div className="space-y-5 px-5 py-6 sm:px-7">
-              <section className="rounded-2xl border border-white/[0.065] bg-[#0c0c0c] p-4 sm:p-5">
+              <section className="rounded-2xl border border-white/[0.065] bg-fr-0c0c0c p-4 sm:p-5">
                 <div className="mb-4">
                   <p className="text-sm font-semibold text-white">Dados pessoais</p>
                   <p className="mt-1 text-xs text-white/30">Identificação e informações de pagamento.</p>
@@ -1141,8 +1141,8 @@ export default function GestaoFuncionarios() {
               </section>
 
               {/* FOLHA_PJ_1PCT_V1 */}
-              <section className="rounded-2xl border border-[#D4AF37]/16 bg-gradient-to-br from-[#111009] to-[#0a0a0a] p-4 sm:p-5">
-                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/18 bg-[#D4AF37]/[0.05] p-3">
+              <section className="rounded-2xl border border-fr-d4af37/16 bg-gradient-to-br from-fr-111009 to-fr-0a0a0a p-4 sm:p-5">
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-fr-d4af37/18 bg-fr-d4af37/[0.05] p-3">
                   <input
                     type="checkbox"
                     checked={formData.isPj}
@@ -1152,11 +1152,11 @@ export default function GestaoFuncionarios() {
                         isPj: e.target.checked,
                       }))
                     }
-                    className="mt-0.5 h-4 w-4 accent-[#D4AF37]"
+                    className="mt-0.5 h-4 w-4 accent-fr-d4af37"
                   />
 
                   <span>
-                    <span className="block text-sm font-semibold text-[#F2D675]">
+                    <span className="block text-sm font-semibold text-fri-f2d675">
                       Funcionário PJ
                     </span>
 
@@ -1167,9 +1167,9 @@ export default function GestaoFuncionarios() {
                 </label>
               </section>
 
-              <section className="rounded-2xl border border-[#D4AF37]/16 bg-gradient-to-br from-[#111009] to-[#0a0a0a] p-4 sm:p-5">
+              <section className="rounded-2xl border border-fr-d4af37/16 bg-gradient-to-br from-fr-111009 to-fr-0a0a0a p-4 sm:p-5">
                 <div className="mb-4 flex items-start gap-3">
-                  <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2 text-[#F2D675]">
+                  <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-2 text-fri-f2d675">
                     <Clock3 className="h-4 w-4" />
                   </div>
                   <div>
@@ -1181,7 +1181,7 @@ export default function GestaoFuncionarios() {
                   </div>
                 </div>
 
-                <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-[#D4AF37]/18 bg-[#D4AF37]/[0.05] p-3">
+                <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-xl border border-fr-d4af37/18 bg-fr-d4af37/[0.05] p-3">
                   <input
                     type="checkbox"
                     checked={formData.cargoConfianca}
@@ -1191,10 +1191,10 @@ export default function GestaoFuncionarios() {
                         cargoConfianca: e.target.checked,
                       }))
                     }
-                    className="mt-0.5 h-4 w-4 accent-[#D4AF37]"
+                    className="mt-0.5 h-4 w-4 accent-fr-d4af37"
                   />
                   <span>
-                    <span className="block text-sm font-semibold text-[#F2D675]">
+                    <span className="block text-sm font-semibold text-fri-f2d675">
                       Cargo de confiança
                     </span>
                     <span className="mt-0.5 block text-xs leading-relaxed text-white/40">
@@ -1271,14 +1271,14 @@ export default function GestaoFuncionarios() {
                 )}
               </section>
 
-              <section className="rounded-2xl border border-[#D4AF37]/12 bg-gradient-to-br from-[#111009] to-[#0a0a0a] p-4 sm:p-5">
+              <section className="rounded-2xl border border-fr-d4af37/12 bg-gradient-to-br from-fr-111009 to-fr-0a0a0a p-4 sm:p-5">
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-white">Vínculo e função</p>
                     <p className="mt-1 text-xs text-white/30">A função atual define o quadrante e as regras da folha.</p>
                   </div>
                   {editingId && funcionarioEmEdicao && (
-                    <span className="rounded-full border border-[#D4AF37]/18 bg-[#D4AF37]/[0.055] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-[#F2D675]">
+                    <span className="rounded-full border border-fr-d4af37/18 bg-fr-d4af37/[0.055] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-fri-f2d675">
                       Função atual
                     </span>
                   )}
@@ -1292,7 +1292,7 @@ export default function GestaoFuncionarios() {
 
                     {editingId && funcionarioEmEdicao ? (
                       <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                        <div className="flex h-11 items-center rounded-xl border border-white/[0.08] bg-[#0b0b0b] px-3 text-sm font-medium text-white">
+                        <div className="flex h-11 items-center rounded-xl border border-white/[0.08] bg-fr-0b0b0b px-3 text-sm font-medium text-white">
                           {labelFuncao(funcionarioEmEdicao.funcao, lojaId)}
                         </div>
                         <Button
@@ -1347,7 +1347,7 @@ export default function GestaoFuncionarios() {
                         Tipo de meta / comissão <span className="text-red-400">*</span>
                       </label>
                       {lojaId === 5 ? (
-                        <div className="flex h-11 items-center rounded-xl border border-white/[0.08] bg-[#0b0b0b] px-3 text-sm text-white">
+                        <div className="flex h-11 items-center rounded-xl border border-white/[0.08] bg-fr-0b0b0b px-3 text-sm text-white">
                           Meta 2 - Mensal
                         </div>
                       ) : (
@@ -1367,7 +1367,7 @@ export default function GestaoFuncionarios() {
               </section>
 
               {editingId && funcionarioEmEdicao && trocaFuncaoOpen && (
-                <section className="overflow-hidden rounded-2xl border border-orange-400/28 bg-gradient-to-br from-orange-500/[0.075] to-[#0b0908]">
+                <section className="overflow-hidden rounded-2xl border border-orange-400/28 bg-gradient-to-br from-orange-500/[0.075] to-fr-0b0908">
                   <div className="border-b border-orange-400/12 px-4 py-4 sm:px-5">
                     <div className="flex items-start gap-3">
                       <div className="rounded-xl border border-orange-400/18 bg-orange-400/[0.07] p-2 text-orange-300">
@@ -1408,7 +1408,7 @@ export default function GestaoFuncionarios() {
                                   : "",
                             }));
                           }}
-                          className="h-11 w-full rounded-xl border border-orange-400/24 bg-[#0b0b0b] px-3 text-sm text-white outline-none transition focus:border-orange-400/55 focus:ring-2 focus:ring-orange-400/10"
+                          className="h-11 w-full rounded-xl border border-orange-400/24 bg-fr-0b0b0b px-3 text-sm text-white outline-none transition focus:border-orange-400/55 focus:ring-2 focus:ring-orange-400/10"
                         >
                           <option value="">Selecione</option>
                           {funcoesDisponiveis
@@ -1431,7 +1431,7 @@ export default function GestaoFuncionarios() {
                           type="date"
                           value={trocaFuncaoForm.dataMudanca}
                           onChange={(e) => setTrocaFuncaoForm((prev) => ({ ...prev, dataMudanca: e.target.value }))}
-                          className="h-11 w-full rounded-xl border border-orange-400/24 bg-[#0b0b0b] px-3 text-sm text-white outline-none transition focus:border-orange-400/55 focus:ring-2 focus:ring-orange-400/10"
+                          className="h-11 w-full rounded-xl border border-orange-400/24 bg-fr-0b0b0b px-3 text-sm text-white outline-none transition focus:border-orange-400/55 focus:ring-2 focus:ring-orange-400/10"
                         />
                       </div>
 
@@ -1439,14 +1439,14 @@ export default function GestaoFuncionarios() {
                         <div>
                           <label className="mb-2 block text-xs font-medium text-white/50">Tipo de meta / comissão *</label>
                           {lojaId === 5 ? (
-                            <div className="flex h-11 items-center rounded-xl border border-orange-400/24 bg-[#0b0b0b] px-3 text-sm text-white">
+                            <div className="flex h-11 items-center rounded-xl border border-orange-400/24 bg-fr-0b0b0b px-3 text-sm text-white">
                               Meta 2 - Mensal
                             </div>
                           ) : (
                             <select
                               value={trocaFuncaoForm.novoTipoMeta}
                               onChange={(e) => setTrocaFuncaoForm((prev) => ({ ...prev, novoTipoMeta: e.target.value as TipoMeta }))}
-                              className="h-11 w-full rounded-xl border border-orange-400/24 bg-[#0b0b0b] px-3 text-sm text-white outline-none transition focus:border-orange-400/55 focus:ring-2 focus:ring-orange-400/10"
+                              className="h-11 w-full rounded-xl border border-orange-400/24 bg-fr-0b0b0b px-3 text-sm text-white outline-none transition focus:border-orange-400/55 focus:ring-2 focus:ring-orange-400/10"
                             >
                               <option value="">Selecione</option>
                               <option value="meta1">Meta 1</option>
@@ -1492,12 +1492,12 @@ export default function GestaoFuncionarios() {
               )}
             </div>
 
-            <div className="sticky bottom-0 border-t border-white/[0.06] bg-[#080808]/95 px-5 py-4 backdrop-blur-xl sm:px-7">
+            <div className="sticky bottom-0 border-t border-white/[0.06] bg-fr-080808/95 px-5 py-4 backdrop-blur-xl sm:px-7">
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button
                   onClick={handleSaveFuncionario}
                   disabled={salvando}
-                  className="h-11 flex-1 rounded-xl bg-[#D4AF37] font-bold text-black hover:bg-[#E7C553] disabled:opacity-50"
+                  className="h-11 flex-1 rounded-xl bg-fr-d4af37 font-bold text-black hover:bg-fr-e7c553 disabled:opacity-50"
                 >
                   {salvando ? (
                     <>

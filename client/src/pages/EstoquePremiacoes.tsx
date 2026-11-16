@@ -61,7 +61,7 @@ export default function EstoquePremiacoes() {
     <main className="mx-auto max-w-7xl px-3 py-5 sm:px-6 sm:py-7">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#D4AF37]/65">Estoque • supervisor</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-fri-d4af37/65">Estoque • supervisor</p>
           <h1 className="mt-1 text-2xl font-black sm:text-3xl">Premiações</h1>
           <p className="mt-1 text-sm text-gray-500">Ganha quem entregou tudo no prazo de segunda a sábado. A bonificação é paga na segunda seguinte.</p>
         </div>
@@ -76,8 +76,8 @@ export default function EstoquePremiacoes() {
       {q.error && <p className="mt-4 text-sm text-rose-300">{q.error.message}</p>}
 
       {q.data && (
-        <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl border border-[#D4AF37]/20 bg-gradient-to-r from-[#D4AF37]/[0.08] to-transparent p-4">
-          <Trophy className="h-8 w-8 text-[#F2D675]" />
+        <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl border border-fr-d4af37/20 bg-gradient-to-r from-fr-d4af37/[0.08] to-transparent p-4">
+          <Trophy className="h-8 w-8 text-fri-f2d675" />
           <div className="flex-1">
             <p className="text-2xl font-black">{ganharam} de 6 lojas ganharam</p>
             <p className="text-xs text-gray-400">Regras: Compras x OS no mesmo dia • Resumo de vendas até o dia seguinte (o de sábado até segunda) • Contagem semanal até sábado.</p>
@@ -103,13 +103,13 @@ export default function EstoquePremiacoes() {
 
 function CardLoja({ l, onAbrir }: { l: Loja; onAbrir: () => void }) {
   const selo = l.resultado === "ganhou"
-    ? <span className="flex items-center gap-1.5 rounded-full bg-[#D4AF37] px-3 py-1 text-xs font-black text-black"><Trophy className="h-3.5 w-3.5" />Ganhou</span>
+    ? <span className="flex items-center gap-1.5 rounded-full bg-fr-d4af37 px-3 py-1 text-xs font-black text-black"><Trophy className="h-3.5 w-3.5" />Ganhou</span>
     : l.resultado === "nao_ganhou"
       ? <span className="rounded-full bg-rose-500/[0.15] px-3 py-1 text-xs font-black text-rose-200">Não ganhou</span>
       : <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-black text-gray-400">Semana em aberto</span>;
   return (
     <button type="button" onClick={onAbrir}
-      className={`rounded-3xl border bg-[#0a0a0a] p-4 text-left transition hover:bg-white/[0.02] ${l.resultado === "ganhou" ? "border-[#D4AF37]/40 shadow-[0_0_40px_-20px_rgba(212,175,55,0.7)]" : l.resultado === "nao_ganhou" ? "border-rose-400/20" : "border-white/[0.08]"}`}>
+      className={`rounded-3xl border bg-fr-0a0a0a p-4 text-left transition hover:bg-white/[0.02] ${l.resultado === "ganhou" ? "border-fr-d4af37/40 shadow-[0_0_40px_-20px_rgba(212,175,55,0.7)]" : l.resultado === "nao_ganhou" ? "border-rose-400/20" : "border-white/[0.08]"}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-lg font-black">{l.loja}</p>
@@ -137,7 +137,7 @@ function CardLoja({ l, onAbrir }: { l: Loja; onAbrir: () => void }) {
           {l.motivos.length > 3 && <p className="text-xs text-rose-200/70">+ {l.motivos.length - 3} outro(s)</p>}
         </div>
       )}
-      <p className="mt-3 flex items-center justify-between text-xs font-bold text-[#F2D675]">
+      <p className="mt-3 flex items-center justify-between text-xs font-bold text-fri-f2d675">
         {l.totalErros ? `${l.totalErros} erro(s) no Compras x OS` : "Nenhum erro no Compras x OS"}
         <ChevronRight className="h-4 w-4" />
       </p>
@@ -150,10 +150,10 @@ function ErrosDaLoja({ l, onFechar }: { l: Loja; onFechar: () => void }) {
   const [dia, setDia] = useState<number | null>(null);
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 backdrop-blur-sm sm:items-center sm:p-6" onClick={onFechar}>
-      <div className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-3xl border border-white/[0.08] bg-[#050505] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-3xl sm:p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[92dvh] w-full max-w-3xl overflow-y-auto rounded-t-3xl border border-white/[0.08] bg-fr-050505 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:rounded-3xl sm:p-5" onClick={(e) => e.stopPropagation()}>
         {dia ? (
           <>
-            <button type="button" onClick={() => setDia(null)} className="mb-1 flex items-center gap-1 text-sm font-bold text-[#F2D675]"><ArrowLeft className="h-4 w-4" />Voltar para os dias</button>
+            <button type="button" onClick={() => setDia(null)} className="mb-1 flex items-center gap-1 text-sm font-bold text-fri-f2d675"><ArrowLeft className="h-4 w-4" />Voltar para os dias</button>
             <DetalheComprasOS comprasOsId={dia} onFechar={onFechar} />
           </>
         ) : (

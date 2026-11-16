@@ -251,10 +251,10 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
 
   async function importar(file: File | null, fornecedorId:number){ if(!file||!planejamentoId)return; importarCotacao.mutate({planejamentoId,fornecedorId,arquivoNome:file.name,arquivoBase64:await toBase64(file)}); }
 
-  return <section className="mt-5 rounded-3xl border border-[#D4AF37]/20 bg-[#090909] p-5">
+  return <section className="mt-5 rounded-3xl border border-fr-d4af37/20 bg-fr-090909 p-5">
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <p className="text-xs font-black uppercase tracking-[0.15em] text-[#D4AF37]/60">COTAÇÃO E PEDIDOS</p>
+        <p className="text-xs font-black uppercase tracking-[0.15em] text-fri-d4af37/60">COTAÇÃO E PEDIDOS</p>
         <h2 className="mt-1 text-xl font-black">Fluxo de fornecedores</h2>
         <p className="mt-1 text-xs text-gray-600">Quantidade de compra pode ser ajustada na coluna Qtd interna.</p>
       </div>
@@ -265,7 +265,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
             Cidade da compra
           </label>
           <div className="relative">
-            <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-[#D4AF37]" />
+            <MapPin className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-fri-d4af37" />
             <select
               value={lojaId}
               onChange={(e) => {
@@ -303,7 +303,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
             type="button"
             onClick={salvarPlanejamento}
             disabled={criarPlano.isPending || !lojaSelecionada}
-            className="h-11 rounded-xl bg-[#D4AF37] px-4 text-sm font-black text-black disabled:opacity-50"
+            className="h-11 rounded-xl bg-fr-d4af37 px-4 text-sm font-black text-black disabled:opacity-50"
           >
             <Save className="mr-2 inline h-4 w-4"/>
             Salvar planejamento
@@ -311,7 +311,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
         )}
 
         {planejamentoId && (
-          <div className="h-11 rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] px-4 py-3 text-xs font-black text-[#F2D675]">
+          <div className="h-11 rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.04] px-4 py-3 text-xs font-black text-fri-f2d675">
             {detalheQ.data?.planejamento?.lojaNome || lojaSelecionada?.nome || "Cidade"}
           </div>
         )}
@@ -319,19 +319,19 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
     </div>
 
     {!arquivoNome && !planejamentoId && (
-      <div className="mt-4 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.03] px-4 py-3 text-sm text-gray-500">
+      <div className="mt-4 rounded-xl border border-fr-d4af37/15 bg-fr-d4af37/[0.03] px-4 py-3 text-sm text-gray-500">
         Selecione a cidade da compra e depois importe o relatório acima.
       </div>
     )}
 
     {(mensagem||erro)&&<div className={`mt-4 rounded-xl border px-4 py-3 text-sm ${erro?"border-rose-400/20 text-rose-200":"border-emerald-400/20 text-emerald-200"}`}>{erro||mensagem}</div>}
 
-    <div className="mt-5 flex flex-wrap gap-2">{([['cotacao','Cotação'],['pedidos','Pedidos'],['historico','Histórico'],['fornecedores','Fornecedores']] as Array<[Aba,string]>).map(([v,l])=><button key={v} type="button" onClick={()=>setAba(v)} className={`rounded-xl px-4 py-2 text-xs font-black ${aba===v?"bg-[#D4AF37] text-black":"border border-white/10 text-gray-400"}`}>{l}</button>)}</div>
+    <div className="mt-5 flex flex-wrap gap-2">{([['cotacao','Cotação'],['pedidos','Pedidos'],['historico','Histórico'],['fornecedores','Fornecedores']] as Array<[Aba,string]>).map(([v,l])=><button key={v} type="button" onClick={()=>setAba(v)} className={`rounded-xl px-4 py-2 text-xs font-black ${aba===v?"bg-fr-d4af37 text-black":"border border-white/10 text-gray-400"}`}>{l}</button>)}</div>
 
     {aba==='cotacao' && <div className="mt-5">
       {!planejamentoId ? <div className="rounded-2xl border border-white/[0.06] p-8 text-center text-gray-500">Salve o planejamento para iniciar a cotação.</div> : fornecedores.length===0 ? <div className="rounded-2xl border border-white/[0.06] p-8 text-center text-gray-500">Cadastre fornecedores na aba Fornecedores.</div> : <>
-        <div className="mb-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={()=>menores.mutate({planejamentoId})} className="h-10 rounded-xl border border-emerald-400/20 px-4 text-xs font-black text-emerald-200"><Check className="mr-2 inline h-4 w-4"/>Selecionar menores preços</button><button type="button" onClick={()=>fechar.mutate({planejamentoId})} className="h-10 rounded-xl bg-[#D4AF37] px-4 text-xs font-black text-black"><Save className="mr-2 inline h-4 w-4"/>Fechar cotação e salvar pedidos</button></div>
-        <div className="overflow-x-auto"><table className="min-w-[950px] w-full text-xs"><thead className="bg-white/[0.025] text-[9px] uppercase text-gray-600"><tr><th className="px-3 py-3 text-left">Código</th><th className="px-3 py-3 text-left">Item</th><th className="px-3 py-3 text-right">Qtd interna</th>{fornecedores.map((f:any)=><th key={f.id} className="px-3 py-3 text-center"><button type="button" onClick={()=>setFornecedorModal(f)} className="font-black text-gray-300 hover:text-[#F2D675]">{f.nome}</button><span className="ml-2 rounded-full bg-white/[0.04] px-2 py-1">{countMap.get(Number(f.id))||0}/{detalheQ.data?.itens?.length||0}</span></th>)}</tr></thead><tbody>{(detalheQ.data?.itens||[]).map((it:any)=>{const lim=limiteDoItem(it);const pedido=detalheQ.data?.planejamento?.status==="pedido_salvo";return <tr key={it.id} className={`border-t border-white/[0.05] ${lim.acima&&!lim.aprovacao?"bg-rose-500/[0.10] shadow-[inset_3px_0_0_0_rgba(244,63,94,0.85)]":""} ${lim.acima&&lim.aprovacao==="negado"?"opacity-50":""}`}><td className={`px-3 py-3 font-black ${lim.acima&&lim.aprovacao==="negado"?"text-gray-500 line-through":"text-[#F2D675]"}`}>{it.codigo}</td><td className="px-3 py-3 font-bold"><span className={lim.acima&&lim.aprovacao==="negado"?"line-through":""}>{it.item}</span>{tipo==="amortecedores"&&<div className="mt-1 max-w-[420px] text-[11px] font-semibold leading-4 text-sky-200/80">{it.especificacao||"Sem aplicação cadastrada"}</div>}{lim.acima&&(<div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-black">{!lim.aprovacao&&<span className="rounded-full bg-rose-500/[0.15] px-2 py-0.5 text-rose-200">{lim.bucha?"Bucha":"Peça"} acima de {moeda(lim.limite)} • {moeda(lim.preco)} • aguardando OK</span>}{lim.aprovacao==="aprovado"&&<span className="rounded-full bg-emerald-400/[0.12] px-2 py-0.5 text-emerald-300">Aprovado ({moeda(lim.preco)})</span>}{lim.aprovacao==="negado"&&<span className="rounded-full bg-rose-500/[0.12] px-2 py-0.5 text-rose-300">Negado • não entra no pedido</span>}{!pedido&&lim.aprovacao!=="aprovado"&&<button type="button" disabled={definirAprovacao.isPending} onClick={()=>definirAprovacao.mutate({itemId:Number(it.id),aprovacao:"aprovado"})} className="rounded-lg bg-emerald-400 px-2 py-0.5 text-black disabled:opacity-50">✓ OK</button>}{!pedido&&lim.aprovacao!=="negado"&&<button type="button" disabled={definirAprovacao.isPending} onClick={()=>definirAprovacao.mutate({itemId:Number(it.id),aprovacao:"negado"})} className="rounded-lg border border-rose-400/40 px-2 py-0.5 text-rose-200 disabled:opacity-50">✕ Negar</button>}</div>)}</td><td className="px-3 py-2 text-right">
+        <div className="mb-4 flex flex-wrap justify-end gap-2"><button type="button" onClick={()=>menores.mutate({planejamentoId})} className="h-10 rounded-xl border border-emerald-400/20 px-4 text-xs font-black text-emerald-200"><Check className="mr-2 inline h-4 w-4"/>Selecionar menores preços</button><button type="button" onClick={()=>fechar.mutate({planejamentoId})} className="h-10 rounded-xl bg-fr-d4af37 px-4 text-xs font-black text-black"><Save className="mr-2 inline h-4 w-4"/>Fechar cotação e salvar pedidos</button></div>
+        <div className="overflow-x-auto"><table className="min-w-[950px] w-full text-xs"><thead className="bg-white/[0.025] text-[9px] uppercase text-gray-600"><tr><th className="px-3 py-3 text-left">Código</th><th className="px-3 py-3 text-left">Item</th><th className="px-3 py-3 text-right">Qtd interna</th>{fornecedores.map((f:any)=><th key={f.id} className="px-3 py-3 text-center"><button type="button" onClick={()=>setFornecedorModal(f)} className="font-black text-gray-300 hover:text-fri-f2d675">{f.nome}</button><span className="ml-2 rounded-full bg-white/[0.04] px-2 py-1">{countMap.get(Number(f.id))||0}/{detalheQ.data?.itens?.length||0}</span></th>)}</tr></thead><tbody>{(detalheQ.data?.itens||[]).map((it:any)=>{const lim=limiteDoItem(it);const pedido=detalheQ.data?.planejamento?.status==="pedido_salvo";return <tr key={it.id} className={`border-t border-white/[0.05] ${lim.acima&&!lim.aprovacao?"bg-rose-500/[0.10] shadow-[inset_3px_0_0_0_rgba(244,63,94,0.85)]":""} ${lim.acima&&lim.aprovacao==="negado"?"opacity-50":""}`}><td className={`px-3 py-3 font-black ${lim.acima&&lim.aprovacao==="negado"?"text-gray-500 line-through":"text-fri-f2d675"}`}>{it.codigo}</td><td className="px-3 py-3 font-bold"><span className={lim.acima&&lim.aprovacao==="negado"?"line-through":""}>{it.item}</span>{tipo==="amortecedores"&&<div className="mt-1 max-w-[420px] text-[11px] font-semibold leading-4 text-sky-200/80">{it.especificacao||"Sem aplicação cadastrada"}</div>}{lim.acima&&(<div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-black">{!lim.aprovacao&&<span className="rounded-full bg-rose-500/[0.15] px-2 py-0.5 text-rose-200">{lim.bucha?"Bucha":"Peça"} acima de {moeda(lim.limite)} • {moeda(lim.preco)} • aguardando OK</span>}{lim.aprovacao==="aprovado"&&<span className="rounded-full bg-emerald-400/[0.12] px-2 py-0.5 text-emerald-300">Aprovado ({moeda(lim.preco)})</span>}{lim.aprovacao==="negado"&&<span className="rounded-full bg-rose-500/[0.12] px-2 py-0.5 text-rose-300">Negado • não entra no pedido</span>}{!pedido&&lim.aprovacao!=="aprovado"&&<button type="button" disabled={definirAprovacao.isPending} onClick={()=>definirAprovacao.mutate({itemId:Number(it.id),aprovacao:"aprovado"})} className="rounded-lg bg-emerald-400 px-2 py-0.5 text-black disabled:opacity-50">✓ OK</button>}{!pedido&&lim.aprovacao!=="negado"&&<button type="button" disabled={definirAprovacao.isPending} onClick={()=>definirAprovacao.mutate({itemId:Number(it.id),aprovacao:"negado"})} className="rounded-lg border border-rose-400/40 px-2 py-0.5 text-rose-200 disabled:opacity-50">✕ Negar</button>}</div>)}</td><td className="px-3 py-2 text-right">
   <input
     type="number"
     min={0}
@@ -377,10 +377,10 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
     onKeyDown={(e) => {
       if (e.key === "Enter") e.currentTarget.blur();
     }}
-    className="h-10 w-20 rounded-xl border border-[#D4AF37]/25 bg-black/30 px-2 text-center font-black text-[#F2D675] outline-none disabled:opacity-50"
+    className="h-10 w-20 rounded-xl border border-fr-d4af37/25 bg-black/30 px-2 text-center font-black text-fri-f2d675 outline-none disabled:opacity-50"
     title="Quantidade de compra editável"
   />
-</td>{fornecedores.map((f:any)=>{const key=`${it.id}-${f.id}`;const saved=quoteMap.get(key);const val=local[key]!==undefined?local[key]:(saved?Number(saved).toFixed(2).replace('.',','):'');const sel=Number(it.fornecedorSelecionadoId)===Number(f.id);return <td key={f.id} className={`px-3 py-2 ${sel?'bg-[#D4AF37]/[0.06]':''}`}><div className="flex min-w-[190px] gap-2"><input value={val} placeholder="0,00" onChange={e=>setLocal(a=>({...a,[key]:e.target.value}))} onBlur={()=>{const n=Number(String(val).replace(/\./g,'').replace(',','.').replace(/[^0-9.-]/g,''));if(n>0)salvarCotacao.mutate({itemId:Number(it.id),fornecedorId:Number(f.id),valor:n});}} className="h-10 min-w-0 flex-1 rounded-xl border border-emerald-400/20 bg-black/30 px-3 text-right text-emerald-200 outline-none"/>{saved&&<button type="button" onClick={()=>selecionar.mutate({itemId:Number(it.id),fornecedorId:Number(f.id)})} className={`h-10 rounded-xl px-3 text-[10px] font-black ${sel?'bg-[#D4AF37] text-black':'border border-white/10 text-gray-400'}`}>{sel?'OK':'Escolher'}</button>}</div></td>})}</tr>})}</tbody>
+</td>{fornecedores.map((f:any)=>{const key=`${it.id}-${f.id}`;const saved=quoteMap.get(key);const val=local[key]!==undefined?local[key]:(saved?Number(saved).toFixed(2).replace('.',','):'');const sel=Number(it.fornecedorSelecionadoId)===Number(f.id);return <td key={f.id} className={`px-3 py-2 ${sel?'bg-fr-d4af37/[0.06]':''}`}><div className="flex min-w-[190px] gap-2"><input value={val} placeholder="0,00" onChange={e=>setLocal(a=>({...a,[key]:e.target.value}))} onBlur={()=>{const n=Number(String(val).replace(/\./g,'').replace(',','.').replace(/[^0-9.-]/g,''));if(n>0)salvarCotacao.mutate({itemId:Number(it.id),fornecedorId:Number(f.id),valor:n});}} className="h-10 min-w-0 flex-1 rounded-xl border border-emerald-400/20 bg-black/30 px-3 text-right text-emerald-200 outline-none"/>{saved&&<button type="button" onClick={()=>selecionar.mutate({itemId:Number(it.id),fornecedorId:Number(f.id)})} className={`h-10 rounded-xl px-3 text-[10px] font-black ${sel?'bg-fr-d4af37 text-black':'border border-white/10 text-gray-400'}`}>{sel?'OK':'Escolher'}</button>}</div></td>})}</tr>})}</tbody>
         {/* Total do pedido de cada fornecedor (quantidade × preço), igual ao de pneus. Cada peça conta no fornecedor
             escolhido; sem escolha, no menor preço. Peça negada ou com quantidade 0 não entra, como no fechamento. */}
         {(()=>{
@@ -400,11 +400,11 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
           const totalGeral=totais.reduce((s:number,t:any)=>s+t.valor,0);
           const quantidadeTotal=totais.reduce((s:number,t:any)=>s+t.quantidade,0);
           const semPreco=itensTotal.filter((it:any)=>!fornecedorDaPeca(it)).length;
-          return <tfoot><tr className="border-t-2 border-[#D4AF37]/30 bg-[#D4AF37]/[0.04]">
-            <td className="px-3 py-3 align-top"><p className="text-[10px] font-black uppercase tracking-[0.08em] text-[#D4AF37]/80">Total do pedido</p><p className="mt-1 text-sm font-black text-[#F2D675]">{moeda(totalGeral)}</p></td>
+          return <tfoot><tr className="border-t-2 border-fr-d4af37/30 bg-fr-d4af37/[0.04]">
+            <td className="px-3 py-3 align-top"><p className="text-[10px] font-black uppercase tracking-[0.08em] text-fri-d4af37/80">Total do pedido</p><p className="mt-1 text-sm font-black text-fri-f2d675">{moeda(totalGeral)}</p></td>
             <td className="px-3 py-3 align-top">{semPreco>0?<p className="text-[10px] font-black leading-4 text-amber-300">{semPreco} peça(s) sem nenhum preço • fica(m) fora do pedido</p>:<p className="text-[10px] font-black leading-4 text-emerald-300">Todas as peças com preço</p>}</td>
             <td className="px-3 py-3 text-right align-top"><p className="text-[10px] font-black uppercase text-gray-600">Qtd</p><p className="mt-1 text-sm font-black text-white">{quantidadeTotal}</p></td>
-            {fornecedores.map((f:any,i:number)=>{const t=totais[i];return <td key={f.id} className="px-3 py-3 text-right align-top">{t.pecas>0?<><p className="text-sm font-black text-[#F2D675]">{moeda(t.valor)}</p><p className="mt-0.5 text-[10px] text-gray-500">{t.pecas} peça(s) • {t.quantidade} un.</p></>:<p className="text-[11px] text-gray-600">—</p>}</td>})}
+            {fornecedores.map((f:any,i:number)=>{const t=totais[i];return <td key={f.id} className="px-3 py-3 text-right align-top">{t.pecas>0?<><p className="text-sm font-black text-fri-f2d675">{moeda(t.valor)}</p><p className="mt-0.5 text-[10px] text-gray-500">{t.pecas} peça(s) • {t.quantidade} un.</p></>:<p className="text-[11px] text-gray-600">—</p>}</td>})}
           </tr></tfoot>;
         })()}
         </table></div>
@@ -446,7 +446,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
           </div>
 
           <div className="grid gap-3 lg:grid-cols-3">
-            {(pedidosQ.data||[]).map((p:any)=><div key={p.id} className="rounded-2xl border border-white/[0.07] p-4"><p className="text-xs text-gray-600">Fornecedor</p><h3 className="mt-1 text-xl font-black">{p.fornecedorNome}</h3><p className="mt-3 text-sm text-gray-500">{p.totalItens} itens • {p.totalQuantidade} unidades</p><p className="mt-2 text-2xl font-black text-[#F2D675]">{moeda(p.totalValor)}</p><button type="button" onClick={()=>arquivoPedido.mutate({pedidoId:Number(p.id)})} className="mt-4 h-10 rounded-xl bg-[#D4AF37] px-4 text-xs font-black text-black"><Download className="mr-2 inline h-4 w-4"/>Baixar pedido</button></div>)}
+            {(pedidosQ.data||[]).map((p:any)=><div key={p.id} className="rounded-2xl border border-white/[0.07] p-4"><p className="text-xs text-gray-600">Fornecedor</p><h3 className="mt-1 text-xl font-black">{p.fornecedorNome}</h3><p className="mt-3 text-sm text-gray-500">{p.totalItens} itens • {p.totalQuantidade} unidades</p><p className="mt-2 text-2xl font-black text-fri-f2d675">{moeda(p.totalValor)}</p><button type="button" onClick={()=>arquivoPedido.mutate({pedidoId:Number(p.id)})} className="mt-4 h-10 rounded-xl bg-fr-d4af37 px-4 text-xs font-black text-black"><Download className="mr-2 inline h-4 w-4"/>Baixar pedido</button></div>)}
           </div>
         </>
       )}
@@ -486,12 +486,12 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
           >
             <div className="flex items-start justify-between gap-3">
               <p className="font-black">Planejamento #{p.id}</p>
-              <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] px-2 py-1 text-[9px] font-black text-[#F2D675]">
+              <span className="rounded-full border border-fr-d4af37/20 bg-fr-d4af37/[0.04] px-2 py-1 text-[9px] font-black text-fri-f2d675">
                 {p.lojaNome || "Sem cidade"}
               </span>
             </div>
             <p className="mt-2 text-xs text-gray-500">{p.totalItens} itens • {p.totalQuantidade} unidades</p>
-            <p className="mt-2 text-[11px] font-bold text-[#F2D675]">{p.status==='pedido_salvo'?'Pedido salvo':p.status==='cotacao'?'Em cotação':'Planejamento'}</p>
+            <p className="mt-2 text-[11px] font-bold text-fri-f2d675">{p.status==='pedido_salvo'?'Pedido salvo':p.status==='cotacao'?'Em cotação':'Planejamento'}</p>
             <p className="mt-2 text-[11px] text-gray-600">{new Date(p.createdAt).toLocaleString('pt-BR')}</p>
           </button>
 
@@ -543,18 +543,18 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
     </div>}
 
     {aba==='fornecedores' && <div className="mt-5">
-      <div className="flex gap-2"><input value={novoFornecedor} onChange={e=>setNovoFornecedor(e.target.value)} placeholder="Nome do fornecedor" className="h-11 flex-1 rounded-xl border border-white/10 bg-black/40 px-3 text-sm"/><button type="button" onClick={()=>novoFornecedor.trim()&&criarFornecedor.mutate({nome:novoFornecedor.trim(),lojas:novoFornecedorLojas})} className="h-11 rounded-xl bg-[#D4AF37] px-4 text-sm font-black text-black"><Settings2 className="mr-2 inline h-4 w-4"/>Adicionar</button></div>
+      <div className="flex gap-2"><input value={novoFornecedor} onChange={e=>setNovoFornecedor(e.target.value)} placeholder="Nome do fornecedor" className="h-11 flex-1 rounded-xl border border-white/10 bg-black/40 px-3 text-sm"/><button type="button" onClick={()=>novoFornecedor.trim()&&criarFornecedor.mutate({nome:novoFornecedor.trim(),lojas:novoFornecedorLojas})} className="h-11 rounded-xl bg-fr-d4af37 px-4 text-sm font-black text-black"><Settings2 className="mr-2 inline h-4 w-4"/>Adicionar</button></div>
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
         <span className="font-black uppercase tracking-[0.06em] text-gray-600">Atende:</span>
-        {LOJAS_PECAS.map((l)=>{const m=novoFornecedorLojas.includes(l.id);return <button key={l.id} type="button" onClick={()=>setNovoFornecedorLojas((a)=>a.includes(l.id)?a.filter((x)=>x!==l.id):[...a,l.id].sort((x,y)=>x-y))} className={`rounded-full border px-3 py-1 font-bold ${m?"border-[#D4AF37]/40 bg-[#D4AF37]/[0.12] text-[#F2D675]":"border-white/10 text-gray-500"}`}>{l.nome}</button>;})}
+        {LOJAS_PECAS.map((l)=>{const m=novoFornecedorLojas.includes(l.id);return <button key={l.id} type="button" onClick={()=>setNovoFornecedorLojas((a)=>a.includes(l.id)?a.filter((x)=>x!==l.id):[...a,l.id].sort((x,y)=>x-y))} className={`rounded-full border px-3 py-1 font-bold ${m?"border-fr-d4af37/40 bg-fr-d4af37/[0.12] text-fri-f2d675":"border-white/10 text-gray-500"}`}>{l.nome}</button>;})}
         <button type="button" onClick={()=>setNovoFornecedorLojas(LOJAS_SC)} className="rounded-full border border-sky-400/20 px-3 py-1 font-black text-sky-200">Lojas SC</button>
         <button type="button" onClick={()=>setNovoFornecedorLojas(LOJAS_RS)} className="rounded-full border border-sky-400/20 px-3 py-1 font-black text-sky-200">Lojas RS</button>
       </div>
       <p className="mt-1 text-[11px] text-gray-600">{novoFornecedorLojas.length?`O novo fornecedor vai aparecer só em: ${nomesLojasPecas(novoFornecedorLojas)}.`:"Sem loja marcada, o fornecedor aparece em todas as lojas."}</p>
       <div className="mt-4 grid gap-2 md:grid-cols-2">{(fornecedoresQ.data||[]).map((f:any)=><div key={f.id} className="rounded-xl border border-white/[0.07] px-4 py-3">
-        <div className="flex items-center justify-between gap-3"><div><span className={f.ativo?'font-bold':'text-gray-600'}>{f.nome}</span><p className="mt-0.5 text-[11px] text-gray-500">{nomesLojasPecas(f.lojas||[])}</p></div><button type="button" onClick={()=>toggleFornecedor.mutate({id:Number(f.id),ativo:!f.ativo})} className="text-xs font-black text-[#F2D675]">{f.ativo?'Desativar':'Ativar'}</button></div>
+        <div className="flex items-center justify-between gap-3"><div><span className={f.ativo?'font-bold':'text-gray-600'}>{f.nome}</span><p className="mt-0.5 text-[11px] text-gray-500">{nomesLojasPecas(f.lojas||[])}</p></div><button type="button" onClick={()=>toggleFornecedor.mutate({id:Number(f.id),ativo:!f.ativo})} className="text-xs font-black text-fri-f2d675">{f.ativo?'Desativar':'Ativar'}</button></div>
         <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-          {LOJAS_PECAS.map((l)=>{const m=(f.lojas||[]).includes(l.id);return <button key={l.id} type="button" disabled={definirLojasFornecedor.isPending} onClick={()=>alternarLojaFornecedor(f,l.id)} className={`rounded-full border px-2.5 py-0.5 font-bold disabled:opacity-50 ${m?"border-[#D4AF37]/40 bg-[#D4AF37]/[0.12] text-[#F2D675]":"border-white/10 text-gray-500"}`}>{l.nome}</button>;})}
+          {LOJAS_PECAS.map((l)=>{const m=(f.lojas||[]).includes(l.id);return <button key={l.id} type="button" disabled={definirLojasFornecedor.isPending} onClick={()=>alternarLojaFornecedor(f,l.id)} className={`rounded-full border px-2.5 py-0.5 font-bold disabled:opacity-50 ${m?"border-fr-d4af37/40 bg-fr-d4af37/[0.12] text-fri-f2d675":"border-white/10 text-gray-500"}`}>{l.nome}</button>;})}
           <button type="button" disabled={definirLojasFornecedor.isPending} onClick={()=>definirLojasFornecedor.mutate({id:Number(f.id),lojas:LOJAS_SC})} className="rounded-full border border-sky-400/20 px-2.5 py-0.5 font-black text-sky-200 disabled:opacity-50">Só SC</button>
           <button type="button" disabled={definirLojasFornecedor.isPending} onClick={()=>definirLojasFornecedor.mutate({id:Number(f.id),lojas:LOJAS_RS})} className="rounded-full border border-sky-400/20 px-2.5 py-0.5 font-black text-sky-200 disabled:opacity-50">Só RS</button>
           <button type="button" disabled={definirLojasFornecedor.isPending} onClick={()=>definirLojasFornecedor.mutate({id:Number(f.id),lojas:[]})} className="rounded-full border border-white/10 px-2.5 py-0.5 font-black text-gray-400 disabled:opacity-50">Todas</button>
@@ -562,7 +562,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
       </div>)}</div>
     </div>}
 
-    {fornecedorModal&&planejamentoId&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"><div className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#0a0a0a] p-5"><div className="flex items-start justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#D4AF37]/60">COTAÇÃO DO FORNECEDOR</p><h2 className="mt-1 text-2xl font-black">{fornecedorModal.nome}</h2><p className="mt-2 text-xs text-gray-500">{countMap.get(Number(fornecedorModal.id))||0}/{detalheQ.data?.itens?.length||0} preços recebidos</p></div><button type="button" onClick={()=>setFornecedorModal(null)} className="rounded-xl border border-white/10 p-2 text-gray-500"><X className="h-4 w-4"/></button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><button type="button" onClick={()=>arquivoCotacao.mutate({planejamentoId,fornecedorId:Number(fornecedorModal.id)})} className="rounded-2xl border border-[#D4AF37]/20 p-5 text-left"><Download className="h-5 w-5 text-[#F2D675]"/><p className="mt-3 font-black">Baixar arquivo de cotação</p><p className="mt-1 text-xs text-gray-600">Código e item travados. Só o preço fica editável.</p></button><label className="cursor-pointer rounded-2xl border border-emerald-400/20 p-5"><Upload className="h-5 w-5 text-emerald-300"/><p className="mt-3 font-black">Anexar arquivo preenchido</p><p className="mt-1 text-xs text-gray-600">Os preços entram automaticamente.</p><input type="file" accept=".xlsx" className="hidden" onChange={e=>{void importar(e.target.files?.[0]||null,Number(fornecedorModal.id));e.currentTarget.value='';}}/></label></div></div></div>}
+    {fornecedorModal&&planejamentoId&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"><div className="w-full max-w-xl rounded-3xl border border-white/10 bg-fr-0a0a0a p-5"><div className="flex items-start justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.16em] text-fri-d4af37/60">COTAÇÃO DO FORNECEDOR</p><h2 className="mt-1 text-2xl font-black">{fornecedorModal.nome}</h2><p className="mt-2 text-xs text-gray-500">{countMap.get(Number(fornecedorModal.id))||0}/{detalheQ.data?.itens?.length||0} preços recebidos</p></div><button type="button" onClick={()=>setFornecedorModal(null)} className="rounded-xl border border-white/10 p-2 text-gray-500"><X className="h-4 w-4"/></button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><button type="button" onClick={()=>arquivoCotacao.mutate({planejamentoId,fornecedorId:Number(fornecedorModal.id)})} className="rounded-2xl border border-fr-d4af37/20 p-5 text-left"><Download className="h-5 w-5 text-fri-f2d675"/><p className="mt-3 font-black">Baixar arquivo de cotação</p><p className="mt-1 text-xs text-gray-600">Código e item travados. Só o preço fica editável.</p></button><label className="cursor-pointer rounded-2xl border border-emerald-400/20 p-5"><Upload className="h-5 w-5 text-emerald-300"/><p className="mt-3 font-black">Anexar arquivo preenchido</p><p className="mt-1 text-xs text-gray-600">Os preços entram automaticamente.</p><input type="file" accept=".xlsx" className="hidden" onChange={e=>{void importar(e.target.files?.[0]||null,Number(fornecedorModal.id));e.currentTarget.value='';}}/></label></div></div></div>}
     {exclusao && (() => {
       const enviando = excluirPedidos.isPending || excluirPlanejamento.isPending;
       const confirmar = () => {
@@ -578,7 +578,7 @@ export default function ComprasPecasCotacao({ itens, arquivoNome, onTrocarCidade
         }
       };
       return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
-        <div className="w-full max-w-md rounded-3xl border border-rose-500/20 bg-[#0a0a0a] p-5">
+        <div className="w-full max-w-md rounded-3xl border border-rose-500/20 bg-fr-0a0a0a p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-300/70">EXCLUSÃO PROTEGIDA</p>

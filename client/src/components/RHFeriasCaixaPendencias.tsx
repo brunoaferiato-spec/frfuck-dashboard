@@ -254,8 +254,8 @@ export default function RHFeriasCaixaPendencias() {
       <Card
         className={
           tarefas.length > 0
-            ? "overflow-hidden border-rose-400/20 bg-gradient-to-br from-rose-950/20 via-[#10090b] to-[#090909]"
-            : "overflow-hidden border-emerald-400/15 bg-[#0b0b0b]"
+            ? "overflow-hidden border-rose-400/20 bg-gradient-to-br from-rose-950/20 via-fr-10090b to-fr-090909"
+            : "overflow-hidden border-emerald-400/15 bg-fr-0b0b0b"
         }
       >
         <CardContent className="p-0">
@@ -335,16 +335,16 @@ export default function RHFeriasCaixaPendencias() {
                 const carregando = enviando === chave;
 
                 return (
-                  <div key={chave} className="bg-[#090909] p-4 sm:p-5">
+                  <div key={chave} className="bg-fr-090909 p-4 sm:p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           {tipo === "aviso" ? (
-                            <FileCheck2 className="h-4 w-4 shrink-0 text-[#F2D675]" />
+                            <FileCheck2 className="h-4 w-4 shrink-0 text-fri-f2d675" />
                           ) : (
-                            <WalletCards className="h-4 w-4 shrink-0 text-[#F2D675]" />
+                            <WalletCards className="h-4 w-4 shrink-0 text-fri-f2d675" />
                           )}
-                          <p className="text-xs font-black uppercase tracking-[0.08em] text-[#b9a46a]">
+                          <p className="text-xs font-black uppercase tracking-[0.08em] text-fri-b9a46a">
                             {titulo}
                           </p>
                         </div>
@@ -378,7 +378,7 @@ export default function RHFeriasCaixaPendencias() {
                             onChange={(event) =>
                               marcarContasAPagar(item, event.target.checked)
                             }
-                            className="mt-0.5 h-4 w-4 accent-[#D4AF37]"
+                            className="mt-0.5 h-4 w-4 accent-fr-d4af37"
                           />
                           <span className="min-w-0">
                             <span className="block text-xs font-black text-white">
@@ -396,7 +396,7 @@ export default function RHFeriasCaixaPendencias() {
                       className={`mt-4 inline-flex h-10 items-center rounded-lg px-3 text-xs font-black transition ${
                         carregando || (tipo === "pagamento" && !item.contasAPagarLancado)
                           ? "cursor-not-allowed bg-gray-800 text-gray-500"
-                          : "cursor-pointer bg-[#D4AF37] text-black hover:bg-[#E6C760]"
+                          : "cursor-pointer bg-fr-d4af37 text-black hover:bg-fr-e6c760"
                       }`}
                     >
                       <FileUp className="mr-2 h-4 w-4" />

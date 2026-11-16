@@ -416,8 +416,8 @@ export default function RHDocumentos() {
 
   if (!caixaLider && !liderRh && !adminOuGestor) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 text-white">
-        <Card className="w-full max-w-lg border-rose-400/20 bg-[#0b0b0b]">
+      <div className="flex min-h-screen items-center justify-center bg-fr-050505 px-4 text-white">
+        <Card className="w-full max-w-lg border-rose-400/20 bg-fr-0b0b0b">
           <CardContent className="p-7 text-center">
             <AlertTriangle className="mx-auto h-8 w-8 text-rose-300" />
             <h1 className="mt-4 text-xl font-black">Acesso restrito</h1>
@@ -429,30 +429,30 @@ export default function RHDocumentos() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <header className="border-b border-[#D4AF37]/15 bg-[#080808]">
+    <div className="min-h-screen bg-fr-050505 text-white">
+      <header className="border-b border-fr-d4af37/15 bg-fr-080808">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-5 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               type="button"
               variant="ghost"
               onClick={() => navigate(destinoVoltar)}
-              className="h-10 w-10 shrink-0 rounded-xl border border-[#D4AF37]/20 p-0 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+              className="h-10 w-10 shrink-0 rounded-xl border border-fr-d4af37/20 p-0 text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8f8a80] sm:text-xs">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fri-8f8a80 sm:text-xs">
                 Dossiê do colaborador
               </p>
-              <h1 className="truncate text-xl font-black text-[#F2D675] sm:text-2xl">
+              <h1 className="truncate text-xl font-black text-fri-f2d675 sm:text-2xl">
                 Documentos RH
               </h1>
             </div>
           </div>
 
-          <div className="hidden items-center gap-2 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-3 py-2 text-xs text-[#b9a46a] sm:flex">
-            <ShieldCheck className="h-4 w-4 text-[#F2D675]" />
+          <div className="hidden items-center gap-2 rounded-xl border border-fr-d4af37/15 bg-fr-d4af37/[0.04] px-3 py-2 text-xs text-fri-b9a46a sm:flex">
+            <ShieldCheck className="h-4 w-4 text-fri-f2d675" />
             {caixaLider ? "Sua loja" : "Visão gerencial"}
           </div>
         </div>
@@ -460,11 +460,11 @@ export default function RHDocumentos() {
 
       <main className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-5 sm:py-7 lg:px-8">
         <section className="grid gap-4 xl:grid-cols-[0.95fr_1.55fr]">
-          <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#080808]">
+          <Card className="border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-080808">
             <CardContent className="p-5 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8f8a80]">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-fri-8f8a80">
                     Novo arquivo
                   </p>
                   <h2 className="mt-2 text-2xl font-black text-white">Arquivar documento</h2>
@@ -472,8 +472,8 @@ export default function RHDocumentos() {
                     Advertências avulsas e documentos assinados ficam vinculados ao funcionário.
                   </p>
                 </div>
-                <div className="rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-3">
-                  <Archive className="h-6 w-6 text-[#F2D675]" />
+                <div className="rounded-2xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-3">
+                  <Archive className="h-6 w-6 text-fri-f2d675" />
                 </div>
               </div>
 
@@ -495,7 +495,7 @@ export default function RHDocumentos() {
                       <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                         <SelectValue placeholder="Selecione a loja" />
                       </SelectTrigger>
-                      <SelectContent className="border-white/10 bg-[#111111] text-white">
+                      <SelectContent className="border-white/10 bg-fr-111111 text-white">
                         {lojas.map((loja) => (
                           <SelectItem key={loja.id} value={String(loja.id)}>
                             {loja.nome}
@@ -524,7 +524,7 @@ export default function RHDocumentos() {
                         }
                       />
                     </SelectTrigger>
-                    <SelectContent className="max-h-72 border-white/10 bg-[#111111] text-white">
+                    <SelectContent className="max-h-72 border-white/10 bg-fr-111111 text-white">
                       {funcionarios.map((funcionario: any) => (
                         <SelectItem key={funcionario.id} value={String(funcionario.id)}>
                           {funcionario.nome}
@@ -543,7 +543,7 @@ export default function RHDocumentos() {
                     <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-white/10 bg-[#111111] text-white">
+                    <SelectContent className="border-white/10 bg-fr-111111 text-white">
                       {TIPOS.map((tipo) => (
                         <SelectItem key={tipo.value} value={tipo.value}>
                           {tipo.label}
@@ -560,7 +560,7 @@ export default function RHDocumentos() {
                       type="date"
                       value={dataDocumento}
                       onChange={(event) => setDataDocumento(event.target.value)}
-                      className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50"
+                      className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-fr-d4af37/50"
                     />
                   </div>
 
@@ -573,7 +573,7 @@ export default function RHDocumentos() {
                       value={competencia}
                       onChange={(event) => setCompetencia(event.target.value)}
                       disabled={!exigeCompetencia(tipoEnvio)}
-                      className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none disabled:opacity-40 focus:border-[#D4AF37]/50"
+                      className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none disabled:opacity-40 focus:border-fr-d4af37/50"
                     />
                   </div>
                 </div>
@@ -585,13 +585,13 @@ export default function RHDocumentos() {
                     onChange={(event) => setObservacao(event.target.value)}
                     placeholder="Opcional"
                     rows={3}
-                    className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50"
+                    className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/50"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-4 py-3 text-sm font-black text-[#F2D675] transition hover:bg-[#D4AF37]/[0.10]">
+                    <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/[0.06] px-4 py-3 text-sm font-black text-fri-f2d675 transition hover:bg-fr-d4af37/[0.10]">
                       📷 Tirar foto
                       <input
                         type="file"
@@ -620,7 +620,7 @@ export default function RHDocumentos() {
                   </div>
 
                   <div className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2.5">
-                    <p className={arquivo ? "truncate text-sm font-bold text-[#F2D675]" : "text-sm text-gray-500"}>
+                    <p className={arquivo ? "truncate text-sm font-bold text-fri-f2d675" : "text-sm text-gray-500"}>
                       {arquivo ? arquivo.name : "Nenhum arquivo selecionado"}
                     </p>
                     <p className="mt-0.5 text-xs text-gray-600">
@@ -646,7 +646,7 @@ export default function RHDocumentos() {
                   type="button"
                   onClick={salvarDocumento}
                   disabled={salvarMutation.isPending}
-                  className="h-12 w-full bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+                  className="h-12 w-full bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
                 >
                   <FileCheck2 className="mr-2 h-4 w-4" />
                   {salvarMutation.isPending ? "Arquivando..." : "Arquivar documento"}
@@ -656,10 +656,10 @@ export default function RHDocumentos() {
           </Card>
 
           <div className="space-y-4">
-            <Card className="overflow-hidden border-[#D4AF37]/15 bg-[#0b0b0b]">
+            <Card className="overflow-hidden border-fr-d4af37/15 bg-fr-0b0b0b">
               <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2 xl:grid-cols-4">
                 {TIPOS.map((tipo) => (
-                  <div key={tipo.value} className="bg-[#090909] p-4">
+                  <div key={tipo.value} className="bg-fr-090909 p-4">
                     <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">
                       {tipo.label}
                     </p>
@@ -672,7 +672,7 @@ export default function RHDocumentos() {
               </div>
             </Card>
 
-            <Card className="border-white/[0.08] bg-[#0b0b0b]">
+            <Card className="border-white/[0.08] bg-fr-0b0b0b">
               <CardContent className="p-4 sm:p-5">
                 <div className="flex flex-wrap items-end gap-3">
                   <div className="min-w-[190px] flex-1">
@@ -688,7 +688,7 @@ export default function RHDocumentos() {
                       <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-white/10 bg-[#111111] text-white">
+                      <SelectContent className="border-white/10 bg-fr-111111 text-white">
                         {!caixaLider && <SelectItem value="todas">Todas as lojas</SelectItem>}
                         {lojas.map((loja) => (
                           <SelectItem key={loja.id} value={String(loja.id)}>
@@ -717,7 +717,7 @@ export default function RHDocumentos() {
                           }
                         />
                       </SelectTrigger>
-                      <SelectContent className="max-h-72 border-white/10 bg-[#111111] text-white">
+                      <SelectContent className="max-h-72 border-white/10 bg-fr-111111 text-white">
                         <SelectItem value="todos">Todos os funcionários</SelectItem>
                         {funcionariosConsulta.map((funcionario: any) => (
                           <SelectItem key={funcionario.id} value={String(funcionario.id)}>
@@ -739,7 +739,7 @@ export default function RHDocumentos() {
                       <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="border-white/10 bg-[#111111] text-white">
+                      <SelectContent className="border-white/10 bg-fr-111111 text-white">
                         <SelectItem value="todos">Todos os documentos</SelectItem>
                         {TIPOS.map((tipo) => (
                           <SelectItem key={tipo.value} value={tipo.value}>
@@ -757,7 +757,7 @@ export default function RHDocumentos() {
                         type="month"
                         value={competenciaConsulta}
                         onChange={(event) => setCompetenciaConsulta(event.target.value)}
-                        className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/45"
+                        className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-fr-d4af37/45"
                       />
                       <Button
                         type="button"
@@ -777,7 +777,7 @@ export default function RHDocumentos() {
                       value={busca}
                       onChange={(event) => setBusca(event.target.value)}
                       placeholder="Buscar funcionário, arquivo ou competência"
-                      className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-10 pr-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/45"
+                      className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-10 pr-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/45"
                     />
                   </div>
                 </div>
@@ -791,11 +791,11 @@ export default function RHDocumentos() {
                   {documentosFiltrados.length} documento{documentosFiltrados.length === 1 ? "" : "s"} encontrado{documentosFiltrados.length === 1 ? "" : "s"}.
                 </p>
               </div>
-              <Archive className="h-6 w-6 text-[#F2D675]" />
+              <Archive className="h-6 w-6 text-fri-f2d675" />
             </div>
 
             {documentosQuery.isLoading ? (
-              <Card className="border-white/[0.08] bg-[#0b0b0b]">
+              <Card className="border-white/[0.08] bg-fr-0b0b0b">
                 <CardContent className="p-6 text-sm text-gray-500">Carregando documentos...</CardContent>
               </Card>
             ) : documentosQuery.error ? (
@@ -805,7 +805,7 @@ export default function RHDocumentos() {
                 </CardContent>
               </Card>
             ) : documentosFiltrados.length === 0 ? (
-              <Card className="border-white/[0.08] bg-[#0b0b0b]">
+              <Card className="border-white/[0.08] bg-fr-0b0b0b">
                 <CardContent className="p-8 text-center">
                   <FileText className="mx-auto h-8 w-8 text-gray-700" />
                   <p className="mt-3 font-bold text-gray-300">Nenhum documento encontrado</p>
@@ -815,14 +815,14 @@ export default function RHDocumentos() {
             ) : (
               <div className="space-y-3">
                 {documentosFiltrados.map((documento) => (
-                  <Card key={documento.id} className="border-white/[0.08] bg-[#0b0b0b] hover:border-[#D4AF37]/20">
+                  <Card key={documento.id} className="border-white/[0.08] bg-fr-0b0b0b hover:border-fr-d4af37/20">
                     <CardContent className="p-4 sm:p-5">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <UserRound className="h-4 w-4 text-[#F2D675]" />
+                            <UserRound className="h-4 w-4 text-fri-f2d675" />
                             <p className="font-black text-white">{documento.funcionarioNome}</p>
-                            <span className="rounded-full border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-2 py-0.5 text-[10px] font-black text-[#F2D675]">
+                            <span className="rounded-full border border-fr-d4af37/15 bg-fr-d4af37/[0.04] px-2 py-0.5 text-[10px] font-black text-fri-f2d675">
                               {documento.lojaNome}
                             </span>
                           </div>
@@ -842,7 +842,7 @@ export default function RHDocumentos() {
                             <p className="mt-2 text-xs leading-5 text-gray-500">{documento.observacao}</p>
                           )}
 
-                          <p className="mt-2 truncate text-[11px] text-[#b9a46a]">
+                          <p className="mt-2 truncate text-[11px] text-fri-b9a46a">
                             {documento.arquivoNome}
                           </p>
                           <p className="mt-1 text-[10px] text-gray-700">
@@ -859,7 +859,7 @@ export default function RHDocumentos() {
                               abrindoId === documento.id ||
                               excluindoId === documento.id
                             }
-                            className="border-[#D4AF37]/25 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                            className="border-fr-d4af37/25 bg-fr-d4af37/[0.04] text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
                           >
                             <Download className="mr-2 h-4 w-4" />
                             {abrindoId === documento.id ? "Abrindo..." : "Abrir arquivo"}

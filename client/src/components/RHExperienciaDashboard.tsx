@@ -144,12 +144,12 @@ export default function RHExperienciaDashboard() {
 
   return (
     <section className="mb-5">
-      <Card className="overflow-hidden border-[#D4AF37]/20 bg-[#0b0b0b]">
+      <Card className="overflow-hidden border-fr-d4af37/20 bg-fr-0b0b0b">
         <CardContent className="p-0">
           <div className="flex flex-col gap-4 border-b border-white/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div className="flex items-start gap-3">
-              <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] p-2.5">
-                <Clock3 className="h-5 w-5 text-[#F2D675]" />
+              <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.06] p-2.5">
+                <Clock3 className="h-5 w-5 text-fri-f2d675" />
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -176,7 +176,7 @@ export default function RHExperienciaDashboard() {
                 <SelectTrigger className="h-10 w-full border-white/10 bg-black/30 text-white sm:w-[210px]">
                   <SelectValue placeholder="Selecionar loja" />
                 </SelectTrigger>
-                <SelectContent className="border-white/10 bg-[#111111] text-white">
+                <SelectContent className="border-white/10 bg-fr-111111 text-white">
                   <SelectItem value="todas">Todas as lojas</SelectItem>
                   {lojasDisponiveis.map((loja) => (
                     <SelectItem key={loja.id} value={String(loja.id)}>
@@ -189,7 +189,7 @@ export default function RHExperienciaDashboard() {
               <Button
                 type="button"
                 onClick={() => navigate("/rh/experiencia")}
-                className="shrink-0 bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+                className="shrink-0 bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
               >
                 Gerenciar experiências
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -202,7 +202,7 @@ export default function RHExperienciaDashboard() {
               {dados.alertas.map((item) => (
                 <div
                   key={`${item.funcionarioId}-${item.etapa}`}
-                  className="bg-[#090909] p-4"
+                  className="bg-fr-090909 p-4"
                 >
                   <div className="flex items-start gap-3">
                     <AlertTriangle

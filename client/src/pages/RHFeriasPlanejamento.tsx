@@ -104,7 +104,7 @@ function classeStatus(status: string) {
   if (status === "aguardando_aviso") return "border-amber-400/20 bg-amber-400/[0.06] text-amber-200";
   if (status === "aguardando_liberacao_pagamento") return "border-sky-400/20 bg-sky-400/[0.06] text-sky-200";
   if (status === "aguardando_pagamento") return "border-orange-400/20 bg-orange-400/[0.06] text-orange-200";
-  if (status === "programada") return "border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] text-[#F2D675]";
+  if (status === "programada") return "border-fr-d4af37/20 bg-fr-d4af37/[0.06] text-fri-f2d675";
   if (status === "em_ferias") return "border-violet-400/20 bg-violet-400/[0.06] text-violet-200";
   if (status === "concluida") return "border-emerald-400/20 bg-emerald-400/[0.05] text-emerald-200";
   return "border-white/10 bg-white/[0.03] text-gray-500";
@@ -261,8 +261,8 @@ export default function RHFeriasPlanejamento() {
 
   if (!podeGerenciar) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 text-white">
-        <Card className="w-full max-w-lg border-rose-400/20 bg-[#0b0b0b]">
+      <div className="flex min-h-screen items-center justify-center bg-fr-050505 px-4 text-white">
+        <Card className="w-full max-w-lg border-rose-400/20 bg-fr-0b0b0b">
           <CardContent className="p-7 text-center">
             <AlertTriangle className="mx-auto h-8 w-8 text-rose-300" />
             <h1 className="mt-4 text-xl font-black">Acesso restrito</h1>
@@ -274,26 +274,26 @@ export default function RHFeriasPlanejamento() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <header className="border-b border-[#D4AF37]/15 bg-[#080808]">
+    <div className="min-h-screen bg-fr-050505 text-white">
+      <header className="border-b border-fr-d4af37/15 bg-fr-080808">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-5 lg:px-8">
           <div className="flex items-center gap-3">
             <Button
               type="button"
               variant="ghost"
               onClick={() => navigate("/rh/gestao")}
-              className="h-10 w-10 rounded-xl border border-[#D4AF37]/20 p-0 text-[#F2D675]"
+              className="h-10 w-10 rounded-xl border border-fr-d4af37/20 p-0 text-fri-f2d675"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8f8a80]">Gestão de pessoas</p>
-              <h1 className="text-2xl font-black text-[#F2D675]">Planejamento de férias</h1>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-fri-8f8a80">Gestão de pessoas</p>
+              <h1 className="text-2xl font-black text-fri-f2d675">Planejamento de férias</h1>
             </div>
           </div>
 
-          <div className="hidden items-center gap-2 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-3 py-2 text-xs text-[#b9a46a] sm:flex">
-            <ShieldCheck className="h-4 w-4 text-[#F2D675]" />
+          <div className="hidden items-center gap-2 rounded-xl border border-fr-d4af37/15 bg-fr-d4af37/[0.04] px-3 py-2 text-xs text-fri-b9a46a sm:flex">
+            <ShieldCheck className="h-4 w-4 text-fri-f2d675" />
             Visão gerencial
           </div>
         </div>
@@ -304,23 +304,23 @@ export default function RHFeriasPlanejamento() {
           <button
             type="button"
             onClick={() => navigate("/rh/ferias")}
-            className="min-h-11 rounded-xl border border-white/[0.08] bg-[#0b0b0b] px-4 text-sm font-black text-gray-500 hover:text-gray-300"
+            className="min-h-11 rounded-xl border border-white/[0.08] bg-fr-0b0b0b px-4 text-sm font-black text-gray-500 hover:text-gray-300"
           >
             Programar férias / Histórico
           </button>
           <button
             type="button"
-            className="min-h-11 rounded-xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 px-4 text-sm font-black text-[#F2D675]"
+            className="min-h-11 rounded-xl border border-fr-d4af37/35 bg-fr-d4af37/10 px-4 text-sm font-black text-fri-f2d675"
           >
             Planejamento
           </button>
         </div>
 
-        <Card className="mb-4 border-[#D4AF37]/20 bg-[#0b0b0b]">
+        <Card className="mb-4 border-fr-d4af37/20 bg-fr-0b0b0b">
           <CardContent className="p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-[#b9a46a]">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-fri-b9a46a">
                   Visualizar por loja
                 </p>
                 <p className="mt-1 text-sm text-gray-500">
@@ -331,10 +331,10 @@ export default function RHFeriasPlanejamento() {
               <div className="w-full sm:w-[320px]">
                 <label className="mb-1.5 block text-xs font-bold text-gray-400">Loja</label>
                 <Select value={lojaFiltro} onValueChange={setLojaFiltro}>
-                  <SelectTrigger className="h-11 border-[#D4AF37]/20 bg-black/30 text-white">
+                  <SelectTrigger className="h-11 border-fr-d4af37/20 bg-black/30 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="border-white/10 bg-[#111111] text-white">
+                  <SelectContent className="border-white/10 bg-fr-111111 text-white">
                     <SelectItem value="todas">Todas as lojas</SelectItem>
                     {lojas.map((loja) => (
                       <SelectItem key={loja.id} value={String(loja.id)}>
@@ -348,19 +348,19 @@ export default function RHFeriasPlanejamento() {
           </CardContent>
         </Card>
 
-        <Card className="mb-4 overflow-hidden border-[#D4AF37]/15 bg-[#0b0b0b]">
+        <Card className="mb-4 overflow-hidden border-fr-d4af37/15 bg-fr-0b0b0b">
           <div className="grid gap-px bg-white/[0.06] sm:grid-cols-3">
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">Avisos em atenção</p>
               <p className={`mt-2 text-2xl font-black ${alertas.aviso ? "text-rose-300" : "text-emerald-300"}`}>{alertas.aviso}</p>
               <p className="mt-1 text-[11px] text-gray-600">30 dias ou menos</p>
             </div>
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">Pagamentos em atenção</p>
               <p className={`mt-2 text-2xl font-black ${alertas.pagamento ? "text-orange-300" : "text-emerald-300"}`}>{alertas.pagamento}</p>
               <p className="mt-1 text-[11px] text-gray-600">prazo próximo</p>
             </div>
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">Retornos</p>
               <p className={`mt-2 text-2xl font-black ${alertas.retorno ? "text-sky-300" : "text-emerald-300"}`}>{alertas.retorno}</p>
               <p className="mt-1 text-[11px] text-gray-600">hoje ou amanhã</p>
@@ -369,11 +369,11 @@ export default function RHFeriasPlanejamento() {
         </Card>
 
 
-        <Card className="mb-4 overflow-hidden border-rose-400/15 bg-[#0b0b0b]">
+        <Card className="mb-4 overflow-hidden border-rose-400/15 bg-fr-0b0b0b">
           <div className="border-b border-white/[0.06] px-4 py-4 sm:px-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-[#b9a46a]">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-fri-b9a46a">
                   Férias a programar
                 </p>
                 <h2 className="mt-1 text-xl font-black text-white">
@@ -425,7 +425,7 @@ export default function RHFeriasPlanejamento() {
                             Aquisitivo: {formatarData(item.periodoAquisitivoInicio)} a{" "}
                             {formatarData(item.periodoAquisitivoFim)}
                           </p>
-                          <p className="mt-1 text-xs font-bold text-[#F2D675]">
+                          <p className="mt-1 text-xs font-bold text-fri-f2d675">
                             Limite de retorno: {formatarData(item.dataLimiteRetorno)}
                           </p>
                           <p className="mt-1 text-[11px] text-gray-600">
@@ -458,11 +458,11 @@ export default function RHFeriasPlanejamento() {
           </CardContent>
         </Card>
 
-        <Card className="mb-4 border-[#D4AF37]/20 bg-[#0b0b0b]">
+        <Card className="mb-4 border-fr-d4af37/20 bg-fr-0b0b0b">
           <CardContent className="p-4 sm:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-[#b9a46a]">Mapa de férias</p>
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-fri-b9a46a">Mapa de férias</p>
                 <h2 className="mt-1 text-2xl font-black text-white">Visão dos próximos meses</h2>
                 <p className="mt-1 text-sm text-gray-500">
                   Sobreposições dentro da mesma unidade são destacadas automaticamente.
@@ -481,7 +481,7 @@ export default function RHFeriasPlanejamento() {
                     onClick={() => setHorizonte(valor as Horizonte)}
                     className={`min-h-10 rounded-lg border px-3 text-xs font-black ${
                       horizonte === valor
-                        ? "border-[#D4AF37]/35 bg-[#D4AF37]/10 text-[#F2D675]"
+                        ? "border-fr-d4af37/35 bg-fr-d4af37/10 text-fri-f2d675"
                         : "border-white/[0.08] bg-black/20 text-gray-500"
                     }`}
                   >
@@ -496,7 +496,7 @@ export default function RHFeriasPlanejamento() {
 
         <div className="grid gap-4 xl:grid-cols-2">
           {meses.length === 0 ? (
-            <Card className="border-white/[0.08] bg-[#0b0b0b] xl:col-span-2">
+            <Card className="border-white/[0.08] bg-fr-0b0b0b xl:col-span-2">
               <CardContent className="p-8 text-center">
                 <LayoutGrid className="mx-auto h-8 w-8 text-gray-700" />
                 <p className="mt-3 font-bold text-gray-300">Nenhuma férias nesse período</p>
@@ -504,7 +504,7 @@ export default function RHFeriasPlanejamento() {
             </Card>
           ) : (
             meses.map((mes) => (
-              <Card key={mes.chave} className="overflow-hidden border-white/[0.08] bg-[#0b0b0b]">
+              <Card key={mes.chave} className="overflow-hidden border-white/[0.08] bg-fr-0b0b0b">
                 <div className="border-b border-white/[0.06] px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="font-black text-white">{mes.titulo}</h3>

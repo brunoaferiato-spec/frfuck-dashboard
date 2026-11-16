@@ -158,10 +158,10 @@ export default function ComprasPneusPromocionais() {
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl border border-[#D4AF37]/20 bg-[#0a0a0a] p-5 sm:p-6">
+      <section className="rounded-3xl border border-fr-d4af37/20 bg-fr-0a0a0a p-5 sm:p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#D4AF37]/60">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fri-d4af37/60">
               PREÇOS PROMOCIONAIS
             </p>
             <h2 className="mt-2 text-2xl font-black text-white">
@@ -181,7 +181,7 @@ export default function ComprasPneusPromocionais() {
               })
             }
             disabled={exportarMutation.isPending}
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-[#D4AF37] px-5 text-sm font-black text-black disabled:opacity-50"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-fr-d4af37 px-5 text-sm font-black text-black disabled:opacity-50"
           >
             {exportarMutation.isPending ? (
               <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
@@ -240,14 +240,14 @@ export default function ComprasPneusPromocionais() {
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <div className="rounded-2xl border border-white/[0.07] bg-[#090909] p-4">
+        <div className="rounded-2xl border border-white/[0.07] bg-fr-090909 p-4">
           <p className="text-[10px] font-black uppercase tracking-[0.1em] text-gray-600">
             Medidas
           </p>
           <p className="mt-2 text-2xl font-black text-white">{resumo.medidas}</p>
         </div>
 
-        <div className="rounded-2xl border border-white/[0.07] bg-[#090909] p-4">
+        <div className="rounded-2xl border border-white/[0.07] bg-fr-090909 p-4">
           <p className="text-[10px] font-black uppercase tracking-[0.1em] text-gray-600">
             Com custo
           </p>
@@ -272,17 +272,17 @@ export default function ComprasPneusPromocionais() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] p-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.1em] text-[#D4AF37]/60">
+        <div className="rounded-2xl border border-fr-d4af37/20 bg-fr-d4af37/[0.04] p-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.1em] text-fri-d4af37/60">
             Gap no último pedido
           </p>
-          <p className="mt-2 text-2xl font-black text-[#F2D675]">
+          <p className="mt-2 text-2xl font-black text-fri-f2d675">
             {moeda(resumo.impacto)}
           </p>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-3xl border border-white/[0.08] bg-[#090909]">
+      <section className="overflow-hidden rounded-3xl border border-white/[0.08] bg-fr-090909">
         <div className="hidden lg:block">
           <table className="w-full table-fixed text-[11px] xl:text-xs">
             <colgroup>
@@ -349,11 +349,11 @@ export default function ComprasPneusPromocionais() {
                           href={item.siteUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex max-w-full items-center gap-1 truncate hover:text-[#F2D675]"
+                          className="inline-flex max-w-full items-center gap-1 truncate hover:text-fri-f2d675"
                           title={`Abrir site de ${item.lojaNome}`}
                         >
                           <span className="truncate">{item.lojaNome}</span>
-                          <ExternalLink className="h-3 w-3 shrink-0 text-[#D4AF37]/60" />
+                          <ExternalLink className="h-3 w-3 shrink-0 text-fri-d4af37/60" />
                         </a>
                       </td>
                       <td className="px-2 py-3 font-black text-white">
@@ -380,7 +380,7 @@ export default function ComprasPneusPromocionais() {
                         {temCusto ? moeda(item.custoMeta10) : "—"}
                       </td>
                       <td className="px-2 py-2 text-right">
-                        <div className="ml-auto flex h-9 max-w-[118px] items-center rounded-lg border border-[#D4AF37]/15 bg-black/30 px-2">
+                        <div className="ml-auto flex h-9 max-w-[118px] items-center rounded-lg border border-fr-d4af37/15 bg-black/30 px-2">
                           <span className="mr-1 text-[9px] text-gray-600">R$</span>
                           <input
                             value={valorEdicao}
@@ -397,7 +397,7 @@ export default function ComprasPneusPromocionais() {
                                 (event.currentTarget as HTMLInputElement).blur();
                               }
                             }}
-                            className="min-w-0 flex-1 bg-transparent text-right font-black text-[#F2D675] outline-none"
+                            className="min-w-0 flex-1 bg-transparent text-right font-black text-fri-f2d675 outline-none"
                           />
                         </div>
                       </td>
@@ -497,7 +497,7 @@ export default function ComprasPneusPromocionais() {
                       </p>
                     </div>
 
-                    <div className="flex h-10 w-[125px] items-center rounded-lg border border-[#D4AF37]/15 bg-black/30 px-2">
+                    <div className="flex h-10 w-[125px] items-center rounded-lg border border-fr-d4af37/15 bg-black/30 px-2">
                       <span className="mr-1 text-[10px] text-gray-600">R$</span>
                       <input
                         value={valorEdicao}
@@ -509,7 +509,7 @@ export default function ComprasPneusPromocionais() {
                           }))
                         }
                         onBlur={() => salvarPreco(item)}
-                        className="min-w-0 flex-1 bg-transparent text-right font-black text-[#F2D675] outline-none"
+                        className="min-w-0 flex-1 bg-transparent text-right font-black text-fri-f2d675 outline-none"
                       />
                     </div>
                   </div>

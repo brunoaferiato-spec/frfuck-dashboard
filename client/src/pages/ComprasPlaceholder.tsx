@@ -5,13 +5,13 @@ export default function ComprasPlaceholder({ tipo }: { tipo: "pecas" | "insumos"
   const Icon = pecas ? Wrench : Boxes;
 
   return (
-    <main className="min-h-full bg-[#050505] p-4 text-white sm:p-6 lg:p-8">
+    <main className="min-h-full bg-fr-050505 p-4 text-white sm:p-6 lg:p-8">
       <div className="mx-auto max-w-5xl">
-        <div className="rounded-3xl border border-[#D4AF37]/20 bg-[#0a0a0a] p-6 sm:p-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06]">
-            <Icon className="h-7 w-7 text-[#F2D675]" />
+        <div className="rounded-3xl border border-fr-d4af37/20 bg-fr-0a0a0a p-6 sm:p-8">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-fr-d4af37/20 bg-fr-d4af37/[0.06]">
+            <Icon className="h-7 w-7 text-fri-f2d675" />
           </div>
-          <p className="mt-6 text-xs font-black uppercase tracking-[0.18em] text-[#D4AF37]/60">
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.18em] text-fri-d4af37/60">
             COMPRAS
           </p>
           <h1 className="mt-2 text-3xl font-black">

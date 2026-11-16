@@ -50,16 +50,16 @@ export default function ComprasPneusAnaliseSalva({
   return (
     <section
       id="analise-salva-pneus"
-      className="mt-5 scroll-mt-4 overflow-hidden rounded-3xl border border-[#D4AF37]/20 bg-[#070707]"
+      className="mt-5 scroll-mt-4 overflow-hidden rounded-3xl border border-fr-d4af37/20 bg-fr-070707"
     >
       <div className="flex flex-col gap-3 border-b border-white/[0.06] p-5 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#D4AF37]/60">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fri-d4af37/60">
             Análise salva
           </p>
           <h2 className="mt-1 text-lg font-black text-white">
             Planejamento #{planejamentoId}
-            {lojaNome ? <span className="ml-2 text-sm text-[#F2D675]">{lojaNome}</span> : null}
+            {lojaNome ? <span className="ml-2 text-sm text-fri-f2d675">{lojaNome}</span> : null}
           </h2>
           {planejamento && (
             <p className="mt-1 text-xs text-gray-500">
@@ -103,14 +103,14 @@ export default function ComprasPneusAnaliseSalva({
           <button
             type="button"
             onClick={() => setSoComCompra(true)}
-            className={`rounded-lg px-3 py-1.5 ${soComCompra ? "bg-[#D4AF37] text-black" : "text-gray-400"}`}
+            className={`rounded-lg px-3 py-1.5 ${soComCompra ? "bg-fr-d4af37 text-black" : "text-gray-400"}`}
           >
             Só com compra
           </button>
           <button
             type="button"
             onClick={() => setSoComCompra(false)}
-            className={`rounded-lg px-3 py-1.5 ${!soComCompra ? "bg-[#D4AF37] text-black" : "text-gray-400"}`}
+            className={`rounded-lg px-3 py-1.5 ${!soComCompra ? "bg-fr-d4af37 text-black" : "text-gray-400"}`}
           >
             Todas as medidas
           </button>
@@ -197,7 +197,7 @@ export default function ComprasPneusAnaliseSalva({
                     <td className="px-4 py-3 text-right text-gray-400">{sugerida}</td>
                     <td
                       className={`px-4 py-3 text-right font-black ${
-                        final !== sugerida ? "text-sky-200" : "text-[#F2D675]"
+                        final !== sugerida ? "text-sky-200" : "text-fri-f2d675"
                       }`}
                       title={final !== sugerida ? "Quantidade ajustada à mão" : undefined}
                     >

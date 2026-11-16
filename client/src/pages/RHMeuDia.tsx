@@ -1209,14 +1209,14 @@ export default function RHMeuDia() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#050505] text-white">
-      <header className="sticky top-0 z-40 border-b border-[#D4AF37]/15 bg-[#080808]/95 backdrop-blur">
+    <div className="min-h-screen overflow-x-hidden bg-fr-050505 text-white">
+      <header className="sticky top-0 z-40 border-b border-fr-d4af37/15 bg-fr-080808/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4 lg:px-8">
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#8f8a80] sm:text-xs">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-fri-8f8a80 sm:text-xs">
               RH Operacional
             </p>
-            <h1 className="mt-0.5 truncate text-xl font-black text-[#F2D675] sm:text-2xl">
+            <h1 className="mt-0.5 truncate text-xl font-black text-fri-f2d675 sm:text-2xl">
               Meu Dia
             </h1>
           </div>
@@ -1226,7 +1226,7 @@ export default function RHMeuDia() {
               type="button"
               variant="outline"
               onClick={() => navigate("/rh/caixa")}
-              className="h-10 border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-3 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+              className="h-10 border-fr-d4af37/25 bg-fr-d4af37/[0.06] px-3 text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
             >
               <Banknote className="mr-2 h-4 w-4" />
               <span className="text-sm">Fechar Caixa</span>
@@ -1236,7 +1236,7 @@ export default function RHMeuDia() {
               type="button"
               variant="outline"
               onClick={() => navigate("/rh/documentos")}
-              className="h-10 border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-3 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+              className="h-10 border-fr-d4af37/25 bg-fr-d4af37/[0.06] px-3 text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
             >
               <FileCheck2 className="mr-2 h-4 w-4" />
               <span className="text-sm">Documentos</span>
@@ -1246,7 +1246,7 @@ export default function RHMeuDia() {
               type="button"
               variant="outline"
               onClick={() => navigate("/rh/epis")}
-              className="h-10 border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-3 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+              className="h-10 border-fr-d4af37/25 bg-fr-d4af37/[0.06] px-3 text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
             >
               <span className="text-sm">EPIs</span>
             </Button>
@@ -1266,7 +1266,7 @@ export default function RHMeuDia() {
             onClick={() => setMenuMobileAberto(true)}
             aria-label="Abrir menu"
             aria-expanded={menuMobileAberto}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] text-[#F2D675] transition active:scale-95 sm:hidden"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/[0.06] text-fri-f2d675 transition active:scale-95 sm:hidden"
           >
             <span className="text-2xl leading-none">☰</span>
           </button>
@@ -1282,13 +1282,13 @@ export default function RHMeuDia() {
             className="absolute inset-0 h-full w-full bg-black/75"
           />
 
-          <aside className="absolute inset-y-0 left-0 flex w-[84vw] max-w-[320px] flex-col border-r border-[#D4AF37]/20 bg-[#080808] shadow-2xl">
+          <aside className="absolute inset-y-0 left-0 flex w-[84vw] max-w-[320px] flex-col border-r border-fr-d4af37/20 bg-fr-080808 shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-white/[0.07] px-4 py-5">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-[#8f8a80]">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-fri-8f8a80">
                   RH Operacional
                 </p>
-                <h2 className="mt-1 text-xl font-black text-[#F2D675]">
+                <h2 className="mt-1 text-xl font-black text-fri-f2d675">
                   Menu
                 </h2>
                 <p className="mt-1 text-xs text-gray-500">
@@ -1314,7 +1314,7 @@ export default function RHMeuDia() {
                   setMenuMobileAberto(false);
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="flex min-h-12 w-full items-center gap-3 rounded-xl bg-[#D4AF37] px-4 text-left text-sm font-black text-black"
+                className="flex min-h-12 w-full items-center gap-3 rounded-xl bg-fr-d4af37 px-4 text-left text-sm font-black text-black"
               >
                 <CalendarDays className="h-5 w-5 shrink-0" />
                 Meu Dia
@@ -1325,7 +1325,7 @@ export default function RHMeuDia() {
                 onClick={() => abrirPainelMobile("ponto")}
                 className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 text-left text-sm font-bold text-white"
               >
-                <Clock3 className="h-5 w-5 shrink-0 text-[#F2D675]" />
+                <Clock3 className="h-5 w-5 shrink-0 text-fri-f2d675" />
                 Ponto
               </button>
 
@@ -1337,7 +1337,7 @@ export default function RHMeuDia() {
                 }}
                 className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 text-left text-sm font-bold text-white"
               >
-                <Banknote className="h-5 w-5 shrink-0 text-[#F2D675]" />
+                <Banknote className="h-5 w-5 shrink-0 text-fri-f2d675" />
                 Caixa
               </button>
 
@@ -1349,7 +1349,7 @@ export default function RHMeuDia() {
                 }}
                 className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 text-left text-sm font-bold text-white"
               >
-                <FileCheck2 className="h-5 w-5 shrink-0 text-[#F2D675]" />
+                <FileCheck2 className="h-5 w-5 shrink-0 text-fri-f2d675" />
                 Documentos
               </button>
 
@@ -1361,7 +1361,7 @@ export default function RHMeuDia() {
                 }}
                 className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 text-left text-sm font-bold text-white"
               >
-                <ShieldCheck className="h-5 w-5 shrink-0 text-[#F2D675]" />
+                <ShieldCheck className="h-5 w-5 shrink-0 text-fri-f2d675" />
                 EPIs
               </button>
             </nav>
@@ -1386,7 +1386,7 @@ export default function RHMeuDia() {
       <main className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-5 sm:py-6 lg:px-8">
         <section className="mb-5 space-y-3 sm:hidden">
           <div className="mb-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#8f8a80]">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fri-8f8a80">
               Pendências da loja
             </p>
             <p className="mt-1 text-sm text-gray-500">
@@ -1475,7 +1475,7 @@ export default function RHMeuDia() {
                   <button
                     type="button"
                     onClick={() => setPainelMobileAberto(null)}
-                    className="text-xs font-black text-[#F2D675]"
+                    className="text-xs font-black text-fri-f2d675"
                   >
                     Recolher
                   </button>
@@ -1781,11 +1781,11 @@ export default function RHMeuDia() {
 
         <div className={painelMobileAberto === "ponto" ? "block" : "hidden sm:block"}>
         <section className="grid gap-3 lg:grid-cols-[1.35fr_1fr] lg:gap-4">
-          <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#080808]">
+          <Card className="border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-080808">
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#8f8a80] sm:text-xs">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-fri-8f8a80 sm:text-xs">
                     Rotina da Caixa Líder
                   </p>
 
@@ -1798,8 +1798,8 @@ export default function RHMeuDia() {
                   </p>
                 </div>
 
-                <div className="shrink-0 rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 p-2.5 sm:rounded-2xl sm:p-3">
-                  <CalendarDays className="h-5 w-5 text-[#F2D675] sm:h-6 sm:w-6" />
+                <div className="shrink-0 rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/10 p-2.5 sm:rounded-2xl sm:p-3">
+                  <CalendarDays className="h-5 w-5 text-fri-f2d675 sm:h-6 sm:w-6" />
                 </div>
               </div>
 
@@ -1817,10 +1817,10 @@ export default function RHMeuDia() {
                           setPeriodoAberto(null);
                         }}
                       >
-                        <SelectTrigger className="h-11 w-full border-[#D4AF37]/25 bg-[#111111] text-base text-white">
+                        <SelectTrigger className="h-11 w-full border-fr-d4af37/25 bg-fr-111111 text-base text-white">
                           <SelectValue placeholder="Loja para teste" />
                         </SelectTrigger>
-                        <SelectContent className="border-[#D4AF37]/20 bg-[#111111] text-white">
+                        <SelectContent className="border-fr-d4af37/20 bg-fr-111111 text-white">
                           {lojas.map((loja) => (
                             <SelectItem key={loja.id} value={String(loja.id)}>
                               {loja.nome}
@@ -1841,13 +1841,13 @@ export default function RHMeuDia() {
                           setDataTeste(event.target.value || hoje);
                           setPeriodoAberto(null);
                         }}
-                        className="h-11 w-full rounded-xl border border-[#D4AF37]/25 bg-[#111111] px-3 text-sm text-white outline-none focus:border-[#D4AF37]/55"
+                        className="h-11 w-full rounded-xl border border-fr-d4af37/25 bg-fr-111111 px-3 text-sm text-white outline-none focus:border-fr-d4af37/55"
                       />
                     </div>
                   </>
                 ) : (
-                  <div className="flex min-h-11 items-center gap-2 rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] px-3 py-2.5 text-sm sm:col-span-2">
-                    <MapPin className="h-4 w-4 shrink-0 text-[#F2D675]" />
+                  <div className="flex min-h-11 items-center gap-2 rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.06] px-3 py-2.5 text-sm sm:col-span-2">
+                    <MapPin className="h-4 w-4 shrink-0 text-fri-f2d675" />
                     <span className="truncate font-semibold">
                       {lojaAtual?.nome || "Loja vinculada"}
                     </span>
@@ -1855,7 +1855,7 @@ export default function RHMeuDia() {
                 )}
               </div>
 
-              <div className="mt-4 rounded-xl border border-[#D4AF37]/15 bg-black/25 p-3.5 text-xs leading-5 text-gray-400 sm:p-4 sm:text-sm sm:leading-6">
+              <div className="mt-4 rounded-xl border border-fr-d4af37/15 bg-black/25 p-3.5 text-xs leading-5 text-gray-400 sm:p-4 sm:text-sm sm:leading-6">
                 A conferência é feita pelo PDF do Secullum. Até 10 minutos de atraso fica dentro da tolerância; de 11 a 15 minutos o atraso é apenas registrado; acima de 15 minutos exige tratativa.
               </div>
             </CardContent>
@@ -1865,16 +1865,16 @@ export default function RHMeuDia() {
             className={
               conferenciasPendentesAgora.length > 0
                 ? "border-amber-400/25 bg-amber-500/[0.05]"
-                : "border-[#D4AF37]/20 bg-[#0b0b0b]"
+                : "border-fr-d4af37/20 bg-fr-0b0b0b"
             }
           >
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2.5">
+                <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-2.5">
                   {conferenciasPendentesAgora.length > 0 ? (
                     <AlertTriangle className="h-5 w-5 text-amber-300" />
                   ) : (
-                    <ShieldCheck className="h-5 w-5 text-[#F2D675]" />
+                    <ShieldCheck className="h-5 w-5 text-fri-f2d675" />
                   )}
                 </div>
 
@@ -1934,13 +1934,13 @@ export default function RHMeuDia() {
                     existente
                       ? "border-emerald-400/20 bg-emerald-500/[0.035]"
                       : horarioLiberado
-                      ? "border-amber-400/20 bg-[#0b0b0b]"
-                      : "border-white/[0.08] bg-[#0b0b0b]"
+                      ? "border-amber-400/20 bg-fr-0b0b0b"
+                      : "border-white/[0.08] bg-fr-0b0b0b"
                   }
                 >
                   <CardContent className="p-4 sm:p-5">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-2xl font-black text-[#F2D675] sm:text-3xl">
+                      <span className="text-2xl font-black text-fri-f2d675 sm:text-3xl">
                         {item.horario}
                       </span>
                       {existente ? (
@@ -1976,8 +1976,8 @@ export default function RHMeuDia() {
                           </div>
                         )}
 
-                        <div className="rounded-lg border border-[#D4AF37]/10 bg-[#D4AF37]/[0.035] px-3 py-2 text-[11px] leading-4 text-[#b9aa7a]">
-                          Ocorrências que exigem ação ficam concentradas em <strong className="text-[#F2D675]">Pendências abertas</strong>.
+                        <div className="rounded-lg border border-fr-d4af37/10 bg-fr-d4af37/[0.035] px-3 py-2 text-[11px] leading-4 text-fri-b9aa7a">
+                          Ocorrências que exigem ação ficam concentradas em <strong className="text-fri-f2d675">Pendências abertas</strong>.
                         </div>
 
                         <Button
@@ -1994,7 +1994,7 @@ export default function RHMeuDia() {
                       <Button
                         type="button"
                         onClick={() => abrirConferencia(item.periodo)}
-                        className="mt-4 h-12 w-full bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+                        className="mt-4 h-12 w-full bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
                       >
                         <FileUp className="mr-2 h-4 w-4" />
                         Importar PDF
@@ -2013,11 +2013,11 @@ export default function RHMeuDia() {
         </section>
 
         <section className="mt-5 grid grid-cols-1 gap-3 sm:mt-6 sm:grid-cols-2">
-          <Card className="border-white/[0.08] bg-[#0b0b0b]">
+          <Card className="border-white/[0.08] bg-fr-0b0b0b">
             <CardContent className="p-4 sm:p-5">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2.5">
-                  <WalletCards className="h-5 w-5 text-[#F2D675]" />
+                <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-2.5">
+                  <WalletCards className="h-5 w-5 text-fri-f2d675" />
                 </div>
                 <p className="font-bold text-white">Conferência de caixa</p>
               </div>
@@ -2031,13 +2031,13 @@ export default function RHMeuDia() {
             className={
               pendenciasDaLoja.length > 0
                 ? "border-rose-400/20 bg-rose-500/[0.035]"
-                : "border-white/[0.08] bg-[#0b0b0b]"
+                : "border-white/[0.08] bg-fr-0b0b0b"
             }
           >
             <CardContent className="p-4 sm:p-5">
               <div className="flex items-center gap-3">
-                <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2.5">
-                  <ShieldCheck className="h-5 w-5 text-[#F2D675]" />
+                <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-2.5">
+                  <ShieldCheck className="h-5 w-5 text-fri-f2d675" />
                 </div>
                 <div>
                   <p className="font-bold text-white">Pendências abertas</p>
@@ -2067,8 +2067,8 @@ export default function RHMeuDia() {
                           className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition hover:bg-rose-400/[0.05]"
                         >
                           <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06]">
-                              <Clock3 className="h-4 w-4 text-[#F2D675]" />
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-fr-d4af37/20 bg-fr-d4af37/[0.06]">
+                              <Clock3 className="h-4 w-4 text-fri-f2d675" />
                             </div>
                             <div className="min-w-0">
                               <p className="truncate text-sm font-black text-white">
@@ -2127,7 +2127,7 @@ export default function RHMeuDia() {
 
                                   {pendencia.fase === "documento" && pendencia.tratativaId && (
                                     <div className="mt-3 flex flex-wrap gap-2">
-                                      <label className="inline-flex h-9 cursor-pointer items-center rounded-md bg-[#D4AF37] px-3 text-xs font-black text-black hover:bg-[#E6C760]">
+                                      <label className="inline-flex h-9 cursor-pointer items-center rounded-md bg-fr-d4af37 px-3 text-xs font-black text-black hover:bg-fr-e6c760">
                                         📷 {enviandoDocumentoId === pendencia.tratativaId ? "Enviando..." : "Tirar foto"}
                                         <input
                                           type="file"
@@ -2143,7 +2143,7 @@ export default function RHMeuDia() {
                                         />
                                       </label>
 
-                                      <label className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[#D4AF37]/25 bg-[#D4AF37]/[0.05] px-3 text-xs font-black text-[#F2D675] hover:bg-[#D4AF37]/[0.10]">
+                                      <label className="inline-flex h-9 cursor-pointer items-center rounded-md border border-fr-d4af37/25 bg-fr-d4af37/[0.05] px-3 text-xs font-black text-fri-f2d675 hover:bg-fr-d4af37/[0.10]">
                                         📎 {enviandoDocumentoId === pendencia.tratativaId
                                           ? "Enviando..."
                                           : labelDocumentoPendente(pendencia.tratativaTipo)}
@@ -2219,13 +2219,13 @@ export default function RHMeuDia() {
 
       {periodoAberto && horarioConfigAberto && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-0 sm:items-center sm:p-4">
-          <div className="max-h-[96vh] w-full overflow-y-auto rounded-t-3xl border border-[#D4AF37]/20 bg-[#090909] shadow-2xl sm:max-w-3xl sm:rounded-3xl">
-            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-white/[0.08] bg-[#090909]/95 px-4 py-4 backdrop-blur sm:px-6">
+          <div className="max-h-[96vh] w-full overflow-y-auto rounded-t-3xl border border-fr-d4af37/20 bg-fr-090909 shadow-2xl sm:max-w-3xl sm:rounded-3xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-white/[0.08] bg-fr-090909/95 px-4 py-4 backdrop-blur sm:px-6">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8f8a80]">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-fri-8f8a80">
                   Conferência automática
                 </p>
-                <h3 className="mt-1 text-xl font-black text-[#F2D675]">
+                <h3 className="mt-1 text-xl font-black text-fri-f2d675">
                   {horarioConfigAberto.horario} • {horarioConfigAberto.titulo}
                 </h3>
                 <p className="mt-1 text-xs text-gray-500">
@@ -2244,9 +2244,9 @@ export default function RHMeuDia() {
             </div>
 
             <div className="space-y-4 p-4 sm:p-6">
-              <div className="rounded-2xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] p-4">
+              <div className="rounded-2xl border border-fr-d4af37/15 bg-fr-d4af37/[0.04] p-4">
                 <div className="flex items-start gap-3">
-                  <FileUp className="mt-0.5 h-5 w-5 shrink-0 text-[#F2D675]" />
+                  <FileUp className="mt-0.5 h-5 w-5 shrink-0 text-fri-f2d675" />
                   <div>
                     <p className="text-sm font-bold text-white">
                       Importe o Ponto Diário do Secullum
@@ -2258,7 +2258,7 @@ export default function RHMeuDia() {
                 </div>
               </div>
 
-              <label className="block cursor-pointer rounded-2xl border border-dashed border-[#D4AF37]/30 bg-[#D4AF37]/[0.035] p-5 text-center transition hover:bg-[#D4AF37]/[0.07]">
+              <label className="block cursor-pointer rounded-2xl border border-dashed border-fr-d4af37/30 bg-fr-d4af37/[0.035] p-5 text-center transition hover:bg-fr-d4af37/[0.07]">
                 <input
                   type="file"
                   accept=".pdf,application/pdf"
@@ -2273,12 +2273,12 @@ export default function RHMeuDia() {
 
                 {processandoPdf || analisarMutation.isPending ? (
                   <>
-                    <RefreshCw className="mx-auto h-7 w-7 animate-spin text-[#F2D675]" />
+                    <RefreshCw className="mx-auto h-7 w-7 animate-spin text-fri-f2d675" />
                     <p className="mt-3 font-bold text-white">Lendo e conferindo o PDF...</p>
                   </>
                 ) : (
                   <>
-                    <FileUp className="mx-auto h-7 w-7 text-[#F2D675]" />
+                    <FileUp className="mx-auto h-7 w-7 text-fri-f2d675" />
                     <p className="mt-3 font-bold text-white">
                       {arquivoNome ? "Importar outro PDF" : "Selecionar PDF do ponto"}
                     </p>
@@ -2405,8 +2405,8 @@ export default function RHMeuDia() {
                                 )}
 
                                 {item.status === "nao_identificado" && item.nomePdf && (
-                                  <div className="mt-3 rounded-xl border border-[#D4AF37]/20 bg-black/20 p-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#F2D675]">
+                                  <div className="mt-3 rounded-xl border border-fr-d4af37/20 bg-black/20 p-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.12em] text-fri-f2d675">
                                       Nome recebido do Secullum
                                     </p>
                                     <p className="mt-1 text-xs font-bold text-white">{item.nomePdf}</p>
@@ -2421,10 +2421,10 @@ export default function RHMeuDia() {
                                           }))
                                         }
                                       >
-                                        <SelectTrigger className="h-10 border-[#D4AF37]/25 bg-[#111111] text-xs text-white">
+                                        <SelectTrigger className="h-10 border-fr-d4af37/25 bg-fr-111111 text-xs text-white">
                                           <SelectValue placeholder="Selecionar funcionário correto" />
                                         </SelectTrigger>
-                                        <SelectContent className="max-h-72 border-[#D4AF37]/20 bg-[#111111] text-white">
+                                        <SelectContent className="max-h-72 border-fr-d4af37/20 bg-fr-111111 text-white">
                                           {funcionariosVinculaveis.map((funcionario) => (
                                             <SelectItem key={funcionario.id} value={String(funcionario.id)}>
                                               {funcionario.nome}
@@ -2443,7 +2443,7 @@ export default function RHMeuDia() {
                                           analisarMutation.isPending
                                         }
                                         onClick={() => void vincularFuncionarioDoPdf(item)}
-                                        className="h-10 bg-[#D4AF37] px-4 text-xs font-black text-black hover:bg-[#E6C760] disabled:opacity-40"
+                                        className="h-10 bg-fr-d4af37 px-4 text-xs font-black text-black hover:bg-fr-e6c760 disabled:opacity-40"
                                       >
                                         {vinculandoNomePdf === item.nomePdf ? "Vinculando..." : "Vincular funcionário"}
                                       </Button>
@@ -2484,7 +2484,7 @@ export default function RHMeuDia() {
                   value={observacaoConferencia}
                   onChange={(event) => setObservacaoConferencia(event.target.value)}
                   placeholder="Opcional"
-                  className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50"
+                  className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/50"
                 />
               </div>
 
@@ -2503,7 +2503,7 @@ export default function RHMeuDia() {
                   salvarImportacaoMutation.isPending ||
                   processandoPdf
                 }
-                className="h-12 w-full bg-[#D4AF37] py-3.5 text-base font-black text-black hover:bg-[#E6C760] disabled:cursor-not-allowed disabled:opacity-35"
+                className="h-12 w-full bg-fr-d4af37 py-3.5 text-base font-black text-black hover:bg-fr-e6c760 disabled:cursor-not-allowed disabled:opacity-35"
               >
                 {salvarImportacaoMutation.isPending
                   ? "Finalizando..."
@@ -2520,11 +2520,11 @@ export default function RHMeuDia() {
 
       {tratativaAlvo && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/85 p-0 sm:items-center sm:p-4">
-          <div className="max-h-[96vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-[#D4AF37]/20 bg-[#090909] p-5 shadow-2xl sm:max-h-[92vh] sm:rounded-3xl sm:p-6">
+          <div className="max-h-[96vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-fr-d4af37/20 bg-fr-090909 p-5 shadow-2xl sm:max-h-[92vh] sm:rounded-3xl sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8f8a80]">Definir tratativa</p>
-                <h3 className="mt-1 text-xl font-black text-[#F2D675]">{tratativaAlvo.funcionarioNome}</h3>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-fri-8f8a80">Definir tratativa</p>
+                <h3 className="mt-1 text-xl font-black text-fri-f2d675">{tratativaAlvo.funcionarioNome}</h3>
                 <p className="mt-1 text-xs text-gray-500">
                   {tratativaAlvo.dataReferencia?.split("-").reverse().join("/")} • {nomePeriodoPendencia(
     String(tratativaAlvo.periodo),
@@ -2567,8 +2567,8 @@ export default function RHMeuDia() {
                         }}
                         className={`min-h-11 rounded-xl border px-3 py-2 text-left text-sm font-bold transition ${
                           ativo
-                            ? "border-[#D4AF37]/70 bg-[#D4AF37]/15 text-[#F2D675]"
-                            : "border-white/10 bg-black/40 text-gray-300 hover:border-[#D4AF37]/30"
+                            ? "border-fr-d4af37/70 bg-fr-d4af37/15 text-fri-f2d675"
+                            : "border-white/10 bg-black/40 text-gray-300 hover:border-fr-d4af37/30"
                         }`}
                       >
                         {label}
@@ -2587,7 +2587,7 @@ export default function RHMeuDia() {
                     max={60}
                     value={diasAtestado}
                     onChange={(event) => setDiasAtestado(event.target.value)}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/50"
+                    className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white outline-none focus:border-fr-d4af37/50"
                   />
                   <p className="mt-1.5 text-[11px] leading-4 text-gray-500">
                     Se informar mais de 1 dia, os próximos dias já serão tratados como atestado, mesmo enquanto o documento estiver pendente.
@@ -2605,7 +2605,7 @@ export default function RHMeuDia() {
                     value={observacaoTratativa}
                     onChange={(event) => setObservacaoTratativa(event.target.value)}
                     placeholder={tipoTratativa === "justificativa" ? "Ex.: consulta médica, problema no transporte..." : "Opcional"}
-                    className="w-full resize-none rounded-xl border border-white/10 bg-black/40 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/50"
+                    className="w-full resize-none rounded-xl border border-white/10 bg-black/40 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/50"
                   />
                 </div>
               )}
@@ -2621,7 +2621,7 @@ export default function RHMeuDia() {
 
                 <div className="space-y-2">
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.06] px-4 py-3 text-sm font-black text-[#F2D675] transition hover:bg-[#D4AF37]/[0.10]">
+                    <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/[0.06] px-4 py-3 text-sm font-black text-fri-f2d675 transition hover:bg-fr-d4af37/[0.10]">
                       📷 Tirar foto
                       <input
                         type="file"
@@ -2664,7 +2664,7 @@ export default function RHMeuDia() {
                   </div>
 
                   <div className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2.5">
-                    <p className={arquivoTratativa ? "truncate text-sm font-bold text-[#F2D675]" : "text-sm text-gray-500"}>
+                    <p className={arquivoTratativa ? "truncate text-sm font-bold text-fri-f2d675" : "text-sm text-gray-500"}>
                       {arquivoTratativa ? arquivoTratativa.name : "Nenhum arquivo selecionado"}
                     </p>
                     <p className="mt-0.5 text-[11px] text-gray-600">
@@ -2702,7 +2702,7 @@ export default function RHMeuDia() {
                 type="button"
                 onClick={() => void salvarTratativa()}
                 disabled={criarTratativaMutation.isPending || anexarDocumentoMutation.isPending}
-                className="h-12 w-full bg-[#D4AF37] text-base font-black text-black hover:bg-[#E6C760]"
+                className="h-12 w-full bg-fr-d4af37 text-base font-black text-black hover:bg-fr-e6c760"
               >
                 {criarTratativaMutation.isPending || anexarDocumentoMutation.isPending
                   ? "Salvando..."

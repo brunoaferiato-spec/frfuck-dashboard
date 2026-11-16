@@ -939,33 +939,33 @@ function KpiCard(props: {
       ? "text-rose-300"
       : props.destaque === "blue"
       ? "text-slate-100"
-      : "text-[#F2D675]";
+      : "text-fri-f2d675";
 
   const glow =
     props.destaque === "green"
       ? "from-emerald-400/10"
       : props.destaque === "red"
       ? "from-rose-400/10"
-      : "from-[#D4AF37]/15";
+      : "from-fr-d4af37/15";
 
   return (
-    <Card className="group relative gap-0 overflow-hidden rounded-2xl border border-[#D4AF37]/20 py-0 sm:gap-6 sm:py-6 bg-gradient-to-br from-[#121212] via-[#0b0b0b] to-[#050505] shadow-[0_18px_55px_rgba(0,0,0,0.38)] transition-all duration-300 hover:-translate-y-1 hover:border-[#D4AF37]/55 hover:shadow-[0_22px_70px_rgba(212,175,55,0.12)]">
+    <Card className="group relative gap-0 overflow-hidden rounded-2xl border border-fr-d4af37/20 py-0 sm:gap-6 sm:py-6 bg-gradient-to-br from-fr-121212 via-fr-0b0b0b to-fr-050505 shadow-[0_18px_55px_rgba(0,0,0,0.38)] transition-all duration-300 hover:-translate-y-1 hover:border-fr-d4af37/55 hover:shadow-[0_22px_70px_rgba(212,175,55,0.12)]">
       <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${glow} via-transparent to-transparent opacity-70`} />
-      <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-[#D4AF37]/10 blur-3xl transition-all duration-300 group-hover:bg-[#D4AF37]/20" />
+      <div className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-fr-d4af37/10 blur-3xl transition-all duration-300 group-hover:bg-fr-d4af37/20" />
       <CardContent className="relative p-4 sm:p-5">
         <div className="mb-3 flex items-start justify-between gap-2 sm:mb-5 sm:gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase leading-4 tracking-[0.12em] text-[#b9b1a0] sm:text-[11px] sm:tracking-[0.16em]">{props.titulo}</p>
-            <div className="mt-2 hidden h-px w-8 bg-gradient-to-r from-[#D4AF37] to-transparent sm:block" />
+            <p className="text-[10px] font-bold uppercase leading-4 tracking-[0.12em] text-fri-b9b1a0 sm:text-[11px] sm:tracking-[0.16em]">{props.titulo}</p>
+            <div className="mt-2 hidden h-px w-8 bg-gradient-to-r from-fr-d4af37 to-transparent sm:block" />
           </div>
-          <div className="shrink-0 rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.07] p-2 shadow-inner shadow-[#D4AF37]/5 sm:p-2.5">
+          <div className="shrink-0 rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-2 shadow-inner shadow-fr-d4af37/5 sm:p-2.5">
             <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${cor}`} />
           </div>
         </div>
         <p className={`text-[1.2rem] font-black tracking-[-0.03em] sm:text-[1.65rem] ${cor}`}>
           {props.valor}
         </p>
-        <p className="mt-2 hidden min-h-[32px] text-xs leading-5 text-[#79756d] sm:block">{props.subtitulo}</p>
+        <p className="mt-2 hidden min-h-[32px] text-xs leading-5 text-fri-79756d sm:block">{props.subtitulo}</p>
       </CardContent>
     </Card>
   );
@@ -1203,7 +1203,7 @@ export default function Home() {
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black">
-        <Loader2 className="h-8 w-8 animate-spin text-[#F2D675]" />
+        <Loader2 className="h-8 w-8 animate-spin text-fri-f2d675" />
       </div>
     );
   }
@@ -1224,41 +1224,41 @@ export default function Home() {
     }
 
     return (
-      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#050505] px-4 text-white">
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-fr-050505 px-4 text-white">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(212,175,55,0.14),transparent_34%),radial-gradient(circle_at_10%_90%,rgba(212,175,55,0.05),transparent_28%)]" />
 
-        <Card className="relative w-full max-w-md border-[#D4AF37]/20 bg-[#0a0a0a]/95 shadow-[0_30px_90px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+        <Card className="relative w-full max-w-md border-fr-d4af37/20 bg-fr-0a0a0a/95 shadow-[0_30px_90px_rgba(0,0,0,0.65)] backdrop-blur-xl">
           <CardContent className="p-7 sm:p-8">
             <div className="mb-7 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#D4AF37]/30 bg-[#D4AF37]/10">
-                <ShieldCheck className="h-7 w-7 text-[#F2D675]" />
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-fr-d4af37/30 bg-fr-d4af37/10">
+                <ShieldCheck className="h-7 w-7 text-fri-f2d675" />
               </div>
-              <h1 className="text-2xl font-black tracking-tight text-[#F2D675]">Acesso ao sistema</h1>
-              <p className="mt-2 text-sm text-[#8f8a80]">Entre com o usuário cadastrado para acessar a gestão.</p>
+              <h1 className="text-2xl font-black tracking-tight text-fri-f2d675">Acesso ao sistema</h1>
+              <p className="mt-2 text-sm text-fri-8f8a80">Entre com o usuário cadastrado para acessar a gestão.</p>
             </div>
 
             <form onSubmit={entrar} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-[#b5ad9b]">Email</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-fri-b5ad9b">Email</label>
                 <Input
                   type="email"
                   autoComplete="email"
                   value={loginEmail}
                   onChange={(event) => setLoginEmail(event.target.value)}
                   placeholder="usuario@empresa.com"
-                  className="h-12 border-[#D4AF37]/20 bg-[#111111] text-white placeholder:text-[#5f5b54] focus-visible:ring-[#D4AF37]/40"
+                  className="h-12 border-fr-d4af37/20 bg-fr-111111 text-white placeholder:text-fri-5f5b54 focus-visible:ring-fr-d4af37/40"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-[#b5ad9b]">Senha</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.12em] text-fri-b5ad9b">Senha</label>
                 <Input
                   type="password"
                   autoComplete="current-password"
                   value={loginSenha}
                   onChange={(event) => setLoginSenha(event.target.value)}
                   placeholder="Digite sua senha"
-                  className="h-12 border-[#D4AF37]/20 bg-[#111111] text-white placeholder:text-[#5f5b54] focus-visible:ring-[#D4AF37]/40"
+                  className="h-12 border-fr-d4af37/20 bg-fr-111111 text-white placeholder:text-fri-5f5b54 focus-visible:ring-fr-d4af37/40"
                 />
               </div>
 
@@ -1271,7 +1271,7 @@ export default function Home() {
               <Button
                 type="submit"
                 disabled={loginMutation.isPending}
-                className="h-12 w-full bg-[#D4AF37] font-bold text-black hover:bg-[#E6C760] disabled:opacity-60"
+                className="h-12 w-full bg-fr-d4af37 font-bold text-black hover:bg-fr-e6c760 disabled:opacity-60"
               >
                 {loginMutation.isPending ? (
                   <>
@@ -1284,7 +1284,7 @@ export default function Home() {
               </Button>
             </form>
 
-            <p className="mt-5 text-center text-xs text-[#68635b]">
+            <p className="mt-5 text-center text-xs text-fri-68635b">
               O acesso é liberado somente para usuários cadastrados e ativos.
             </p>
           </CardContent>
@@ -1296,26 +1296,26 @@ export default function Home() {
   if (ehUsuarioRh) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black">
-        <Loader2 className="h-8 w-8 animate-spin text-[#F2D675]" />
+        <Loader2 className="h-8 w-8 animate-spin text-fri-f2d675" />
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#050505] text-white">
+    <div className="relative min-h-screen overflow-x-hidden bg-fr-050505 text-white">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_82%_8%,rgba(212,175,55,0.10),transparent_28%),radial-gradient(circle_at_12%_78%,rgba(212,175,55,0.05),transparent_24%)]" />
       <div className="relative flex min-h-screen">
-        <aside className="hidden w-[270px] shrink-0 border-r border-[#D4AF37]/15 bg-[#060606]/95 shadow-[18px_0_55px_rgba(0,0,0,0.28)] backdrop-blur-xl xl:flex xl:flex-col">
-          <div className="border-b border-[#D4AF37]/15 px-6 py-7">
+        <aside className="hidden w-[270px] shrink-0 border-r border-fr-d4af37/15 bg-fr-060606/95 shadow-[18px_0_55px_rgba(0,0,0,0.28)] backdrop-blur-xl xl:flex xl:flex-col">
+          <div className="border-b border-fr-d4af37/15 px-6 py-7">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#D4AF37]/30 bg-gradient-to-br from-[#D4AF37]/20 to-transparent shadow-[0_0_35px_rgba(212,175,55,0.10)]">
-                <Gauge className="h-5 w-5 text-[#F2D675]" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-fr-d4af37/30 bg-gradient-to-br from-fr-d4af37/20 to-transparent shadow-[0_0_35px_rgba(212,175,55,0.10)]">
+                <Gauge className="h-5 w-5 text-fri-f2d675" />
               </div>
               <div>
-                <p className="text-lg font-black tracking-tight text-[#F2D675]">
+                <p className="text-lg font-black tracking-tight text-fri-f2d675">
                   Gestão Executiva
                 </p>
-                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#6f6a5f]">Folha & Performance</p>
+                <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-fri-6f6a5f">Folha & Performance</p>
               </div>
             </div>
           </div>
@@ -1331,8 +1331,8 @@ export default function Home() {
                     onClick={() => navigate(item.rota)}
                     className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition-all ${
                       item.ativo
-                        ? "border border-[#D4AF37]/35 bg-gradient-to-r from-[#D4AF37]/14 to-[#D4AF37]/5 text-[#F2D675] shadow-[inset_3px_0_0_#D4AF37]"
-                        : "text-[#8c877d] hover:bg-[#D4AF37]/[0.06] hover:text-[#F2D675]"
+                        ? "border border-fr-d4af37/35 bg-gradient-to-r from-fr-d4af37/14 to-fr-d4af37/5 text-fri-f2d675 shadow-[inset_3px_0_0_#D4AF37]"
+                        : "text-fri-8c877d hover:bg-fr-d4af37/[0.06] hover:text-fri-f2d675"
                     }`}
                   >
                     <Icon className="h-5 w-5" />
@@ -1342,12 +1342,12 @@ export default function Home() {
               })}
           </nav>
 
-          <div className="border-t border-[#D4AF37]/15 p-4">
-            <div className="rounded-2xl border border-[#D4AF37]/15 bg-gradient-to-br from-[#111111] to-[#080808] p-4">
+          <div className="border-t border-fr-d4af37/15 p-4">
+            <div className="rounded-2xl border border-fr-d4af37/15 bg-gradient-to-br from-fr-111111 to-fr-080808 p-4">
               <p className="truncate text-sm font-bold text-white">
                 {user.name || user.email}
               </p>
-              <p className="mt-1 text-xs uppercase tracking-wider text-[#D4AF37]">
+              <p className="mt-1 text-xs uppercase tracking-wider text-fri-d4af37">
                 {String(user.role || "usuário")}
               </p>
               <Button
@@ -1365,16 +1365,16 @@ export default function Home() {
         </aside>
 
         <main className="min-w-0 flex-1">
-          <header className="sticky top-0 z-40 border-b border-[#D4AF37]/15 bg-[#050505]/90 backdrop-blur-2xl">
+          <header className="sticky top-0 z-40 border-b border-fr-d4af37/15 bg-fr-050505/90 backdrop-blur-2xl">
             <div className="px-4 pb-3 pt-[calc(12px+env(safe-area-inset-top))] sm:px-5 sm:py-5 lg:px-8">
               <div className="flex flex-col gap-3 sm:gap-5 2xl:flex-row 2xl:items-center 2xl:justify-between">
                 <div>
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#C9A94B] sm:text-xs">
+                    <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-fri-c9a94b sm:text-xs">
                       <Gauge className="h-4 w-4" />
                       Painel executivo
                     </div>
-                    <p className="max-w-[45vw] truncate text-[11px] font-semibold text-[#8f897d] xl:hidden">
+                    <p className="max-w-[45vw] truncate text-[11px] font-semibold text-fri-8f897d xl:hidden">
                       {user.name || user.email}
                     </p>
                   </div>
@@ -1382,21 +1382,21 @@ export default function Home() {
                     <h1 className="text-[1.6rem] font-black leading-tight tracking-[-0.035em] text-white sm:text-3xl lg:text-4xl">
                       Visão Financeira da Folha
                     </h1>
-                    <span className="mb-1 hidden rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#D8C078] sm:inline-block">
+                    <span className="mb-1 hidden rounded-full border border-fr-d4af37/20 bg-fr-d4af37/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-fri-d8c078 sm:inline-block">
                       Executivo
                     </span>
                   </div>
-                  <p className="mt-2 hidden max-w-2xl text-sm text-[#79756d] sm:block">
+                  <p className="mt-2 hidden max-w-2xl text-sm text-fri-79756d sm:block">
                     Custos, pagamentos e fechamento das unidades em uma única visão gerencial.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-[1.4fr_1.2fr_0.9fr] gap-2 sm:grid-cols-3">
                   <Select value={escopo} onValueChange={setEscopo}>
-                    <SelectTrigger className="h-11 min-w-0 rounded-xl border-[#D4AF37]/25 bg-[#0c0c0c] text-white shadow-sm shadow-black/30 sm:h-9 sm:min-w-[190px]">
+                    <SelectTrigger className="h-11 min-w-0 rounded-xl border-fr-d4af37/25 bg-fr-0c0c0c text-white shadow-sm shadow-black/30 sm:h-9 sm:min-w-[190px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-[#D4AF37]/20 bg-[#0c0c0c] text-white">
+                    <SelectContent className="border-fr-d4af37/20 bg-fr-0c0c0c text-white">
                       <SelectItem value="grupo">Grupo todo</SelectItem>
                       {LOJAS.map((loja) => (
                         <SelectItem key={loja.id} value={String(loja.id)}>
@@ -1407,10 +1407,10 @@ export default function Home() {
                   </Select>
 
                   <Select value={mes} onValueChange={setMes}>
-                    <SelectTrigger className="h-11 min-w-0 rounded-xl border-[#D4AF37]/25 bg-[#0c0c0c] text-white shadow-sm shadow-black/30 sm:h-9">
+                    <SelectTrigger className="h-11 min-w-0 rounded-xl border-fr-d4af37/25 bg-fr-0c0c0c text-white shadow-sm shadow-black/30 sm:h-9">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-[#D4AF37]/20 bg-[#0c0c0c] text-white">
+                    <SelectContent className="border-fr-d4af37/20 bg-fr-0c0c0c text-white">
                       {MESES.map((nome, index) => (
                         <SelectItem key={nome} value={String(index + 1)}>
                           {nome}
@@ -1420,10 +1420,10 @@ export default function Home() {
                   </Select>
 
                   <Select value={ano} onValueChange={setAno}>
-                    <SelectTrigger className="h-11 min-w-0 rounded-xl border-[#D4AF37]/25 bg-[#0c0c0c] text-white shadow-sm shadow-black/30 sm:h-9">
+                    <SelectTrigger className="h-11 min-w-0 rounded-xl border-fr-d4af37/25 bg-fr-0c0c0c text-white shadow-sm shadow-black/30 sm:h-9">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-[#D4AF37]/20 bg-[#0c0c0c] text-white">
+                    <SelectContent className="border-fr-d4af37/20 bg-fr-0c0c0c text-white">
                       {[2025, 2026, 2027, 2028].map((item) => (
                         <SelectItem key={item} value={String(item)}>
                           {item}
@@ -1445,9 +1445,9 @@ export default function Home() {
             )}
 
             {carregando ? (
-              <div className="flex min-h-[420px] items-center justify-center rounded-3xl border border-[#D4AF37]/15 bg-gradient-to-br from-[#111111] to-[#080808]">
+              <div className="flex min-h-[420px] items-center justify-center rounded-3xl border border-fr-d4af37/15 bg-gradient-to-br from-fr-111111 to-fr-080808">
                 <div className="text-center">
-                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-[#F2D675]" />
+                  <Loader2 className="mx-auto h-8 w-8 animate-spin text-fri-f2d675" />
                   <p className="mt-3 text-sm text-gray-500">
                     Consolidando dados da folha...
                   </p>
@@ -1457,10 +1457,10 @@ export default function Home() {
               <>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#9c8952]">Resumo financeiro</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-fri-9c8952">Resumo financeiro</p>
                     <h2 className="mt-1 text-xl font-black tracking-tight text-white">Indicadores da competência</h2>
                   </div>
-                  <div className="rounded-full border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-3 py-1.5 text-xs text-[#8f897d]">
+                  <div className="rounded-full border border-fr-d4af37/15 bg-fr-d4af37/[0.04] px-3 py-1.5 text-xs text-fri-8f897d">
                     {escopo === "grupo" ? "Visão consolidada do grupo" : dashboard?.lojas?.[0]?.lojaNome || "Unidade"} • {MESES[mesNumero - 1]} {anoNumero}
                   </div>
                 </div>
@@ -1512,7 +1512,7 @@ export default function Home() {
                 </section>
 
                 <section className="grid gap-4 2xl:grid-cols-[1.65fr_1fr]">
-                  <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] shadow-[0_18px_55px_rgba(0,0,0,0.32)]">
+                  <Card className="border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-060606 shadow-[0_18px_55px_rgba(0,0,0,0.32)]">
                     <CardContent className="p-4 sm:p-5 lg:p-6">
                       <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                         <div>
@@ -1563,7 +1563,7 @@ export default function Home() {
                     </CardContent>
                   </Card>
 
-                  <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] shadow-[0_18px_55px_rgba(0,0,0,0.32)]">
+                  <Card className="border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-060606 shadow-[0_18px_55px_rgba(0,0,0,0.32)]">
                     <CardContent className="p-4 sm:p-5 lg:p-6">
                       <div className="mb-5 flex items-start justify-between">
                         <div>
@@ -1572,7 +1572,7 @@ export default function Home() {
                             {totais.fechadas} de {dashboard?.lojas.length || 0} competências fechadas
                           </p>
                         </div>
-                        <CalendarDays className="h-5 w-5 text-[#F2D675]" />
+                        <CalendarDays className="h-5 w-5 text-fri-f2d675" />
                       </div>
 
                       <div className="space-y-2.5">
@@ -1580,7 +1580,7 @@ export default function Home() {
                           <button
                             key={loja.lojaId}
                             onClick={() => navigate("/folha-pagamento")}
-                            className="flex w-full items-center justify-between rounded-2xl border border-white/[0.06] bg-white/[0.025] px-4 py-3 text-left transition hover:border-[#D4AF37]/25 hover:bg-black/30"
+                            className="flex w-full items-center justify-between rounded-2xl border border-white/[0.06] bg-white/[0.025] px-4 py-3 text-left transition hover:border-fr-d4af37/25 hover:bg-black/30"
                           >
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-white">
@@ -1610,7 +1610,7 @@ export default function Home() {
                 </section>
 
                 <section className="grid gap-4 xl:grid-cols-[1fr_2fr]">
-                  <Card className="border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] shadow-[0_18px_55px_rgba(0,0,0,0.32)]">
+                  <Card className="border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-060606 shadow-[0_18px_55px_rgba(0,0,0,0.32)]">
                     <CardContent className="p-4 sm:p-5 lg:p-6">
                       <p className="text-lg font-bold text-white">Atenção gerencial</p>
                       <div className="mt-5 space-y-3">
@@ -1639,7 +1639,7 @@ export default function Home() {
 
                         <button
                           onClick={() => navigate("/folha-pagamento")}
-                          className="flex w-full items-center justify-between rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-4 py-4 text-left text-sm font-bold text-[#F2D675] transition hover:bg-[#D4AF37]/15"
+                          className="flex w-full items-center justify-between rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/10 px-4 py-4 text-left text-sm font-bold text-fri-f2d675 transition hover:bg-fr-d4af37/15"
                         >
                           Abrir Folha de Pagamento
                           <ChevronRight className="h-5 w-5" />
@@ -1648,7 +1648,7 @@ export default function Home() {
                     </CardContent>
                   </Card>
 
-                  <Card className="overflow-hidden border-[#D4AF37]/20 bg-gradient-to-br from-[#111111] via-[#0b0b0b] to-[#060606] shadow-[0_18px_55px_rgba(0,0,0,0.32)]">
+                  <Card className="overflow-hidden border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-060606 shadow-[0_18px_55px_rgba(0,0,0,0.32)]">
                     <CardContent className="p-0">
                       <div className="flex items-center justify-between border-b border-white/5 px-5 py-5 lg:px-6">
                         <div>
@@ -1677,7 +1677,7 @@ export default function Home() {
                             </div>
                             <div className="mt-2 flex items-baseline justify-between gap-3">
                               <span className="text-xs text-gray-500">Desembolso</span>
-                              <span className="text-lg font-black text-[#F2D675]">{money(loja.desembolso)}</span>
+                              <span className="text-lg font-black text-fri-f2d675">{money(loja.desembolso)}</span>
                             </div>
                             <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-white/[0.05] pt-3 text-xs">
                               <div className="flex justify-between gap-2"><span className="text-gray-500">Adiant.</span><span className="font-semibold text-rose-300">{money(loja.adiantamento)}</span></div>
@@ -1692,7 +1692,7 @@ export default function Home() {
                       <div className="hidden overflow-x-auto md:block">
                         <table className="w-full min-w-[900px] text-sm">
                           <thead>
-                            <tr className="border-b border-[#D4AF37]/10 bg-[#D4AF37]/[0.025] text-left text-[11px] uppercase tracking-wider text-gray-600">
+                            <tr className="border-b border-fr-d4af37/10 bg-fr-d4af37/[0.025] text-left text-[11px] uppercase tracking-wider text-gray-600">
                               <th className="px-5 py-3 lg:px-6">Unidade</th>
                               <th className="px-4 py-3 text-right">Adiantamento</th>
                               <th className="px-4 py-3 text-right">Folha s/ adiant.</th>
@@ -1704,7 +1704,7 @@ export default function Home() {
                           </thead>
                           <tbody>
                             {(dashboard?.lojas || []).map((loja) => (
-                              <tr key={loja.lojaId} className="border-b border-white/[0.04] transition hover:bg-[#D4AF37]/[0.025]">
+                              <tr key={loja.lojaId} className="border-b border-white/[0.04] transition hover:bg-fr-d4af37/[0.025]">
                                 <td className="px-5 py-4 font-bold text-white lg:px-6">
                                   {loja.lojaNome}
                                 </td>
@@ -1717,7 +1717,7 @@ export default function Home() {
                                 <td className="px-4 py-4 text-right text-emerald-300">
                                   {money(loja.boletos)}
                                 </td>
-                                <td className="px-4 py-4 text-right font-black text-[#F2D675]">
+                                <td className="px-4 py-4 text-right font-black text-fri-f2d675">
                                   {money(loja.desembolso)}
                                 </td>
                                 <td className="px-4 py-4 text-right text-gray-300">

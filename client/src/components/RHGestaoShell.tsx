@@ -51,13 +51,13 @@ export default function RHGestaoShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex h-[100dvh] min-h-0 overflow-hidden bg-[#050505] text-white">
-      <aside className="flex h-full w-[205px] shrink-0 flex-col border-r border-[#D4AF37]/15 bg-[#080808]">
+    <div className="flex h-[100dvh] min-h-0 overflow-hidden bg-fr-050505 text-white">
+      <aside className="flex h-full w-[205px] shrink-0 flex-col border-r border-fr-d4af37/15 bg-fr-080808">
         <div className="shrink-0 border-b border-white/[0.06] px-4 py-4">
           <p className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-600">
             Liderança de RH
           </p>
-          <h1 className="mt-1 text-xl font-black text-[#F2D675]">Gestão RH</h1>
+          <h1 className="mt-1 text-xl font-black text-fri-f2d675">Gestão RH</h1>
           <p className="mt-1 text-[10px] capitalize text-gray-600">
             {formatarDataCabecalho()}
           </p>
@@ -75,7 +75,7 @@ export default function RHGestaoShell({ children }: { children: ReactNode }) {
                 onClick={() => navigate(item.rota)}
                 className={`flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-left text-xs font-bold transition ${
                   ativo
-                    ? "bg-[#D4AF37] text-black"
+                    ? "bg-fr-d4af37 text-black"
                     : "text-gray-400 hover:bg-white/[0.05] hover:text-white"
                 }`}
               >
@@ -90,7 +90,7 @@ export default function RHGestaoShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-left text-xs font-bold text-[#F2D675] transition hover:bg-[#D4AF37]/10"
+            className="flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-left text-xs font-bold text-fri-f2d675 transition hover:bg-fr-d4af37/10"
           >
             <ArrowLeft className="h-4 w-4" />
             Dashboard principal
@@ -107,7 +107,7 @@ export default function RHGestaoShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="min-h-0 min-w-0 flex-1 overflow-auto bg-[#050505]">
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto bg-fr-050505">
         {children}
       </div>
     </div>

@@ -80,13 +80,13 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
 
   const menu = (
     <>
-      <div className="border-b border-[#D4AF37]/15 px-4 py-5">
+      <div className="border-b border-fr-d4af37/15 px-4 py-5">
         <div className="flex items-center gap-3">
-          <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] p-2.5">
-            <ShoppingCart className="h-5 w-5 text-[#F2D675]" />
+          <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.06] p-2.5">
+            <ShoppingCart className="h-5 w-5 text-fri-f2d675" />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#D4AF37]/60">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-fri-d4af37/60">
               COMPRAS
             </p>
             <p className="mt-1 text-xs text-gray-600">Gestão de abastecimento</p>
@@ -105,7 +105,7 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
               onClick={() => navegar(item.rota)}
               className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-bold transition ${
                 ativo
-                  ? "bg-[#D4AF37] text-black"
+                  ? "bg-fr-d4af37 text-black"
                   : "text-gray-300 hover:bg-white/[0.05] hover:text-white"
               }`}
             >
@@ -121,7 +121,7 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => navegar("/")}
-            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-bold text-[#F2D675] transition hover:bg-[#D4AF37]/10"
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-bold text-fri-f2d675 transition hover:bg-fr-d4af37/10"
           >
             <ArrowLeft className="h-5 w-5" />
             Dashboard principal
@@ -141,18 +141,18 @@ export default function ComprasShell({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="flex h-[100dvh] min-h-0 overflow-hidden bg-[#050505] text-white">
-      <aside className="hidden h-full w-[220px] shrink-0 flex-col border-r border-[#D4AF37]/15 bg-[#080808] md:flex">
+    <div className="flex h-[100dvh] min-h-0 overflow-hidden bg-fr-050505 text-white">
+      <aside className="hidden h-full w-[220px] shrink-0 flex-col border-r border-fr-d4af37/15 bg-fr-080808 md:flex">
         {menu}
       </aside>
 
       <div className="min-h-0 min-w-0 flex-1 overflow-auto">
-        <header className="sticky top-0 z-40 flex min-h-14 items-center gap-3 border-b border-[#D4AF37]/15 bg-[#080808]/90 px-4 pb-2.5 pt-[calc(10px+env(safe-area-inset-top))] backdrop-blur-xl md:hidden">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06]">
-            <ShoppingCart className="h-[18px] w-[18px] text-[#F2D675]" />
+        <header className="sticky top-0 z-40 flex min-h-14 items-center gap-3 border-b border-fr-d4af37/15 bg-fr-080808/90 px-4 pb-2.5 pt-[calc(10px+env(safe-area-inset-top))] backdrop-blur-xl md:hidden">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.06]">
+            <ShoppingCart className="h-[18px] w-[18px] text-fri-f2d675" />
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#D4AF37]/60">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-fri-d4af37/60">
               Compras
             </p>
             <p className="truncate text-base font-black leading-tight text-white">

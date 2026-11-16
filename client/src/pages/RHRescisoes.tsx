@@ -411,8 +411,8 @@ export default function RHRescisoes() {
 
   if (!podeGerenciar) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 text-white">
-        <Card className="w-full max-w-lg border-rose-400/20 bg-[#0b0b0b]">
+      <div className="flex min-h-screen items-center justify-center bg-fr-050505 px-4 text-white">
+        <Card className="w-full max-w-lg border-rose-400/20 bg-fr-0b0b0b">
           <CardContent className="p-7 text-center">
             <FileWarning className="mx-auto h-8 w-8 text-rose-300" />
             <h1 className="mt-4 text-xl font-black">Acesso restrito</h1>
@@ -422,7 +422,7 @@ export default function RHRescisoes() {
             <Button
               type="button"
               onClick={() => navigate("/rh/meu-dia")}
-              className="mt-5 bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+              className="mt-5 bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
             >
               Voltar
             </Button>
@@ -433,53 +433,53 @@ export default function RHRescisoes() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <header className="border-b border-[#D4AF37]/15 bg-[#080808]">
+    <div className="min-h-screen bg-fr-050505 text-white">
+      <header className="border-b border-fr-d4af37/15 bg-fr-080808">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-5 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               type="button"
               variant="ghost"
               onClick={() => navigate("/rh/gestao")}
-              className="h-10 w-10 shrink-0 rounded-xl border border-[#D4AF37]/20 p-0 text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+              className="h-10 w-10 shrink-0 rounded-xl border border-fr-d4af37/20 p-0 text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
 
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8f8a80]">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-fri-8f8a80">
                 Gestão de pessoas
               </p>
-              <h1 className="text-2xl font-black text-[#F2D675]">Rescisões</h1>
+              <h1 className="text-2xl font-black text-fri-f2d675">Rescisões</h1>
             </div>
           </div>
 
-          <div className="hidden items-center gap-2 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.04] px-3 py-2 text-xs text-[#b9a46a] sm:flex">
-            <ShieldCheck className="h-4 w-4 text-[#F2D675]" />
+          <div className="hidden items-center gap-2 rounded-xl border border-fr-d4af37/15 bg-fr-d4af37/[0.04] px-3 py-2 text-xs text-fri-b9a46a sm:flex">
+            <ShieldCheck className="h-4 w-4 text-fri-f2d675" />
             Líder RH
           </div>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-5 sm:py-7 lg:px-8">
-        <Card className="mb-4 overflow-hidden border-[#D4AF37]/15 bg-[#0b0b0b]">
+        <Card className="mb-4 overflow-hidden border-fr-d4af37/15 bg-fr-0b0b0b">
           <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2 xl:grid-cols-4">
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.13em] text-gray-600">Novos pedidos</p>
               <p className={`mt-2 text-2xl font-black ${resumo.novos ? "text-rose-300" : "text-emerald-300"}`}>{resumo.novos}</p>
               <p className="mt-1 text-[11px] text-gray-600">aguardando RH</p>
             </div>
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.13em] text-gray-600">Em andamento</p>
-              <p className="mt-2 text-2xl font-black text-[#F2D675]">{resumo.andamento}</p>
+              <p className="mt-2 text-2xl font-black text-fri-f2d675">{resumo.andamento}</p>
               <p className="mt-1 text-[11px] text-gray-600">processos ativos</p>
             </div>
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.13em] text-gray-600">Pedido funcionário</p>
               <p className="mt-2 text-2xl font-black text-white">{resumo.pedidos}</p>
               <p className="mt-1 text-[11px] text-gray-600">iniciados pela Caixa</p>
             </div>
-            <div className="bg-[#090909] p-4">
+            <div className="bg-fr-090909 p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.13em] text-gray-600">Decisão empresa</p>
               <p className="mt-2 text-2xl font-black text-white">{resumo.empresa}</p>
               <p className="mt-1 text-[11px] text-gray-600">iniciados pelo RH</p>
@@ -487,14 +487,14 @@ export default function RHRescisoes() {
           </div>
         </Card>
 
-        <Card className="mb-4 border-[#D4AF37]/20 bg-[#0b0b0b]">
+        <Card className="mb-4 border-fr-d4af37/20 bg-fr-0b0b0b">
           <CardContent className="p-4 sm:p-5">
             <div className="flex items-start gap-3">
-              <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/[0.06] p-2.5">
-                <Building2 className="h-5 w-5 text-[#F2D675]" />
+              <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.06] p-2.5">
+                <Building2 className="h-5 w-5 text-fri-f2d675" />
               </div>
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-[#b9a46a]">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-fri-b9a46a">
                   Decisão da empresa
                 </p>
                 <h2 className="mt-1 text-xl font-black">Iniciar desligamento</h2>
@@ -517,7 +517,7 @@ export default function RHRescisoes() {
                   <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                     <SelectValue placeholder="Selecione a loja" />
                   </SelectTrigger>
-                  <SelectContent className="border-white/10 bg-[#111111] text-white">
+                  <SelectContent className="border-white/10 bg-fr-111111 text-white">
                     {lojas.map((loja) => (
                       <SelectItem key={loja.id} value={String(loja.id)}>
                         {loja.nome}
@@ -537,7 +537,7 @@ export default function RHRescisoes() {
                   <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                     <SelectValue placeholder={lojaForm ? "Selecione o funcionário" : "Selecione primeiro a loja"} />
                   </SelectTrigger>
-                  <SelectContent className="border-white/10 bg-[#111111] text-white">
+                  <SelectContent className="border-white/10 bg-fr-111111 text-white">
                     {funcionarios.map((funcionario) => (
                       <SelectItem key={funcionario.id} value={String(funcionario.id)}>
                         {funcionario.nome}
@@ -555,7 +555,7 @@ export default function RHRescisoes() {
                   type="date"
                   value={dataPrevista}
                   onChange={(event) => setDataPrevista(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-[#D4AF37]/45"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-fr-d4af37/45"
                 />
               </div>
 
@@ -567,7 +567,7 @@ export default function RHRescisoes() {
                   value={motivo}
                   onChange={(event) => setMotivo(event.target.value)}
                   placeholder="Opcional nesta etapa"
-                  className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/45"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/45"
                 />
               </div>
 
@@ -580,7 +580,7 @@ export default function RHRescisoes() {
                   value={observacao}
                   onChange={(event) => setObservacao(event.target.value)}
                   placeholder="Opcional"
-                  className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/45"
+                  className="w-full resize-none rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/45"
                 />
               </div>
             </div>
@@ -589,7 +589,7 @@ export default function RHRescisoes() {
               type="button"
               onClick={() => void iniciarEmpresa()}
               disabled={criarMutation.isPending}
-              className="mt-4 bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+              className="mt-4 bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
             >
               <UserMinus className="mr-2 h-4 w-4" />
               Iniciar desligamento pela empresa
@@ -610,7 +610,7 @@ export default function RHRescisoes() {
           </div>
         )}
 
-        <Card className="mb-4 border-white/[0.08] bg-[#0b0b0b]">
+        <Card className="mb-4 border-white/[0.08] bg-fr-0b0b0b">
           <CardContent className="p-4 sm:p-5">
             <div className="flex flex-wrap items-end gap-3">
               <div className="min-w-[190px] flex-1">
@@ -619,7 +619,7 @@ export default function RHRescisoes() {
                   <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="border-white/10 bg-[#111111] text-white">
+                  <SelectContent className="border-white/10 bg-fr-111111 text-white">
                     <SelectItem value="todas">Todas as lojas</SelectItem>
                     {lojas.map((loja) => (
                       <SelectItem key={loja.id} value={String(loja.id)}>
@@ -636,7 +636,7 @@ export default function RHRescisoes() {
                   <SelectTrigger className="h-11 border-white/10 bg-black/30 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="border-white/10 bg-[#111111] text-white">
+                  <SelectContent className="border-white/10 bg-fr-111111 text-white">
                     <SelectItem value="todos">Todos</SelectItem>
                     <SelectItem value="aguardando_rh">Aguardando RH</SelectItem>
                     <SelectItem value="em_andamento">Em andamento</SelectItem>
@@ -652,7 +652,7 @@ export default function RHRescisoes() {
                   value={busca}
                   onChange={(event) => setBusca(event.target.value)}
                   placeholder="Buscar funcionário ou loja"
-                  className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-10 pr-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-[#D4AF37]/45"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-black/30 pl-10 pr-3 text-sm text-white outline-none placeholder:text-gray-700 focus:border-fr-d4af37/45"
                 />
               </div>
             </div>
@@ -670,7 +670,7 @@ export default function RHRescisoes() {
           {filtrados.map((item) => (
             <Card
               key={item.id}
-              className={`border bg-[#0b0b0b] ${
+              className={`border bg-fr-0b0b0b ${
                 item.status === "aguardando_rh"
                   ? "border-rose-400/20"
                   : "border-white/[0.08]"
@@ -702,7 +702,7 @@ export default function RHRescisoes() {
                   </div>
 
                   <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
-                    <p className="text-xs font-black text-[#F2D675]">
+                    <p className="text-xs font-black text-fri-f2d675">
                       {item.origem === "pedido_demissao"
                         ? "Pedido de demissão • iniciado pela Caixa"
                         : "Desligamento pela empresa • iniciado pelo RH"}
@@ -725,9 +725,9 @@ export default function RHRescisoes() {
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-white/[0.06] bg-[#090909] p-3">
+                  <div className="rounded-xl border border-white/[0.06] bg-fr-090909 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-black uppercase tracking-[0.1em] text-[#b9a46a]">
+                      <p className="text-xs font-black uppercase tracking-[0.1em] text-fri-b9a46a">
                         Fase operacional da Caixa
                       </p>
                       <span className="rounded-full border border-amber-400/15 bg-amber-400/[0.04] px-2.5 py-1 text-[10px] font-black text-amber-100">
@@ -810,7 +810,7 @@ export default function RHRescisoes() {
                         variant="outline"
                         onClick={() => void baixarDocumento(item.id, "carta")}
                         disabled={baixandoId === item.id}
-                        className="border-[#D4AF37]/20 bg-[#D4AF37]/[0.04] text-[#F2D675] hover:bg-[#D4AF37]/10 hover:text-[#F2D675]"
+                        className="border-fr-d4af37/20 bg-fr-d4af37/[0.04] text-fri-f2d675 hover:bg-fr-d4af37/10 hover:text-fri-f2d675"
                       >
                         <Download className="mr-2 h-4 w-4" />
                         Carta de demissão
@@ -871,10 +871,10 @@ export default function RHRescisoes() {
                   </div>
 
                   {item.contasPagarLancado && !item.pagamentoEfetuado && (
-                    <div className="rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/[0.045] p-4">
+                    <div className="rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/[0.045] p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-black uppercase tracking-[0.12em] text-[#F2D675]">
+                          <p className="text-xs font-black uppercase tracking-[0.12em] text-fri-f2d675">
                             FINALIZAÇÃO FINANCEIRA • LÍDER RH
                           </p>
                           <p className="mt-1 text-xs leading-5 text-gray-500">
@@ -892,7 +892,7 @@ export default function RHRescisoes() {
                           className={
                             item.comprovantePagamentoNome
                               ? "flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/[0.04] px-3 text-sm font-black text-emerald-200 transition hover:bg-emerald-400/[0.08]"
-                              : "flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-black/20 px-3 text-sm font-black text-[#F2D675] transition hover:bg-[#D4AF37]/[0.08]"
+                              : "flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-fr-d4af37/25 bg-black/20 px-3 text-sm font-black text-fri-f2d675 transition hover:bg-fr-d4af37/[0.08]"
                           }
                         >
                           <FileUp className="mr-2 h-4 w-4" />
@@ -972,7 +972,7 @@ export default function RHRescisoes() {
                       type="button"
                       onClick={() => assumirMutation.mutate({ id: item.id })}
                       disabled={assumirMutation.isPending}
-                      className="bg-[#D4AF37] font-black text-black hover:bg-[#E6C760]"
+                      className="bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
                     >
                       Receber pedido e iniciar processo
                     </Button>
@@ -1008,7 +1008,7 @@ export default function RHRescisoes() {
           ))}
 
           {!processosQuery.isLoading && filtrados.length === 0 && (
-            <Card className="border-white/[0.08] bg-[#0b0b0b] xl:col-span-2">
+            <Card className="border-white/[0.08] bg-fr-0b0b0b xl:col-span-2">
               <CardContent className="p-8 text-center text-sm text-gray-500">
                 Nenhum processo encontrado no filtro atual.
               </CardContent>

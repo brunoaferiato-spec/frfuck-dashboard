@@ -243,10 +243,10 @@ export default function ComprasAmortecedores() {
   }, [itens]);
 
   return (
-    <main className="min-h-full bg-[#050505] p-4 text-white sm:p-6 lg:p-8">
+    <main className="min-h-full bg-fr-050505 p-4 text-white sm:p-6 lg:p-8">
       <div className="mx-auto max-w-[1600px]">
-        <section className="rounded-3xl border border-[#D4AF37]/20 bg-[#090909] p-5 sm:p-7">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#D4AF37]/60">COMPRAS • AMORTECEDORES</p>
+        <section className="rounded-3xl border border-fr-d4af37/20 bg-fr-090909 p-5 sm:p-7">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-fri-d4af37/60">COMPRAS • AMORTECEDORES</p>
           <h1 className="mt-2 text-3xl font-black">Planejamento de amortecedores</h1>
           <p className="mt-3 max-w-4xl text-sm leading-6 text-gray-500">
             Relatório dos últimos {Number(diasAnalise) || 120} dias → compra projetada para {Number(diasProjecao) || 30} dias.
@@ -257,12 +257,12 @@ export default function ComprasAmortecedores() {
           <div className="mt-5 grid max-w-xl gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">Dias analisados (relatório)</span>
-              <input value={diasAnalise} inputMode="numeric" onChange={(e) => setDiasAnalise(e.target.value.replace(/[^0-9]/g, ""))} className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-[#D4AF37]/50" />
+              <input value={diasAnalise} inputMode="numeric" onChange={(e) => setDiasAnalise(e.target.value.replace(/[^0-9]/g, ""))} className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-fr-d4af37/50" />
               <span className="mt-1 block text-[10px] text-gray-600">Normalmente 120 dias.</span>
             </label>
             <label className="block">
               <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">Dias para projetar (compra)</span>
-              <input value={diasProjecao} inputMode="numeric" onChange={(e) => setDiasProjecao(e.target.value.replace(/[^0-9]/g, ""))} className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-[#D4AF37]/50" />
+              <input value={diasProjecao} inputMode="numeric" onChange={(e) => setDiasProjecao(e.target.value.replace(/[^0-9]/g, ""))} className="h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm font-bold text-white outline-none focus:border-fr-d4af37/50" />
               <span className="mt-1 block text-[10px] text-gray-600">Normalmente 30 dias. Ajuste antes de importar o relatório.</span>
             </label>
           </div>
@@ -285,9 +285,9 @@ export default function ComprasAmortecedores() {
                 <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { void importarAntigo(event.target.files?.[0] || null); event.currentTarget.value = ""; }} />
               </label>
             )}
-            <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D4AF37]/25 bg-[#D4AF37]/[0.025] px-4 text-center hover:border-[#D4AF37]/45">
-              <Upload className="h-7 w-7 text-[#F2D675]" />
-              <span className="mt-3 font-black text-[#F2D675]">{buscarAplicacoes.isPending ? "Buscando aplicações..." : transicaoSistema ? "Relatório do sistema novo (.csv ou .xlsx)" : "Selecionar relatório .csv ou .xlsx"}</span>
+            <label className="flex min-h-[120px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-fr-d4af37/25 bg-fr-d4af37/[0.025] px-4 text-center hover:border-fr-d4af37/45">
+              <Upload className="h-7 w-7 text-fri-f2d675" />
+              <span className="mt-3 font-black text-fri-f2d675">{buscarAplicacoes.isPending ? "Buscando aplicações..." : transicaoSistema ? "Relatório do sistema novo (.csv ou .xlsx)" : "Selecionar relatório .csv ou .xlsx"}</span>
               <span className="mt-1 text-xs text-gray-600">Mesmo relatório de compra de peças: Código, Item, Venda Período e Estoque Atual</span>
               <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(event) => { void importarArquivo(event.target.files?.[0] || null); event.currentTarget.value = ""; }} />
             </label>
@@ -324,14 +324,14 @@ export default function ComprasAmortecedores() {
                 ["Unidades sugeridas", resumo.unidades],
                 ["Sem aplicação cadastrada", resumo.semAplicacao],
               ].map(([label, valor]) => (
-                <div key={String(label)} className="rounded-2xl border border-white/[0.07] bg-[#090909] p-4">
+                <div key={String(label)} className="rounded-2xl border border-white/[0.07] bg-fr-090909 p-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">{label}</p>
                   <p className="mt-2 text-2xl font-black text-white">{valor}</p>
                 </div>
               ))}
             </section>
 
-            <section className="mt-5 overflow-hidden rounded-3xl border border-white/[0.08] bg-[#090909]">
+            <section className="mt-5 overflow-hidden rounded-3xl border border-white/[0.08] bg-fr-090909">
               <div className="flex flex-col gap-3 border-b border-white/[0.06] p-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
                   <h2 className="font-black">Análise da compra</h2>
@@ -361,7 +361,7 @@ export default function ComprasAmortecedores() {
                   <tbody>
                     {itensVisiveis.map((item) => (
                       <tr key={item.id} className="border-t border-white/[0.05]">
-                        <td className="px-3 py-3 font-black text-[#F2D675]">{item.codigo}</td>
+                        <td className="px-3 py-3 font-black text-fri-f2d675">{item.codigo}</td>
                         <td className="px-3 py-3 font-bold text-white">{item.item}</td>
                         <td className="px-3 py-3">
                           {item.especificacao ? (
@@ -372,7 +372,7 @@ export default function ComprasAmortecedores() {
                         </td>
                         <td className="px-3 py-3 text-right text-gray-300">{numero(item.vendaPeriodo)}</td>
                         <td className="px-3 py-3 text-right text-gray-300">{numero(item.estoqueAtual)}</td>
-                        <td className="px-3 py-3 text-right font-bold text-[#F2D675]">{numero(item.necessidadeBruta)}</td>
+                        <td className="px-3 py-3 text-right font-bold text-fri-f2d675">{numero(item.necessidadeBruta)}</td>
                         <td className="px-3 py-2 text-right">
                           <input
                             type="number"
@@ -384,7 +384,7 @@ export default function ComprasAmortecedores() {
                               const quantidade = Math.max(0, Math.floor(Number(event.target.value || 0)));
                               setItens((atuais) => atuais.map((a) => (a.id === item.id ? { ...a, quantidadeCompra: quantidade } : a)));
                             }}
-                            className="h-10 w-20 rounded-xl border border-[#D4AF37]/25 bg-black/30 px-2 text-center font-black text-[#F2D675] outline-none"
+                            className="h-10 w-20 rounded-xl border border-fr-d4af37/25 bg-black/30 px-2 text-center font-black text-fri-f2d675 outline-none"
                             title="Quantidade de compra editável"
                           />
                         </td>
@@ -416,7 +416,7 @@ export default function ComprasAmortecedores() {
             </section>
 
             {excluidos.length > 0 && (
-              <section className="mt-5 rounded-3xl border border-white/[0.08] bg-[#090909] p-5">
+              <section className="mt-5 rounded-3xl border border-white/[0.08] bg-fr-090909 p-5">
                 <h2 className="font-black">Excluídos desta análise</h2>
                 <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                   {excluidos.map((item) => (
