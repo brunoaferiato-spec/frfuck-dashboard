@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 import ComprasPneusHistorico from "@/components/ComprasPneusHistorico";
 import ComprasPneusPromocionais from "@/components/ComprasPneusPromocionais";
 import ComprasPneusAnaliseSalva from "@/components/ComprasPneusAnaliseSalva";
+import ComprasPneusLinkFornecedor from "@/components/ComprasPneusLinkFornecedor";
 
 type ItemAnalise = {
   medida: string;
@@ -163,7 +164,8 @@ export default function ComprasPneus() {
   });
   const detalheQuery = trpc.compras.pneus.detalhe.useQuery(
     { planejamentoId: Number(planejamentoId || 0) },
-    { enabled: Boolean(planejamentoId) }
+    // Na aba Cotação atualiza sozinho, para os preços que os fornecedores mandam pelo link aparecerem.
+    { enabled: Boolean(planejamentoId), refetchInterval: aba === "cotacao" ? 30_000 : false }
   );
   const pedidosQuery = trpc.compras.pneus.pedidos.useQuery(
     { planejamentoId: Number(planejamentoId || 0) },
@@ -1803,6 +1805,14 @@ export default function ComprasPneus() {
                         <button type="button" disabled={definirLojasFornecedorMutation.isPending} onClick={() => definirLojasFornecedorMutation.mutate({ id: Number(fornecedor.id), lojas: LOJAS_RS })} className="rounded-full border border-sky-400/20 px-2.5 py-0.5 font-black text-sky-200 disabled:opacity-50">Só RS</button>
                         <button type="button" disabled={definirLojasFornecedorMutation.isPending} onClick={() => definirLojasFornecedorMutation.mutate({ id: Number(fornecedor.id), lojas: [] })} className="rounded-full border border-white/10 px-2.5 py-0.5 font-black text-gray-400 disabled:opacity-50">Todas</button>
                       </div>
+                      {fornecedor.ativo && (
+                        <div className="mt-2.5 border-t border-white/[0.05] pt-2.5">
+                          <ComprasPneusLinkFornecedor
+                            compacto
+                            fornecedor={{ id: Number(fornecedor.id), nome: String(fornecedor.nome) }}
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1835,8 +1845,21 @@ export default function ComprasPneus() {
               <h2 className="mt-2 pr-10 text-2xl font-black text-white">
                 {fornecedorModal.nome}
               </h2>
+              {!somenteLeitura && (
+                <div className="mt-4 rounded-2xl border border-fr-d4af37/20 bg-fr-d4af37/[0.04] p-4">
+                  <p className="font-black text-white">Link do fornecedor (sem planilha)</p>
+                  <p className="mt-1 mb-3 text-xs leading-5 text-gray-500">
+                    Link fixo: {fornecedorModal.nome} responde por ele esta e as próximas cotações
+                    das cidades que atende. Os preços caem direto nesta tabela.
+                  </p>
+                  <ComprasPneusLinkFornecedor
+                    fornecedor={{ id: Number(fornecedorModal.id), nome: String(fornecedorModal.nome) }}
+                  />
+                </div>
+              )}
+
               <p className="mt-4 text-sm leading-6 text-gray-500">
-                Escolha uma das ações abaixo.
+                Ou pela planilha:
               </p>
 
               {erro && (

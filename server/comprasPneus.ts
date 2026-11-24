@@ -1,10 +1,10 @@
 import mysql from "mysql2/promise";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
 const TAMANHO_MAXIMO = 8 * 1024 * 1024;
 const MIME_XLSX =
@@ -689,8 +689,65 @@ async function ensureComprasPneus() {
     }
   }
 
+  // Link fixo do fornecedor (portal de cotação sem login). Token longo e aleatório.
+  try {
+    await pool.query(
+      `ALTER TABLE compras_pneus_fornecedores ADD COLUMN linkToken VARCHAR(64) NULL`
+    );
+  } catch (error: any) {
+    if (String(error?.code || "") !== "ER_DUP_FIELDNAME") throw error;
+  }
+  try {
+    await pool.query(
+      `ALTER TABLE compras_pneus_fornecedores ADD UNIQUE KEY uq_compras_pneus_fornecedor_link (linkToken)`
+    );
+  } catch (error: any) {
+    if (String(error?.code || "") !== "ER_DUP_KEYNAME") throw error;
+  }
+
   estruturaComprasPneusPronta = true;
 }
+
+// ======================================================
+// PORTAL DO FORNECEDOR (link fixo, sem login)
+// O fornecedor só vê as cotações em aberto das cidades que atende,
+// com medida e melhor preço UF (o mesmo da planilha), e só grava o próprio preço.
+// ======================================================
+const PORTAL_DIAS_COTACAO_ABERTA = 30;
+
+function novoTokenFornecedor() {
+  return randomBytes(32).toString("hex");
+}
+
+async function fornecedorPorToken(token: string) {
+  const pool = getPoolComprasPneus();
+  const [rows] = await pool.query<any[]>(
+    `SELECT id, nome FROM compras_pneus_fornecedores
+     WHERE linkToken = ? AND ativo = 1 LIMIT 1`,
+    [token]
+  );
+  const fornecedor = rows[0];
+  if (!fornecedor) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Link inválido ou desativado. Peça um link novo ao comprador.",
+    });
+  }
+  return { id: Number(fornecedor.id), nome: String(fornecedor.nome) };
+}
+
+// Cotações que o fornecedor pode responder: não excluídas, ainda sem pedido fechado,
+// recentes e de uma cidade que ele atende (sem cidade cadastrada = todas).
+const SQL_PLANEJAMENTO_ABERTO_PARA_FORNECEDOR = `
+  p.excluidoEm IS NULL
+  AND p.status IN ('planejamento', 'cotacao')
+  AND p.createdAt >= NOW() - INTERVAL ${PORTAL_DIAS_COTACAO_ABERTA} DAY
+  AND (
+    NOT EXISTS (SELECT 1 FROM compras_pneus_fornecedor_lojas fl WHERE fl.fornecedorId = ?)
+    OR p.lojaId IN (SELECT fl.lojaId FROM compras_pneus_fornecedor_lojas fl WHERE fl.fornecedorId = ?)
+  )`;
+
+const portalTokenSchema = z.string().regex(/^[a-f0-9]{64}$/, "Link inválido.");
 
 function normalizarTexto(valor: unknown) {
   return String(valor ?? "")
@@ -1901,6 +1958,188 @@ export const comprasPneusRouter = router({
       } finally {
         conn.release();
       }
+    }),
+
+  // Link fixo do fornecedor: devolve o atual ou cria na primeira vez.
+  linkFornecedor: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const perfil = assertCompras(ctx);
+      if (perfil.role === "pneus_leitura") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Perfil somente leitura não gera link de fornecedor." });
+      }
+      await ensureComprasPneus();
+      const pool = getPoolComprasPneus();
+      const [rows] = await pool.query<any[]>(
+        `SELECT linkToken FROM compras_pneus_fornecedores WHERE id = ? LIMIT 1`,
+        [input.id]
+      );
+      if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Fornecedor não encontrado." });
+      if (rows[0].linkToken) return { token: String(rows[0].linkToken) };
+      const token = novoTokenFornecedor();
+      await pool.query(
+        `UPDATE compras_pneus_fornecedores SET linkToken = ? WHERE id = ? AND linkToken IS NULL`,
+        [token, input.id]
+      );
+      const [depois] = await pool.query<any[]>(
+        `SELECT linkToken FROM compras_pneus_fornecedores WHERE id = ? LIMIT 1`,
+        [input.id]
+      );
+      return { token: String(depois[0].linkToken) };
+    }),
+
+  // Troca o link (o antigo para de funcionar na hora).
+  trocarLinkFornecedor: protectedProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const perfil = assertCompras(ctx);
+      if (perfil.role === "pneus_leitura") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Perfil somente leitura não troca link de fornecedor." });
+      }
+      await ensureComprasPneus();
+      const pool = getPoolComprasPneus();
+      const token = novoTokenFornecedor();
+      const [result] = await pool.query<any>(
+        `UPDATE compras_pneus_fornecedores SET linkToken = ? WHERE id = ?`,
+        [token, input.id]
+      );
+      if (!Number(result.affectedRows)) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Fornecedor não encontrado." });
+      }
+      return { token };
+    }),
+
+  // ---------- PORTAL DO FORNECEDOR (público: só funciona com o token) ----------
+  portalFornecedor: publicProcedure
+    .input(z.object({ token: portalTokenSchema }))
+    .query(async ({ input }) => {
+      await ensureComprasPneus();
+      const pool = getPoolComprasPneus();
+      const fornecedor = await fornecedorPorToken(input.token);
+
+      const [planos] = await pool.query<any[]>(
+        `SELECT p.id, p.lojaId, p.createdAt
+         FROM compras_pneus_planejamentos p
+         WHERE ${SQL_PLANEJAMENTO_ABERTO_PARA_FORNECEDOR}
+         ORDER BY p.createdAt DESC, p.id DESC`,
+        [fornecedor.id, fornecedor.id]
+      );
+
+      const ids = planos.map((p) => Number(p.id));
+      let itens: any[] = [];
+      if (ids.length) {
+        const [rows] = await pool.query<any[]>(
+          `SELECT i.id, i.planejamentoId, i.medida, i.melhorPrecoUf, c.valor AS meuPreco
+           FROM compras_pneus_itens i
+           LEFT JOIN compras_pneus_cotacoes c ON c.itemId = i.id AND c.fornecedorId = ?
+           WHERE i.planejamentoId IN (${ids.map(() => "?").join(",")}) AND i.quantidadeFinal > 0
+           ORDER BY i.medida ASC`,
+          [fornecedor.id, ...ids]
+        );
+        itens = rows;
+      }
+
+      return {
+        fornecedor: { nome: fornecedor.nome },
+        diasEmAberto: PORTAL_DIAS_COTACAO_ABERTA,
+        cotacoes: planos
+          .map((p) => ({
+            planejamentoId: Number(p.id),
+            cidade: LOJAS_RELATORIO.find((l) => l.id === Number(p.lojaId))?.nome || "",
+            criadoEm: p.createdAt,
+            itens: itens
+              .filter((i) => Number(i.planejamentoId) === Number(p.id))
+              .map((i) => ({
+                itemId: Number(i.id),
+                medida: String(i.medida),
+                melhorPrecoUf: Number(i.melhorPrecoUf || 0),
+                meuPreco: i.meuPreco === null || i.meuPreco === undefined ? null : Number(i.meuPreco),
+              })),
+          }))
+          .filter((c) => c.itens.length > 0),
+      };
+    }),
+
+  portalSalvarPrecos: publicProcedure
+    .input(
+      z.object({
+        token: portalTokenSchema,
+        precos: z
+          .array(
+            z.object({
+              itemId: z.number().int().positive(),
+              // null ou 0 = apagar o preço daquele item
+              valor: z.number().min(0).max(1_000_000).nullable(),
+            })
+          )
+          .min(1)
+          .max(500),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await ensureComprasPneus();
+      const pool = getPoolComprasPneus();
+      const fornecedor = await fornecedorPorToken(input.token);
+
+      // Só itens de cotações em aberto que este fornecedor pode ver.
+      const pedidos = Array.from(new Map(input.precos.map((p) => [p.itemId, p])).values());
+      const [permitidos] = await pool.query<any[]>(
+        `SELECT i.id, i.planejamentoId
+         FROM compras_pneus_itens i
+         JOIN compras_pneus_planejamentos p ON p.id = i.planejamentoId
+         WHERE i.id IN (${pedidos.map(() => "?").join(",")})
+           AND i.quantidadeFinal > 0
+           AND ${SQL_PLANEJAMENTO_ABERTO_PARA_FORNECEDOR}`,
+        [...pedidos.map((p) => p.itemId), fornecedor.id, fornecedor.id]
+      );
+      const planoDoItem = new Map(permitidos.map((r) => [Number(r.id), Number(r.planejamentoId)]));
+
+      let salvos = 0;
+      let apagados = 0;
+      const planosTocados = new Set<number>();
+
+      for (const { itemId, valor } of pedidos) {
+        const planejamentoId = planoDoItem.get(itemId);
+        if (!planejamentoId) continue;
+        planosTocados.add(planejamentoId);
+
+        if (valor && valor > 0) {
+          await pool.query(
+            `INSERT INTO compras_pneus_cotacoes (itemId, fornecedorId, valor)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE valor = VALUES(valor)`,
+            [itemId, fornecedor.id, valor]
+          );
+          await pool.query(
+            `UPDATE compras_pneus_itens SET precoSelecionado = ?
+             WHERE id = ? AND fornecedorSelecionadoId = ?`,
+            [valor, itemId, fornecedor.id]
+          );
+          salvos += 1;
+        } else {
+          await pool.query(
+            `DELETE FROM compras_pneus_cotacoes WHERE itemId = ? AND fornecedorId = ?`,
+            [itemId, fornecedor.id]
+          );
+          // Sem preço, este fornecedor deixa de ser o escolhido do item.
+          await pool.query(
+            `UPDATE compras_pneus_itens SET fornecedorSelecionadoId = NULL, precoSelecionado = NULL
+             WHERE id = ? AND fornecedorSelecionadoId = ?`,
+            [itemId, fornecedor.id]
+          );
+          apagados += 1;
+        }
+      }
+
+      if (planosTocados.size) {
+        await pool.query(
+          `UPDATE compras_pneus_planejamentos SET status = 'cotacao'
+           WHERE id IN (${Array.from(planosTocados).map(() => "?").join(",")}) AND status = 'planejamento'`,
+          Array.from(planosTocados)
+        );
+      }
+
+      return { salvos, apagados, ignorados: pedidos.length - planoDoItem.size };
     }),
 
   regras: protectedProcedure

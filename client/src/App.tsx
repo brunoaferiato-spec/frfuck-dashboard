@@ -28,6 +28,7 @@ import RHRescisoes from "./pages/RHRescisoes";
 import RHFeriasPlanejamento from "./pages/RHFeriasPlanejamento";
 import ComprasShell from "./components/ComprasShell";
 import ComprasPneus from "./pages/ComprasPneus";
+import CotacaoFornecedorPneus from "./pages/CotacaoFornecedorPneus";
 import ComprasPecas from "./pages/ComprasPecas";
 import ComprasAmortecedores from "./pages/ComprasAmortecedores";
 import ComprasPlaceholder from "./pages/ComprasPlaceholder";
@@ -257,6 +258,11 @@ function RotaEstoque({ children }: { children: ReactNode }) {
 function Router() {
   return (
     <Switch>
+      {/* Portal do fornecedor: link fixo, sem login. */}
+      <Route path="/cotacao/pneus/:token">
+        {(params) => <CotacaoFornecedorPneus token={String(params.token || "")} />}
+      </Route>
+
       <Route path="/" component={RotaInicial} />
 
       <Route path="/rh/meu-dia">
