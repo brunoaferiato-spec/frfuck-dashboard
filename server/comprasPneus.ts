@@ -5,6 +5,8 @@ import ExcelJS from "exceljs";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { assertSenhaExclusao } from "./comprasPecas";
+import { ensureRecebimentoPneus, fechamentoPneusRouter } from "./comprasPneusRecebimento";
 
 const TAMANHO_MAXIMO = 8 * 1024 * 1024;
 const MIME_XLSX =
@@ -705,6 +707,9 @@ async function ensureComprasPneus() {
     if (String(error?.code || "") !== "ER_DUP_KEYNAME") throw error;
   }
 
+  // Recebimento pela loja e fechamento com a nota fiscal.
+  await ensureRecebimentoPneus();
+
   estruturaComprasPneusPronta = true;
 }
 
@@ -1342,6 +1347,9 @@ const itemAnaliseSchema = z.object({
 });
 
 export const comprasPneusRouter = router({
+  // Recebimento conferido pela loja e fechamento do pedido com a nota fiscal.
+  fechamento: fechamentoPneusRouter,
+
   analisar: protectedProcedure
     .input(
       z.object({
@@ -2921,8 +2929,8 @@ export const comprasPneusRouter = router({
           const [result] = await conn.query<any>(
             `INSERT INTO compras_pneus_pedidos
                (planejamentoId, fornecedorId, fornecedorNome, totalPneus,
-                totalValor, criadoPorUsuarioId, criadoPorNome)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                totalValor, criadoPorUsuarioId, criadoPorNome, recebimentoStatus)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'aguardando')`,
             [
               input.planejamentoId,
               fornecedorId,
@@ -2973,9 +2981,10 @@ export const comprasPneusRouter = router({
     }),
 
   excluirPedidosPlanejamento: protectedProcedure
-    .input(z.object({ planejamentoId: z.number().int().positive() }))
+    .input(z.object({ planejamentoId: z.number().int().positive(), senha: z.string().max(50) }))
     .mutation(async ({ ctx, input }) => {
       assertCompras(ctx);
+      assertSenhaExclusao(input.senha);
       await ensureComprasPneus();
       const pool = getPoolComprasPneus();
       const conn = await pool.getConnection();
@@ -2987,6 +2996,14 @@ export const comprasPneusRouter = router({
           `SELECT id
            FROM compras_pneus_pedidos
            WHERE planejamentoId = ?`,
+          [input.planejamentoId]
+        );
+
+        await conn.query(
+          `DELETE n
+           FROM compras_pneus_pedido_notas n
+           INNER JOIN compras_pneus_pedidos pe ON pe.id = n.pedidoId
+           WHERE pe.planejamentoId = ?`,
           [input.planejamentoId]
         );
 
@@ -3039,9 +3056,10 @@ export const comprasPneusRouter = router({
     }),
 
   excluirPlanejamento: protectedProcedure
-    .input(z.object({ planejamentoId: z.number().int().positive() }))
+    .input(z.object({ planejamentoId: z.number().int().positive(), senha: z.string().max(50) }))
     .mutation(async ({ ctx, input }) => {
       assertCompras(ctx);
+      assertSenhaExclusao(input.senha);
       await ensureComprasPneus();
       const pool = getPoolComprasPneus();
       const conn = await pool.getConnection();

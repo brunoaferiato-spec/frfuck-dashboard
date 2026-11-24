@@ -13,11 +13,13 @@ import {
   Save,
   Settings,
   ShoppingCart,
+  Trash2,
   Upload,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ComprasPneusHistorico from "@/components/ComprasPneusHistorico";
+import ComprasPneusFechamento from "@/components/ComprasPneusFechamento";
 import ComprasPneusPromocionais from "@/components/ComprasPneusPromocionais";
 import ComprasPneusAnaliseSalva from "@/components/ComprasPneusAnaliseSalva";
 import ComprasPneusLinkFornecedor from "@/components/ComprasPneusLinkFornecedor";
@@ -37,7 +39,7 @@ type ItemAnalise = {
   quantidadeFinal: number;
 };
 
-type Aba = "planejamento" | "cotacao" | "pedidos" | "promocionais" | "historico" | "config";
+type Aba = "planejamento" | "cotacao" | "pedidos" | "fechamento" | "promocionais" | "historico" | "config";
 
 const LOJAS_COMPRAS = [
   { id: 1, nome: "Joinville" },
@@ -127,6 +129,9 @@ export default function ComprasPneus() {
   const [chaveAnalise, setChaveAnalise] = useState("");
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
+  // Exclusão protegida por senha (conferida no servidor, mesma senha do Compras Peças).
+  const [exclusao, setExclusao] = useState<{ tipo: "pedidos" | "planejamento"; id: number; texto: string } | null>(null);
+  const [senhaExclusao, setSenhaExclusao] = useState("");
   const [novoFornecedor, setNovoFornecedor] = useState("");
   const [cotacaoLocal, setCotacaoLocal] = useState<Record<string, string>>({});
   const [novaRegraMedida, setNovaRegraMedida] = useState("");
@@ -228,6 +233,8 @@ export default function ComprasPneus() {
     trpc.compras.pneus.excluirPlanejamento.useMutation({
       onSuccess: async (data) => {
         setErro("");
+        setExclusao(null);
+        setSenhaExclusao("");
         setMensagem(`Planejamento #${data.planejamentoId} enviado para a lixeira. Dá para restaurar logo abaixo da lista.`);
         if (planejamentoId === Number(data.planejamentoId)) {
           setPlanejamentoId(null);
@@ -237,11 +244,12 @@ export default function ComprasPneus() {
         await utils.compras.pneus.promocionais.invalidate();
         await utils.compras.pneus.historico.invalidate();
       },
-      onError: (error) =>
-        setErro(error.message || "Não foi possível excluir o planejamento."),
+      onError: () => undefined,
     });
 
   const lixeiraQuery = trpc.compras.pneus.lixeira.useQuery();
+  // Pedidos que a loja já conferiu e esperam o fechamento com a nota (número na aba).
+  const fechamentoQuery = trpc.compras.pneus.fechamento.lista.useQuery(undefined, { refetchInterval: 60_000 });
   const restaurarPlanejamentoMutation = trpc.compras.pneus.restaurarPlanejamento.useMutation({
     onSuccess: async (data) => {
       setErro("");
@@ -258,14 +266,15 @@ export default function ComprasPneus() {
     trpc.compras.pneus.excluirPedidosPlanejamento.useMutation({
       onSuccess: async (data) => {
         setErro("");
+        setExclusao(null);
+        setSenhaExclusao("");
         setMensagem(
           `${data.excluidos || 0} pedido(s) excluído(s) do planejamento #${data.planejamentoId}.`
         );
         await planejamentosQuery.refetch();
         await utils.compras.pneus.promocionais.invalidate();
       },
-      onError: (error) =>
-        setErro(error.message || "Não foi possível excluir os pedidos."),
+      onError: () => undefined,
     });
 
   const criarFornecedorMutation = trpc.compras.pneus.criarFornecedor.useMutation({
@@ -543,11 +552,13 @@ export default function ComprasPneus() {
     ["planejamento", "Planejamento"],
     ["cotacao", "Cotação"],
     ["pedidos", "Pedidos"],
+    ["fechamento", "Fechamento"],
     ["promocionais", "Preços Promocionais"],
     ["historico", "Histórico"],
     ["config", "Configurações"],
   ] as const;
-  const abas = abasTodas.filter(([valor]) => !somenteLeitura || ["planejamento", "cotacao", "pedidos", "historico"].includes(valor));
+  const abas = abasTodas.filter(([valor]) => !somenteLeitura || ["planejamento", "cotacao", "pedidos", "fechamento", "historico"].includes(valor));
+  const paraFechar = fechamentoQuery.data?.conferidos.length || 0;
 
   return (
     <main className="min-h-full bg-fr-050505 p-4 text-white sm:p-6 lg:p-8">
@@ -588,6 +599,11 @@ export default function ComprasPneus() {
               }`}
             >
               {label}
+              {valor === "fechamento" && paraFechar > 0 && (
+                <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] ${aba === valor ? "bg-black/20" : "bg-emerald-400/20 text-emerald-200"}`}>
+                  {paraFechar}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -1027,15 +1043,13 @@ export default function ComprasPneus() {
                             type="button"
                             disabled={excluirPedidosRecenteMutation.isPending}
                             onClick={() => {
-                              const confirmar = window.confirm(
-                                `Excluir os pedidos do Planejamento #${item.id}? O planejamento e a cotação serão mantidos.`
-                              );
-
-                              if (confirmar) {
-                                excluirPedidosRecenteMutation.mutate({
-                                  planejamentoId: Number(item.id),
-                                });
-                              }
+                              excluirPedidosRecenteMutation.reset();
+                              setSenhaExclusao("");
+                              setExclusao({
+                                tipo: "pedidos",
+                                id: Number(item.id),
+                                texto: `Excluir os pedidos do Planejamento #${item.id}? O planejamento e a cotação serão mantidos.`,
+                              });
                             }}
                             className="h-9 rounded-lg border border-rose-400/20 bg-rose-400/[0.04] px-3 text-[11px] font-black text-rose-200 disabled:opacity-50"
                           >
@@ -1047,15 +1061,13 @@ export default function ComprasPneus() {
                           type="button"
                           disabled={excluirPlanejamentoRecenteMutation.isPending}
                           onClick={() => {
-                            const confirmar = window.confirm(
-                              `Excluir o Planejamento #${item.id}? Ele vai para a lixeira e pode ser restaurado.`
-                            );
-
-                            if (confirmar) {
-                              excluirPlanejamentoRecenteMutation.mutate({
-                                planejamentoId: Number(item.id),
-                              });
-                            }
+                            excluirPlanejamentoRecenteMutation.reset();
+                            setSenhaExclusao("");
+                            setExclusao({
+                              tipo: "planejamento",
+                              id: Number(item.id),
+                              texto: `Excluir o Planejamento #${item.id}? Ele vai para a lixeira e pode ser restaurado.`,
+                            });
                           }}
                           className="h-9 rounded-lg border border-rose-500/30 bg-rose-500/[0.08] px-3 text-[11px] font-black text-rose-300 disabled:opacity-50"
                         >
@@ -1548,6 +1560,8 @@ export default function ComprasPneus() {
           </fieldset>
         )}
 
+        {aba === "fechamento" && <ComprasPneusFechamento somenteLeitura={somenteLeitura} />}
+
         {aba === "pedidos" && (
           <fieldset disabled={somenteLeitura} className="m-0 min-w-0 border-0 p-0">
           <div className="mt-5">
@@ -1924,6 +1938,66 @@ export default function ComprasPneus() {
             </div>
           </div>
         )}
+
+        {exclusao && (() => {
+          const mutacao = exclusao.tipo === "pedidos" ? excluirPedidosRecenteMutation : excluirPlanejamentoRecenteMutation;
+          const enviando = mutacao.isPending;
+          const fecharExclusao = () => {
+            if (enviando) return;
+            setExclusao(null);
+            setSenhaExclusao("");
+          };
+          const confirmar = () => {
+            if (!senhaExclusao.trim() || enviando) return;
+            mutacao.reset();
+            mutacao.mutate({ planejamentoId: exclusao.id, senha: senhaExclusao });
+          };
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+              <div className="w-full max-w-md rounded-3xl border border-rose-500/20 bg-fr-0a0a0a p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-300/70">EXCLUSÃO PROTEGIDA</p>
+                    <p className="mt-2 text-sm font-bold text-white">{exclusao.texto}</p>
+                  </div>
+                  <button type="button" onClick={fecharExclusao} className="rounded-xl border border-white/10 p-2 text-gray-500">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <input
+                  type="password"
+                  autoFocus
+                  value={senhaExclusao}
+                  onChange={(e) => setSenhaExclusao(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") confirmar();
+                  }}
+                  placeholder="Senha de exclusão"
+                  className="mt-4 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white"
+                />
+                {mutacao.error && !enviando && (
+                  <div className="mt-3 rounded-xl border border-rose-400/25 bg-rose-400/[0.06] px-3 py-2 text-xs font-bold text-rose-200">
+                    {mutacao.error.message}
+                  </div>
+                )}
+                <div className="mt-4 flex justify-end gap-2">
+                  <button type="button" onClick={fecharExclusao} className="h-10 rounded-xl border border-white/10 px-4 text-xs font-black text-gray-400">
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!senhaExclusao.trim() || enviando}
+                    onClick={confirmar}
+                    className="h-10 rounded-xl border border-rose-500/30 bg-rose-500/[0.12] px-4 text-xs font-black text-rose-200 disabled:opacity-50"
+                  >
+                    <Trash2 className="mr-2 inline h-4 w-4" />
+                    {enviando ? "Excluindo..." : "Excluir"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         <footer className="mt-8 border-t border-white/[0.05] py-5 text-center text-[11px] text-gray-700">
           Compras de Pneus • {String(user?.name || "Usuário")}
