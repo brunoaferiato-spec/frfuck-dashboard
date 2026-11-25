@@ -16,7 +16,6 @@ import GestaoMetas from "./pages/GestaoMetas";
 import AnaliseFuncionario from "./pages/AnaliseFuncionario";
 import Usuarios from "./pages/Usuarios";
 import RHMeuDia from "./pages/RHMeuDia";
-import RHGestao from "./pages/RHGestao";
 import RHPainelOperacional from "./pages/RHPainelOperacional";
 import RHGestaoShell from "./components/RHGestaoShell";
 import RHCaixa from "./pages/RHCaixa";
@@ -271,11 +270,8 @@ function Router() {
         </RotaMeuDia>
       </Route>
 
-      <Route path="/rh/gestao/detalhes">
-        <RotaGestaoRh>
-          <RHGestao />
-        </RotaGestaoRh>
-      </Route>
+      {/* Gestão de Ponto desativada: o ponto não é mais conferido pelo Caixa. */}
+      <Route path="/rh/gestao/detalhes"><Redirect to="/rh/gestao" /></Route>
 
       <Route path="/rh/gestao">
         <RotaGestaoRh>

@@ -30,7 +30,6 @@ export default function RHGestaoShell({ children }: { children: ReactNode }) {
 
   const menu = [
     { label: "Visão Geral", icon: LayoutDashboard, rota: "/rh/gestao", exact: true },
-    { label: "Ponto", icon: ClipboardCheck, rota: "/rh/gestao/detalhes" },
     { label: "Caixa", icon: WalletCards, rota: "/rh/caixa" },
     { label: "Documentos", icon: Archive, rota: "/rh/documentos" },
     { label: "EPIs", icon: HardHat, rota: "/rh/epis" },

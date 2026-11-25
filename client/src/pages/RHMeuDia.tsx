@@ -32,6 +32,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Conferência de ponto pelo Caixa desativada em 24/11/2026 (sem advertências). O histórico fica no banco.
+const PONTO_ATIVO = false;
+
 type PeriodoPonto =
   | "entrada"
   | "saida_almoco"
@@ -701,14 +704,14 @@ export default function RHMeuDia() {
       dataReferencia,
     },
     {
-      enabled: lojaIdAtual > 0,
+      enabled: PONTO_ATIVO && lojaIdAtual > 0,
       retry: false,
     }
   );
 
   const pendenciasQuery = trpc.rhPonto.pendencias.useQuery(
     { lojaId: lojaIdAtual > 0 ? lojaIdAtual : null },
-    { enabled: lojaIdAtual > 0, retry: false }
+    { enabled: PONTO_ATIVO && lojaIdAtual > 0, retry: false }
   );
 
   const funcionariosQuery = trpc.funcionarios.listByLoja.useQuery(
@@ -1320,14 +1323,6 @@ export default function RHMeuDia() {
                 Meu Dia
               </button>
 
-              <button
-                type="button"
-                onClick={() => abrirPainelMobile("ponto")}
-                className="flex min-h-12 w-full items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] px-4 text-left text-sm font-bold text-white"
-              >
-                <Clock3 className="h-5 w-5 shrink-0 text-fri-f2d675" />
-                Ponto
-              </button>
 
               <button
                 type="button"
@@ -1392,96 +1387,6 @@ export default function RHMeuDia() {
             <p className="mt-1 text-sm text-gray-500">
               Toque em um card para abrir ou recolher os detalhes.
             </p>
-          </div>
-
-          <div id="painel-mobile-ponto" className="scroll-mt-20">
-            <button
-              type="button"
-              onClick={() => abrirPainelMobile("ponto")}
-              className={`w-full rounded-3xl border p-5 text-left transition active:scale-[0.99] ${
-                resumoPainelMobile.ponto > 0
-                  ? "border-rose-400/25 bg-rose-400/[0.045]"
-                  : "border-emerald-400/20 bg-emerald-400/[0.035]"
-              }`}
-            >
-              <div className="flex items-start gap-4">
-                <div
-                  className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${
-                    resumoPainelMobile.ponto > 0
-                      ? "border-rose-400/25 bg-rose-400/[0.06]"
-                      : "border-emerald-400/20 bg-emerald-400/[0.05]"
-                  }`}
-                >
-                  <Clock3
-                    className={`h-6 w-6 ${
-                      resumoPainelMobile.ponto > 0
-                        ? "text-rose-300"
-                        : "text-emerald-300"
-                    }`}
-                  />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-black text-white">Ponto</h2>
-                      <p className="mt-1 text-sm leading-5 text-gray-500">
-                        Conferências e tratativas do ponto diário.
-                      </p>
-                    </div>
-
-                    <div className="shrink-0 text-right">
-                      <p
-                        className={`text-3xl font-black ${
-                          resumoPainelMobile.ponto > 0
-                            ? "text-rose-200"
-                            : "text-emerald-200"
-                        }`}
-                      >
-                        {resumoPainelMobile.ponto}
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-[0.08em] text-gray-600">
-                        pendências
-                      </p>
-                    </div>
-                  </div>
-
-                  <div
-                    className={`mt-4 inline-flex items-center gap-2 text-xs font-black ${
-                      resumoPainelMobile.ponto > 0
-                        ? "text-rose-300"
-                        : "text-emerald-300"
-                    }`}
-                  >
-                    {resumoPainelMobile.ponto > 0 ? (
-                      <AlertTriangle className="h-4 w-4" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    {resumoPainelMobile.ponto > 0
-                      ? "Aguardando ação"
-                      : "Ponto em dia"}
-                  </div>
-                </div>
-              </div>
-            </button>
-
-            {painelMobileAberto === "ponto" && (
-              <div className="mt-3">
-                <div className="mb-3 flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2">
-                  <p className="text-xs font-bold text-gray-400">
-                    Detalhes do ponto
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setPainelMobileAberto(null)}
-                    className="text-xs font-black text-fri-f2d675"
-                  >
-                    Recolher
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {resumoPainelMobile.ferias > 0 && (
@@ -1779,33 +1684,11 @@ export default function RHMeuDia() {
           <RHEpiAlertas />
         </div>
 
-        <div className={painelMobileAberto === "ponto" ? "block" : "hidden sm:block"}>
-        <section className="grid gap-3 lg:grid-cols-[1.35fr_1fr] lg:gap-4">
-          <Card className="border-fr-d4af37/20 bg-gradient-to-br from-fr-111111 via-fr-0b0b0b to-fr-080808">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-fri-8f8a80 sm:text-xs">
-                    Rotina da Caixa Líder
-                  </p>
-
-                  <h2 className="mt-1.5 truncate text-2xl font-black text-white sm:text-3xl">
-                    {lojaAtual?.nome || (ehAdminTeste ? "Selecione uma loja" : "Sua loja")}
-                  </h2>
-
-                  <p className="mt-1.5 capitalize text-xs text-gray-400 sm:text-sm">
-                    {formatarDataExtenso(dataReferencia)}
-                  </p>
-                </div>
-
-                <div className="shrink-0 rounded-xl border border-fr-d4af37/25 bg-fr-d4af37/10 p-2.5 sm:rounded-2xl sm:p-3">
-                  <CalendarDays className="h-5 w-5 text-fri-f2d675 sm:h-6 sm:w-6" />
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {ehAdminTeste ? (
-                  <>
+        {/* Conferência de ponto desativada: o Caixa não confere mais o ponto nem aplica advertência. */}
+        {ehAdminTeste && (
+          <section className="mt-5 rounded-2xl border border-fr-d4af37/20 bg-fr-0b0b0b p-4 sm:mt-6">
+            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.16em] text-fri-8f8a80">Teste do administrador</p>
+            <div className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <label className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.14em] text-gray-500">
                         Loja para teste
@@ -1814,7 +1697,6 @@ export default function RHMeuDia() {
                         value={lojaTeste}
                         onValueChange={(valor) => {
                           setLojaTeste(valor);
-                          setPeriodoAberto(null);
                         }}
                       >
                         <SelectTrigger className="h-11 w-full border-fr-d4af37/25 bg-fr-111111 text-base text-white">
@@ -1839,382 +1721,13 @@ export default function RHMeuDia() {
                         value={dataTeste}
                         onChange={(event) => {
                           setDataTeste(event.target.value || hoje);
-                          setPeriodoAberto(null);
                         }}
                         className="h-11 w-full rounded-xl border border-fr-d4af37/25 bg-fr-111111 px-3 text-sm text-white outline-none focus:border-fr-d4af37/55"
                       />
                     </div>
-                  </>
-                ) : (
-                  <div className="flex min-h-11 items-center gap-2 rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.06] px-3 py-2.5 text-sm sm:col-span-2">
-                    <MapPin className="h-4 w-4 shrink-0 text-fri-f2d675" />
-                    <span className="truncate font-semibold">
-                      {lojaAtual?.nome || "Loja vinculada"}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 rounded-xl border border-fr-d4af37/15 bg-black/25 p-3.5 text-xs leading-5 text-gray-400 sm:p-4 sm:text-sm sm:leading-6">
-                A conferência é feita pelo PDF do Secullum. Até 10 minutos de atraso fica dentro da tolerância; de 11 a 15 minutos o atraso é apenas registrado; acima de 15 minutos exige tratativa.
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={
-              conferenciasPendentesAgora.length > 0
-                ? "border-amber-400/25 bg-amber-500/[0.05]"
-                : "border-fr-d4af37/20 bg-fr-0b0b0b"
-            }
-          >
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-2.5">
-                  {conferenciasPendentesAgora.length > 0 ? (
-                    <AlertTriangle className="h-5 w-5 text-amber-300" />
-                  ) : (
-                    <ShieldCheck className="h-5 w-5 text-fri-f2d675" />
-                  )}
-                </div>
-
-                <div>
-                  <p className="font-bold text-white">Pendências agora</p>
-                  <p className="mt-0.5 text-xs text-gray-500">Caixa Líder</p>
-                </div>
-              </div>
-
-              {conferenciasPendentesAgora.length > 0 ? (
-                <div className="mt-4 space-y-2">
-                  {conferenciasPendentesAgora.map((item) => (
-                    <div
-                      key={item.periodo}
-                      className="rounded-xl border border-amber-400/15 bg-amber-400/[0.05] px-3 py-2.5 text-sm text-amber-100"
-                    >
-                      Conferência das <strong>{item.horario}</strong> ainda não realizada.
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-3 text-xs leading-5 text-gray-400 sm:text-sm sm:leading-6">
-                  Nenhuma conferência vencida neste momento.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="mt-5 sm:mt-6">
-          <div className="mb-3">
-            <p className="text-lg font-black text-white sm:text-xl">
-              Conferência de ponto
-            </p>
-            <p className="mt-1 text-xs text-gray-500 sm:text-sm">
-              {domingoFechado
-                ? "Domingo • loja fechada • sem conferência de ponto."
-                : sabadoOperacao
-                ? "Sábado: somente Entrada e Saída. Sem conferência de almoço."
-                : "Baixe o Ponto Diário atualizado em cada horário e importe o PDF."}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {horariosDoDia.map((item) => {
-              const existente = conferenciaPorPeriodo.get(item.periodo);
-              const horarioLiberado =
-                ehAdminTeste ||
-                dataReferencia < hoje ||
-                (dataReferencia === hoje &&
-                  agoraMinutos >= minutosHorario(item.horario));
-              const totalOcorrencias = Number(existente?.ocorrencias?.length || 0);
-              return (
-                <Card
-                  key={item.periodo}
-                  className={
-                    existente
-                      ? "border-emerald-400/20 bg-emerald-500/[0.035]"
-                      : horarioLiberado
-                      ? "border-amber-400/20 bg-fr-0b0b0b"
-                      : "border-white/[0.08] bg-fr-0b0b0b"
-                  }
-                >
-                  <CardContent className="p-4 sm:p-5">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-2xl font-black text-fri-f2d675 sm:text-3xl">
-                        {item.horario}
-                      </span>
-                      {existente ? (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                      ) : (
-                        <Clock3 className="h-5 w-5 text-gray-600" />
-                      )}
-                    </div>
-
-                    <p className="mt-3 text-base font-bold text-white sm:text-lg">
-                      {item.titulo}
-                    </p>
-
-                    <p className="mt-1.5 text-xs leading-5 text-gray-500 sm:min-h-[58px] sm:text-sm">
-                      {item.descricao}
-                    </p>
-
-                    {existente ? (
-                      <div className="mt-4 space-y-2">
-                        <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] px-3 py-2.5 text-xs text-emerald-200">
-                          Conferido às{" "}
-                          <strong>{formatarHorarioData(existente.conferidoEm)}</strong>
-                          {totalOcorrencias > 0
-                            ? ` • ${totalOcorrencias} ocorrência${
-                                totalOcorrencias === 1 ? "" : "s"
-                              }`
-                            : " • Tudo certo"}
-                        </div>
-
-                        {existente.relatorioNome && (
-                          <div className="truncate rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-2 text-[11px] text-gray-500">
-                            PDF: {existente.relatorioNome}
-                          </div>
-                        )}
-
-                        <div className="rounded-lg border border-fr-d4af37/10 bg-fr-d4af37/[0.035] px-3 py-2 text-[11px] leading-4 text-fri-b9aa7a">
-                          Ocorrências que exigem ação ficam concentradas em <strong className="text-fri-f2d675">Pendências abertas</strong>.
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => abrirConferencia(item.periodo)}
-                          className="h-11 w-full border-white/10 bg-white/[0.025] text-white hover:bg-white/[0.06]"
-                        >
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Reimportar / corrigir
-                        </Button>
-                      </div>
-                    ) : horarioLiberado ? (
-                      <Button
-                        type="button"
-                        onClick={() => abrirConferencia(item.periodo)}
-                        className="mt-4 h-12 w-full bg-fr-d4af37 font-black text-black hover:bg-fr-e6c760"
-                      >
-                        <FileUp className="mr-2 h-4 w-4" />
-                        Importar PDF
-                      </Button>
-                    ) : (
-                      <div className="mt-4 flex min-h-11 items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2.5 text-xs text-gray-500">
-                        <Clock3 className="h-4 w-4 shrink-0" />
-                        <span>Aguardando {item.horario}</span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="mt-5 grid grid-cols-1 gap-3 sm:mt-6 sm:grid-cols-2">
-          <Card className="border-white/[0.08] bg-fr-0b0b0b">
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-2.5">
-                  <WalletCards className="h-5 w-5 text-fri-f2d675" />
-                </div>
-                <p className="font-bold text-white">Conferência de caixa</p>
-              </div>
-              <p className="mt-3 text-xs leading-5 text-gray-500 sm:text-sm sm:leading-6">
-                Será ativada depois que validarmos a conferência automática de ponto.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={
-              pendenciasDaLoja.length > 0
-                ? "border-rose-400/20 bg-rose-500/[0.035]"
-                : "border-white/[0.08] bg-fr-0b0b0b"
-            }
-          >
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl border border-fr-d4af37/20 bg-fr-d4af37/[0.07] p-2.5">
-                  <ShieldCheck className="h-5 w-5 text-fri-f2d675" />
-                </div>
-                <div>
-                  <p className="font-bold text-white">Pendências abertas</p>
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    {pendenciasDaLoja.length} pendência{pendenciasDaLoja.length === 1 ? "" : "s"} aguardando ação
-                  </p>
-                </div>
-              </div>
-
-              {pendenciasDaLoja.length > 0 ? (
-                <div className="mt-4 space-y-2">
-                  {gruposPendencias.map((grupo) => {
-                    const aberto = grupoPendenciaAberto === grupo.periodo;
-
-                    return (
-                      <div
-                        key={grupo.periodo}
-                        className="overflow-hidden rounded-xl border border-rose-400/15 bg-rose-400/[0.035]"
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setGrupoPendenciaAberto((atual) =>
-                              atual === grupo.periodo ? null : grupo.periodo
-                            )
-                          }
-                          className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left transition hover:bg-rose-400/[0.05]"
-                        >
-                          <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-fr-d4af37/20 bg-fr-d4af37/[0.06]">
-                              <Clock3 className="h-4 w-4 text-fri-f2d675" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-black text-white">
-                                {grupo.horario} • {grupo.titulo}
-                              </p>
-                              <p className="mt-0.5 text-[11px] text-gray-500">
-                                Clique para ver os funcionários
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex shrink-0 items-center gap-2">
-                            <span className="rounded-lg border border-rose-300/15 bg-rose-300/[0.06] px-2.5 py-1 text-[11px] font-black text-rose-200">
-                              {grupo.pendencias.length} pendência{grupo.pendencias.length === 1 ? "" : "s"}
-                            </span>
-                            <ChevronDown
-                              className={`h-4 w-4 text-gray-500 transition-transform ${
-                                aberto ? "rotate-180" : ""
-                              }`}
-                            />
-                          </div>
-                        </button>
-
-                        {aberto && (
-                          <div className="border-t border-rose-400/10 p-2">
-                            <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
-                              {grupo.pendencias.map((pendencia) => (
-                                <div
-                                  key={pendencia.id}
-                                  className="rounded-xl border border-rose-400/15 bg-black/20 p-3"
-                                >
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-bold text-white">
-                                        {pendencia.funcionarioNome}
-                                      </p>
-                                      <p className="mt-1 text-xs text-rose-200">
-                                        {resumoPendencia(pendencia)}
-                                      </p>
-                                      <p className="mt-1 text-[11px] text-gray-500">
-                                        {pendencia.dataReferencia?.split("-").reverse().join("/")}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  {pendencia.fase === "classificar" && (
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      onClick={() => abrirTratativa(pendencia)}
-                                      className="mt-3 h-9 bg-rose-400 text-xs font-black text-black hover:bg-rose-300"
-                                    >
-                                      Definir tratativa
-                                    </Button>
-                                  )}
-
-                                  {pendencia.fase === "documento" && pendencia.tratativaId && (
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                      <label className="inline-flex h-9 cursor-pointer items-center rounded-md bg-fr-d4af37 px-3 text-xs font-black text-black hover:bg-fr-e6c760">
-                                        📷 {enviandoDocumentoId === pendencia.tratativaId ? "Enviando..." : "Tirar foto"}
-                                        <input
-                                          type="file"
-                                          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                                          capture="environment"
-                                          className="hidden"
-                                          disabled={enviandoDocumentoId === pendencia.tratativaId}
-                                          onChange={(event) => {
-                                            const file = event.target.files?.[0] || null;
-                                            void anexarDocumento(pendencia, file);
-                                            event.currentTarget.value = "";
-                                          }}
-                                        />
-                                      </label>
-
-                                      <label className="inline-flex h-9 cursor-pointer items-center rounded-md border border-fr-d4af37/25 bg-fr-d4af37/[0.05] px-3 text-xs font-black text-fri-f2d675 hover:bg-fr-d4af37/[0.10]">
-                                        📎 {enviandoDocumentoId === pendencia.tratativaId
-                                          ? "Enviando..."
-                                          : labelDocumentoPendente(pendencia.tratativaTipo)}
-                                        <input
-                                          type="file"
-                                          accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
-                                          className="hidden"
-                                          disabled={enviandoDocumentoId === pendencia.tratativaId}
-                                          onChange={(event) => {
-                                            const file = event.target.files?.[0] || null;
-                                            void anexarDocumento(pendencia, file);
-                                            event.currentTarget.value = "";
-                                          }}
-                                        />
-                                      </label>
-                                    </div>
-                                  )}
-
-                                  {pendencia.fase === "concluir" && pendencia.tratativaId && (
-                        <div className="mt-3 space-y-2">
-                          <div className="rounded-lg border border-emerald-400/15 bg-emerald-400/[0.05] px-3 py-2 text-[11px] text-emerald-200">
-                            Documento anexado com sucesso. Confira e conclua para retirar esta ocorrência das pendências.
-                          </div>
-
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => {
-                              const confirmar = window.confirm(
-                                `Concluir a pendência de ${pendencia.funcionarioNome}? Ela sairá da lista de pendências.`
-                              );
-                              if (!confirmar) return;
-
-                              concluirTratativaMutation.mutate({
-                                tratativaId: Number(pendencia.tratativaId),
-                                lojaId: Number(pendencia.lojaId),
-                              });
-                            }}
-                            disabled={concluirTratativaMutation.isPending}
-                            className="h-9 bg-emerald-400 text-xs font-black text-black hover:bg-emerald-300"
-                          >
-                            {concluirTratativaMutation.isPending
-                              ? "Concluindo..."
-                              : "Concluir pendência"}
-                          </Button>
-                        </div>
-                      )}
-
-                      {pendencia.fase === "cadastro" && (
-                                    <div className="mt-3 rounded-lg border border-amber-400/15 bg-amber-400/[0.05] px-3 py-2 text-[11px] text-amber-200">
-                                      Aguardando a Líder de RH concluir o cadastro.
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="mt-3 text-xs leading-5 text-gray-500 sm:text-sm sm:leading-6">
-                  Nenhuma tratativa ou documento pendente para esta loja.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </section>
-        </div>
+            </div>
+          </section>
+        )}
       </main>
 
       {periodoAberto && horarioConfigAberto && (

@@ -119,14 +119,6 @@ export default function RHDashboardGeral() {
   const hoje = hojeCivil();
   const competencia = competenciaAtual();
 
-  const pontoQuery = trpc.rhPonto.pendencias.useQuery(
-    { lojaId: null },
-    {
-      enabled: podeVer,
-      retry: false,
-      refetchOnWindowFocus: true,
-    }
-  );
 
   const caixaQuery = trpc.rhCaixa.historico.useQuery(
     {
@@ -191,7 +183,6 @@ export default function RHDashboardGeral() {
   });
 
   const resumo = useMemo(() => {
-    const ponto = (pontoQuery.data || []) as Array<any>;
     const caixas = (caixaQuery.data || []) as Array<any>;
     const documentos = (documentosQuery.data || []) as Array<any>;
     const entregasEpi = (episQuery.data || []) as Array<any>;
@@ -263,7 +254,6 @@ export default function RHDashboardGeral() {
     ).length;
 
     return {
-      pontoPendencias: ponto.length,
       caixasFechados: caixasValidos.length,
       caixasComDiferenca,
       documentosMes,
@@ -277,7 +267,6 @@ export default function RHDashboardGeral() {
       rescisoesAbertas,
     };
   }, [
-    pontoQuery.data,
     caixaQuery.data,
     documentosQuery.data,
     episQuery.data,
@@ -289,21 +278,6 @@ export default function RHDashboardGeral() {
 
   const cards = useMemo<CardResumo[]>(
     () => [
-      {
-        id: "ponto",
-        titulo: "Ponto",
-        valor: resumo.pontoPendencias,
-        detalhe:
-          resumo.pontoPendencias === 1
-            ? "pendência aberta"
-            : "pendências abertas",
-        prioridade: resumo.pontoPendencias > 0 ? 2 : 0,
-        acao: () =>
-          document
-            .getElementById("historico-ponto")
-            ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-        icon: ClipboardCheck,
-      },
       {
         id: "caixa",
         titulo: "Caixa",
@@ -386,7 +360,6 @@ export default function RHDashboardGeral() {
     .sort((a, b) => b.prioridade - a.prioridade);
 
   const carregando = [
-    pontoQuery,
     caixaQuery,
     documentosQuery,
     episQuery,
@@ -396,7 +369,6 @@ export default function RHDashboardGeral() {
   ].some((query) => query.isLoading);
 
   const erro = [
-    pontoQuery.error,
     caixaQuery.error,
     documentosQuery.error,
     episQuery.error,
@@ -415,7 +387,6 @@ export default function RHDashboardGeral() {
   }
 
   function atualizarTudo() {
-    pontoQuery.refetch();
     caixaQuery.refetch();
     documentosQuery.refetch();
     episQuery.refetch();
@@ -439,7 +410,7 @@ export default function RHDashboardGeral() {
                 O que precisa da sua atenção
               </h2>
               <p className="mt-2 text-sm text-gray-500">
-                Ponto, caixa, documentos, EPIs, férias, experiências e rescisões em uma única visão.
+                Caixa, documentos, EPIs, férias, experiências e rescisões em uma única visão.
               </p>
             </div>
 

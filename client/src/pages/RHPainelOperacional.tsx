@@ -84,45 +84,10 @@ function diasAte(valor?: string | null) {
   return Math.round((alvo.getTime() - hoje.getTime()) / 86_400_000);
 }
 
-const NOMES_PERIODO_PONTO: Record<string, string> = {
-  entrada: "Entrada",
-  saida_almoco: "Saída almoço",
-  retorno_almoco: "Retorno almoço",
-  saida: "Saída",
-};
-
-function descricaoPendenciaPonto(item: any) {
-  if (item.fase === "cadastro") {
-    return item.tipoCadastro === "jornada" ? "Sem jornada" : "Sem cadastro";
-  }
-  const tipo = String(item.tipoOcorrencia || "");
-  const minutos = Number(item.minutosAtraso || 0);
-  if (tipo === "atraso") return `${minutos} min de atraso`;
-  if (tipo === "almoco_excedido") return `${minutos} min de almoço excedido`;
-  if (tipo === "sem_batida" || tipo === "ausente_relatorio") return "Sem batida";
-  if (tipo === "falta") return "Falta";
-  if (tipo === "saida_antecipada") return "Saída antecipada";
-  return "Ocorrência";
-}
-
-function fasePendenciaPonto(item: any) {
-  if (item.fase === "cadastro") return "Ajustar cadastro / jornada";
-  if (item.fase === "classificar") return "Aguardando tratativa da Caixa Líder";
-  if (item.fase === "documento") return "Aguardando documento";
-  if (item.fase === "concluir") return "Documento anexado • falta concluir";
-  return "Pendente";
-}
-
 function dataBR(valor?: string | null) {
   const texto = String(valor || "").slice(0, 10);
   return texto ? texto.split("-").reverse().join("/") : "";
 }
-
-type DetalhePonto = {
-  lojaNome: string;
-  titulo: string;
-  itens: any[];
-};
 
 type Atencao = {
   id: string;
@@ -135,28 +100,18 @@ type Atencao = {
 export default function RHPainelOperacional() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
-  const [detalhePonto, setDetalhePonto] = useState<DetalhePonto | null>(null);
 
   const hoje = hojeCivil();
   const diaSemana = new Date().getDay();
   const domingo = diaSemana === 0;
   const sabado = diaSemana === 6;
-  const periodos = sabado ? PERIODOS_SABADO : PERIODOS_SEMANA;
 
   const role = String(user?.role || "");
   const lojaUsuario = Number(user?.lojaId || 0);
   const podeVer =
     (role === "rh" && lojaUsuario <= 0) || role === "admin" || role === "gestor";
 
-  const pontoQuery = trpc.rhPonto.historico.useQuery(
-    { dataInicio: hoje, dataFim: hoje, lojaId: null },
-    { enabled: podeVer && !domingo, retry: false, refetchOnWindowFocus: true }
-  );
-
-  const pendenciasQuery = trpc.rhPonto.pendencias.useQuery(
-    { lojaId: null },
-    { enabled: podeVer, retry: false, refetchOnWindowFocus: true }
-  );
+  // Conferência de ponto foi desativada (sem advertências): o painel não mostra mais ponto.
 
   const caixaQuery = trpc.rhCaixa.historico.useQuery(
     { dataInicio: hoje, dataFim: hoje, lojaId: null },
@@ -193,8 +148,6 @@ export default function RHPainelOperacional() {
   });
 
   const dadosPorLoja = useMemo(() => {
-    const historico = (pontoQuery.data || []) as any[];
-    const pendencias = (pendenciasQuery.data || []) as any[];
     const caixas = (caixaQuery.data || []) as any[];
     const epis = (episQuery.data || []) as any[];
     const ferias = (feriasQuery.data || []) as any[];
@@ -217,37 +170,7 @@ export default function RHPainelOperacional() {
     }
 
     return LOJAS.map((loja) => {
-      const conferenciasLoja = historico.filter(
-        (item) => Number(item.lojaId) === loja.id
-      );
-      const pendenciasLoja = pendencias.filter(
-        (item) => Number(item.lojaId) === loja.id
-      );
       const caixa = caixas.find((item) => Number(item.lojaId) === loja.id) || null;
-
-      const ponto = periodos.map((periodo) => {
-        const conferencia = conferenciasLoja.find(
-          (item) => String(item.periodo) === periodo.periodo
-        );
-
-        const itensPeriodo = pendenciasLoja.filter(
-          (item) => String(item.periodo) === periodo.periodo
-        );
-
-        const passouHorario = minutosAgora() >= minutosHorario(periodo.hora);
-
-        return {
-          ...periodo,
-          ok: Boolean(conferencia),
-          pendencias: itensPeriodo.length,
-          itensPendentes: itensPeriodo,
-          atrasado: !conferencia && passouHorario,
-        };
-      });
-
-      const documentosPendentes = pendenciasLoja.filter(
-        (item) => item.fase === "documento"
-      ).length;
 
       const episVencidos = Array.from(ultimoEpi.values()).filter((item) => {
         if (Number(item.lojaId) !== loja.id) return false;
@@ -288,13 +211,6 @@ export default function RHPainelOperacional() {
 
       const atencoes: Atencao[] = [
         {
-          id: "documentos",
-          label: "Documentos",
-          quantidade: documentosPendentes,
-          rota: "/rh/gestao/detalhes",
-          critica: documentosPendentes > 0,
-        },
-        {
           id: "epis",
           label: "EPIs",
           quantidade: episVencidos,
@@ -321,15 +237,9 @@ export default function RHPainelOperacional() {
         },
       ].filter((item) => item.quantidade > 0);
 
-      const pontoPendente = pendenciasLoja.length;
-      const pontoAtrasado = ponto.some((item) => item.atrasado);
       const caixaDiferenca = caixa ? Math.abs(Number(caixa.diferenca || 0)) >= 0.005 : false;
 
-      const critico =
-        pontoPendente > 0 ||
-        pontoAtrasado ||
-        documentosPendentes > 0 ||
-        episVencidos > 0;
+      const critico = episVencidos > 0;
 
       const atencao =
         !critico &&
@@ -340,9 +250,6 @@ export default function RHPainelOperacional() {
 
       return {
         ...loja,
-        ponto,
-        pontoPendente,
-        pendenciasPonto: pendenciasLoja,
         caixa,
         caixaDiferenca,
         atencoes,
@@ -352,14 +259,11 @@ export default function RHPainelOperacional() {
       };
     });
   }, [
-    pontoQuery.data,
-    pendenciasQuery.data,
     caixaQuery.data,
     episQuery.data,
     feriasQuery.data,
     experienciasQuery.data,
     rescisoesQuery.data,
-    periodos,
   ]);
 
   const resumo = useMemo(() => {
@@ -370,7 +274,6 @@ export default function RHPainelOperacional() {
     const totalPendencias = dadosPorLoja.reduce(
       (total, loja) =>
         total +
-        loja.pontoPendente +
         loja.atencoes.reduce((soma, item) => soma + item.quantidade, 0),
       0
     );
@@ -379,8 +282,6 @@ export default function RHPainelOperacional() {
   }, [dadosPorLoja]);
 
   const carregando = [
-    pontoQuery,
-    pendenciasQuery,
     caixaQuery,
     episQuery,
     feriasQuery,
@@ -389,8 +290,6 @@ export default function RHPainelOperacional() {
   ].some((query) => query.isLoading);
 
   function atualizar() {
-    pontoQuery.refetch();
-    pendenciasQuery.refetch();
     caixaQuery.refetch();
     episQuery.refetch();
     feriasQuery.refetch();
@@ -479,99 +378,6 @@ export default function RHPainelOperacional() {
 
                 <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
                   <div className="shrink-0">
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <p className="text-[9px] font-black uppercase tracking-[0.16em] text-gray-600">
-                        Ponto
-                      </p>
-                      {loja.pontoPendente > 0 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setDetalhePonto({
-                              lojaNome: loja.nome,
-                              titulo: "Todas as pendências do ponto",
-                              itens: loja.pendenciasPonto,
-                            })
-                          }
-                          className="text-[9px] font-black text-rose-300 hover:text-rose-200 hover:underline"
-                        >
-                          {loja.pontoPendente} pend.
-                        </button>
-                      )}
-                    </div>
-
-                    {domingo ? (
-                      <div className="flex h-8 items-center gap-2 rounded-lg border border-emerald-400/10 bg-emerald-400/[0.03] px-2.5 text-[10px] text-emerald-300">
-                        <Check className="h-3.5 w-3.5" />
-                        Domingo • loja fechada
-                      </div>
-                    ) : (
-                      <div className={`grid gap-1 ${sabado ? "grid-cols-2" : "grid-cols-4"}`}>
-                        {loja.ponto.map((item) => (
-                          <div
-                            key={item.periodo}
-                            role={item.pendencias > 0 ? "button" : undefined}
-                            title={item.pendencias > 0 ? "Ver pendências deste horário" : undefined}
-                            onClick={
-                              item.pendencias > 0
-                                ? () =>
-                                    setDetalhePonto({
-                                      lojaNome: loja.nome,
-                                      titulo: `${item.hora} • ${item.curto}`,
-                                      itens: item.itensPendentes,
-                                    })
-                                : undefined
-                            }
-                            className={`rounded-lg border px-1.5 py-1.5 ${
-                              item.pendencias > 0 ? "cursor-pointer transition hover:brightness-150 " : ""
-                            }${
-                              item.ok
-                                ? item.pendencias > 0
-                                  ? "border-amber-400/20 bg-amber-400/[0.05]"
-                                  : "border-emerald-400/15 bg-emerald-400/[0.04]"
-                                : item.atrasado
-                                ? "border-rose-400/20 bg-rose-400/[0.05]"
-                                : "border-white/[0.06] bg-white/[0.02]"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="truncate text-[8px] font-black uppercase text-gray-500">
-                                {item.hora}
-                              </span>
-
-                              {item.ok ? (
-                                <Check className="h-3 w-3 shrink-0 text-emerald-400" />
-                              ) : item.atrasado ? (
-                                <CircleAlert className="h-3 w-3 shrink-0 text-rose-300" />
-                              ) : (
-                                <Clock3 className="h-3 w-3 shrink-0 text-gray-600" />
-                              )}
-                            </div>
-
-                            <p
-                              className={`mt-0.5 truncate text-[9px] font-bold ${
-                                item.ok
-                                  ? "text-white"
-                                  : item.atrasado
-                                  ? "text-rose-200"
-                                  : "text-gray-600"
-                              }`}
-                            >
-                              {item.ok ? "OK" : item.atrasado ? "Pendente" : "Aguarda"}
-                            </p>
-
-                            {item.pendencias > 0 && (
-                              <p className="truncate text-[8px] font-bold text-amber-300">
-                                {item.pendencias} pend.
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="shrink-0">
                     <p className="mb-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-gray-600">
                       Caixa
                     </p>
@@ -651,59 +457,6 @@ export default function RHPainelOperacional() {
         </section>
       </main>
 
-      <Dialog open={!!detalhePonto} onOpenChange={(aberto) => !aberto && setDetalhePonto(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto border-fr-d4af37/20 bg-fr-0b0b0b text-white sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-fri-f2d675">
-              {detalhePonto?.lojaNome} • {detalhePonto?.titulo}
-            </DialogTitle>
-            <DialogDescription className="text-gray-400">
-              {detalhePonto?.itens.length || 0} pendência(s) do ponto
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2">
-            {(detalhePonto?.itens || []).map((item) => (
-              <div
-                key={item.id}
-                className="rounded-lg border border-white/[0.07] bg-black/30 p-3 text-sm"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-bold text-white">{item.funcionarioNome || "Sem nome"}</p>
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      {dataBR(item.dataReferencia)} •{" "}
-                      {NOMES_PERIODO_PONTO[String(item.periodo)] || item.periodo}
-                      {item.horarioPrevisto ? ` • previsto ${String(item.horarioPrevisto).slice(0, 5)}` : ""}
-                      {/^\d{1,2}:\d{2}/.test(String(item.horarioBatida || ""))
-                        ? ` • batida ${String(item.horarioBatida).slice(0, 5)}`
-                        : ""}
-                    </p>
-                  </div>
-                  <span className="shrink-0 rounded-full border border-rose-400/20 bg-rose-400/[0.06] px-2 py-0.5 text-[11px] font-bold text-rose-300">
-                    {descricaoPendenciaPonto(item)}
-                  </span>
-                </div>
-                <p className="mt-2 text-xs font-semibold text-amber-300">
-                  {fasePendenciaPonto(item)}
-                </p>
-                {item.mensagem && (
-                  <p className="mt-1 text-xs text-gray-400">{item.mensagem}</p>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => navigate("/rh/gestao/detalhes")}
-            className="mt-2 flex h-9 w-full items-center justify-center gap-1 rounded-lg border border-fr-d4af37/25 bg-fr-d4af37/[0.06] text-xs font-bold text-fri-f2d675 hover:bg-fr-d4af37/[0.12]"
-          >
-            Abrir na Gestão do RH para tratar
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
